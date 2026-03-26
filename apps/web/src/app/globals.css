@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+:root {
+  --background: #efe7d6;
+  --foreground: #18130d;
+  --surface: #fff9ef;
+  --surface-strong: #fffdf8;
+  --accent: #1d6b57;
+  --accent-strong: #13473a;
+  --font-sans: "Aptos", "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-mono: "Cascadia Code", "SFMono-Regular", monospace;
+}
+
+body {
+  background:
+    radial-gradient(circle at top, #fff7d4 0, #f6f0df 34%, var(--background) 100%);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+a,
+button {
+  transition:
+    color 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}

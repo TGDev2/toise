@@ -1,0 +1,49 @@
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  Index,
+} from 'typeorm';
+
+export enum AuthProvider {
+  EMAIL = 'email',
+  GOOGLE = 'google',
+  APPLE = 'apple',
+  ANONYMOUS = 'anonymous',
+}
+
+export enum SubscriptionTier {
+  FREE = 'free',
+  PRO = 'pro',
+  CONTRACTOR = 'contractor',
+}
+
+@Entity('users')
+export class User {
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
+
+  @Column({ type: 'varchar', length: 255, unique: true, nullable: true })
+  email!: string | null;
+
+  @Column({ type: 'varchar', length: 20, default: AuthProvider.EMAIL })
+  auth_provider!: AuthProvider;
+
+  @Column({ type: 'varchar', length: 20, default: SubscriptionTier.FREE })
+  subscription_tier!: SubscriptionTier;
+
+  @Column({ type: 'boolean', default: false })
+  email_verified!: boolean;
+
+  @Index()
+  @Column({ type: 'varchar', length: 128, unique: true })
+  firebase_uid!: string;
+
+  @CreateDateColumn({ type: 'timestamptz' })
+  created_at!: Date;
+
+  @UpdateDateColumn({ type: 'timestamptz' })
+  updated_at!: Date;
+}

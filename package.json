@@ -1,0 +1,15 @@
+{
+  "name": "estimate",
+  "private": true,
+  "description": "EstiMate — DIY material estimation app",
+  "scripts": {
+    "dev:api": "pnpm --filter @estimate/api dev",
+    "dev:web": "pnpm --filter @estimate/web dev",
+    "build:api": "pnpm --filter @estimate/api build",
+    "build:web": "pnpm --filter @estimate/web build",
+    "test:api": "pnpm --filter @estimate/api test && pnpm --filter @estimate/api test:e2e",
+    "test:web": "pnpm --filter @estimate/web test",
+    "lint": "pnpm --filter @estimate/api lint && pnpm --filter @estimate/web lint",
+    "db:migrate": "pnpm --filter @estimate/api migration:run"
+  }
+}
