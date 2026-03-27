@@ -8,6 +8,7 @@ import {
   ConfidenceScore,
   DimensionSource,
 } from './entities/room-dimensions.entity';
+import { Opening, OpeningType } from './entities/opening.entity';
 
 const mockProject: Project = {
   id: 'project-uuid',
@@ -20,6 +21,19 @@ const mockProject: Project = {
   updated_at: new Date('2026-03-27T00:00:00.000Z'),
   user: null as never,
   dimensions: null,
+  openings: [],
+};
+
+const mockOpening: Opening = {
+  id: 'opening-uuid',
+  project_id: 'project-uuid',
+  type: OpeningType.DOOR,
+  width_cm: 90,
+  height_cm: 204,
+  count: 1,
+  created_at: new Date('2026-03-27T00:00:00.000Z'),
+  updated_at: new Date('2026-03-27T00:00:00.000Z'),
+  project: null as never,
 };
 
 const mockDimensions: RoomDimensions = {
@@ -48,6 +62,14 @@ const dimensionsRepoMock = {
   findOne: jest.fn().mockResolvedValue(null),
 };
 
+const openingsRepoMock = {
+  create: jest.fn().mockReturnValue(mockOpening),
+  save: jest.fn().mockResolvedValue(mockOpening),
+  find: jest.fn().mockResolvedValue([]),
+  findOne: jest.fn().mockResolvedValue(null),
+  remove: jest.fn().mockResolvedValue(undefined),
+};
+
 describe('ProjectsService', () => {
   let service: ProjectsService;
 
@@ -62,6 +84,7 @@ describe('ProjectsService', () => {
           provide: getRepositoryToken(RoomDimensions),
           useValue: dimensionsRepoMock,
         },
+        { provide: getRepositoryToken(Opening), useValue: openingsRepoMock },
       ],
     }).compile();
 
@@ -171,6 +194,97 @@ describe('ProjectsService', () => {
 
       const result = await service.getDimensions('project-uuid', 'user-uuid');
       expect(result).toBeNull();
+    });
+  });
+
+  describe('addOpening', () => {
+    it('creates and returns an opening', async () => {
+      const result = await service.addOpening('project-uuid', 'user-uuid', {
+        type: OpeningType.DOOR,
+        width_cm: 90,
+        height_cm: 204,
+        count: 1,
+      });
+
+      expect(openingsRepoMock.create).toHaveBeenCalledWith({
+        project_id: 'project-uuid',
+        type: OpeningType.DOOR,
+        width_cm: 90,
+        height_cm: 204,
+        count: 1,
+      });
+      expect(openingsRepoMock.save).toHaveBeenCalled();
+      expect(result).toEqual(mockOpening);
+    });
+
+    it('defaults count to 1 when not provided', async () => {
+      await service.addOpening('project-uuid', 'user-uuid', {
+        type: OpeningType.WINDOW,
+        width_cm: 120,
+        height_cm: 100,
+      });
+
+      expect(openingsRepoMock.create).toHaveBeenCalledWith(
+        expect.objectContaining({ count: 1 }),
+      );
+    });
+  });
+
+  describe('updateOpening', () => {
+    it('updates and returns the opening', async () => {
+      openingsRepoMock.findOne.mockResolvedValueOnce({ ...mockOpening });
+
+      const result = await service.updateOpening(
+        'project-uuid',
+        'user-uuid',
+        'opening-uuid',
+        { width_cm: 100 },
+      );
+
+      expect(openingsRepoMock.save).toHaveBeenCalledWith(
+        expect.objectContaining({ width_cm: 100 }),
+      );
+      expect(result).toBeDefined();
+    });
+
+    it('throws NotFoundException when opening does not exist', async () => {
+      openingsRepoMock.findOne.mockResolvedValueOnce(null);
+
+      await expect(
+        service.updateOpening('project-uuid', 'user-uuid', 'missing-uuid', {
+          width_cm: 100,
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('removeOpening', () => {
+    it('removes the opening', async () => {
+      openingsRepoMock.findOne.mockResolvedValueOnce(mockOpening);
+
+      await service.removeOpening('project-uuid', 'user-uuid', 'opening-uuid');
+      expect(openingsRepoMock.remove).toHaveBeenCalledWith(mockOpening);
+    });
+
+    it('throws NotFoundException when opening does not exist', async () => {
+      openingsRepoMock.findOne.mockResolvedValueOnce(null);
+
+      await expect(
+        service.removeOpening('project-uuid', 'user-uuid', 'missing-uuid'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('getOpenings', () => {
+    it('returns openings for a project', async () => {
+      openingsRepoMock.find.mockResolvedValueOnce([mockOpening]);
+
+      const result = await service.getOpenings('project-uuid', 'user-uuid');
+      expect(result).toEqual([mockOpening]);
+      expect(openingsRepoMock.find).toHaveBeenCalledWith({
+        where: { project_id: 'project-uuid' },
+        order: { created_at: 'ASC' },
+      });
     });
   });
 });

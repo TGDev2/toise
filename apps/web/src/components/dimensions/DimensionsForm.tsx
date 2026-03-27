@@ -3,9 +3,11 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { UnitSystem } from '@/lib/units';
 import { metersToCm, cmToMeters, feetInchesToCm, cmToFeetInches } from '@/lib/units';
-import { totalSurfaceArea } from '@/lib/surface';
+import type { Opening } from '@/lib/surface';
+import { wallArea, totalOpeningsArea, netWallArea, totalSurfaceArea } from '@/lib/surface';
 import { getDimensionWarnings, getMissingFields } from '@/lib/dimension-validation';
 import { RoomPreview } from './RoomPreview';
+import { OpeningsSection } from './OpeningsSection';
 
 interface MetricValues {
   length: string;
@@ -26,7 +28,8 @@ interface DimensionsFormProps {
   initialLengthCm?: number;
   initialWidthCm?: number;
   initialHeightCm?: number;
-  onSave: (lengthCm: number, widthCm: number, heightCm: number) => Promise<void>;
+  initialOpenings?: Opening[];
+  onSave: (lengthCm: number, widthCm: number, heightCm: number, openings: Opening[]) => Promise<void>;
   isSaving?: boolean;
 }
 
@@ -59,6 +62,7 @@ export function DimensionsForm({
   initialLengthCm = 0,
   initialWidthCm = 0,
   initialHeightCm = 0,
+  initialOpenings = [],
   onSave,
   isSaving = false,
 }: DimensionsFormProps) {
@@ -70,6 +74,8 @@ export function DimensionsForm({
     cmToImperialValues(initialLengthCm, initialWidthCm, initialHeightCm),
   );
   const [touched, setTouched] = useState(false);
+  const [openings, setOpenings] = useState<Opening[]>(initialOpenings);
+  const [showZeroOpeningsSuggestion, setShowZeroOpeningsSuggestion] = useState(false);
 
   const getCm = useCallback((): { lengthCm: number; widthCm: number; heightCm: number } => {
     if (unitSystem === 'metric') {
@@ -113,12 +119,26 @@ export function DimensionsForm({
     [lengthCm, widthCm, heightCm],
   );
 
+  const hasDimensions = lengthCm > 0 && widthCm > 0 && heightCm > 0;
+
   const surfaceCm2 = useMemo(() => {
-    if (lengthCm > 0 && widthCm > 0 && heightCm > 0) {
+    if (hasDimensions) {
       return totalSurfaceArea(lengthCm, widthCm, heightCm);
     }
     return 0;
-  }, [lengthCm, widthCm, heightCm]);
+  }, [hasDimensions, lengthCm, widthCm, heightCm]);
+
+  const grossWallCm2 = useMemo(() => {
+    if (hasDimensions) return wallArea(lengthCm, widthCm, heightCm);
+    return 0;
+  }, [hasDimensions, lengthCm, widthCm, heightCm]);
+
+  const openingsAreaCm2 = useMemo(() => totalOpeningsArea(openings), [openings]);
+
+  const netWallCm2 = useMemo(() => {
+    if (hasDimensions) return netWallArea(lengthCm, widthCm, heightCm, openings);
+    return 0;
+  }, [hasDimensions, lengthCm, widthCm, heightCm, openings]);
 
   const surfaceM2 = surfaceCm2 / 10_000;
   const isValid = missingFields.length === 0;
@@ -138,8 +158,26 @@ export function DimensionsForm({
     e.preventDefault();
     setTouched(true);
     if (!isValid) return;
-    await onSave(lengthCm, widthCm, heightCm);
+    if (openings.length === 0 && !showZeroOpeningsSuggestion) {
+      setShowZeroOpeningsSuggestion(true);
+      return;
+    }
+    setShowZeroOpeningsSuggestion(false);
+    await onSave(lengthCm, widthCm, heightCm, openings);
   };
+
+  const handleAddOpening = useCallback((opening: Opening) => {
+    setOpenings((prev) => [...prev, opening]);
+    setShowZeroOpeningsSuggestion(false);
+  }, []);
+
+  const handleUpdateOpening = useCallback((index: number, opening: Opening) => {
+    setOpenings((prev) => prev.map((o, i) => (i === index ? opening : o)));
+  }, []);
+
+  const handleRemoveOpening = useCallback((index: number) => {
+    setOpenings((prev) => prev.filter((_, i) => i !== index));
+  }, []);
 
   const warningForField = (field: 'length' | 'width' | 'height') =>
     warnings.find((w) => w.field === field);
@@ -240,6 +278,38 @@ export function DimensionsForm({
           </div>
         )}
 
+        {/* Openings section */}
+        <OpeningsSection
+          openings={openings}
+          onAdd={handleAddOpening}
+          onUpdate={handleUpdateOpening}
+          onRemove={handleRemoveOpening}
+          grossWallAreaCm2={grossWallCm2}
+        />
+
+        {showZeroOpeningsSuggestion && (
+          <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
+            <p className="text-sm text-blue-800">
+              Vous n&apos;avez pas ajoute de portes ou fenetres. Souhaitez-vous continuer ?
+            </p>
+            <div className="mt-2 flex gap-2">
+              <button
+                type="submit"
+                className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 transition-colors"
+              >
+                Continuer
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowZeroOpeningsSuggestion(false)}
+                className="rounded-xl bg-white px-3 py-1.5 text-xs font-medium text-blue-700 border border-blue-200 hover:bg-blue-50 transition-colors"
+              >
+                Ajouter des ouvertures
+              </button>
+            </div>
+          </div>
+        )}
+
         <button
           type="submit"
           disabled={isSaving || (touched && !isValid)}
@@ -256,21 +326,41 @@ export function DimensionsForm({
             lengthCm={lengthCm}
             widthCm={widthCm}
             unitSystem={unitSystem}
+            openings={openings}
             className="w-full"
           />
         </div>
 
         {surfaceM2 > 0 && (
-          <div className="rounded-2xl bg-stone-50 border border-stone-200 p-4">
+          <div className="rounded-2xl bg-stone-50 border border-stone-200 p-4 space-y-3">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
               Surface totale estimee
             </p>
-            <p className="mt-2 text-2xl font-semibold text-stone-900">
+            <p className="text-2xl font-semibold text-stone-900">
               {surfaceM2.toFixed(1)} m&sup2;
             </p>
-            <p className="mt-1 text-xs text-stone-500">
+            <p className="text-xs text-stone-500">
               Sol + plafond + 4 murs
             </p>
+
+            {grossWallCm2 > 0 && (
+              <div className="border-t border-stone-200 pt-3 space-y-1">
+                <div className="flex justify-between text-xs text-stone-500">
+                  <span>Surface brute des murs</span>
+                  <span>{(grossWallCm2 / 10_000).toFixed(1)} m&sup2;</span>
+                </div>
+                {openingsAreaCm2 > 0 && (
+                  <div className="flex justify-between text-xs text-stone-500">
+                    <span>Ouvertures</span>
+                    <span>- {(openingsAreaCm2 / 10_000).toFixed(1)} m&sup2;</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm font-semibold text-stone-900">
+                  <span>Surface nette des murs</span>
+                  <span>{(netWallCm2 / 10_000).toFixed(1)} m&sup2;</span>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

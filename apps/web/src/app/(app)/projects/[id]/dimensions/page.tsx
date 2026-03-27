@@ -1,8 +1,9 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { apiGet, apiPut } from '@/lib/api';
+import { apiGet, apiPost, apiPut, apiDelete } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
+import type { Opening } from '@/lib/surface';
 import { DimensionsForm } from '@/components/dimensions/DimensionsForm';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -15,6 +16,14 @@ interface DimensionsData {
   height_cm: number;
 }
 
+interface OpeningData {
+  id: string;
+  type: 'door' | 'window';
+  width_cm: number;
+  height_cm: number;
+  count: number;
+}
+
 interface LocalProject {
   id: string;
   name: string;
@@ -23,6 +32,7 @@ interface LocalProject {
   length_m?: number;
   width_m?: number;
   height_m?: number;
+  openings?: Opening[];
   updated_at: string;
 }
 
@@ -33,6 +43,8 @@ export default function DimensionsPage() {
   const projectId = params.id;
 
   const [initialDims, setInitialDims] = useState<DimensionsData | null>(null);
+  const [initialOpenings, setInitialOpenings] = useState<Opening[]>([]);
+  const [existingOpeningIds, setExistingOpeningIds] = useState<string[]>([]);
   const [projectName, setProjectName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
@@ -51,10 +63,22 @@ export default function DimensionsPage() {
           const project = await apiGet<{
             name: string;
             dimensions: DimensionsData | null;
+            openings: OpeningData[];
           }>(`/projects/${projectId}`);
           setProjectName(project.name);
           if (project.dimensions) {
             setInitialDims(project.dimensions);
+          }
+          if (project.openings?.length) {
+            setInitialOpenings(
+              project.openings.map((o) => ({
+                type: o.type,
+                width_cm: o.width_cm,
+                height_cm: o.height_cm,
+                count: o.count,
+              })),
+            );
+            setExistingOpeningIds(project.openings.map((o) => o.id));
           }
         } else {
           const raw = localStorage.getItem(STORAGE_KEY);
@@ -69,6 +93,9 @@ export default function DimensionsPage() {
                 height_cm: Math.round(project.height_m * 100),
               });
             }
+            if (project.openings?.length) {
+              setInitialOpenings(project.openings);
+            }
           }
         }
       } catch (err: unknown) {
@@ -82,16 +109,35 @@ export default function DimensionsPage() {
   }, [appUser, isGuest, isLoading, projectId, router]);
 
   const handleSave = useCallback(
-    async (lengthCm: number, widthCm: number, heightCm: number) => {
+    async (lengthCm: number, widthCm: number, heightCm: number, openings: Opening[]) => {
       setError('');
       setIsSaving(true);
       try {
         if (appUser) {
+          // Save dimensions
           await apiPut(`/projects/${projectId}/dimensions`, {
             length_cm: lengthCm,
             width_cm: widthCm,
             height_cm: heightCm,
           });
+
+          // Replace-all strategy: delete existing, then create new
+          await Promise.all(
+            existingOpeningIds.map((id) =>
+              apiDelete(`/projects/${projectId}/openings/${id}`),
+            ),
+          );
+
+          await Promise.all(
+            openings.map((o) =>
+              apiPost(`/projects/${projectId}/openings`, {
+                type: o.type,
+                width_cm: o.width_cm,
+                height_cm: o.height_cm,
+                count: o.count,
+              }),
+            ),
+          );
         } else {
           const raw = localStorage.getItem(STORAGE_KEY);
           const projects: LocalProject[] = raw ? JSON.parse(raw) : [];
@@ -100,6 +146,7 @@ export default function DimensionsPage() {
             projects[idx].length_m = lengthCm / 100;
             projects[idx].width_m = widthCm / 100;
             projects[idx].height_m = heightCm / 100;
+            projects[idx].openings = openings;
             projects[idx].updated_at = new Date().toISOString();
             localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
           }
@@ -111,7 +158,7 @@ export default function DimensionsPage() {
         setIsSaving(false);
       }
     },
-    [appUser, projectId, router],
+    [appUser, projectId, router, existingOpeningIds],
   );
 
   if (isLoading || !loaded) {
@@ -151,6 +198,7 @@ export default function DimensionsPage() {
           initialLengthCm={initialDims?.length_cm ?? 0}
           initialWidthCm={initialDims?.width_cm ?? 0}
           initialHeightCm={initialDims?.height_cm ?? 0}
+          initialOpenings={initialOpenings}
           onSave={handleSave}
           isSaving={isSaving}
         />

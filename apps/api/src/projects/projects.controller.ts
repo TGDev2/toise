@@ -1,7 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
   Post,
@@ -15,6 +18,8 @@ import { UsersService } from '../users/users.service';
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateDimensionsDto } from './dto/update-dimensions.dto';
+import { CreateOpeningDto } from './dto/create-opening.dto';
+import { UpdateOpeningDto } from './dto/update-opening.dto';
 
 @Controller('projects')
 @UseGuards(FirebaseAuthGuard)
@@ -66,6 +71,14 @@ export class ProjectsController {
             height_cm: p.dimensions.height_cm,
           }
         : null,
+      openings:
+        p.openings?.map((o) => ({
+          id: o.id,
+          type: o.type,
+          width_cm: o.width_cm,
+          height_cm: o.height_cm,
+          count: o.count,
+        })) ?? [],
       created_at: p.created_at,
       updated_at: p.updated_at,
     }));
@@ -91,6 +104,14 @@ export class ProjectsController {
             height_cm: project.dimensions.height_cm,
           }
         : null,
+      openings:
+        project.openings?.map((o) => ({
+          id: o.id,
+          type: o.type,
+          width_cm: o.width_cm,
+          height_cm: o.height_cm,
+          count: o.count,
+        })) ?? [],
       created_at: project.created_at,
       updated_at: project.updated_at,
     };
@@ -134,5 +155,72 @@ export class ProjectsController {
       source: dimensions.source,
       confidence_score: dimensions.confidence_score,
     };
+  }
+
+  @Post(':id/openings')
+  async addOpening(
+    @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateOpeningDto,
+  ) {
+    const userId = await this.resolveUserId(firebaseUser);
+    const opening = await this.projectsService.addOpening(id, userId, dto);
+    return {
+      id: opening.id,
+      type: opening.type,
+      width_cm: opening.width_cm,
+      height_cm: opening.height_cm,
+      count: opening.count,
+    };
+  }
+
+  @Get(':id/openings')
+  async getOpenings(
+    @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    const userId = await this.resolveUserId(firebaseUser);
+    const openings = await this.projectsService.getOpenings(id, userId);
+    return openings.map((o) => ({
+      id: o.id,
+      type: o.type,
+      width_cm: o.width_cm,
+      height_cm: o.height_cm,
+      count: o.count,
+    }));
+  }
+
+  @Put(':id/openings/:openingId')
+  async updateOpening(
+    @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('openingId', ParseUUIDPipe) openingId: string,
+    @Body() dto: UpdateOpeningDto,
+  ) {
+    const userId = await this.resolveUserId(firebaseUser);
+    const opening = await this.projectsService.updateOpening(
+      id,
+      userId,
+      openingId,
+      dto,
+    );
+    return {
+      id: opening.id,
+      type: opening.type,
+      width_cm: opening.width_cm,
+      height_cm: opening.height_cm,
+      count: opening.count,
+    };
+  }
+
+  @Delete(':id/openings/:openingId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async removeOpening(
+    @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('openingId', ParseUUIDPipe) openingId: string,
+  ) {
+    const userId = await this.resolveUserId(firebaseUser);
+    await this.projectsService.removeOpening(id, userId, openingId);
   }
 }

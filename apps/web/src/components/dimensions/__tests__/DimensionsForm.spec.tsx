@@ -18,7 +18,7 @@ describe('DimensionsForm', () => {
   it('renders unit selector with metric selected', () => {
     render(<DimensionsForm onSave={mockSave} />);
     const metricBtn = screen.getByRole('radio', { name: /metres/i });
-    expect(metricBtn).toHaveAttribute('aria-checked', 'true');
+    expect(metricBtn).toBeChecked();
   });
 
   it('switches to imperial fields', () => {
@@ -39,7 +39,7 @@ describe('DimensionsForm', () => {
     expect(mockSave).not.toHaveBeenCalled();
   });
 
-  it('calls onSave with cm values on valid submit', async () => {
+  it('calls onSave with cm values and openings on valid submit', async () => {
     render(<DimensionsForm onSave={mockSave} />);
 
     fireEvent.change(screen.getByLabelText(/longueur \(m\)/i), {
@@ -52,10 +52,20 @@ describe('DimensionsForm', () => {
       target: { value: '2.5' },
     });
 
+    // First click shows zero-openings suggestion
     fireEvent.click(screen.getByText(/enregistrer les dimensions/i));
 
     await waitFor(() => {
-      expect(mockSave).toHaveBeenCalledWith(500, 400, 250);
+      expect(
+        screen.getByText(/vous n'avez pas ajoute de portes ou fenetres/i),
+      ).toBeInTheDocument();
+    });
+
+    // Click continue button to submit without openings
+    fireEvent.click(screen.getByRole('button', { name: /continuer/i }));
+
+    await waitFor(() => {
+      expect(mockSave).toHaveBeenCalledWith(500, 400, 250, []);
     });
   });
 
@@ -69,7 +79,7 @@ describe('DimensionsForm', () => {
       />,
     );
     expect(screen.getByText(/surface totale estimee/i)).toBeInTheDocument();
-    expect(screen.getByText(/m²/)).toBeInTheDocument();
+    expect(screen.getByText(/surface nette des murs/i)).toBeInTheDocument();
   });
 
   it('shows warning for unusual dimensions', () => {

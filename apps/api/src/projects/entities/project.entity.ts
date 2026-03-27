@@ -6,11 +6,13 @@ import {
   UpdateDateColumn,
   ManyToOne,
   OneToOne,
+  OneToMany,
   JoinColumn,
   Index,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { RoomDimensions } from './room-dimensions.entity';
+import { Opening } from './opening.entity';
 
 export enum WorkType {
   PAINTING = 'painting',
@@ -58,4 +60,7 @@ export class Project {
 
   @OneToOne(() => RoomDimensions, (rd) => rd.project, { eager: true })
   dimensions!: RoomDimensions | null;
+
+  @OneToMany(() => Opening, (o) => o.project, { eager: true })
+  openings!: Opening[];
 }

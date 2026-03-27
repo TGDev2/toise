@@ -1,12 +1,14 @@
 'use client';
 
 import type { UnitSystem } from '@/lib/units';
+import type { Opening } from '@/lib/surface';
 import { cmToMeters, cmToFeetInches } from '@/lib/units';
 
 interface RoomPreviewProps {
   lengthCm: number;
   widthCm: number;
   unitSystem: UnitSystem;
+  openings?: Opening[];
   className?: string;
 }
 
@@ -22,6 +24,7 @@ export function RoomPreview({
   lengthCm,
   widthCm,
   unitSystem,
+  openings = [],
   className = '',
 }: RoomPreviewProps) {
   const isValid = lengthCm > 0 && widthCm > 0;
@@ -54,6 +57,62 @@ export function RoomPreview({
     ? `Vue de dessus de la piece : ${formatDimension(lengthCm, unitSystem)} x ${formatDimension(widthCm, unitSystem)}`
     : 'Apercu de la piece (dimensions non definies)';
 
+  // Compute opening indicators along walls
+  const doors = openings.filter((o) => o.type === 'door');
+  const windows = openings.filter((o) => o.type === 'window');
+
+  // Scale factor: pixels per cm (based on length for bottom wall)
+  const pxPerCmLength = isValid ? rectW / lengthCm : 0;
+  const pxPerCmWidth = isValid ? rectH / widthCm : 0;
+
+  // Place doors along bottom wall, windows along left wall
+  function getDoorIndicators() {
+    if (!isValid) return [];
+    const indicators: Array<{ x: number; y: number; w: number; key: string }> = [];
+    let offset = 20; // start offset in px from left edge of bottom wall
+    for (let di = 0; di < doors.length; di++) {
+      const door = doors[di];
+      for (let ci = 0; ci < door.count; ci++) {
+        const w = door.width_cm * pxPerCmLength;
+        const clampedW = Math.min(w, rectW * 0.3);
+        if (offset + clampedW > rectW - 10) break;
+        indicators.push({
+          x: rectX + offset,
+          y: rectY + rectH,
+          w: clampedW,
+          key: `door-${di}-${ci}`,
+        });
+        offset += clampedW + 10;
+      }
+    }
+    return indicators;
+  }
+
+  function getWindowIndicators() {
+    if (!isValid) return [];
+    const indicators: Array<{ x: number; y: number; h: number; key: string }> = [];
+    let offset = 20;
+    for (let wi = 0; wi < windows.length; wi++) {
+      const win = windows[wi];
+      for (let ci = 0; ci < win.count; ci++) {
+        const h = win.width_cm * pxPerCmWidth;
+        const clampedH = Math.min(h, rectH * 0.3);
+        if (offset + clampedH > rectH - 10) break;
+        indicators.push({
+          x: rectX,
+          y: rectY + offset,
+          h: clampedH,
+          key: `window-${wi}-${ci}`,
+        });
+        offset += clampedH + 10;
+      }
+    }
+    return indicators;
+  }
+
+  const doorIndicators = getDoorIndicators();
+  const windowIndicators = getWindowIndicators();
+
   return (
     <svg
       viewBox={`0 0 ${viewBoxW} ${viewBoxH}`}
@@ -72,6 +131,82 @@ export function RoomPreview({
             stroke="#a8a29e"
             strokeWidth="2"
           />
+
+          {/* Door indicators on bottom wall */}
+          {doorIndicators.map((d) => {
+            const arcR = Math.min(d.w, 20);
+            return (
+              <g key={d.key}>
+                {/* Gap in wall */}
+                <line
+                  x1={d.x}
+                  y1={d.y}
+                  x2={d.x + d.w}
+                  y2={d.y}
+                  stroke="#fafaf9"
+                  strokeWidth="4"
+                />
+                {/* Door arc */}
+                <path
+                  d={`M ${d.x} ${d.y} A ${arcR} ${arcR} 0 0 0 ${d.x + arcR} ${d.y + arcR}`}
+                  fill="none"
+                  stroke="#78716c"
+                  strokeWidth="1.5"
+                  strokeDasharray="3 2"
+                />
+                {/* Door leaf line */}
+                <line
+                  x1={d.x}
+                  y1={d.y}
+                  x2={d.x}
+                  y2={d.y + arcR}
+                  stroke="#78716c"
+                  strokeWidth="1.5"
+                />
+              </g>
+            );
+          })}
+
+          {/* Window indicators on left wall */}
+          {windowIndicators.map((w) => (
+            <g key={w.key}>
+              {/* Gap in wall */}
+              <line
+                x1={w.x}
+                y1={w.y}
+                x2={w.x}
+                y2={w.y + w.h}
+                stroke="#fafaf9"
+                strokeWidth="4"
+              />
+              {/* Window triple-line symbol */}
+              <line
+                x1={w.x - 3}
+                y1={w.y}
+                x2={w.x - 3}
+                y2={w.y + w.h}
+                stroke="#38bdf8"
+                strokeWidth="1.5"
+              />
+              <line
+                x1={w.x}
+                y1={w.y}
+                x2={w.x}
+                y2={w.y + w.h}
+                stroke="#38bdf8"
+                strokeWidth="1.5"
+              />
+              <line
+                x1={w.x + 3}
+                y1={w.y}
+                x2={w.x + 3}
+                y2={w.y + w.h}
+                stroke="#38bdf8"
+                strokeWidth="1.5"
+              />
+            </g>
+          ))}
+
           {/* Length label (bottom) */}
           <text
             x={viewBoxW / 2}
