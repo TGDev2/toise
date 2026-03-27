@@ -212,6 +212,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const deleteAccount = useCallback(async () => {
     await apiDelete('/auth/me');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('estimate_local_projects');
+    }
     await signOut(getFirebaseAuth()).catch(() => undefined);
     setFirebaseUser(null);
     setAppUser(null);

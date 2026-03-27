@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/lib/errors';
@@ -148,6 +149,14 @@ export function GuestPromptModal({
             {loading ? 'Inscription...' : "S'inscrire et sauvegarder"}
           </button>
         </form>
+
+        <p className="mt-4 text-center text-xs leading-6 text-gray-500">
+          En vous inscrivant, vous acceptez notre{' '}
+          <Link href="/privacy" className="font-medium text-blue-600 hover:text-blue-500">
+            politique de confidentialite
+          </Link>
+          .
+        </p>
       </div>
     </div>
   );

@@ -100,4 +100,14 @@ describe('GuestPromptModal', () => {
       expect(screen.getByText(/ne correspondent pas/i)).toBeInTheDocument();
     });
   });
+
+  it('links to the privacy policy from the guest conversion modal', () => {
+    render(
+      <GuestPromptModal isOpen={true} onClose={onClose} onSuccess={onSuccess} />,
+    );
+
+    expect(
+      screen.getByRole('link', { name: /politique de confidentialite/i }),
+    ).toHaveAttribute('href', '/privacy');
+  });
 });

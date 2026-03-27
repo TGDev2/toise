@@ -211,6 +211,14 @@ export function RegisterForm() {
         </button>
       </form>
 
+      <p className="text-center text-xs leading-6 text-gray-500">
+        En vous inscrivant, vous acceptez notre{' '}
+        <Link href="/privacy" className="font-medium text-blue-600 hover:text-blue-500">
+          politique de confidentialite
+        </Link>
+        .
+      </p>
+
       <p className="text-center text-sm text-gray-600">
         Déjà un compte ?{' '}
         <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">

@@ -85,4 +85,12 @@ describe('RegisterForm', () => {
       expect(screen.getByText(/vérifiez votre email/i)).toBeInTheDocument();
     });
   });
+
+  it('links to the privacy policy from the signup form', () => {
+    render(<RegisterForm />);
+
+    expect(
+      screen.getByRole('link', { name: /politique de confidentialite/i }),
+    ).toHaveAttribute('href', '/privacy');
+  });
 });
