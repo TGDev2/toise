@@ -2,6 +2,7 @@
 
 import { GuestPromptModal } from '@/components/auth/GuestPromptModal';
 import { useAuth } from '@/contexts/AuthContext';
+import { apiPost } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -13,9 +14,9 @@ interface ProjectDraft {
   name: string;
   room_name: string;
   work_type: WorkType;
-  length_m: number;
-  width_m: number;
-  height_m: number;
+  length_m?: number;
+  width_m?: number;
+  height_m?: number;
   updated_at: string;
 }
 
@@ -71,9 +72,6 @@ export default function DashboardPage() {
     name: 'Renovation salon',
     room_name: 'Salon',
     work_type: 'painting' as WorkType,
-    length_m: '5',
-    width_m: '4',
-    height_m: '2.5',
   });
 
   useEffect(() => {
@@ -112,55 +110,39 @@ export default function DashboardPage() {
     }
   };
 
-  const handleCreateDraft = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleCreateDraft = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError('');
 
-    const length = Number.parseFloat(form.length_m);
-    const width = Number.parseFloat(form.width_m);
-    const height = Number.parseFloat(form.height_m);
+    try {
+      if (appUser) {
+        const created = await apiPost<{ id: string }>('/projects', {
+          name: form.name.trim(),
+          room_name: form.room_name.trim(),
+          work_type: form.work_type,
+        });
+        router.push(`/projects/${created.id}/dimensions`);
+        return;
+      }
 
-    if ([length, width, height].some((value) => Number.isNaN(value) || value <= 0)) {
-      setError('Renseignez des dimensions superieures a zero.');
-      return;
+      const project: ProjectDraft = {
+        id:
+          typeof crypto !== 'undefined' && 'randomUUID' in crypto
+            ? crypto.randomUUID()
+            : `${Date.now()}`,
+        name: form.name.trim(),
+        room_name: form.room_name.trim(),
+        work_type: form.work_type,
+        updated_at: new Date().toISOString(),
+      };
+
+      const nextProjects = [project, ...projects];
+      persistProjects(nextProjects);
+      setProjects(nextProjects);
+      router.push(`/projects/${project.id}/dimensions`);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Impossible de creer le projet'));
     }
-
-    const project: ProjectDraft = {
-      id:
-        typeof crypto !== 'undefined' && 'randomUUID' in crypto
-          ? crypto.randomUUID()
-          : `${Date.now()}`,
-      name: form.name.trim(),
-      room_name: form.room_name.trim(),
-      work_type: form.work_type,
-      length_m: length,
-      width_m: width,
-      height_m: height,
-      updated_at: new Date().toISOString(),
-    };
-
-    const nextProjects = [project, ...projects];
-    persistProjects(nextProjects);
-    setProjects(nextProjects);
-    setIsComposerOpen(false);
-    setForm({
-      name: 'Renovation salon',
-      room_name: 'Salon',
-      work_type: 'painting',
-      length_m: '5',
-      width_m: '4',
-      height_m: '2.5',
-    });
-
-    if (isGuest) {
-      setFeedback(
-        'Projet brouillon cree. Creez maintenant un compte pour le sauvegarder durablement.',
-      );
-      setShowGuestPrompt(true);
-      return;
-    }
-
-    setFeedback('Projet brouillon enregistre dans votre dashboard.');
   };
 
   if (isLoading) {
@@ -298,72 +280,12 @@ export default function DashboardPage() {
               </select>
             </label>
 
-            <div className="grid gap-4 sm:grid-cols-3 md:col-span-2">
-              <label className="space-y-2">
-                <span className="text-sm font-medium text-stone-700">
-                  Longueur (m)
-                </span>
-                <input
-                  required
-                  min="0.1"
-                  step="0.1"
-                  type="number"
-                  value={form.length_m}
-                  onChange={(event) =>
-                    setForm((currentForm) => ({
-                      ...currentForm,
-                      length_m: event.target.value,
-                    }))
-                  }
-                  className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm text-stone-900 focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
-                />
-              </label>
-              <label className="space-y-2">
-                <span className="text-sm font-medium text-stone-700">
-                  Largeur (m)
-                </span>
-                <input
-                  required
-                  min="0.1"
-                  step="0.1"
-                  type="number"
-                  value={form.width_m}
-                  onChange={(event) =>
-                    setForm((currentForm) => ({
-                      ...currentForm,
-                      width_m: event.target.value,
-                    }))
-                  }
-                  className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm text-stone-900 focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
-                />
-              </label>
-              <label className="space-y-2">
-                <span className="text-sm font-medium text-stone-700">
-                  Hauteur (m)
-                </span>
-                <input
-                  required
-                  min="0.1"
-                  step="0.1"
-                  type="number"
-                  value={form.height_m}
-                  onChange={(event) =>
-                    setForm((currentForm) => ({
-                      ...currentForm,
-                      height_m: event.target.value,
-                    }))
-                  }
-                  className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm text-stone-900 focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
-                />
-              </label>
-            </div>
-
             <div className="md:col-span-2">
               <button
                 type="submit"
                 className="rounded-full bg-stone-950 px-5 py-3 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-stone-800"
               >
-                Continuer jusqu&apos;a la sauvegarde
+                Continuer vers les dimensions
               </button>
             </div>
           </form>
@@ -394,40 +316,45 @@ export default function DashboardPage() {
               </span>
             </div>
 
-            <div className="mt-5 grid grid-cols-3 gap-3 text-sm text-stone-700">
-              <div className="rounded-2xl bg-stone-50 p-3">
-                <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
-                  Longueur
-                </p>
-                <p className="mt-2 font-semibold">{project.length_m} m</p>
+            {project.length_m && project.width_m && project.height_m ? (
+              <div className="mt-5 grid grid-cols-3 gap-3 text-sm text-stone-700">
+                <div className="rounded-2xl bg-stone-50 p-3">
+                  <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
+                    Longueur
+                  </p>
+                  <p className="mt-2 font-semibold">{project.length_m} m</p>
+                </div>
+                <div className="rounded-2xl bg-stone-50 p-3">
+                  <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
+                    Largeur
+                  </p>
+                  <p className="mt-2 font-semibold">{project.width_m} m</p>
+                </div>
+                <div className="rounded-2xl bg-stone-50 p-3">
+                  <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
+                    Hauteur
+                  </p>
+                  <p className="mt-2 font-semibold">{project.height_m} m</p>
+                </div>
               </div>
-              <div className="rounded-2xl bg-stone-50 p-3">
-                <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
-                  Largeur
-                </p>
-                <p className="mt-2 font-semibold">{project.width_m} m</p>
-              </div>
-              <div className="rounded-2xl bg-stone-50 p-3">
-                <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
-                  Hauteur
-                </p>
-                <p className="mt-2 font-semibold">{project.height_m} m</p>
-              </div>
-            </div>
+            ) : null}
 
             <div className="mt-5 flex flex-wrap gap-3">
-              {isGuest ? (
+              <button
+                type="button"
+                onClick={() => router.push(`/projects/${project.id}/dimensions`)}
+                className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-[var(--accent-strong)]"
+              >
+                {project.length_m ? 'Modifier les dimensions' : 'Definir les dimensions'}
+              </button>
+              {isGuest && (
                 <button
                   type="button"
                   onClick={() => setShowGuestPrompt(true)}
-                  className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-[var(--accent-strong)]"
+                  className="rounded-full border border-stone-300 px-4 py-2 text-sm font-semibold text-stone-700 hover:-translate-y-0.5 hover:bg-white"
                 >
                   Sauvegarder dans mon compte
                 </button>
-              ) : (
-                <span className="rounded-full bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800">
-                  Disponible dans votre dashboard sur cet appareil
-                </span>
               )}
             </div>
           </article>

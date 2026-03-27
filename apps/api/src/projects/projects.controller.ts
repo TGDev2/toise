@@ -1,0 +1,138 @@
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Put,
+  UseGuards,
+} from '@nestjs/common';
+import type { DecodedIdToken } from 'firebase-admin/auth';
+import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
+import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
+import { UsersService } from '../users/users.service';
+import { ProjectsService } from './projects.service';
+import { CreateProjectDto } from './dto/create-project.dto';
+import { UpdateDimensionsDto } from './dto/update-dimensions.dto';
+
+@Controller('projects')
+@UseGuards(FirebaseAuthGuard)
+export class ProjectsController {
+  constructor(
+    private readonly projectsService: ProjectsService,
+    private readonly usersService: UsersService,
+  ) {}
+
+  private async resolveUserId(firebaseUser: DecodedIdToken): Promise<string> {
+    const user = await this.usersService.findByFirebaseUid(firebaseUser.uid);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    return user.id;
+  }
+
+  @Post()
+  async create(
+    @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
+    @Body() dto: CreateProjectDto,
+  ) {
+    const userId = await this.resolveUserId(firebaseUser);
+    const project = await this.projectsService.createProject(userId, dto);
+    return {
+      id: project.id,
+      name: project.name,
+      room_name: project.room_name,
+      work_type: project.work_type,
+      status: project.status,
+      created_at: project.created_at,
+    };
+  }
+
+  @Get()
+  async findAll(@CurrentFirebaseUser() firebaseUser: DecodedIdToken) {
+    const userId = await this.resolveUserId(firebaseUser);
+    const projects = await this.projectsService.findByUser(userId);
+    return projects.map((p) => ({
+      id: p.id,
+      name: p.name,
+      room_name: p.room_name,
+      work_type: p.work_type,
+      status: p.status,
+      dimensions: p.dimensions
+        ? {
+            length_cm: p.dimensions.length_cm,
+            width_cm: p.dimensions.width_cm,
+            height_cm: p.dimensions.height_cm,
+          }
+        : null,
+      created_at: p.created_at,
+      updated_at: p.updated_at,
+    }));
+  }
+
+  @Get(':id')
+  async findOne(
+    @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    const userId = await this.resolveUserId(firebaseUser);
+    const project = await this.projectsService.findOneByUser(id, userId);
+    return {
+      id: project.id,
+      name: project.name,
+      room_name: project.room_name,
+      work_type: project.work_type,
+      status: project.status,
+      dimensions: project.dimensions
+        ? {
+            length_cm: project.dimensions.length_cm,
+            width_cm: project.dimensions.width_cm,
+            height_cm: project.dimensions.height_cm,
+          }
+        : null,
+      created_at: project.created_at,
+      updated_at: project.updated_at,
+    };
+  }
+
+  @Put(':id/dimensions')
+  async updateDimensions(
+    @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateDimensionsDto,
+  ) {
+    const userId = await this.resolveUserId(firebaseUser);
+    const dimensions = await this.projectsService.updateDimensions(
+      id,
+      userId,
+      dto,
+    );
+    return {
+      length_cm: dimensions.length_cm,
+      width_cm: dimensions.width_cm,
+      height_cm: dimensions.height_cm,
+      source: dimensions.source,
+      confidence_score: dimensions.confidence_score,
+    };
+  }
+
+  @Get(':id/dimensions')
+  async getDimensions(
+    @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    const userId = await this.resolveUserId(firebaseUser);
+    const dimensions = await this.projectsService.getDimensions(id, userId);
+    if (!dimensions) {
+      return null;
+    }
+    return {
+      length_cm: dimensions.length_cm,
+      width_cm: dimensions.width_cm,
+      height_cm: dimensions.height_cm,
+      source: dimensions.source,
+      confidence_score: dimensions.confidence_score,
+    };
+  }
+}
