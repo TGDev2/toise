@@ -146,6 +146,18 @@ export default function EstimatePage() {
           </>
         ) : null}
       </section>
+
+      {estimation && (
+        <div className="mt-6 text-center">
+          <button
+            type="button"
+            onClick={() => router.push(`/projects/${projectId}/shopping-list`)}
+            className="rounded-3xl bg-stone-950 px-8 py-3 text-sm font-semibold text-white shadow-sm hover:bg-stone-800"
+          >
+            Voir la liste de courses
+          </button>
+        </div>
+      )}
     </main>
   );
 }
