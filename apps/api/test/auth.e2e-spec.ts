@@ -14,6 +14,7 @@ import {
   AuthProvider,
   SubscriptionTier,
   User,
+  UserRole,
 } from '../src/users/entities/user.entity';
 
 const mockUser: User = {
@@ -21,6 +22,7 @@ const mockUser: User = {
   email: 'test@example.com',
   auth_provider: AuthProvider.EMAIL,
   subscription_tier: SubscriptionTier.FREE,
+  role: UserRole.USER,
   email_verified: true,
   firebase_uid: 'firebase-uid-123',
   created_at: new Date('2026-03-26T00:00:00.000Z'),

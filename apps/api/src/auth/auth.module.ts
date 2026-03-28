@@ -5,6 +5,7 @@ import { FirebaseConfig } from '../config/firebase.config';
 import { UsersModule } from '../users/users.module';
 import { FirebaseAuthGuard } from './guards/firebase-auth.guard';
 import { OptionalAuthGuard } from './guards/optional-auth.guard';
+import { AdminGuard } from './guards/admin.guard';
 
 @Module({
   imports: [UsersModule],
@@ -14,7 +15,8 @@ import { OptionalAuthGuard } from './guards/optional-auth.guard';
     FirebaseConfig,
     FirebaseAuthGuard,
     OptionalAuthGuard,
+    AdminGuard,
   ],
-  exports: [FirebaseConfig, FirebaseAuthGuard, OptionalAuthGuard],
+  exports: [FirebaseConfig, FirebaseAuthGuard, OptionalAuthGuard, AdminGuard],
 })
 export class AuthModule {}

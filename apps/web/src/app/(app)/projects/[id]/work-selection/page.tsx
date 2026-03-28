@@ -106,7 +106,7 @@ export default function WorkSelectionPage() {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
           }
         }
-        router.push('/dashboard');
+        router.push(`/projects/${projectId}/estimate`);
       } catch (err: unknown) {
         setError(
           getErrorMessage(err, 'Impossible de sauvegarder les travaux'),

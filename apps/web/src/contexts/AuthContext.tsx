@@ -32,6 +32,7 @@ interface AppUser {
   email: string | null;
   auth_provider: string;
   subscription_tier: string;
+  role: string;
   email_verified: boolean;
   created_at: string;
 }

@@ -8,6 +8,7 @@ import {
   AuthProvider,
   SubscriptionTier,
   User,
+  UserRole,
 } from '../users/entities/user.entity';
 
 describe('AuthService', () => {
@@ -39,6 +40,7 @@ describe('AuthService', () => {
     email: 'test@example.com',
     auth_provider: AuthProvider.EMAIL,
     subscription_tier: SubscriptionTier.FREE,
+    role: UserRole.USER,
     email_verified: false,
     firebase_uid: 'firebase-uid-123',
     created_at: new Date(),

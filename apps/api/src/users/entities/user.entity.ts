@@ -20,6 +20,11 @@ export enum SubscriptionTier {
   CONTRACTOR = 'contractor',
 }
 
+export enum UserRole {
+  USER = 'user',
+  ADMIN = 'admin',
+}
+
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
@@ -33,6 +38,9 @@ export class User {
 
   @Column({ type: 'varchar', length: 20, default: SubscriptionTier.FREE })
   subscription_tier!: SubscriptionTier;
+
+  @Column({ type: 'varchar', length: 20, default: UserRole.USER })
+  role!: UserRole;
 
   @Column({ type: 'boolean', default: false })
   email_verified!: boolean;
