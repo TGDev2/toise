@@ -25,6 +25,9 @@ export class ComplementaryMaterial {
   @Column({ type: 'varchar', length: 50 })
   unit_label!: string;
 
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  formula_code!: string | null;
+
   @Column({ type: 'integer', default: 0 })
   display_order!: number;
 

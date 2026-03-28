@@ -38,7 +38,14 @@ function ComplementRow({
   return (
     <div className="flex items-center gap-4 rounded-2xl border border-stone-200 bg-white px-5 py-4">
       <div className="min-w-0 flex-1">
-        <p className="font-medium text-stone-900">{item.name}</p>
+        <p className="font-medium text-stone-900">
+          {item.name}
+          {item.is_calculated && (
+            <span className="ml-2 text-xs font-normal text-stone-400">
+              (estime)
+            </span>
+          )}
+        </p>
         {item.description_fr && (
           <p className="mt-0.5 text-sm text-stone-500">{item.description_fr}</p>
         )}

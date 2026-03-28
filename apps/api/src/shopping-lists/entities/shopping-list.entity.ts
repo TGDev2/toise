@@ -34,6 +34,7 @@ export interface ShoppingListComplementaryItem {
   default_quantity: number;
   quantity: number;
   is_removed: boolean;
+  is_calculated?: boolean;
 }
 
 export interface ShoppingListData {
