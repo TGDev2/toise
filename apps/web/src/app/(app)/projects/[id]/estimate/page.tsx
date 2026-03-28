@@ -5,6 +5,7 @@ import { apiGet, apiPost } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import type { EstimationResponse } from '@/lib/estimation-types';
 import { EstimationResults } from '@/components/estimation/EstimationResults';
+import { EstimationSummary } from '@/components/estimation/EstimationSummary';
 import { SkillLevelSelector } from '@/components/estimation/SkillLevelSelector';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -123,6 +124,10 @@ export default function EstimatePage() {
           facteurs de perte adaptes.
         </p>
       </section>
+
+      {estimation && (
+        <EstimationSummary items={estimation.items} />
+      )}
 
       <section className="rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
         {isCalculating && !estimation ? (

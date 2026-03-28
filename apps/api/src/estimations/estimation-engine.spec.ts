@@ -265,6 +265,31 @@ describe('EstimationEngine', () => {
   });
 
   // =========================================================================
+  // computeGrossSurface
+  // =========================================================================
+  describe('computeGrossSurface', () => {
+    it('should return gross wall surface without opening deduction', () => {
+      const room = makeRoom({
+        openings: [{ width_cm: 90, height_cm: 204, count: 1 }],
+      });
+      // 2*(400+300)*250 = 350000 cm² = 35 m² (ignores openings)
+      expect(engine.computeGrossSurface(room, 'wall')).toBe(35);
+    });
+
+    it('should return floor area for floor target', () => {
+      const room = makeRoom();
+      expect(engine.computeGrossSurface(room, 'floor')).toBe(12);
+    });
+
+    it('should return same value as net for ceiling (no deductions)', () => {
+      const room = makeRoom();
+      expect(engine.computeGrossSurface(room, 'ceiling')).toBe(
+        engine.computeSurface(room, 'ceiling'),
+      );
+    });
+  });
+
+  // =========================================================================
   // computeEstimation — Full integration scenarios
   // =========================================================================
   describe('computeEstimation', () => {
@@ -292,6 +317,8 @@ describe('EstimationEngine', () => {
       expect(items).toHaveLength(1);
 
       const item = items[0];
+      // Gross wall: 35 m² (no opening deduction)
+      expect(item.gross_surface_m2).toBe(35);
       // Net wall: 35 - 3.036 = 31.964 m²
       expect(item.surface_m2).toBeCloseTo(31.964, 2);
       // Theoretical: 31.964 / 11 * 2 = 5.812 L
@@ -324,7 +351,8 @@ describe('EstimationEngine', () => {
       expect(items).toHaveLength(1);
 
       const item = items[0];
-      // Floor: 12 m² (no opening deduction)
+      // Floor: gross = net = 12 m² (no opening deduction)
+      expect(item.gross_surface_m2).toBe(12);
       expect(item.surface_m2).toBe(12);
       expect(item.theoretical_qty).toBe(12);
       // Waste: straight beginner 15%
@@ -430,7 +458,8 @@ describe('EstimationEngine', () => {
       }];
 
       const items = engine.computeEstimation(room, workItems);
-      // Ceiling = floor = 12 m² (openings not deducted)
+      // Ceiling = floor = 12 m² (openings not deducted), gross = net
+      expect(items[0].gross_surface_m2).toBe(12);
       expect(items[0].surface_m2).toBe(12);
     });
 

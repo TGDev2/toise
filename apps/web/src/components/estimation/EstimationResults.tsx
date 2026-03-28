@@ -1,7 +1,8 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import type { EstimationLineItem } from '@/lib/estimation-types';
-import { WORK_TYPE_ICONS } from '@/lib/work-types';
+import { WorkTypeSection } from './WorkTypeSection';
 
 interface EstimationResultsProps {
   items: EstimationLineItem[];
@@ -12,7 +13,38 @@ function formatQty(qty: number, unit: string): string {
   return `${rounded} ${unit}`;
 }
 
+interface WorkTypeGroup {
+  label: string;
+  code: string;
+  grossSurface: number;
+  netSurface: number;
+  items: EstimationLineItem[];
+}
+
 export function EstimationResults({ items }: EstimationResultsProps) {
+  const grouped = useMemo(() => {
+    const map = new Map<string, WorkTypeGroup>();
+    for (const item of items) {
+      const existing = map.get(item.work_type_code);
+      if (existing) {
+        existing.items.push(item);
+      } else {
+        map.set(item.work_type_code, {
+          label: item.work_type_label,
+          code: item.work_type_code,
+          grossSurface: item.gross_surface_m2 ?? item.surface_m2,
+          netSurface: item.surface_m2,
+          items: [item],
+        });
+      }
+    }
+    return Array.from(map.values());
+  }, [items]);
+
+  const [openSections, setOpenSections] = useState<Set<string>>(
+    () => new Set(grouped.map((g) => g.code)),
+  );
+
   if (items.length === 0) {
     return (
       <p className="py-8 text-center text-stone-400">
@@ -21,30 +53,31 @@ export function EstimationResults({ items }: EstimationResultsProps) {
     );
   }
 
-  // Group items by work type
-  const grouped = new Map<string, { label: string; code: string; items: EstimationLineItem[] }>();
-  for (const item of items) {
-    const existing = grouped.get(item.work_type_code);
-    if (existing) {
-      existing.items.push(item);
-    } else {
-      grouped.set(item.work_type_code, {
-        label: item.work_type_label,
-        code: item.work_type_code,
-        items: [item],
-      });
-    }
+  function toggleSection(code: string) {
+    setOpenSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(code)) {
+        next.delete(code);
+      } else {
+        next.add(code);
+      }
+      return next;
+    });
   }
 
   return (
-    <div className="space-y-8">
-      {Array.from(grouped.values()).map((group) => (
-        <div key={group.code}>
-          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-stone-900">
-            <span>{WORK_TYPE_ICONS[group.code] || ''}</span>
-            {group.label}
-          </h3>
-
+    <div className="space-y-6">
+      {grouped.map((group) => (
+        <WorkTypeSection
+          key={group.code}
+          code={group.code}
+          label={group.label}
+          grossSurface={group.grossSurface}
+          netSurface={group.netSurface}
+          itemCount={group.items.length}
+          isOpen={openSections.has(group.code)}
+          onToggle={() => toggleSection(group.code)}
+        >
           <div className="space-y-3">
             {group.items.map((item, idx) => (
               <div
@@ -64,7 +97,7 @@ export function EstimationResults({ items }: EstimationResultsProps) {
                     </p>
                   </div>
 
-                  <div className="flex-shrink-0 text-right">
+                  <div className="shrink-0 text-right">
                     <p className="text-lg font-bold text-stone-900">
                       {item.units_needed} × {item.packaging_label}
                     </p>
@@ -90,7 +123,7 @@ export function EstimationResults({ items }: EstimationResultsProps) {
               </div>
             ))}
           </div>
-        </div>
+        </WorkTypeSection>
       ))}
     </div>
   );

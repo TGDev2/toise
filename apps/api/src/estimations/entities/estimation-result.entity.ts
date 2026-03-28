@@ -15,6 +15,7 @@ export interface EstimationLineItem {
   material_id: string;
   material_name: string;
   material_unit: string;
+  gross_surface_m2: number;
   surface_m2: number;
   theoretical_qty: number;
   waste_factor_percent: number;

@@ -151,6 +151,17 @@ export class EstimationEngine {
     return best!;
   }
 
+  computeGrossSurface(room: RoomData, surfaceTarget: string): number {
+    switch (surfaceTarget) {
+      case 'wall':
+        return (2 * (room.length_cm + room.width_cm) * room.height_cm) / CM2_TO_M2;
+      case 'floor':
+      case 'ceiling':
+      default:
+        return (room.length_cm * room.width_cm) / CM2_TO_M2;
+    }
+  }
+
   computeEstimation(
     room: RoomData,
     workItems: WorkItemInput[],
@@ -159,6 +170,7 @@ export class EstimationEngine {
 
     for (const wi of workItems) {
       const surfaceM2 = this.computeSurface(room, wi.surface_target);
+      const grossSurfaceM2 = this.computeGrossSurface(room, wi.surface_target);
       const poseType =
         (wi.custom_params.laying_pattern as string) || 'standard';
 
@@ -190,6 +202,7 @@ export class EstimationEngine {
           material_id: mat.id,
           material_name: mat.name,
           material_unit: mat.unit,
+          gross_surface_m2: Math.round(grossSurfaceM2 * 1000) / 1000,
           surface_m2: Math.round(surfaceM2 * 1000) / 1000,
           theoretical_qty: Math.round(theoreticalQty * 1000) / 1000,
           waste_factor_percent: wasteFactor.percent,
