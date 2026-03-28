@@ -71,7 +71,6 @@ export default function DashboardPage() {
   const [form, setForm] = useState({
     name: 'Renovation salon',
     room_name: 'Salon',
-    work_type: 'painting' as WorkType,
   });
 
   useEffect(() => {
@@ -119,7 +118,6 @@ export default function DashboardPage() {
         const created = await apiPost<{ id: string }>('/projects', {
           name: form.name.trim(),
           room_name: form.room_name.trim(),
-          work_type: form.work_type,
         });
         router.push(`/projects/${created.id}/dimensions`);
         return;
@@ -132,7 +130,7 @@ export default function DashboardPage() {
             : `${Date.now()}`,
         name: form.name.trim(),
         room_name: form.room_name.trim(),
-        work_type: form.work_type,
+        work_type: 'painting' as WorkType,
         updated_at: new Date().toISOString(),
       };
 
@@ -256,28 +254,6 @@ export default function DashboardPage() {
                 }
                 className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm text-stone-900 focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
               />
-            </label>
-
-            <label className="space-y-2">
-              <span className="text-sm font-medium text-stone-700">
-                Type de travaux
-              </span>
-              <select
-                value={form.work_type}
-                onChange={(event) =>
-                  setForm((currentForm) => ({
-                    ...currentForm,
-                    work_type: event.target.value as WorkType,
-                  }))
-                }
-                className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm text-stone-900 focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
-              >
-                {WORK_TYPES.map((workType) => (
-                  <option key={workType.value} value={workType.value}>
-                    {workType.label}
-                  </option>
-                ))}
-              </select>
             </label>
 
             <div className="md:col-span-2">

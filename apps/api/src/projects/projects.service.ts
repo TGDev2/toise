@@ -1,10 +1,11 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Project } from './entities/project.entity';
 import {
   ConfidenceScore,
@@ -12,10 +13,13 @@ import {
   RoomDimensions,
 } from './entities/room-dimensions.entity';
 import { Opening } from './entities/opening.entity';
+import { WorkType } from './entities/work-type.entity';
+import { ProjectWorkItem } from './entities/project-work-item.entity';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateDimensionsDto } from './dto/update-dimensions.dto';
 import { CreateOpeningDto } from './dto/create-opening.dto';
 import { UpdateOpeningDto } from './dto/update-opening.dto';
+import { SaveWorkItemsDto } from './dto/save-work-items.dto';
 
 @Injectable()
 export class ProjectsService {
@@ -26,6 +30,10 @@ export class ProjectsService {
     private readonly dimensionsRepo: Repository<RoomDimensions>,
     @InjectRepository(Opening)
     private readonly openingsRepo: Repository<Opening>,
+    @InjectRepository(WorkType)
+    private readonly workTypesRepo: Repository<WorkType>,
+    @InjectRepository(ProjectWorkItem)
+    private readonly workItemsRepo: Repository<ProjectWorkItem>,
   ) {}
 
   async createProject(userId: string, dto: CreateProjectDto): Promise<Project> {
@@ -172,6 +180,85 @@ export class ProjectsService {
     return this.openingsRepo.find({
       where: { project_id: projectId },
       order: { created_at: 'ASC' },
+    });
+  }
+
+  async getWorkTypes(): Promise<WorkType[]> {
+    return this.workTypesRepo.find({
+      order: { display_order: 'ASC' },
+    });
+  }
+
+  async saveWorkItems(
+    projectId: string,
+    userId: string,
+    dto: SaveWorkItemsDto,
+  ): Promise<ProjectWorkItem[]> {
+    await this.findOneByUser(projectId, userId);
+
+    // Validate all work_type_ids exist
+    const workTypeIds = dto.items.map((item) => item.work_type_id);
+    const workTypes = await this.workTypesRepo.find({
+      where: { id: In(workTypeIds) },
+    });
+
+    if (workTypes.length !== new Set(workTypeIds).size) {
+      throw new BadRequestException('One or more work type IDs are invalid');
+    }
+
+    // Validate required contextual params
+    const workTypeMap = new Map(workTypes.map((wt) => [wt.id, wt]));
+    for (const item of dto.items) {
+      const workType = workTypeMap.get(item.work_type_id)!;
+      const requiredQuestions = workType.contextual_questions.filter(
+        (q) => q.required,
+      );
+      for (const question of requiredQuestions) {
+        if (
+          !item.custom_params ||
+          item.custom_params[question.key] === undefined ||
+          item.custom_params[question.key] === ''
+        ) {
+          throw new BadRequestException(
+            `Missing required parameter "${question.key}" for work type "${workType.code}"`,
+          );
+        }
+      }
+    }
+
+    // Delete existing work items for this project
+    await this.workItemsRepo.delete({ project_id: projectId });
+
+    // Insert new items
+    const entities = dto.items.map((item) =>
+      this.workItemsRepo.create({
+        project_id: projectId,
+        work_type_id: item.work_type_id,
+        skill_level: item.skill_level,
+        custom_params: item.custom_params ?? {},
+      }),
+    );
+
+    const saved = await this.workItemsRepo.save(entities);
+
+    // Return with work_type relation loaded
+    return this.workItemsRepo.find({
+      where: { project_id: projectId },
+      relations: ['work_type'],
+      order: { work_type: { display_order: 'ASC' } },
+    });
+  }
+
+  async getWorkItems(
+    projectId: string,
+    userId: string,
+  ): Promise<ProjectWorkItem[]> {
+    await this.findOneByUser(projectId, userId);
+
+    return this.workItemsRepo.find({
+      where: { project_id: projectId },
+      relations: ['work_type'],
+      order: { work_type: { display_order: 'ASC' } },
     });
   }
 }

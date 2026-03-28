@@ -13,6 +13,7 @@ import {
 import { User } from '../../users/entities/user.entity';
 import { RoomDimensions } from './room-dimensions.entity';
 import { Opening } from './opening.entity';
+import { ProjectWorkItem } from './project-work-item.entity';
 
 export enum WorkType {
   PAINTING = 'painting',
@@ -42,8 +43,8 @@ export class Project {
   @Column({ type: 'varchar', length: 255, default: '' })
   room_name!: string;
 
-  @Column({ type: 'varchar', length: 50, default: WorkType.PAINTING })
-  work_type!: WorkType;
+  @Column({ type: 'varchar', length: 50, nullable: true, default: null })
+  work_type!: WorkType | null;
 
   @Column({ type: 'varchar', length: 20, default: ProjectStatus.DRAFT })
   status!: ProjectStatus;
@@ -63,4 +64,7 @@ export class Project {
 
   @OneToMany(() => Opening, (o) => o.project, { eager: true })
   openings!: Opening[];
+
+  @OneToMany(() => ProjectWorkItem, (wi) => wi.project)
+  workItems!: ProjectWorkItem[];
 }

@@ -20,6 +20,7 @@ import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateDimensionsDto } from './dto/update-dimensions.dto';
 import { CreateOpeningDto } from './dto/create-opening.dto';
 import { UpdateOpeningDto } from './dto/update-opening.dto';
+import { SaveWorkItemsDto } from './dto/save-work-items.dto';
 
 @Controller('projects')
 @UseGuards(FirebaseAuthGuard)
@@ -82,6 +83,11 @@ export class ProjectsController {
       created_at: p.created_at,
       updated_at: p.updated_at,
     }));
+  }
+
+  @Get('work-types')
+  async getWorkTypes() {
+    return this.projectsService.getWorkTypes();
   }
 
   @Get(':id')
@@ -222,5 +228,50 @@ export class ProjectsController {
   ) {
     const userId = await this.resolveUserId(firebaseUser);
     await this.projectsService.removeOpening(id, userId, openingId);
+  }
+
+  @Post(':id/work-items')
+  async saveWorkItems(
+    @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SaveWorkItemsDto,
+  ) {
+    const userId = await this.resolveUserId(firebaseUser);
+    const items = await this.projectsService.saveWorkItems(id, userId, dto);
+    return items.map((item) => ({
+      id: item.id,
+      work_type: {
+        id: item.work_type.id,
+        code: item.work_type.code,
+        label_fr: item.work_type.label_fr,
+        category: item.work_type.category,
+        surface_target: item.work_type.surface_target,
+        contextual_questions: item.work_type.contextual_questions,
+      },
+      skill_level: item.skill_level,
+      custom_params: item.custom_params,
+    }));
+  }
+
+  @Get(':id/work-items')
+  async getWorkItems(
+    @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    const userId = await this.resolveUserId(firebaseUser);
+    const items = await this.projectsService.getWorkItems(id, userId);
+    return items.map((item) => ({
+      id: item.id,
+      work_type: {
+        id: item.work_type.id,
+        code: item.work_type.code,
+        label_fr: item.work_type.label_fr,
+        category: item.work_type.category,
+        surface_target: item.work_type.surface_target,
+        contextual_questions: item.work_type.contextual_questions,
+      },
+      skill_level: item.skill_level,
+      custom_params: item.custom_params,
+    }));
   }
 }

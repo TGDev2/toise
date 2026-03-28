@@ -1,6 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import { Project, WorkType, ProjectStatus } from './entities/project.entity';
 import {
@@ -9,6 +13,14 @@ import {
   DimensionSource,
 } from './entities/room-dimensions.entity';
 import { Opening, OpeningType } from './entities/opening.entity';
+import {
+  WorkType as WorkTypeEntity,
+  ContextualQuestion,
+} from './entities/work-type.entity';
+import {
+  ProjectWorkItem,
+  SkillLevel,
+} from './entities/project-work-item.entity';
 
 const mockProject: Project = {
   id: 'project-uuid',
@@ -22,6 +34,7 @@ const mockProject: Project = {
   user: null as never,
   dimensions: null,
   openings: [],
+  workItems: [],
 };
 
 const mockOpening: Opening = {
@@ -70,6 +83,72 @@ const openingsRepoMock = {
   remove: jest.fn().mockResolvedValue(undefined),
 };
 
+const mockWorkType: WorkTypeEntity = {
+  id: 'wt-wall-painting',
+  code: 'wall_painting',
+  label_fr: 'Peinture murale',
+  category: 'painting',
+  surface_target: 'wall',
+  waste_factor_base: 1.1,
+  required_materials: [],
+  contextual_questions: [],
+  display_order: 1,
+  created_at: new Date('2026-03-27T00:00:00.000Z'),
+  updated_at: new Date('2026-03-27T00:00:00.000Z'),
+};
+
+const mockFloorTilingWorkType: WorkTypeEntity = {
+  id: 'wt-floor-tiling',
+  code: 'floor_tiling',
+  label_fr: 'Carrelage sol',
+  category: 'tiling',
+  surface_target: 'floor',
+  waste_factor_base: 1.1,
+  required_materials: [],
+  contextual_questions: [
+    {
+      key: 'tile_format',
+      type: 'select',
+      label_fr: 'Format du carreau',
+      options: [{ value: '30x30', label_fr: '30 x 30 cm' }],
+      required: true,
+    },
+    {
+      key: 'laying_pattern',
+      type: 'select',
+      label_fr: 'Type de pose',
+      options: [{ value: 'straight', label_fr: 'Pose droite' }],
+      required: true,
+    },
+  ],
+  display_order: 3,
+  created_at: new Date('2026-03-27T00:00:00.000Z'),
+  updated_at: new Date('2026-03-27T00:00:00.000Z'),
+};
+
+const mockWorkItem: ProjectWorkItem = {
+  id: 'wi-uuid',
+  project_id: 'project-uuid',
+  work_type_id: 'wt-wall-painting',
+  skill_level: SkillLevel.BEGINNER,
+  custom_params: {},
+  created_at: new Date('2026-03-27T00:00:00.000Z'),
+  updated_at: new Date('2026-03-27T00:00:00.000Z'),
+  project: null as never,
+  work_type: mockWorkType,
+};
+
+const workTypesRepoMock = {
+  find: jest.fn().mockResolvedValue([mockWorkType]),
+};
+
+const workItemsRepoMock = {
+  create: jest.fn().mockReturnValue(mockWorkItem),
+  save: jest.fn().mockResolvedValue([mockWorkItem]),
+  find: jest.fn().mockResolvedValue([mockWorkItem]),
+  delete: jest.fn().mockResolvedValue({ affected: 0 }),
+};
+
 describe('ProjectsService', () => {
   let service: ProjectsService;
 
@@ -85,6 +164,14 @@ describe('ProjectsService', () => {
           useValue: dimensionsRepoMock,
         },
         { provide: getRepositoryToken(Opening), useValue: openingsRepoMock },
+        {
+          provide: getRepositoryToken(WorkTypeEntity),
+          useValue: workTypesRepoMock,
+        },
+        {
+          provide: getRepositoryToken(ProjectWorkItem),
+          useValue: workItemsRepoMock,
+        },
       ],
     }).compile();
 
@@ -285,6 +372,144 @@ describe('ProjectsService', () => {
         where: { project_id: 'project-uuid' },
         order: { created_at: 'ASC' },
       });
+    });
+  });
+
+  describe('getWorkTypes', () => {
+    it('returns work types ordered by display_order', async () => {
+      const result = await service.getWorkTypes();
+      expect(workTypesRepoMock.find).toHaveBeenCalledWith({
+        order: { display_order: 'ASC' },
+      });
+      expect(result).toEqual([mockWorkType]);
+    });
+  });
+
+  describe('saveWorkItems', () => {
+    it('saves work items for a project', async () => {
+      workTypesRepoMock.find.mockResolvedValueOnce([mockWorkType]);
+      workItemsRepoMock.find.mockResolvedValueOnce([mockWorkItem]);
+
+      const result = await service.saveWorkItems(
+        'project-uuid',
+        'user-uuid',
+        {
+          items: [
+            {
+              work_type_id: 'wt-wall-painting',
+              skill_level: SkillLevel.BEGINNER,
+              custom_params: {},
+            },
+          ],
+        },
+      );
+
+      expect(workItemsRepoMock.delete).toHaveBeenCalledWith({
+        project_id: 'project-uuid',
+      });
+      expect(workItemsRepoMock.create).toHaveBeenCalledWith({
+        project_id: 'project-uuid',
+        work_type_id: 'wt-wall-painting',
+        skill_level: SkillLevel.BEGINNER,
+        custom_params: {},
+      });
+      expect(workItemsRepoMock.save).toHaveBeenCalled();
+      expect(result).toEqual([mockWorkItem]);
+    });
+
+    it('throws BadRequestException for invalid work_type_id', async () => {
+      workTypesRepoMock.find.mockResolvedValueOnce([]);
+
+      await expect(
+        service.saveWorkItems('project-uuid', 'user-uuid', {
+          items: [
+            {
+              work_type_id: 'invalid-uuid',
+              skill_level: SkillLevel.BEGINNER,
+            },
+          ],
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException when required contextual params are missing', async () => {
+      workTypesRepoMock.find.mockResolvedValueOnce([mockFloorTilingWorkType]);
+
+      await expect(
+        service.saveWorkItems('project-uuid', 'user-uuid', {
+          items: [
+            {
+              work_type_id: 'wt-floor-tiling',
+              skill_level: SkillLevel.BEGINNER,
+              custom_params: {},
+            },
+          ],
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('accepts floor_tiling with all required contextual params', async () => {
+      workTypesRepoMock.find.mockResolvedValueOnce([mockFloorTilingWorkType]);
+
+      const tilingWorkItem: ProjectWorkItem = {
+        ...mockWorkItem,
+        work_type_id: 'wt-floor-tiling',
+        custom_params: { tile_format: '30x30', laying_pattern: 'straight' },
+        work_type: mockFloorTilingWorkType,
+      };
+      workItemsRepoMock.find.mockResolvedValueOnce([tilingWorkItem]);
+
+      const result = await service.saveWorkItems(
+        'project-uuid',
+        'user-uuid',
+        {
+          items: [
+            {
+              work_type_id: 'wt-floor-tiling',
+              skill_level: SkillLevel.BEGINNER,
+              custom_params: {
+                tile_format: '30x30',
+                laying_pattern: 'straight',
+              },
+            },
+          ],
+        },
+      );
+
+      expect(result).toEqual([tilingWorkItem]);
+    });
+
+    it('throws ForbiddenException for wrong user', async () => {
+      await expect(
+        service.saveWorkItems('project-uuid', 'other-user', {
+          items: [
+            {
+              work_type_id: 'wt-wall-painting',
+              skill_level: SkillLevel.BEGINNER,
+            },
+          ],
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('getWorkItems', () => {
+    it('returns work items for a project', async () => {
+      workItemsRepoMock.find.mockResolvedValueOnce([mockWorkItem]);
+
+      const result = await service.getWorkItems('project-uuid', 'user-uuid');
+      expect(result).toEqual([mockWorkItem]);
+      expect(workItemsRepoMock.find).toHaveBeenCalledWith({
+        where: { project_id: 'project-uuid' },
+        relations: ['work_type'],
+        order: { work_type: { display_order: 'ASC' } },
+      });
+    });
+
+    it('throws ForbiddenException for wrong user', async () => {
+      await expect(
+        service.getWorkItems('project-uuid', 'other-user'),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 });

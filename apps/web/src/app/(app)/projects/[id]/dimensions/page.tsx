@@ -151,7 +151,7 @@ export default function DimensionsPage() {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
           }
         }
-        router.push('/dashboard');
+        router.push(`/projects/${projectId}/work-selection`);
       } catch (err: unknown) {
         setError(getErrorMessage(err, 'Impossible de sauvegarder les dimensions'));
       } finally {
