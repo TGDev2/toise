@@ -36,6 +36,7 @@ const mockProject: Project = {
   dimensions: null,
   openings: [],
   workItems: [],
+  photos: [],
 };
 
 const mockOpening: Opening = {

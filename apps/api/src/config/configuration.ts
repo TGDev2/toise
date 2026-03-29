@@ -12,4 +12,16 @@ export default () => ({
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
     privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
   },
+  storage: {
+    provider: process.env.STORAGE_PROVIDER ?? 'local',
+    localPath: process.env.STORAGE_LOCAL_PATH ?? './uploads',
+    maxFileSizeMb: 20,
+    allowedMimeTypes: [
+      'image/jpeg',
+      'image/png',
+      'image/heic',
+      'image/heif',
+    ],
+    thumbnailWidth: 400,
+  },
 });

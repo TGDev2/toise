@@ -11,6 +11,7 @@ import { ProjectsModule } from './projects/projects.module';
 import { MaterialsModule } from './materials/materials.module';
 import { EstimationsModule } from './estimations/estimations.module';
 import { ShoppingListsModule } from './shopping-lists/shopping-lists.module';
+import { PhotosModule } from './photos/photos.module';
 import configuration from './config/configuration';
 
 @Module({
@@ -42,6 +43,7 @@ import configuration from './config/configuration';
     MaterialsModule,
     EstimationsModule,
     ShoppingListsModule,
+    PhotosModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

@@ -15,6 +15,7 @@ import { User } from '../../users/entities/user.entity';
 import { RoomDimensions } from './room-dimensions.entity';
 import { Opening } from './opening.entity';
 import { ProjectWorkItem } from './project-work-item.entity';
+import { ProjectPhoto } from '../../photos/entities/project-photo.entity';
 
 export enum WorkType {
   PAINTING = 'painting',
@@ -72,4 +73,7 @@ export class Project {
 
   @OneToMany(() => ProjectWorkItem, (wi) => wi.project)
   workItems!: ProjectWorkItem[];
+
+  @OneToMany(() => ProjectPhoto, (photo) => photo.project)
+  photos!: ProjectPhoto[];
 }
