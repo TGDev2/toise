@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Post,
   Put,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import type { DecodedIdToken } from 'firebase-admin/auth';
@@ -21,6 +22,7 @@ import { UpdateDimensionsDto } from './dto/update-dimensions.dto';
 import { CreateOpeningDto } from './dto/create-opening.dto';
 import { UpdateOpeningDto } from './dto/update-opening.dto';
 import { SaveWorkItemsDto } from './dto/save-work-items.dto';
+import { ListProjectsQueryDto } from './dto/list-projects-query.dto';
 
 @Controller('projects')
 @UseGuards(FirebaseAuthGuard)
@@ -56,33 +58,49 @@ export class ProjectsController {
   }
 
   @Get()
-  async findAll(@CurrentFirebaseUser() firebaseUser: DecodedIdToken) {
+  async findAll(
+    @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
+    @Query() query: ListProjectsQueryDto,
+  ) {
     const userId = await this.resolveUserId(firebaseUser);
-    const projects = await this.projectsService.findByUser(userId);
-    return projects.map((p) => ({
-      id: p.id,
-      name: p.name,
-      room_name: p.room_name,
-      work_type: p.work_type,
-      status: p.status,
-      dimensions: p.dimensions
-        ? {
-            length_cm: p.dimensions.length_cm,
-            width_cm: p.dimensions.width_cm,
-            height_cm: p.dimensions.height_cm,
-          }
-        : null,
-      openings:
-        p.openings?.map((o) => ({
-          id: o.id,
-          type: o.type,
-          width_cm: o.width_cm,
-          height_cm: o.height_cm,
-          count: o.count,
-        })) ?? [],
-      created_at: p.created_at,
-      updated_at: p.updated_at,
-    }));
+    const { data, meta } = await this.projectsService.findByUser(userId, query);
+    return {
+      data: data.map((p) => ({
+        id: p.id,
+        name: p.name,
+        room_name: p.room_name,
+        work_type: p.work_type,
+        status: p.status,
+        dimensions: p.dimensions
+          ? {
+              length_cm: p.dimensions.length_cm,
+              width_cm: p.dimensions.width_cm,
+              height_cm: p.dimensions.height_cm,
+            }
+          : null,
+        openings:
+          p.openings?.map((o) => ({
+            id: o.id,
+            type: o.type,
+            width_cm: o.width_cm,
+            height_cm: o.height_cm,
+            count: o.count,
+          })) ?? [],
+        created_at: p.created_at,
+        updated_at: p.updated_at,
+      })),
+      meta,
+    };
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async remove(
+    @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    const userId = await this.resolveUserId(firebaseUser);
+    await this.projectsService.softDeleteProject(id, userId);
   }
 
   @Get('work-types')

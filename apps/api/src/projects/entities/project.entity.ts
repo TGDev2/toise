@@ -4,6 +4,7 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  DeleteDateColumn,
   ManyToOne,
   OneToOne,
   OneToMany,
@@ -25,6 +26,7 @@ export enum WorkType {
 export enum ProjectStatus {
   DRAFT = 'draft',
   ACTIVE = 'active',
+  ESTIMATED = 'estimated',
   COMPLETED = 'completed',
 }
 
@@ -54,6 +56,9 @@ export class Project {
 
   @UpdateDateColumn({ type: 'timestamptz' })
   updated_at!: Date;
+
+  @DeleteDateColumn({ type: 'timestamptz', nullable: true })
+  deleted_at!: Date | null;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })

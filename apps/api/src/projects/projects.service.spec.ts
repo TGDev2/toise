@@ -31,6 +31,7 @@ const mockProject: Project = {
   status: ProjectStatus.DRAFT,
   created_at: new Date('2026-03-27T00:00:00.000Z'),
   updated_at: new Date('2026-03-27T00:00:00.000Z'),
+  deleted_at: null,
   user: null as never,
   dimensions: null,
   openings: [],
@@ -67,6 +68,9 @@ const projectsRepoMock = {
   save: jest.fn().mockResolvedValue(mockProject),
   find: jest.fn().mockResolvedValue([mockProject]),
   findOne: jest.fn().mockResolvedValue(mockProject),
+  findAndCount: jest.fn().mockResolvedValue([[mockProject], 1]),
+  softDelete: jest.fn().mockResolvedValue({ affected: 1 }),
+  update: jest.fn().mockResolvedValue({ affected: 1 }),
 };
 
 const dimensionsRepoMock = {
@@ -198,13 +202,37 @@ describe('ProjectsService', () => {
   });
 
   describe('findByUser', () => {
-    it('returns projects for the user', async () => {
-      const result = await service.findByUser('user-uuid');
-      expect(projectsRepoMock.find).toHaveBeenCalledWith({
+    it('returns paginated projects for the user', async () => {
+      const result = await service.findByUser('user-uuid', {});
+      expect(projectsRepoMock.findAndCount).toHaveBeenCalledWith({
         where: { user_id: 'user-uuid' },
-        order: { created_at: 'DESC' },
+        order: { updated_at: 'DESC' },
+        skip: 0,
+        take: 12,
       });
-      expect(result).toEqual([mockProject]);
+      expect(result.data).toEqual([mockProject]);
+      expect(result.meta).toEqual({
+        total: 1,
+        page: 1,
+        limit: 12,
+        totalPages: 1,
+      });
+    });
+
+    it('applies page and limit from query', async () => {
+      await service.findByUser('user-uuid', { page: 2, limit: 5 });
+      expect(projectsRepoMock.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({ skip: 5, take: 5 }),
+      );
+    });
+
+    it('filters by status when provided', async () => {
+      await service.findByUser('user-uuid', { status: ProjectStatus.DRAFT });
+      expect(projectsRepoMock.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { user_id: 'user-uuid', status: ProjectStatus.DRAFT },
+        }),
+      );
     });
   });
 
@@ -510,6 +538,35 @@ describe('ProjectsService', () => {
       await expect(
         service.getWorkItems('project-uuid', 'other-user'),
       ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('softDeleteProject', () => {
+    it('soft-deletes the project after ownership check', async () => {
+      await service.softDeleteProject('project-uuid', 'user-uuid');
+      expect(projectsRepoMock.softDelete).toHaveBeenCalledWith('project-uuid');
+    });
+
+    it('throws ForbiddenException for wrong user', async () => {
+      await expect(
+        service.softDeleteProject('project-uuid', 'other-user'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('throws NotFoundException for missing project', async () => {
+      projectsRepoMock.findOne.mockResolvedValueOnce(null);
+      await expect(
+        service.softDeleteProject('missing-uuid', 'user-uuid'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('updateStatus', () => {
+    it('updates the project status', async () => {
+      await service.updateStatus('project-uuid', ProjectStatus.ESTIMATED);
+      expect(projectsRepoMock.update).toHaveBeenCalledWith('project-uuid', {
+        status: ProjectStatus.ESTIMATED,
+      });
     });
   });
 });

@@ -32,6 +32,7 @@ const mockProject = {
   work_type: WorkType.PAINTING,
   status: ProjectStatus.DRAFT,
   dimensions: null,
+  openings: [],
   created_at: new Date('2026-03-27T00:00:00.000Z'),
   updated_at: new Date('2026-03-27T00:00:00.000Z'),
 };
@@ -50,10 +51,14 @@ const mockDimensions = {
 
 const projectsServiceMock = {
   createProject: jest.fn().mockResolvedValue(mockProject),
-  findByUser: jest.fn().mockResolvedValue([mockProject]),
+  findByUser: jest.fn().mockResolvedValue({
+    data: [mockProject],
+    meta: { total: 1, page: 1, limit: 12, totalPages: 1 },
+  }),
   findOneByUser: jest.fn().mockResolvedValue(mockProject),
   updateDimensions: jest.fn().mockResolvedValue(mockDimensions),
   getDimensions: jest.fn().mockResolvedValue(mockDimensions),
+  softDeleteProject: jest.fn().mockResolvedValue(undefined),
 };
 
 const usersServiceMock = {
@@ -137,10 +142,13 @@ describe('ProjectsController (e2e)', () => {
       .get('/projects')
       .expect(200)
       .expect((res: request.Response) => {
-        const body = res.body as Array<{ id: string }>;
-        expect(Array.isArray(body)).toBe(true);
-        expect(body).toHaveLength(1);
-        expect(body[0].id).toBe(mockProjectId);
+        const body = res.body as { data: Array<{ id: string }>; meta: { total: number; page: number; limit: number; totalPages: number } };
+        expect(Array.isArray(body.data)).toBe(true);
+        expect(body.data).toHaveLength(1);
+        expect(body.data[0].id).toBe(mockProjectId);
+        expect(body.meta).toBeDefined();
+        expect(body.meta.total).toBe(1);
+        expect(body.meta.page).toBe(1);
       });
   });
 

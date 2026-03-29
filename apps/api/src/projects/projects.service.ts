@@ -5,8 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
-import { Project } from './entities/project.entity';
+import { FindOptionsWhere, In, Repository } from 'typeorm';
+import { Project, ProjectStatus } from './entities/project.entity';
 import {
   ConfidenceScore,
   DimensionSource,
@@ -20,6 +20,7 @@ import { UpdateDimensionsDto } from './dto/update-dimensions.dto';
 import { CreateOpeningDto } from './dto/create-opening.dto';
 import { UpdateOpeningDto } from './dto/update-opening.dto';
 import { SaveWorkItemsDto } from './dto/save-work-items.dto';
+import { ListProjectsQueryDto } from './dto/list-projects-query.dto';
 
 @Injectable()
 export class ProjectsService {
@@ -46,11 +47,34 @@ export class ProjectsService {
     return this.projectsRepo.save(project);
   }
 
-  async findByUser(userId: string): Promise<Project[]> {
-    return this.projectsRepo.find({
-      where: { user_id: userId },
-      order: { created_at: 'DESC' },
+  async findByUser(
+    userId: string,
+    query: ListProjectsQueryDto = {},
+  ): Promise<{ data: Project[]; meta: { total: number; page: number; limit: number; totalPages: number } }> {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 12;
+
+    const where: FindOptionsWhere<Project> = { user_id: userId };
+    if (query.status) {
+      where.status = query.status;
+    }
+
+    const [data, total] = await this.projectsRepo.findAndCount({
+      where,
+      order: { updated_at: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+    };
   }
 
   async findOneByUser(projectId: string, userId: string): Promise<Project> {
@@ -260,5 +284,17 @@ export class ProjectsService {
       relations: ['work_type'],
       order: { work_type: { display_order: 'ASC' } },
     });
+  }
+
+  async softDeleteProject(projectId: string, userId: string): Promise<void> {
+    await this.findOneByUser(projectId, userId);
+    await this.projectsRepo.softDelete(projectId);
+  }
+
+  async updateStatus(
+    projectId: string,
+    status: ProjectStatus,
+  ): Promise<void> {
+    await this.projectsRepo.update(projectId, { status });
   }
 }

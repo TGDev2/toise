@@ -15,6 +15,7 @@ import {
   MaterialInput,
 } from './estimation-engine';
 import { SkillLevel } from '../projects/entities/project-work-item.entity';
+import { ProjectStatus } from '../projects/entities/project.entity';
 
 @Injectable()
 export class EstimationsService {
@@ -116,7 +117,14 @@ export class EstimationsService {
       total_items: items.length,
     });
 
-    return this.estimationRepo.save(result);
+    const saved = await this.estimationRepo.save(result);
+
+    await this.projectsService.updateStatus(
+      projectId,
+      ProjectStatus.ESTIMATED,
+    );
+
+    return saved;
   }
 
   async getLatest(
