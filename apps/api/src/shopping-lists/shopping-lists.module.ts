@@ -8,6 +8,9 @@ import { EstimationsModule } from '../estimations/estimations.module';
 import { UsersModule } from '../users/users.module';
 import { ShoppingListsService } from './shopping-lists.service';
 import { ShoppingListsController } from './shopping-lists.controller';
+import { ShoppingListExportService } from './shopping-list-export.service';
+import { ShoppingListExportController } from './shopping-list-export.controller';
+import { ShoppingListSharedController } from './shopping-list-shared.controller';
 
 @Module({
   imports: [
@@ -16,7 +19,11 @@ import { ShoppingListsController } from './shopping-lists.controller';
     EstimationsModule,
     UsersModule,
   ],
-  controllers: [ShoppingListsController],
-  providers: [ShoppingListsService],
+  controllers: [
+    ShoppingListsController,
+    ShoppingListExportController,
+    ShoppingListSharedController,
+  ],
+  providers: [ShoppingListsService, ShoppingListExportService],
 })
 export class ShoppingListsModule {}

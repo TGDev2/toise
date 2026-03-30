@@ -1,11 +1,12 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { apiGet, apiPatch, apiPost } from '@/lib/api';
+import { apiGet, apiPatch, apiPost, apiDownload } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import type { ShoppingListResponse } from '@/lib/shopping-list-types';
 import { ShoppingListMaterials } from '@/components/shopping-list/ShoppingListMaterials';
 import { ShoppingListComplements } from '@/components/shopping-list/ShoppingListComplements';
+import { ShareLinkPanel } from '@/components/shopping-list/ShareLinkPanel';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -21,6 +22,8 @@ export default function ShoppingListPage() {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [showSharePanel, setShowSharePanel] = useState(false);
 
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingUpdatesRef = useRef<{
@@ -215,6 +218,22 @@ export default function ShoppingListPage() {
     [scheduleSave],
   );
 
+  const handleDownloadPdf = useCallback(async () => {
+    setDownloading(true);
+    setError('');
+    try {
+      const safeName = projectName.replace(/[^a-zA-Z0-9À-ÿ\s-]/g, '').trim() || 'liste';
+      await apiDownload(
+        `/projects/${projectId}/shopping-list/export/pdf`,
+        `liste-courses-${safeName}.pdf`,
+      );
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Impossible de telecharger le PDF'));
+    } finally {
+      setDownloading(false);
+    }
+  }, [projectId, projectName]);
+
   const handleRegenerate = useCallback(async () => {
     if (!confirm('Regenerer la liste ? Les modifications manuelles seront perdues.')) {
       return;
@@ -266,6 +285,55 @@ export default function ShoppingListPage() {
           <p className="mt-1 text-sm text-stone-500">{projectName}</p>
         )}
       </div>
+
+      {data && (
+        <div className="mb-6 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={handleDownloadPdf}
+            disabled={downloading}
+            className="inline-flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-700 shadow-sm hover:bg-stone-50 disabled:opacity-50"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+              <path d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z" />
+              <path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" />
+            </svg>
+            {downloading ? 'Telechargement...' : 'Telecharger PDF'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowSharePanel((v) => !v)}
+            className="inline-flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-700 shadow-sm hover:bg-stone-50"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+              <path d="M12.232 4.232a2.5 2.5 0 0 1 3.536 3.536l-1.225 1.224a.75.75 0 0 0 1.061 1.06l1.224-1.224a4 4 0 0 0-5.656-5.656l-3 3a4 4 0 0 0 .225 5.865.75.75 0 0 0 .977-1.138 2.5 2.5 0 0 1-.142-3.667l3-3Z" />
+              <path d="M11.603 7.963a.75.75 0 0 0-.977 1.138 2.5 2.5 0 0 1 .142 3.667l-3 3a2.5 2.5 0 0 1-3.536-3.536l1.225-1.224a.75.75 0 0 0-1.061-1.06l-1.224 1.224a4 4 0 1 0 5.656 5.656l3-3a4 4 0 0 0-.225-5.865Z" />
+            </svg>
+            Partager un lien
+          </button>
+          <button
+            type="button"
+            disabled
+            className="inline-flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-400 shadow-sm opacity-50 cursor-not-allowed"
+            title="Bientot disponible"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+              <path d="M3 4a2 2 0 0 0-2 2v1.161l8.441 4.221a1.25 1.25 0 0 0 1.118 0L19 7.162V6a2 2 0 0 0-2-2H3Z" />
+              <path d="m19 8.839-7.77 3.885a2.75 2.75 0 0 1-2.46 0L1 8.839V14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.839Z" />
+            </svg>
+            Envoyer par email
+          </button>
+        </div>
+      )}
+
+      {showSharePanel && (
+        <div className="mb-6">
+          <ShareLinkPanel
+            projectId={projectId}
+            onClose={() => setShowSharePanel(false)}
+          />
+        </div>
+      )}
 
       {error && (
         <div className="mb-6 rounded-3xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">

@@ -115,6 +115,32 @@ export async function apiUpload<T>(
   });
 }
 
+export async function apiDownload(path: string, filename: string): Promise<void> {
+  const user = typeof window !== 'undefined' ? getFirebaseAuth().currentUser : null;
+  const headers: HeadersInit = {};
+  if (user) {
+    const token = await user.getIdToken();
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_URL}${path}`, { headers });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: 'Download failed' }));
+    throw new Error(error.message ?? `HTTP ${res.status}`);
+  }
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export async function apiDelete(path: string): Promise<void> {
   const headers = await getAuthHeaders();
   const res = await fetch(`${API_URL}${path}`, {

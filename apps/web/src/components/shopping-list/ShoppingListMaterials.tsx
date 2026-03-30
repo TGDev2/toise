@@ -13,29 +13,32 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 interface ShoppingListMaterialsProps {
   items: ShoppingListMaterialItem[];
-  onUpdateQuantity: (
+  readOnly?: boolean;
+  onUpdateQuantity?: (
     materialId: string,
     workItemId: string,
     units: number,
   ) => void;
-  onResetQuantity: (materialId: string, workItemId: string) => void;
+  onResetQuantity?: (materialId: string, workItemId: string) => void;
 }
 
 function MaterialRow({
   item,
+  readOnly,
   onUpdateQuantity,
   onResetQuantity,
 }: {
   item: ShoppingListMaterialItem;
-  onUpdateQuantity: (units: number) => void;
-  onResetQuantity: () => void;
+  readOnly?: boolean;
+  onUpdateQuantity?: (units: number) => void;
+  onResetQuantity?: () => void;
 }) {
   const [localQty, setLocalQty] = useState(item.units_needed);
 
   const handleBlur = () => {
     const val = Math.max(0, Math.round(localQty));
     setLocalQty(val);
-    if (val !== item.units_needed) {
+    if (val !== item.units_needed && onUpdateQuantity) {
       onUpdateQuantity(val);
     }
   };
@@ -48,7 +51,7 @@ function MaterialRow({
 
   const handleReset = () => {
     setLocalQty(item.original_units_needed);
-    onResetQuantity();
+    onResetQuantity?.();
   };
 
   return (
@@ -61,7 +64,7 @@ function MaterialRow({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        {item.is_manually_adjusted && (
+        {!readOnly && item.is_manually_adjusted && (
           <button
             type="button"
             onClick={handleReset}
@@ -71,16 +74,22 @@ function MaterialRow({
             Modifie
           </button>
         )}
-        <input
-          type="number"
-          min={0}
-          value={localQty}
-          onChange={(e) => setLocalQty(Number(e.target.value))}
-          onBlur={handleBlur}
-          onKeyDown={handleKeyDown}
-          className="w-16 rounded-xl border border-stone-200 bg-stone-50 px-2 py-1.5 text-center text-sm font-semibold text-stone-900 focus:border-stone-400 focus:bg-white focus:outline-none"
-          aria-label={`Quantite pour ${item.material_name}`}
-        />
+        {readOnly ? (
+          <span className="w-16 text-center text-sm font-semibold text-stone-900">
+            {item.units_needed}
+          </span>
+        ) : (
+          <input
+            type="number"
+            min={0}
+            value={localQty}
+            onChange={(e) => setLocalQty(Number(e.target.value))}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
+            className="w-16 rounded-xl border border-stone-200 bg-stone-50 px-2 py-1.5 text-center text-sm font-semibold text-stone-900 focus:border-stone-400 focus:bg-white focus:outline-none"
+            aria-label={`Quantite pour ${item.material_name}`}
+          />
+        )}
         <span className="text-sm text-stone-500">
           x {item.packaging_label}
         </span>
@@ -91,6 +100,7 @@ function MaterialRow({
 
 export function ShoppingListMaterials({
   items,
+  readOnly,
   onUpdateQuantity,
   onResetQuantity,
 }: ShoppingListMaterialsProps) {
@@ -176,12 +186,13 @@ export function ShoppingListMaterials({
                   <MaterialRow
                     key={`${item.material_id}-${item.work_item_id}`}
                     item={item}
-                    onUpdateQuantity={(units) =>
+                    readOnly={readOnly}
+                    onUpdateQuantity={onUpdateQuantity ? (units) =>
                       onUpdateQuantity(item.material_id, item.work_item_id, units)
-                    }
-                    onResetQuantity={() =>
+                    : undefined}
+                    onResetQuantity={onResetQuantity ? () =>
                       onResetQuantity(item.material_id, item.work_item_id)
-                    }
+                    : undefined}
                   />
                 ))}
               </div>

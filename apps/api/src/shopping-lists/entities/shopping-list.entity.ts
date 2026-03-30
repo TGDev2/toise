@@ -56,6 +56,12 @@ export class ShoppingList {
   @Column({ type: 'jsonb' })
   items_json!: ShoppingListData;
 
+  @Column({ type: 'varchar', length: 64, unique: true, nullable: true, default: null })
+  share_token!: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true, default: null })
+  share_token_created_at!: Date | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   created_at!: Date;
 

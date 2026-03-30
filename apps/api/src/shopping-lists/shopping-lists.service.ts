@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import { randomBytes } from 'crypto';
 import {
   ShoppingList,
   ShoppingListData,
@@ -221,6 +222,70 @@ export class ShoppingListsService {
     const shoppingList = await this.generate(projectId, userId);
 
     return { shoppingList, latestEstimationId: shoppingList.estimation_id };
+  }
+
+  async generateShareToken(
+    projectId: string,
+    userId: string,
+  ): Promise<{ share_token: string }> {
+    await this.projectsService.findOneByUser(projectId, userId);
+
+    const shoppingList = await this.shoppingListRepo.findOne({
+      where: { project_id: projectId },
+    });
+
+    if (!shoppingList) {
+      throw new NotFoundException(
+        'No shopping list found for this project. Generate one first.',
+      );
+    }
+
+    if (shoppingList.share_token) {
+      return { share_token: shoppingList.share_token };
+    }
+
+    const token = randomBytes(32).toString('hex');
+    shoppingList.share_token = token;
+    shoppingList.share_token_created_at = new Date();
+    await this.shoppingListRepo.save(shoppingList);
+
+    return { share_token: token };
+  }
+
+  async revokeShareToken(
+    projectId: string,
+    userId: string,
+  ): Promise<void> {
+    await this.projectsService.findOneByUser(projectId, userId);
+
+    const shoppingList = await this.shoppingListRepo.findOne({
+      where: { project_id: projectId },
+    });
+
+    if (!shoppingList) {
+      throw new NotFoundException(
+        'No shopping list found for this project.',
+      );
+    }
+
+    shoppingList.share_token = null;
+    shoppingList.share_token_created_at = null;
+    await this.shoppingListRepo.save(shoppingList);
+  }
+
+  async findByShareToken(
+    token: string,
+  ): Promise<ShoppingList> {
+    const shoppingList = await this.shoppingListRepo.findOne({
+      where: { share_token: token },
+      relations: ['project'],
+    });
+
+    if (!shoppingList) {
+      throw new NotFoundException('Shopping list not found or link has expired.');
+    }
+
+    return shoppingList;
   }
 
   private async buildTilingContext(

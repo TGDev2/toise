@@ -5,26 +5,29 @@ import type { ShoppingListComplementaryItem } from '@/lib/shopping-list-types';
 
 interface ShoppingListComplementsProps {
   items: ShoppingListComplementaryItem[];
-  onUpdateQuantity: (complementaryMaterialId: string, quantity: number) => void;
-  onRemove: (complementaryMaterialId: string) => void;
-  onRestore: (complementaryMaterialId: string) => void;
+  readOnly?: boolean;
+  onUpdateQuantity?: (complementaryMaterialId: string, quantity: number) => void;
+  onRemove?: (complementaryMaterialId: string) => void;
+  onRestore?: (complementaryMaterialId: string) => void;
 }
 
 function ComplementRow({
   item,
+  readOnly,
   onUpdateQuantity,
   onRemove,
 }: {
   item: ShoppingListComplementaryItem;
-  onUpdateQuantity: (qty: number) => void;
-  onRemove: () => void;
+  readOnly?: boolean;
+  onUpdateQuantity?: (qty: number) => void;
+  onRemove?: () => void;
 }) {
   const [localQty, setLocalQty] = useState(item.quantity);
 
   const handleBlur = () => {
     const val = Math.max(0, Math.round(localQty));
     setLocalQty(val);
-    if (val !== item.quantity) {
+    if (val !== item.quantity && onUpdateQuantity) {
       onUpdateQuantity(val);
     }
   };
@@ -52,37 +55,45 @@ function ComplementRow({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        <input
-          type="number"
-          min={0}
-          value={localQty}
-          onChange={(e) => setLocalQty(Number(e.target.value))}
-          onBlur={handleBlur}
-          onKeyDown={handleKeyDown}
-          className="w-16 rounded-xl border border-stone-200 bg-stone-50 px-2 py-1.5 text-center text-sm font-semibold text-stone-900 focus:border-stone-400 focus:bg-white focus:outline-none"
-          aria-label={`Quantite pour ${item.name}`}
-        />
+        {readOnly ? (
+          <span className="w-16 text-center text-sm font-semibold text-stone-900">
+            {item.quantity}
+          </span>
+        ) : (
+          <input
+            type="number"
+            min={0}
+            value={localQty}
+            onChange={(e) => setLocalQty(Number(e.target.value))}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
+            className="w-16 rounded-xl border border-stone-200 bg-stone-50 px-2 py-1.5 text-center text-sm font-semibold text-stone-900 focus:border-stone-400 focus:bg-white focus:outline-none"
+            aria-label={`Quantite pour ${item.name}`}
+          />
+        )}
         <span className="text-sm text-stone-500">{item.unit_label}</span>
-        <button
-          type="button"
-          onClick={onRemove}
-          className="ml-1 rounded-full p-1 text-stone-400 hover:bg-red-50 hover:text-red-500"
-          title="Retirer de la liste"
-          aria-label={`Retirer ${item.name}`}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4"
-            viewBox="0 0 20 20"
-            fill="currentColor"
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="ml-1 rounded-full p-1 text-stone-400 hover:bg-red-50 hover:text-red-500"
+            title="Retirer de la liste"
+            aria-label={`Retirer ${item.name}`}
           >
-            <path
-              fillRule="evenodd"
-              d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-              clipRule="evenodd"
-            />
-          </svg>
-        </button>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
+        )}
       </div>
     </div>
   );
@@ -90,6 +101,7 @@ function ComplementRow({
 
 export function ShoppingListComplements({
   items,
+  readOnly,
   onUpdateQuantity,
   onRemove,
   onRestore,
@@ -119,16 +131,17 @@ export function ShoppingListComplements({
             <ComplementRow
               key={item.complementary_material_id}
               item={item}
-              onUpdateQuantity={(qty) =>
+              readOnly={readOnly}
+              onUpdateQuantity={onUpdateQuantity ? (qty) =>
                 onUpdateQuantity(item.complementary_material_id, qty)
-              }
-              onRemove={() => onRemove(item.complementary_material_id)}
+              : undefined}
+              onRemove={onRemove ? () => onRemove(item.complementary_material_id) : undefined}
             />
           ))}
         </div>
       )}
 
-      {removedItems.length > 0 && (
+      {!readOnly && removedItems.length > 0 && (
         <div className="mt-4">
           <button
             type="button"
@@ -151,7 +164,7 @@ export function ShoppingListComplements({
                   </div>
                   <button
                     type="button"
-                    onClick={() => onRestore(item.complementary_material_id)}
+                    onClick={() => onRestore?.(item.complementary_material_id)}
                     className="rounded-full bg-stone-200 px-3 py-1 text-xs font-medium text-stone-700 hover:bg-stone-300"
                   >
                     Restaurer
