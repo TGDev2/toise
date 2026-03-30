@@ -1,12 +1,14 @@
 'use client';
 
 import { RoomPreview } from '@/components/dimensions/RoomPreview';
+import type { DetectedOpening } from '@/hooks/useAnalysis';
 
 interface AnalysisResultPanelProps {
   lengthCm: number;
   widthCm: number;
   heightCm: number;
   confidence: string | null;
+  openings?: DetectedOpening[];
   onAccept: () => void;
   onEdit: () => void;
 }
@@ -22,10 +24,18 @@ export function AnalysisResultPanel({
   widthCm,
   heightCm,
   confidence,
+  openings = [],
   onAccept,
   onEdit,
 }: AnalysisResultPanelProps) {
   const conf = confidence ? CONFIDENCE_LABELS[confidence] : null;
+
+  const doorCount = openings
+    .filter((o) => o.type === 'door')
+    .reduce((sum, o) => sum + o.count, 0);
+  const windowCount = openings
+    .filter((o) => o.type === 'window')
+    .reduce((sum, o) => sum + o.count, 0);
 
   return (
     <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-5">
@@ -41,6 +51,17 @@ export function AnalysisResultPanel({
           </span>
         )}
       </div>
+
+      {confidence === 'low' && (
+        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+          <p className="font-medium">Confiance basse</p>
+          <p className="mt-1">
+            Les dimensions detectees peuvent etre imprecises. Nous vous
+            invitons a verifier et corriger les dimensions, ou a ajouter des
+            photos supplementaires pour ameliorer la precision.
+          </p>
+        </div>
+      )}
 
       <div className="mb-4 grid grid-cols-3 gap-3">
         <div className="rounded-xl bg-white px-3 py-2 text-center">
@@ -70,6 +91,43 @@ export function AnalysisResultPanel({
           unitSystem="metric"
         />
       </div>
+
+      {openings.length > 0 && (
+        <div className="mb-4 rounded-xl bg-white/80 px-3 py-2">
+          <p className="mb-1 text-xs font-medium text-stone-600">
+            Ouvertures detectees
+          </p>
+          {openings.map((o, i) => (
+            <div
+              key={`${o.type}-${i}`}
+              className="flex justify-between text-xs text-stone-500"
+            >
+              <span>
+                {o.type === 'door' ? 'Porte' : 'Fenetre'}
+                {o.count > 1 ? ` (${o.count}x)` : ''}
+              </span>
+              <span>
+                {o.width_cm} x {o.height_cm} cm
+              </span>
+            </div>
+          ))}
+          {(doorCount > 0 || windowCount > 0) && (
+            <p className="mt-1 text-xs text-stone-400">
+              {[
+                doorCount > 0
+                  ? `${doorCount} porte${doorCount > 1 ? 's' : ''}`
+                  : null,
+                windowCount > 0
+                  ? `${windowCount} fenetre${windowCount > 1 ? 's' : ''}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(' et ')}{' '}
+              detectee{doorCount + windowCount > 1 ? 's' : ''}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="flex gap-3">
         <button

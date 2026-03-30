@@ -17,13 +17,23 @@ interface AnalysisDimensions {
   height_cm: number;
 }
 
+export interface DetectedOpening {
+  type: 'door' | 'window';
+  width_cm: number;
+  height_cm: number;
+  count: number;
+  confidence: number;
+}
+
 interface JobStatusResponse {
   job_id: string;
   status: string;
   progress_pct: number;
   dimensions?: AnalysisDimensions | null;
   confidence?: string | null;
+  confidence_score?: number | null;
   reference_detected?: boolean;
+  openings?: DetectedOpening[] | null;
   error_message?: string | null;
 }
 
@@ -37,6 +47,8 @@ interface UseAnalysisReturn {
   progressPct: number;
   dimensions: AnalysisDimensions | null;
   confidence: string | null;
+  confidenceScore: number | null;
+  detectedOpenings: DetectedOpening[];
   referenceDetected: boolean;
   error: string | null;
   startAnalysis: () => Promise<void>;
@@ -50,6 +62,8 @@ export function useAnalysis(projectId: string): UseAnalysisReturn {
   const [progressPct, setProgressPct] = useState(0);
   const [dimensions, setDimensions] = useState<AnalysisDimensions | null>(null);
   const [confidence, setConfidence] = useState<string | null>(null);
+  const [confidenceScore, setConfidenceScore] = useState<number | null>(null);
+  const [detectedOpenings, setDetectedOpenings] = useState<DetectedOpening[]>([]);
   const [referenceDetected, setReferenceDetected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
@@ -69,6 +83,8 @@ export function useAnalysis(projectId: string): UseAnalysisReturn {
     setProgressPct(0);
     setDimensions(null);
     setConfidence(null);
+    setConfidenceScore(null);
+    setDetectedOpenings([]);
     setReferenceDetected(false);
     setError(null);
     setJobId(null);
@@ -93,6 +109,8 @@ export function useAnalysis(projectId: string): UseAnalysisReturn {
             setStatus('completed');
             setDimensions(data.dimensions);
             setConfidence(data.confidence ?? null);
+            setConfidenceScore(data.confidence_score ?? null);
+            setDetectedOpenings(data.openings ?? []);
             setReferenceDetected(data.reference_detected ?? false);
           } else if (data.reference_detected === false) {
             setStatus('no_reference');
@@ -133,6 +151,8 @@ export function useAnalysis(projectId: string): UseAnalysisReturn {
     setError(null);
     setDimensions(null);
     setConfidence(null);
+    setConfidenceScore(null);
+    setDetectedOpenings([]);
     setProgressPct(0);
 
     try {
@@ -161,6 +181,8 @@ export function useAnalysis(projectId: string): UseAnalysisReturn {
     progressPct,
     dimensions,
     confidence,
+    confidenceScore,
+    detectedOpenings,
     referenceDetected,
     error,
     startAnalysis,

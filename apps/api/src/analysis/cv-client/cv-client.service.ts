@@ -11,6 +11,14 @@ export interface CvAnalysisRequest {
   } | null;
 }
 
+export interface CvDetectedOpening {
+  type: 'door' | 'window';
+  width_cm: number;
+  height_cm: number;
+  confidence: number;
+  count: number;
+}
+
 export interface CvAnalysisResponse {
   status: 'success' | 'no_reference' | 'error';
   dimensions: {
@@ -19,8 +27,11 @@ export interface CvAnalysisResponse {
     height_cm: number;
   } | null;
   confidence: 'high' | 'medium' | 'low';
+  confidence_score: number;
   reference_detected: boolean;
   reference_type: string | null;
+  openings: CvDetectedOpening[];
+  num_images_processed: number;
   raw_output: Record<string, unknown>;
   error?: string;
 }

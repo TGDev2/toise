@@ -11,6 +11,7 @@ import { AnalysisJob, AnalysisJobStatus } from './entities/analysis-job.entity';
 import {
   CvClientService,
   type CvAnalysisResponse,
+  type CvDetectedOpening,
 } from './cv-client/cv-client.service';
 import { ProjectsService } from '../projects/projects.service';
 import { PhotosService } from '../photos/photos.service';
@@ -18,6 +19,10 @@ import {
   ConfidenceScore,
   DimensionSource,
 } from '../projects/entities/room-dimensions.entity';
+import {
+  OpeningSource,
+  type OpeningType,
+} from '../projects/entities/opening.entity';
 import type { UpdateDimensionsDto } from '../projects/dto/update-dimensions.dto';
 import type { AnalysisStatusDto } from './dto/analysis-status.dto';
 
@@ -104,7 +109,9 @@ export class AnalysisService {
       const data = job.result_json as unknown as CvAnalysisResponse;
       result.dimensions = data.dimensions;
       result.confidence = data.confidence;
+      result.confidence_score = data.confidence_score ?? null;
       result.reference_detected = data.reference_detected;
+      result.openings = data.openings ?? null;
     }
 
     if (job.status === AnalysisJobStatus.FAILED) {
@@ -174,6 +181,32 @@ export class AnalysisService {
             confidenceMap[cvResponse.confidence] ?? ConfidenceScore.MEDIUM,
           raw_cv_output_json: cvResponse.raw_output,
         });
+      }
+
+      // Save detected openings
+      if (
+        cvResponse.status === 'success' &&
+        cvResponse.openings &&
+        cvResponse.openings.length > 0
+      ) {
+        await this.projectsService.removeCvOpenings(projectId);
+
+        for (const detected of cvResponse.openings) {
+          await this.projectsService.addOpening(
+            projectId,
+            userId,
+            {
+              type: detected.type as OpeningType,
+              width_cm: detected.width_cm,
+              height_cm: detected.height_cm,
+              count: detected.count,
+            },
+            {
+              source: OpeningSource.CV,
+              cv_confidence: detected.confidence,
+            },
+          );
+        }
       }
 
       this.logger.log(

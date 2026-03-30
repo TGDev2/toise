@@ -12,7 +12,7 @@ import {
   DimensionSource,
   RoomDimensions,
 } from './entities/room-dimensions.entity';
-import { Opening } from './entities/opening.entity';
+import { Opening, OpeningSource } from './entities/opening.entity';
 import { WorkType } from './entities/work-type.entity';
 import { ProjectWorkItem } from './entities/project-work-item.entity';
 import { CreateProjectDto } from './dto/create-project.dto';
@@ -151,6 +151,7 @@ export class ProjectsService {
     projectId: string,
     userId: string,
     dto: CreateOpeningDto,
+    overrides?: { source?: OpeningSource; cv_confidence?: number },
   ): Promise<Opening> {
     await this.findOneByUser(projectId, userId);
 
@@ -160,9 +161,18 @@ export class ProjectsService {
       width_cm: dto.width_cm,
       height_cm: dto.height_cm,
       count: dto.count ?? 1,
+      source: overrides?.source ?? OpeningSource.MANUAL,
+      cv_confidence: overrides?.cv_confidence ?? null,
     });
 
     return this.openingsRepo.save(opening);
+  }
+
+  async removeCvOpenings(projectId: string): Promise<void> {
+    await this.openingsRepo.delete({
+      project_id: projectId,
+      source: OpeningSource.CV,
+    });
   }
 
   async updateOpening(

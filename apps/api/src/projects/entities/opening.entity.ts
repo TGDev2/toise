@@ -14,6 +14,11 @@ export enum OpeningType {
   WINDOW = 'window',
 }
 
+export enum OpeningSource {
+  MANUAL = 'manual',
+  CV = 'cv',
+}
+
 @Entity('openings')
 export class Opening {
   @PrimaryGeneratedColumn('uuid')
@@ -33,6 +38,12 @@ export class Opening {
 
   @Column({ type: 'int', default: 1 })
   count!: number;
+
+  @Column({ type: 'varchar', length: 10, default: OpeningSource.MANUAL })
+  source!: OpeningSource;
+
+  @Column({ type: 'real', nullable: true, default: null })
+  cv_confidence!: number | null;
 
   @CreateDateColumn({ type: 'timestamptz' })
   created_at!: Date;

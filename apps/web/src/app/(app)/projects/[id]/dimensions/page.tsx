@@ -143,9 +143,19 @@ export default function DimensionsPage() {
   const handleAcceptCvDimensions = useCallback(() => {
     if (analysis.dimensions) {
       setInitialDims(analysis.dimensions);
+      if (analysis.detectedOpenings.length > 0) {
+        setInitialOpenings(
+          analysis.detectedOpenings.map((o) => ({
+            type: o.type,
+            width_cm: o.width_cm,
+            height_cm: o.height_cm,
+            count: o.count,
+          })),
+        );
+      }
       setShowManualForm(true);
     }
-  }, [analysis.dimensions]);
+  }, [analysis.dimensions, analysis.detectedOpenings]);
 
   const handleManualFallback = useCallback(() => {
     setShowManualForm(true);
@@ -281,6 +291,7 @@ export default function DimensionsPage() {
             widthCm={analysis.dimensions.width_cm}
             heightCm={analysis.dimensions.height_cm}
             confidence={analysis.confidence}
+            openings={analysis.detectedOpenings}
             onAccept={handleAcceptCvDimensions}
             onEdit={handleManualFallback}
           />

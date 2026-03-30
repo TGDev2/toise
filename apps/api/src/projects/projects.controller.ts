@@ -17,12 +17,14 @@ import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
 import { UsersService } from '../users/users.service';
 import { ProjectsService } from './projects.service';
+import { CvCorrectionService } from '../analysis/cv-correction.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateDimensionsDto } from './dto/update-dimensions.dto';
 import { CreateOpeningDto } from './dto/create-opening.dto';
 import { UpdateOpeningDto } from './dto/update-opening.dto';
 import { SaveWorkItemsDto } from './dto/save-work-items.dto';
 import { ListProjectsQueryDto } from './dto/list-projects-query.dto';
+import { DimensionSource } from './entities/room-dimensions.entity';
 
 @Controller('projects')
 @UseGuards(FirebaseAuthGuard)
@@ -30,6 +32,7 @@ export class ProjectsController {
   constructor(
     private readonly projectsService: ProjectsService,
     private readonly usersService: UsersService,
+    private readonly cvCorrectionService: CvCorrectionService,
   ) {}
 
   private async resolveUserId(firebaseUser: DecodedIdToken): Promise<string> {
@@ -148,11 +151,29 @@ export class ProjectsController {
     @Body() dto: UpdateDimensionsDto,
   ) {
     const userId = await this.resolveUserId(firebaseUser);
+
+    // Check if current dimensions are CV-sourced for correction logging
+    const currentDims = await this.projectsService.getDimensions(id, userId);
+    const wasCvSourced = currentDims?.source === DimensionSource.CV;
+
     const dimensions = await this.projectsService.updateDimensions(
       id,
       userId,
       dto,
     );
+
+    // Log corrections if user is overriding CV-detected values
+    if (wasCvSourced && currentDims) {
+      const fields = ['length_cm', 'width_cm', 'height_cm'] as const;
+      for (const field of fields) {
+        if (currentDims[field] !== dto[field]) {
+          this.cvCorrectionService
+            .logCorrection(id, 'dimension', field, currentDims[field], dto[field])
+            .catch(() => {});
+        }
+      }
+    }
+
     return {
       length_cm: dimensions.length_cm,
       width_cm: dimensions.width_cm,

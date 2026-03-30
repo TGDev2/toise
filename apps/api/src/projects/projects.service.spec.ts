@@ -12,7 +12,7 @@ import {
   ConfidenceScore,
   DimensionSource,
 } from './entities/room-dimensions.entity';
-import { Opening, OpeningType } from './entities/opening.entity';
+import { Opening, OpeningType, OpeningSource } from './entities/opening.entity';
 import {
   WorkType as WorkTypeEntity,
   ContextualQuestion,
@@ -46,6 +46,8 @@ const mockOpening: Opening = {
   width_cm: 90,
   height_cm: 204,
   count: 1,
+  source: OpeningSource.MANUAL,
+  cv_confidence: null,
   created_at: new Date('2026-03-27T00:00:00.000Z'),
   updated_at: new Date('2026-03-27T00:00:00.000Z'),
   project: null as never,
@@ -59,6 +61,7 @@ const mockDimensions: RoomDimensions = {
   height_cm: 250,
   confidence_score: ConfidenceScore.HIGH,
   source: DimensionSource.MANUAL,
+  raw_cv_output_json: null,
   created_at: new Date('2026-03-27T00:00:00.000Z'),
   updated_at: new Date('2026-03-27T00:00:00.000Z'),
   project: null as never,

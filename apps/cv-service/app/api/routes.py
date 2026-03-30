@@ -23,8 +23,9 @@ async def analyze_images(request: Request, body: AnalyzeRequest):
     5. Calibrate scale and compute dimensions
     """
     depth_estimator = request.app.state.depth_estimator
+    opening_detector = request.app.state.opening_detector
 
-    calculator = DimensionCalculator(depth_estimator)
+    calculator = DimensionCalculator(depth_estimator, opening_detector)
 
     try:
         result = calculator.process(
