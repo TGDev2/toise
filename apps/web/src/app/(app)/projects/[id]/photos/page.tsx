@@ -112,13 +112,23 @@ export default function PhotosPage() {
               Passer cette etape
             </button>
 
-            <button
-              onClick={handleNext}
-              disabled={!canProceed}
-              className="rounded-xl bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isUploading ? 'Upload en cours...' : 'Suivant'}
-            </button>
+            <div className="flex gap-3">
+              {canProceed && (
+                <button
+                  onClick={() => router.push(`/projects/${projectId}/dimensions?analyze=true`)}
+                  className="rounded-xl border border-emerald-300 bg-emerald-50 px-6 py-3 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-100"
+                >
+                  Analyser les dimensions
+                </button>
+              )}
+              <button
+                onClick={handleNext}
+                disabled={!canProceed}
+                className="rounded-xl bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isUploading ? 'Upload en cours...' : 'Suivant'}
+              </button>
+            </div>
           </div>
         </div>
       </div>

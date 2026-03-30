@@ -11,5 +11,21 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  cv-service:
+    build:
+      context: ./apps/cv-service
+      dockerfile: Dockerfile
+    container_name: estimate-cv
+    ports:
+      - '8000:8000'
+    volumes:
+      - ./uploads:/data/uploads
+    environment:
+      - UPLOADS_PATH=/data/uploads
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
 volumes:
   pgdata:

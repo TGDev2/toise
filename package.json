@@ -10,6 +10,7 @@
     "test:api": "pnpm --filter @estimate/api test && pnpm --filter @estimate/api test:e2e",
     "test:web": "pnpm --filter @estimate/web test",
     "lint": "pnpm --filter @estimate/api lint && pnpm --filter @estimate/web lint",
+    "dev:cv": "cd apps/cv-service && uvicorn app.main:app --reload --port 8000",
     "db:migrate": "pnpm --filter @estimate/api migration:run"
   }
 }

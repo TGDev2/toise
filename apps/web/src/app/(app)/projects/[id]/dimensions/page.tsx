@@ -5,7 +5,11 @@ import { apiGet, apiPost, apiPut, apiDelete } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import type { Opening } from '@/lib/surface';
 import { DimensionsForm } from '@/components/dimensions/DimensionsForm';
-import { useParams, useRouter } from 'next/navigation';
+import { AnalyzeButton } from '@/components/analysis/AnalyzeButton';
+import { AnalysisResultPanel } from '@/components/analysis/AnalysisResultPanel';
+import { ReferenceObjectPrompt } from '@/components/analysis/ReferenceObjectPrompt';
+import { useAnalysis } from '@/hooks/useAnalysis';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
 const STORAGE_KEY = 'estimate_local_projects';
@@ -39,6 +43,7 @@ interface LocalProject {
 export default function DimensionsPage() {
   const { appUser, isGuest, isLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const params = useParams<{ id: string }>();
   const projectId = params.id;
 
@@ -49,6 +54,10 @@ export default function DimensionsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
+  const [hasPhotos, setHasPhotos] = useState(false);
+  const [showManualForm, setShowManualForm] = useState(false);
+
+  const analysis = useAnalysis(projectId);
 
   useEffect(() => {
     if (isLoading) return;
@@ -80,6 +89,16 @@ export default function DimensionsPage() {
             );
             setExistingOpeningIds(project.openings.map((o) => o.id));
           }
+
+          // Check if project has photos
+          try {
+            const photos = await apiGet<{ id: string }[]>(
+              `/projects/${projectId}/photos`,
+            );
+            setHasPhotos(photos.length > 0);
+          } catch {
+            // Photos check is non-critical
+          }
         } else {
           const raw = localStorage.getItem(STORAGE_KEY);
           const projects: LocalProject[] = raw ? JSON.parse(raw) : [];
@@ -107,6 +126,41 @@ export default function DimensionsPage() {
 
     load();
   }, [appUser, isGuest, isLoading, projectId, router]);
+
+  // Auto-trigger analysis from ?analyze=true query param
+  useEffect(() => {
+    if (
+      loaded &&
+      hasPhotos &&
+      searchParams.get('analyze') === 'true' &&
+      analysis.status === 'idle' &&
+      !initialDims
+    ) {
+      analysis.startAnalysis();
+    }
+  }, [loaded, hasPhotos, searchParams, analysis, initialDims]);
+
+  const handleAcceptCvDimensions = useCallback(() => {
+    if (analysis.dimensions) {
+      setInitialDims(analysis.dimensions);
+      setShowManualForm(true);
+    }
+  }, [analysis.dimensions]);
+
+  const handleManualFallback = useCallback(() => {
+    setShowManualForm(true);
+    analysis.reset();
+  }, [analysis]);
+
+  const handleRetryWithReference = useCallback(
+    async (_type: string, _heightCm: number) => {
+      // For iteration 1, we just re-trigger the analysis
+      // Reference object support in the API will be added in iteration 2
+      analysis.reset();
+      await analysis.startAnalysis();
+    },
+    [analysis],
+  );
 
   const handleSave = useCallback(
     async (lengthCm: number, widthCm: number, heightCm: number, openings: Opening[]) => {
@@ -169,6 +223,12 @@ export default function DimensionsPage() {
     );
   }
 
+  // Determine if we should show the analysis section
+  const showAnalysis =
+    appUser && hasPhotos && !showManualForm && !initialDims;
+  const showResult =
+    analysis.status === 'completed' && analysis.dimensions && !showManualForm;
+
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
       <div className="mb-6">
@@ -193,16 +253,53 @@ export default function DimensionsPage() {
         </div>
       )}
 
-      <section className="rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
-        <DimensionsForm
-          initialLengthCm={initialDims?.length_cm ?? 0}
-          initialWidthCm={initialDims?.width_cm ?? 0}
-          initialHeightCm={initialDims?.height_cm ?? 0}
-          initialOpenings={initialOpenings}
-          onSave={handleSave}
-          isSaving={isSaving}
-        />
-      </section>
+      {/* CV Analysis Section */}
+      {showAnalysis && (
+        <div className="mb-6">
+          {analysis.status === 'no_reference' ? (
+            <ReferenceObjectPrompt
+              onRetryWithReference={handleRetryWithReference}
+              onManualFallback={handleManualFallback}
+            />
+          ) : (
+            <AnalyzeButton
+              status={analysis.status}
+              progressPct={analysis.progressPct}
+              hasPhotos={hasPhotos}
+              onStart={analysis.startAnalysis}
+              onManualFallback={handleManualFallback}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Analysis Result */}
+      {showResult && analysis.dimensions && (
+        <div className="mb-6">
+          <AnalysisResultPanel
+            lengthCm={analysis.dimensions.length_cm}
+            widthCm={analysis.dimensions.width_cm}
+            heightCm={analysis.dimensions.height_cm}
+            confidence={analysis.confidence}
+            onAccept={handleAcceptCvDimensions}
+            onEdit={handleManualFallback}
+          />
+        </div>
+      )}
+
+      {/* Manual Dimensions Form */}
+      {(showManualForm || initialDims || !showAnalysis) && (
+        <section className="rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
+          <DimensionsForm
+            initialLengthCm={initialDims?.length_cm ?? 0}
+            initialWidthCm={initialDims?.width_cm ?? 0}
+            initialHeightCm={initialDims?.height_cm ?? 0}
+            initialOpenings={initialOpenings}
+            onSave={handleSave}
+            isSaving={isSaving}
+          />
+        </section>
+      )}
     </main>
   );
 }

@@ -97,8 +97,16 @@ export class ProjectsService {
     projectId: string,
     userId: string,
     dto: UpdateDimensionsDto,
+    overrides?: {
+      source?: DimensionSource;
+      confidence_score?: ConfidenceScore;
+      raw_cv_output_json?: Record<string, unknown> | null;
+    },
   ): Promise<RoomDimensions> {
     await this.findOneByUser(projectId, userId);
+
+    const source = overrides?.source ?? DimensionSource.MANUAL;
+    const confidence = overrides?.confidence_score ?? ConfidenceScore.HIGH;
 
     let dimensions = await this.dimensionsRepo.findOne({
       where: { project_id: projectId },
@@ -108,16 +116,20 @@ export class ProjectsService {
       dimensions.length_cm = dto.length_cm;
       dimensions.width_cm = dto.width_cm;
       dimensions.height_cm = dto.height_cm;
-      dimensions.source = DimensionSource.MANUAL;
-      dimensions.confidence_score = ConfidenceScore.HIGH;
+      dimensions.source = source;
+      dimensions.confidence_score = confidence;
+      if (overrides?.raw_cv_output_json !== undefined) {
+        dimensions.raw_cv_output_json = overrides.raw_cv_output_json;
+      }
     } else {
       dimensions = this.dimensionsRepo.create({
         project_id: projectId,
         length_cm: dto.length_cm,
         width_cm: dto.width_cm,
         height_cm: dto.height_cm,
-        source: DimensionSource.MANUAL,
-        confidence_score: ConfidenceScore.HIGH,
+        source,
+        confidence_score: confidence,
+        raw_cv_output_json: overrides?.raw_cv_output_json ?? null,
       });
     }
 

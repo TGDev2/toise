@@ -274,6 +274,7 @@ describe('ProjectsService', () => {
         height_cm: 250,
         source: DimensionSource.MANUAL,
         confidence_score: ConfidenceScore.HIGH,
+        raw_cv_output_json: null,
       });
       expect(dimensionsRepoMock.save).toHaveBeenCalled();
     });

@@ -19,6 +19,7 @@ export enum DimensionSource {
   MANUAL = 'manual',
   SCAN = 'scan',
   IMPORT = 'import',
+  CV = 'cv',
 }
 
 @Entity('room_dimensions')
@@ -43,6 +44,9 @@ export class RoomDimensions {
 
   @Column({ type: 'varchar', length: 10, default: DimensionSource.MANUAL })
   source!: DimensionSource;
+
+  @Column({ type: 'jsonb', nullable: true, default: null })
+  raw_cv_output_json!: Record<string, unknown> | null;
 
   @CreateDateColumn({ type: 'timestamptz' })
   created_at!: Date;
