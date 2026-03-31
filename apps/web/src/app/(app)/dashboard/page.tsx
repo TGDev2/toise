@@ -4,7 +4,8 @@ import { GuestPromptModal } from '@/components/auth/GuestPromptModal';
 import { DeleteConfirmDialog } from '@/components/dashboard/DeleteConfirmDialog';
 import { ProjectCard } from '@/components/dashboard/ProjectCard';
 import { useAuth } from '@/contexts/AuthContext';
-import { apiDelete, apiGet, apiPost } from '@/lib/api';
+import { useFeatureGates } from '@/contexts/FeatureGateContext';
+import { apiDelete, apiGet, apiPost, ApiError } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import type { PaginatedProjects, ProjectSummary } from '@/lib/project-types';
 import { WORK_TYPE_LABELS } from '@/lib/project-types';
@@ -53,6 +54,7 @@ function formatProjectDate(value: string): string {
 
 export default function DashboardPage() {
   const { appUser, isGuest, isLoading, logout, deleteAccount } = useAuth();
+  const { showPaywall } = useFeatureGates();
   const router = useRouter();
 
   // Guest state (localStorage)
@@ -167,6 +169,10 @@ export default function DashboardPage() {
       setGuestProjects(nextProjects);
       router.push(`/projects/${project.id}/dimensions`);
     } catch (err: unknown) {
+      if (err instanceof ApiError && err.code === 'PROJECT_LIMIT_REACHED') {
+        showPaywall('unlimited_projects');
+        return;
+      }
       setError(getErrorMessage(err, 'Impossible de creer le projet'));
     }
   };

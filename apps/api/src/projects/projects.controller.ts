@@ -16,7 +16,10 @@ import type { DecodedIdToken } from 'firebase-admin/auth';
 import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
 import { UsersService } from '../users/users.service';
+import type { User } from '../users/entities/user.entity';
+import { SubscriptionTier } from '../users/entities/user.entity';
 import { ProjectsService } from './projects.service';
+import { FeatureGatesService } from '../feature-gates/feature-gates.service';
 import { CvCorrectionService } from '../analysis/cv-correction.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateDimensionsDto } from './dto/update-dimensions.dto';
@@ -32,15 +35,16 @@ export class ProjectsController {
   constructor(
     private readonly projectsService: ProjectsService,
     private readonly usersService: UsersService,
+    private readonly featureGatesService: FeatureGatesService,
     private readonly cvCorrectionService: CvCorrectionService,
   ) {}
 
-  private async resolveUserId(firebaseUser: DecodedIdToken): Promise<string> {
+  private async resolveUser(firebaseUser: DecodedIdToken): Promise<User> {
     const user = await this.usersService.findByFirebaseUid(firebaseUser.uid);
     if (!user) {
       throw new Error('User not found');
     }
-    return user.id;
+    return user;
   }
 
   @Post()
@@ -48,8 +52,12 @@ export class ProjectsController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Body() dto: CreateProjectDto,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
-    const project = await this.projectsService.createProject(userId, dto);
+    const user = await this.resolveUser(firebaseUser);
+    const project = await this.projectsService.createProject(
+      user.id,
+      dto,
+      user.subscription_tier,
+    );
     return {
       id: project.id,
       name: project.name,
@@ -65,8 +73,22 @@ export class ProjectsController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Query() query: ListProjectsQueryDto,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
-    const { data, meta } = await this.projectsService.findByUser(userId, query);
+    const user = await this.resolveUser(firebaseUser);
+    const { data, meta } = await this.projectsService.findByUser(user.id, query);
+
+    // Determine writable project IDs for free-tier users
+    const unlimitedAllowed = await this.featureGatesService.isFeatureAllowed(
+      'unlimited_projects',
+      user.subscription_tier,
+    );
+    let writableIds: Set<string> | null = null;
+    if (!unlimitedAllowed && data.length > 0) {
+      const topProjects = await this.projectsService.getWritableProjectIds(
+        user.id,
+      );
+      writableIds = new Set(topProjects);
+    }
+
     return {
       data: data.map((p) => ({
         id: p.id,
@@ -89,6 +111,7 @@ export class ProjectsController {
             height_cm: o.height_cm,
             count: o.count,
           })) ?? [],
+        is_read_only: writableIds ? !writableIds.has(p.id) : false,
         created_at: p.created_at,
         updated_at: p.updated_at,
       })),
@@ -102,8 +125,8 @@ export class ProjectsController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
-    await this.projectsService.softDeleteProject(id, userId);
+    const user = await this.resolveUser(firebaseUser);
+    await this.projectsService.softDeleteProject(id, user.id);
   }
 
   @Get('work-types')
@@ -116,8 +139,13 @@ export class ProjectsController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
-    const project = await this.projectsService.findOneByUser(id, userId);
+    const user = await this.resolveUser(firebaseUser);
+    const project = await this.projectsService.findOneByUser(id, user.id);
+    const isReadOnly = !(await this.projectsService.isProjectWritable(
+      id,
+      user.id,
+      user.subscription_tier,
+    ));
     return {
       id: project.id,
       name: project.name,
@@ -139,6 +167,7 @@ export class ProjectsController {
           height_cm: o.height_cm,
           count: o.count,
         })) ?? [],
+      is_read_only: isReadOnly,
       created_at: project.created_at,
       updated_at: project.updated_at,
     };
@@ -150,15 +179,16 @@ export class ProjectsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateDimensionsDto,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
+    const user = await this.resolveUser(firebaseUser);
+    await this.projectsService.ensureProjectWritable(id, user.id, user.subscription_tier);
 
     // Check if current dimensions are CV-sourced for correction logging
-    const currentDims = await this.projectsService.getDimensions(id, userId);
+    const currentDims = await this.projectsService.getDimensions(id, user.id);
     const wasCvSourced = currentDims?.source === DimensionSource.CV;
 
     const dimensions = await this.projectsService.updateDimensions(
       id,
-      userId,
+      user.id,
       dto,
     );
 
@@ -188,8 +218,8 @@ export class ProjectsController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
-    const dimensions = await this.projectsService.getDimensions(id, userId);
+    const user = await this.resolveUser(firebaseUser);
+    const dimensions = await this.projectsService.getDimensions(id, user.id);
     if (!dimensions) {
       return null;
     }
@@ -208,8 +238,9 @@ export class ProjectsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CreateOpeningDto,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
-    const opening = await this.projectsService.addOpening(id, userId, dto);
+    const user = await this.resolveUser(firebaseUser);
+    await this.projectsService.ensureProjectWritable(id, user.id, user.subscription_tier);
+    const opening = await this.projectsService.addOpening(id, user.id, dto);
     return {
       id: opening.id,
       type: opening.type,
@@ -224,8 +255,8 @@ export class ProjectsController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
-    const openings = await this.projectsService.getOpenings(id, userId);
+    const user = await this.resolveUser(firebaseUser);
+    const openings = await this.projectsService.getOpenings(id, user.id);
     return openings.map((o) => ({
       id: o.id,
       type: o.type,
@@ -242,10 +273,11 @@ export class ProjectsController {
     @Param('openingId', ParseUUIDPipe) openingId: string,
     @Body() dto: UpdateOpeningDto,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
+    const user = await this.resolveUser(firebaseUser);
+    await this.projectsService.ensureProjectWritable(id, user.id, user.subscription_tier);
     const opening = await this.projectsService.updateOpening(
       id,
-      userId,
+      user.id,
       openingId,
       dto,
     );
@@ -265,8 +297,9 @@ export class ProjectsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Param('openingId', ParseUUIDPipe) openingId: string,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
-    await this.projectsService.removeOpening(id, userId, openingId);
+    const user = await this.resolveUser(firebaseUser);
+    await this.projectsService.ensureProjectWritable(id, user.id, user.subscription_tier);
+    await this.projectsService.removeOpening(id, user.id, openingId);
   }
 
   @Post(':id/work-items')
@@ -275,8 +308,9 @@ export class ProjectsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: SaveWorkItemsDto,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
-    const items = await this.projectsService.saveWorkItems(id, userId, dto);
+    const user = await this.resolveUser(firebaseUser);
+    await this.projectsService.ensureProjectWritable(id, user.id, user.subscription_tier);
+    const items = await this.projectsService.saveWorkItems(id, user.id, dto);
     return items.map((item) => ({
       id: item.id,
       work_type: {
@@ -297,8 +331,8 @@ export class ProjectsController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
-    const items = await this.projectsService.getWorkItems(id, userId);
+    const user = await this.resolveUser(firebaseUser);
+    const items = await this.projectsService.getWorkItems(id, user.id);
     return items.map((item) => ({
       id: item.id,
       work_type: {

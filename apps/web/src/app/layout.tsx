@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { FeatureGateProvider } from '@/contexts/FeatureGateContext';
+import { PaywallModal } from '@/components/paywall/PaywallModal';
 import { CookieConsent } from '@/components/CookieConsent';
 import './globals.css';
 
@@ -18,8 +20,11 @@ export default function RootLayout({
     <html lang="fr" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
         <AuthProvider>
-          {children}
-          <CookieConsent />
+          <FeatureGateProvider>
+            {children}
+            <PaywallModal />
+            <CookieConsent />
+          </FeatureGateProvider>
         </AuthProvider>
       </body>
     </html>

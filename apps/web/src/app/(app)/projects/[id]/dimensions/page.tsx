@@ -1,6 +1,8 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeatureGate } from '@/hooks/useFeatureGate';
+import { ProBadge } from '@/components/paywall/ProBadge';
 import { apiGet, apiPost, apiPut, apiDelete } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import type { Opening } from '@/lib/surface';
@@ -58,6 +60,7 @@ export default function DimensionsPage() {
   const [showManualForm, setShowManualForm] = useState(false);
 
   const analysis = useAnalysis(projectId);
+  const cvGate = useFeatureGate('cv_analysis');
 
   useEffect(() => {
     if (isLoading) return;
@@ -127,18 +130,19 @@ export default function DimensionsPage() {
     load();
   }, [appUser, isGuest, isLoading, projectId, router]);
 
-  // Auto-trigger analysis from ?analyze=true query param
+  // Auto-trigger analysis from ?analyze=true query param (only if CV allowed)
   useEffect(() => {
     if (
       loaded &&
       hasPhotos &&
+      cvGate.allowed &&
       searchParams.get('analyze') === 'true' &&
       analysis.status === 'idle' &&
       !initialDims
     ) {
       analysis.startAnalysis();
     }
-  }, [loaded, hasPhotos, searchParams, analysis, initialDims]);
+  }, [loaded, hasPhotos, cvGate.allowed, searchParams, analysis, initialDims]);
 
   const handleAcceptCvDimensions = useCallback(() => {
     if (analysis.dimensions) {
@@ -234,6 +238,7 @@ export default function DimensionsPage() {
   }
 
   // Determine if we should show the analysis section
+  const canUseCv = cvGate.allowed;
   const showAnalysis =
     appUser && hasPhotos && !showManualForm && !initialDims;
   const showResult =
@@ -264,7 +269,7 @@ export default function DimensionsPage() {
       )}
 
       {/* CV Analysis Section */}
-      {showAnalysis && (
+      {showAnalysis && canUseCv && (
         <div className="mb-6">
           {analysis.status === 'no_reference' ? (
             <ReferenceObjectPrompt
@@ -280,6 +285,43 @@ export default function DimensionsPage() {
               onManualFallback={handleManualFallback}
             />
           )}
+        </div>
+      )}
+
+      {/* CV Analysis Gated (Pro feature) */}
+      {showAnalysis && !canUseCv && (
+        <div className="mb-6">
+          <div className="rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-semibold text-stone-950">
+                    Analyse automatique
+                  </h3>
+                  <ProBadge />
+                </div>
+                <p className="mt-2 text-sm text-stone-600">
+                  Détectez automatiquement les dimensions de votre pièce à partir de vos photos.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => cvGate.guardAction(() => {})}
+                className="rounded-full bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white opacity-75 hover:-translate-y-0.5"
+              >
+                Analyser les photos
+              </button>
+              <button
+                type="button"
+                onClick={handleManualFallback}
+                className="rounded-full border border-stone-300 px-5 py-2.5 text-sm font-semibold text-stone-700 hover:-translate-y-0.5 hover:bg-white"
+              >
+                Saisie manuelle
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

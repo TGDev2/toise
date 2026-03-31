@@ -11,6 +11,7 @@ export interface ProjectSummary {
     width_cm: number;
     height_cm: number;
   } | null;
+  is_read_only?: boolean;
   created_at: string;
   updated_at: string;
 }

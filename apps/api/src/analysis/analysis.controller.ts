@@ -8,6 +8,8 @@ import {
 } from '@nestjs/common';
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
+import { FeatureGateGuard } from '../feature-gates/guards/feature-gate.guard';
+import { RequireFeature } from '../feature-gates/decorators/require-feature.decorator';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
 import { UsersService } from '../users/users.service';
 import { AnalysisService } from './analysis.service';
@@ -33,6 +35,8 @@ export class AnalysisController {
   }
 
   @Post(':id/analyze')
+  @UseGuards(FeatureGateGuard)
+  @RequireFeature('cv_analysis')
   async startAnalysis(
     @Param('id', ParseUUIDPipe) projectId: string,
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,

@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, In, Repository } from 'typeorm';
+import { FindOptionsWhere, In, IsNull, Repository } from 'typeorm';
 import { Project, ProjectStatus } from './entities/project.entity';
 import {
   ConfidenceScore,
@@ -15,6 +15,8 @@ import {
 import { Opening, OpeningSource } from './entities/opening.entity';
 import { WorkType } from './entities/work-type.entity';
 import { ProjectWorkItem } from './entities/project-work-item.entity';
+import { SubscriptionTier } from '../users/entities/user.entity';
+import { FeatureGatesService } from '../feature-gates/feature-gates.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateDimensionsDto } from './dto/update-dimensions.dto';
 import { CreateOpeningDto } from './dto/create-opening.dto';
@@ -24,6 +26,8 @@ import { ListProjectsQueryDto } from './dto/list-projects-query.dto';
 
 @Injectable()
 export class ProjectsService {
+  private readonly FREE_TIER_PROJECT_LIMIT = 2;
+
   constructor(
     @InjectRepository(Project)
     private readonly projectsRepo: Repository<Project>,
@@ -35,9 +39,31 @@ export class ProjectsService {
     private readonly workTypesRepo: Repository<WorkType>,
     @InjectRepository(ProjectWorkItem)
     private readonly workItemsRepo: Repository<ProjectWorkItem>,
+    private readonly featureGatesService: FeatureGatesService,
   ) {}
 
-  async createProject(userId: string, dto: CreateProjectDto): Promise<Project> {
+  async createProject(
+    userId: string,
+    dto: CreateProjectDto,
+    userTier: SubscriptionTier = SubscriptionTier.FREE,
+  ): Promise<Project> {
+    const unlimitedAllowed = await this.featureGatesService.isFeatureAllowed(
+      'unlimited_projects',
+      userTier,
+    );
+
+    if (!unlimitedAllowed) {
+      const count = await this.countActiveProjects(userId);
+      if (count >= this.FREE_TIER_PROJECT_LIMIT) {
+        throw new ForbiddenException({
+          message: 'Limite de projets atteinte pour le forfait gratuit',
+          error: 'PROJECT_LIMIT_REACHED',
+          limit: this.FREE_TIER_PROJECT_LIMIT,
+          current_count: count,
+        });
+      }
+    }
+
     const project = this.projectsRepo.create({
       user_id: userId,
       name: dto.name,
@@ -45,6 +71,57 @@ export class ProjectsService {
       work_type: dto.work_type,
     });
     return this.projectsRepo.save(project);
+  }
+
+  async countActiveProjects(userId: string): Promise<number> {
+    return this.projectsRepo.count({
+      where: { user_id: userId, deleted_at: IsNull() },
+    });
+  }
+
+  async isProjectWritable(
+    projectId: string,
+    userId: string,
+    userTier: SubscriptionTier,
+  ): Promise<boolean> {
+    const unlimitedAllowed = await this.featureGatesService.isFeatureAllowed(
+      'unlimited_projects',
+      userTier,
+    );
+    if (unlimitedAllowed) return true;
+
+    const topProjects = await this.projectsRepo.find({
+      where: { user_id: userId, deleted_at: IsNull() },
+      order: { updated_at: 'DESC' },
+      take: this.FREE_TIER_PROJECT_LIMIT,
+      select: ['id'],
+    });
+
+    return topProjects.some((p) => p.id === projectId);
+  }
+
+  async getWritableProjectIds(userId: string): Promise<string[]> {
+    const topProjects = await this.projectsRepo.find({
+      where: { user_id: userId, deleted_at: IsNull() },
+      order: { updated_at: 'DESC' },
+      take: this.FREE_TIER_PROJECT_LIMIT,
+      select: ['id'],
+    });
+    return topProjects.map((p) => p.id);
+  }
+
+  async ensureProjectWritable(
+    projectId: string,
+    userId: string,
+    userTier: SubscriptionTier,
+  ): Promise<void> {
+    const writable = await this.isProjectWritable(projectId, userId, userTier);
+    if (!writable) {
+      throw new ForbiddenException({
+        message: 'Ce projet est en lecture seule. Passez à Pro pour modifier tous vos projets.',
+        error: 'PROJECT_READ_ONLY',
+      });
+    }
   }
 
   async findByUser(

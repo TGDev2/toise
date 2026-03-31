@@ -31,14 +31,25 @@ export function ProjectCard({ project, onDelete }: ProjectCardProps) {
     project.work_type && WORK_TYPE_LABELS[project.work_type]
       ? WORK_TYPE_LABELS[project.work_type]
       : 'Projet';
+  const isReadOnly = project.is_read_only === true;
 
   return (
-    <article className="rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
+    <article className={`rounded-[2rem] border bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)] ${isReadOnly ? 'border-stone-300 opacity-75' : 'border-stone-200'}`}>
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
-            {workTypeLabel}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
+              {workTypeLabel}
+            </p>
+            {isReadOnly && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-600">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3">
+                  <path fillRule="evenodd" d="M8 1a4.5 4.5 0 0 0-4.5 4.5V7H3a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-.5V5.5A4.5 4.5 0 0 0 8 1Zm2.5 6V5.5a2.5 2.5 0 0 0-5 0V7h5Z" clipRule="evenodd" />
+                </svg>
+                Lecture seule
+              </span>
+            )}
+          </div>
           <h2 className="mt-2 text-xl font-semibold text-stone-950">
             {project.name}
           </h2>

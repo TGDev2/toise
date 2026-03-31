@@ -2,6 +2,28 @@ import { getFirebaseAuth } from './firebase';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
+export class ApiError extends Error {
+  code: string | null;
+  details: Record<string, unknown>;
+
+  constructor(
+    message: string,
+    code: string | null = null,
+    details: Record<string, unknown> = {},
+  ) {
+    super(message);
+    this.name = 'ApiError';
+    this.code = code;
+    this.details = details;
+  }
+}
+
+function throwApiError(error: Record<string, unknown>, status: number): never {
+  const message = (error.message as string) ?? `HTTP ${status}`;
+  const code = (error.error as string) ?? null;
+  throw new ApiError(message, code, error);
+}
+
 async function getAuthHeaders(): Promise<HeadersInit> {
   const user = typeof window !== 'undefined' ? getFirebaseAuth().currentUser : null;
   if (!user) return { 'Content-Type': 'application/json' };
@@ -23,7 +45,7 @@ export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: 'Request failed' }));
-    throw new Error(error.message ?? `HTTP ${res.status}`);
+    throwApiError(error, res.status);
   }
 
   if (res.status === 204) return undefined as T;
@@ -36,7 +58,7 @@ export async function apiGet<T>(path: string): Promise<T> {
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: 'Request failed' }));
-    throw new Error(error.message ?? `HTTP ${res.status}`);
+    throwApiError(error, res.status);
   }
 
   return res.json();
@@ -52,7 +74,7 @@ export async function apiPut<T>(path: string, body: unknown): Promise<T> {
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: 'Request failed' }));
-    throw new Error(error.message ?? `HTTP ${res.status}`);
+    throwApiError(error, res.status);
   }
 
   if (res.status === 204) return undefined as T;
@@ -69,7 +91,7 @@ export async function apiPatch<T>(path: string, body?: unknown): Promise<T> {
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: 'Request failed' }));
-    throw new Error(error.message ?? `HTTP ${res.status}`);
+    throwApiError(error, res.status);
   }
 
   if (res.status === 204) return undefined as T;
@@ -127,7 +149,7 @@ export async function apiDownload(path: string, filename: string): Promise<void>
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: 'Download failed' }));
-    throw new Error(error.message ?? `HTTP ${res.status}`);
+    throwApiError(error, res.status);
   }
 
   const blob = await res.blob();
@@ -150,6 +172,6 @@ export async function apiDelete(path: string): Promise<void> {
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: 'Request failed' }));
-    throw new Error(error.message ?? `HTTP ${res.status}`);
+    throwApiError(error, res.status);
   }
 }
