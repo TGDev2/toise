@@ -57,6 +57,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   deleteAccount: () => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
+  syncWithBackend: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -251,6 +252,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         deleteAccount,
         forgotPassword,
+        syncWithBackend,
       }}
     >
       {children}

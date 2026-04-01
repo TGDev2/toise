@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User, AuthProvider } from './entities/user.entity';
+import { User, AuthProvider, SubscriptionTier } from './entities/user.entity';
 
 @Injectable()
 export class UsersService {
@@ -56,6 +56,13 @@ export class UsersService {
     // For now this is a placeholder for the guest merge flow.
     // await this.projectsRepo.update({ user_id: fromUserId }, { user_id: toUserId });
     return Promise.resolve();
+  }
+
+  async updateSubscriptionTier(
+    userId: string,
+    tier: SubscriptionTier,
+  ): Promise<void> {
+    await this.usersRepo.update(userId, { subscription_tier: tier });
   }
 
   async deleteUser(id: string): Promise<void> {

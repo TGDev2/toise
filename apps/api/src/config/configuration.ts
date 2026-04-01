@@ -17,6 +17,11 @@ export default () => ({
     url: process.env.CV_SERVICE_URL ?? 'http://localhost:8000',
     timeoutMs: parseInt(process.env.CV_SERVICE_TIMEOUT_MS ?? '60000', 10),
   },
+  stripe: {
+    secretKey: process.env.STRIPE_SECRET_KEY,
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+    proPriceId: process.env.STRIPE_PRO_PRICE_ID,
+  },
   storage: {
     provider: process.env.STORAGE_PROVIDER ?? 'local',
     localPath: process.env.STORAGE_LOCAL_PATH ?? './uploads',

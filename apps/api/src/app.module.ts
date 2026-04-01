@@ -15,6 +15,7 @@ import { PhotosModule } from './photos/photos.module';
 import { AnalysisModule } from './analysis/analysis.module';
 import { FeatureGatesModule } from './feature-gates/feature-gates.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import configuration from './config/configuration';
 
 @Module({
@@ -50,6 +51,7 @@ import configuration from './config/configuration';
     AnalysisModule,
     FeatureGatesModule,
     AnalyticsModule,
+    SubscriptionsModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

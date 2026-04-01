@@ -5,6 +5,7 @@ import { DeleteConfirmDialog } from '@/components/dashboard/DeleteConfirmDialog'
 import { ProjectCard } from '@/components/dashboard/ProjectCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeatureGates } from '@/contexts/FeatureGateContext';
+import { useSubscription } from '@/hooks/useSubscription';
 import { apiDelete, apiGet, apiPost, ApiError } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import type { PaginatedProjects, ProjectSummary } from '@/lib/project-types';
@@ -55,6 +56,7 @@ function formatProjectDate(value: string): string {
 export default function DashboardPage() {
   const { appUser, isGuest, isLoading, logout, deleteAccount } = useAuth();
   const { showPaywall } = useFeatureGates();
+  const { subscription, openCheckout, openPortal } = useSubscription();
   const router = useRouter();
 
   // Guest state (localStorage)
@@ -260,6 +262,129 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Subscription Card */}
+      {appUser && (
+        <div className="mt-6 rounded-[2rem] border border-stone-200 bg-white/85 px-6 py-4 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
+          {(() => {
+            const tier = appUser.subscription_tier;
+            const status = subscription?.status;
+
+            if (status === 'past_due') {
+              return (
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-red-700">
+                      Probleme de paiement
+                    </p>
+                    <p className="mt-1 text-xs text-red-600">
+                      Mettez a jour votre moyen de paiement pour conserver vos
+                      fonctionnalites Pro.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={openPortal}
+                    className="shrink-0 rounded-full bg-red-600 px-5 py-2 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-red-700"
+                  >
+                    Mettre a jour
+                  </button>
+                </div>
+              );
+            }
+
+            if (status === 'trialing') {
+              const trialEnd = subscription?.trial_end
+                ? new Intl.DateTimeFormat('fr-FR', {
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric',
+                  }).format(new Date(subscription.trial_end))
+                : null;
+              return (
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-stone-900">
+                      Essai Pro
+                    </p>
+                    {trialEnd && (
+                      <p className="mt-1 text-xs text-stone-500">
+                        Fin de l&apos;essai le {trialEnd}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={openPortal}
+                    className="shrink-0 rounded-full border border-stone-300 px-5 py-2 text-sm font-semibold text-stone-700 hover:-translate-y-0.5 hover:bg-white"
+                  >
+                    Gerer mon abonnement
+                  </button>
+                </div>
+              );
+            }
+
+            if (tier === 'pro' && status === 'active') {
+              const nextBilling = subscription?.current_period_end
+                ? new Intl.DateTimeFormat('fr-FR', {
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric',
+                  }).format(new Date(subscription.current_period_end))
+                : null;
+              return (
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-stone-900">
+                      Plan Pro
+                      {subscription?.cancel_at_period_end && (
+                        <span className="ml-2 text-xs font-normal text-amber-600">
+                          (annulation prevue)
+                        </span>
+                      )}
+                    </p>
+                    {nextBilling && (
+                      <p className="mt-1 text-xs text-stone-500">
+                        {subscription?.cancel_at_period_end
+                          ? `Actif jusqu'au ${nextBilling}`
+                          : `Prochain prelevement le ${nextBilling}`}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={openPortal}
+                    className="shrink-0 rounded-full border border-stone-300 px-5 py-2 text-sm font-semibold text-stone-700 hover:-translate-y-0.5 hover:bg-white"
+                  >
+                    Gerer mon abonnement
+                  </button>
+                </div>
+              );
+            }
+
+            // Free tier
+            return (
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-stone-900">
+                    Plan gratuit
+                  </p>
+                  <p className="mt-1 text-xs text-stone-500">
+                    Passez a Pro pour debloquer toutes les fonctionnalites.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={openCheckout}
+                  className="shrink-0 rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-[var(--accent-strong)]"
+                >
+                  Passer a Pro
+                </button>
+              </div>
+            );
+          })()}
+        </div>
+      )}
 
       {/* Feedback & Error */}
       {feedback && (

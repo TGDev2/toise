@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useFeatureGates } from '@/contexts/FeatureGateContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAnalytics } from '@/hooks/useAnalytics';
+import { apiPost } from '@/lib/api';
 
 const PRO_BENEFITS = [
   {
@@ -58,12 +59,24 @@ export function PaywallModal() {
 
   if (!paywallFeature) return null;
 
-  const handleCtaClick = () => {
+  const [ctaLoading, setCtaLoading] = useState(false);
+  const [ctaError, setCtaError] = useState('');
+
+  const handleCtaClick = async () => {
     track('paywall_clicked', {
       trigger_feature: paywallFeature,
     });
-    // Payment integration will be added here
-    closePaywall();
+    setCtaLoading(true);
+    setCtaError('');
+    try {
+      const { url } = await apiPost<{ url: string }>('/subscriptions/checkout');
+      window.location.href = url;
+    } catch (err) {
+      setCtaError(
+        err instanceof Error ? err.message : 'Erreur lors de la souscription.',
+      );
+      setCtaLoading(false);
+    }
   };
 
   return (
@@ -132,17 +145,32 @@ export function PaywallModal() {
           ))}
         </div>
 
+        {/* Price */}
+        <p className="mb-4 text-center text-sm text-stone-600">
+          <span className="text-lg font-bold text-stone-900">9,99 &euro;</span>
+          <span className="text-stone-500"> /mois</span>
+        </p>
+
+        {/* Error */}
+        {ctaError && (
+          <p className="mb-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-center text-xs text-red-700">
+            {ctaError}
+          </p>
+        )}
+
         {/* CTA */}
         <button
+          type="button"
           onClick={handleCtaClick}
-          className="w-full rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[var(--accent-strong)] hover:shadow-md"
+          disabled={ctaLoading}
+          className="w-full rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[var(--accent-strong)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Essai gratuit de 7 jours
+          {ctaLoading ? 'Redirection...' : 'Essai gratuit de 7 jours'}
         </button>
 
         {/* Secondary */}
         <p className="mt-3 text-center text-xs text-stone-400">
-          Annulable à tout moment. Sans engagement.
+          Annulable a tout moment. Sans engagement.
         </p>
       </div>
     </div>
