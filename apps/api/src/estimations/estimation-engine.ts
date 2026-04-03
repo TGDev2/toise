@@ -52,7 +52,7 @@ export interface SelectedPackaging {
 }
 
 const CM2_TO_M2 = 10_000;
-const DEFAULT_WASTE_PERCENT = 10;
+export const DEFAULT_WASTE_PERCENT = 10;
 const DEFAULT_COATS = 2;
 
 @Injectable()

@@ -3,9 +3,11 @@ import {
   IsArray,
   IsBoolean,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -20,6 +22,16 @@ export class MaterialItemUpdateDto {
   @IsInt()
   @Min(0)
   units_needed!: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  real_unit_price?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  store_name?: string;
 }
 
 export class ComplementaryItemUpdateDto {
@@ -34,6 +46,16 @@ export class ComplementaryItemUpdateDto {
   @IsOptional()
   @IsBoolean()
   is_removed?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  real_unit_price?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  store_name?: string;
 }
 
 export class UpdateShoppingListDto {

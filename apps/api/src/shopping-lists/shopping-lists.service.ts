@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -10,12 +11,17 @@ import {
   ShoppingListData,
   ShoppingListMaterialItem,
   ShoppingListComplementaryItem,
+  BudgetSummary,
+  CategoryBreakdown,
 } from './entities/shopping-list.entity';
 import { ComplementaryMaterial } from './entities/complementary-material.entity';
 import { WorkType } from '../projects/entities/work-type.entity';
 import { EstimationsService } from '../estimations/estimations.service';
 import { ProjectsService } from '../projects/projects.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { UpdateShoppingListDto } from './dto/update-shopping-list.dto';
+import { DEFAULT_WASTE_PERCENT } from '../estimations/estimation-engine';
+import { ProjectStatus } from '../projects/entities/project.entity';
 import {
   ComplementaryContext,
   computeComplementaryQuantity,
@@ -33,6 +39,7 @@ export class ShoppingListsService {
     private readonly workTypeRepo: Repository<WorkType>,
     private readonly estimationsService: EstimationsService,
     private readonly projectsService: ProjectsService,
+    private readonly analyticsService: AnalyticsService,
   ) {}
 
   async getOrGenerate(
@@ -184,6 +191,12 @@ export class ShoppingListsService {
           item.units_needed = update.units_needed;
           item.is_manually_adjusted =
             update.units_needed !== item.original_units_needed;
+          if (update.real_unit_price !== undefined) {
+            item.real_unit_price = update.real_unit_price;
+          }
+          if (update.store_name !== undefined) {
+            item.store_name = update.store_name;
+          }
         }
       }
     }
@@ -202,6 +215,12 @@ export class ShoppingListsService {
           if (update.is_removed !== undefined) {
             item.is_removed = update.is_removed;
           }
+          if (update.real_unit_price !== undefined) {
+            item.real_unit_price = update.real_unit_price;
+          }
+          if (update.store_name !== undefined) {
+            item.store_name = update.store_name;
+          }
         }
       }
     }
@@ -219,9 +238,204 @@ export class ShoppingListsService {
   ): Promise<{ shoppingList: ShoppingList; latestEstimationId: string }> {
     await this.projectsService.findOneByUser(projectId, userId);
 
+    // Preserve existing prices before regeneration
+    const existing = await this.shoppingListRepo.findOne({
+      where: { project_id: projectId },
+    });
+
+    const priceMap = new Map<string, { real_unit_price?: number | null; store_name?: string | null }>();
+    if (existing) {
+      for (const item of existing.items_json.material_items) {
+        if (item.real_unit_price != null || item.store_name != null) {
+          priceMap.set(`${item.material_id}:${item.work_item_id}`, {
+            real_unit_price: item.real_unit_price,
+            store_name: item.store_name,
+          });
+        }
+      }
+    }
+
     const shoppingList = await this.generate(projectId, userId);
 
+    // Restore prices on matching items
+    if (priceMap.size > 0) {
+      let changed = false;
+      for (const item of shoppingList.items_json.material_items) {
+        const saved = priceMap.get(`${item.material_id}:${item.work_item_id}`);
+        if (saved) {
+          item.real_unit_price = saved.real_unit_price;
+          item.store_name = saved.store_name;
+          changed = true;
+        }
+      }
+      if (changed) {
+        await this.shoppingListRepo.save(shoppingList);
+      }
+    }
+
     return { shoppingList, latestEstimationId: shoppingList.estimation_id };
+  }
+
+  async getBudgetSummary(
+    projectId: string,
+    userId: string,
+  ): Promise<BudgetSummary> {
+    await this.projectsService.findOneByUser(projectId, userId);
+
+    const shoppingList = await this.shoppingListRepo.findOne({
+      where: { project_id: projectId },
+    });
+
+    if (!shoppingList) {
+      throw new NotFoundException('No shopping list found for this project.');
+    }
+
+    const estimation = await this.estimationsService.findById(
+      shoppingList.estimation_id,
+    );
+
+    return this.computeBudgetSummary(shoppingList, estimation.items_json);
+  }
+
+  async finalizeBudgetSummary(
+    projectId: string,
+    userId: string,
+  ): Promise<BudgetSummary> {
+    await this.projectsService.findOneByUser(projectId, userId);
+
+    const shoppingList = await this.shoppingListRepo.findOne({
+      where: { project_id: projectId },
+    });
+
+    if (!shoppingList) {
+      throw new NotFoundException('No shopping list found for this project.');
+    }
+
+    // Validate all material items have prices
+    const unpricedMaterials = shoppingList.items_json.material_items.filter(
+      (item) => item.real_unit_price == null,
+    );
+    if (unpricedMaterials.length > 0) {
+      throw new BadRequestException(
+        `${unpricedMaterials.length} article(s) n'ont pas encore de prix reel.`,
+      );
+    }
+
+    const estimation = await this.estimationsService.findById(
+      shoppingList.estimation_id,
+    );
+
+    const summary = this.computeBudgetSummary(
+      shoppingList,
+      estimation.items_json,
+    );
+
+    shoppingList.budget_summary_json = summary;
+    await this.shoppingListRepo.save(shoppingList);
+
+    await this.projectsService.updateStatus(projectId, ProjectStatus.COMPLETED);
+
+    this.analyticsService.track('budget_tracked', userId, {
+      project_id: projectId,
+      savings_amount: summary.savings_amount,
+      savings_percent: summary.savings_percent,
+    });
+
+    return summary;
+  }
+
+  private computeBudgetSummary(
+    shoppingList: ShoppingList,
+    estimationItems: { material_id: string; work_item_id: string; theoretical_qty: number; packaging_qty_per_unit: number }[],
+  ): BudgetSummary {
+    const CATEGORY_LABELS: Record<string, string> = {
+      painting: 'Peinture',
+      tiling: 'Carrelage',
+      flooring: 'Parquet / Sol',
+      partition: 'Cloison',
+      wall_covering: 'Revêtement mural',
+    };
+
+    // Build lookup from estimation items for brute quantity computation
+    const estimationMap = new Map<string, { theoretical_qty: number; packaging_qty_per_unit: number }>();
+    for (const item of estimationItems) {
+      estimationMap.set(`${item.material_id}:${item.work_item_id}`, {
+        theoretical_qty: item.theoretical_qty,
+        packaging_qty_per_unit: item.packaging_qty_per_unit,
+      });
+    }
+
+    const categoryTotals = new Map<string, { real_cost: number; brute_cost: number }>();
+    let totalRealCost = 0;
+    let totalBruteCost = 0;
+    let itemsPriced = 0;
+
+    const materialItems = shoppingList.items_json.material_items;
+    const complementaryItems = shoppingList.items_json.complementary_items.filter(
+      (c) => !c.is_removed,
+    );
+
+    for (const item of materialItems) {
+      if (item.real_unit_price == null) continue;
+      itemsPriced++;
+
+      const realCost = item.real_unit_price * item.units_needed;
+      totalRealCost += realCost;
+
+      // Compute brute cost: what user would have paid with flat 10% waste
+      const est = estimationMap.get(`${item.material_id}:${item.work_item_id}`);
+      let bruteCost = realCost;
+      if (est) {
+        const bruteAdjustedQty = est.theoretical_qty * (1 + DEFAULT_WASTE_PERCENT / 100);
+        const bruteUnitsNeeded = Math.ceil(bruteAdjustedQty / est.packaging_qty_per_unit);
+        bruteCost = item.real_unit_price * bruteUnitsNeeded;
+      }
+      totalBruteCost += bruteCost;
+
+      const cat = item.material_category;
+      const existing = categoryTotals.get(cat) || { real_cost: 0, brute_cost: 0 };
+      existing.real_cost += realCost;
+      existing.brute_cost += bruteCost;
+      categoryTotals.set(cat, existing);
+    }
+
+    // Complementary items contribute to real cost only (no brute concept)
+    for (const item of complementaryItems) {
+      if (item.real_unit_price == null) continue;
+      itemsPriced++;
+      const realCost = item.real_unit_price * item.quantity;
+      totalRealCost += realCost;
+      totalBruteCost += realCost; // same for complementary
+    }
+
+    const itemsTotal = materialItems.length + complementaryItems.length;
+
+    const savingsAmount = Math.round((totalBruteCost - totalRealCost) * 100) / 100;
+    const savingsPercent =
+      totalBruteCost > 0
+        ? Math.round((savingsAmount / totalBruteCost) * 10000) / 100
+        : 0;
+
+    const byCategory: CategoryBreakdown[] = Array.from(
+      categoryTotals.entries(),
+    ).map(([category, totals]) => ({
+      category,
+      label: CATEGORY_LABELS[category] || category,
+      real_cost: Math.round(totals.real_cost * 100) / 100,
+      brute_cost: Math.round(totals.brute_cost * 100) / 100,
+    }));
+
+    return {
+      total_real_cost: Math.round(totalRealCost * 100) / 100,
+      total_brute_cost: Math.round(totalBruteCost * 100) / 100,
+      savings_amount: savingsAmount,
+      savings_percent: savingsPercent,
+      items_priced: itemsPriced,
+      items_total: itemsTotal,
+      is_complete: itemsPriced === itemsTotal,
+      by_category: byCategory,
+      computed_at: new Date().toISOString(),
+    };
   }
 
   async generateShareToken(

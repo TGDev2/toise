@@ -145,6 +145,18 @@ export class EstimationsService {
     return result;
   }
 
+  async findById(estimationId: string): Promise<EstimationResult> {
+    const result = await this.estimationRepo.findOne({
+      where: { id: estimationId },
+    });
+
+    if (!result) {
+      throw new NotFoundException('Estimation not found');
+    }
+
+    return result;
+  }
+
   async getHistory(
     projectId: string,
     userId: string,

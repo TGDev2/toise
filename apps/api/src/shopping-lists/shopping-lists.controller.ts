@@ -14,7 +14,10 @@ import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
 import { UsersService } from '../users/users.service';
 import { ShoppingListsService } from './shopping-lists.service';
 import { ShoppingListResponseDto } from './dto/shopping-list-response.dto';
+import { BudgetSummaryResponseDto } from './dto/budget-summary-response.dto';
 import { UpdateShoppingListDto } from './dto/update-shopping-list.dto';
+import { RequireFeature } from '../feature-gates/decorators/require-feature.decorator';
+import { FeatureGateGuard } from '../feature-gates/guards/feature-gate.guard';
 
 @Controller('projects')
 @UseGuards(FirebaseAuthGuard)
@@ -64,5 +67,35 @@ export class ShoppingListsController {
     const { shoppingList, latestEstimationId } =
       await this.shoppingListsService.regenerate(projectId, userId);
     return ShoppingListResponseDto.fromEntity(shoppingList, latestEstimationId);
+  }
+
+  @Get(':id/shopping-list/budget-summary')
+  @UseGuards(FeatureGateGuard)
+  @RequireFeature('budget_tracking')
+  async getBudgetSummary(
+    @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
+    @Param('id', ParseUUIDPipe) projectId: string,
+  ): Promise<BudgetSummaryResponseDto> {
+    const userId = await this.resolveUserId(firebaseUser);
+    const summary = await this.shoppingListsService.getBudgetSummary(
+      projectId,
+      userId,
+    );
+    return BudgetSummaryResponseDto.fromSummary(summary);
+  }
+
+  @Post(':id/shopping-list/budget-summary/finalize')
+  @UseGuards(FeatureGateGuard)
+  @RequireFeature('budget_tracking')
+  async finalizeBudgetSummary(
+    @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
+    @Param('id', ParseUUIDPipe) projectId: string,
+  ): Promise<BudgetSummaryResponseDto> {
+    const userId = await this.resolveUserId(firebaseUser);
+    const summary = await this.shoppingListsService.finalizeBudgetSummary(
+      projectId,
+      userId,
+    );
+    return BudgetSummaryResponseDto.fromSummary(summary);
   }
 }

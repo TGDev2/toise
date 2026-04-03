@@ -1,20 +1,25 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeatureGates } from '@/contexts/FeatureGateContext';
 import { apiGet, apiPatch, apiPost, apiDownload } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
-import type { ShoppingListResponse } from '@/lib/shopping-list-types';
+import type { ShoppingListResponse, BudgetSummary } from '@/lib/shopping-list-types';
 import { ShoppingListMaterials } from '@/components/shopping-list/ShoppingListMaterials';
 import { ShoppingListComplements } from '@/components/shopping-list/ShoppingListComplements';
 import { ShareLinkPanel } from '@/components/shopping-list/ShareLinkPanel';
+import { BudgetDashboard } from '@/components/shopping-list/BudgetDashboard';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export default function ShoppingListPage() {
   const { appUser, isLoading } = useAuth();
+  const { isFeatureAllowed, showPaywall } = useFeatureGates();
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const projectId = params.id;
+
+  const budgetAllowed = isFeatureAllowed('budget_tracking');
 
   const [data, setData] = useState<ShoppingListResponse | null>(null);
   const [projectName, setProjectName] = useState('');
@@ -24,12 +29,27 @@ export default function ShoppingListPage() {
   const [regenerating, setRegenerating] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [showSharePanel, setShowSharePanel] = useState(false);
+  const [budgetSummary, setBudgetSummary] = useState<BudgetSummary | null>(null);
 
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingUpdatesRef = useRef<{
-    material_items?: { material_id: string; work_item_id: string; units_needed: number }[];
-    complementary_items?: { complementary_material_id: string; quantity?: number; is_removed?: boolean }[];
+    material_items?: { material_id: string; work_item_id: string; units_needed: number; real_unit_price?: number; store_name?: string }[];
+    complementary_items?: { complementary_material_id: string; quantity?: number; is_removed?: boolean; real_unit_price?: number; store_name?: string }[];
   }>({});
+
+  const hasPriceUpdatesRef = useRef(false);
+
+  const loadBudgetSummary = useCallback(async () => {
+    if (!budgetAllowed) return;
+    try {
+      const summary = await apiGet<BudgetSummary>(
+        `/projects/${projectId}/shopping-list/budget-summary`,
+      );
+      setBudgetSummary(summary);
+    } catch {
+      // Budget summary may not exist yet if no prices entered
+    }
+  }, [budgetAllowed, projectId]);
 
   const flushUpdates = useCallback(async () => {
     const updates = pendingUpdatesRef.current;
@@ -37,7 +57,9 @@ export default function ShoppingListPage() {
       return;
     }
 
+    const hadPriceUpdates = hasPriceUpdatesRef.current;
     pendingUpdatesRef.current = {};
+    hasPriceUpdatesRef.current = false;
     setSaving(true);
     try {
       const result = await apiPatch<ShoppingListResponse>(
@@ -45,12 +67,15 @@ export default function ShoppingListPage() {
         updates,
       );
       setData(result);
+      if (hadPriceUpdates) {
+        await loadBudgetSummary();
+      }
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Impossible de sauvegarder'));
     } finally {
       setSaving(false);
     }
-  }, [projectId]);
+  }, [projectId, loadBudgetSummary]);
 
   const scheduleSave = useCallback(() => {
     if (saveTimeoutRef.current) {
@@ -83,6 +108,13 @@ export default function ShoppingListPage() {
 
     load();
   }, [appUser, isLoading, projectId, router]);
+
+  // Load budget summary when data is available
+  useEffect(() => {
+    if (data && budgetAllowed) {
+      loadBudgetSummary();
+    }
+  }, [data, budgetAllowed, loadBudgetSummary]);
 
   const handleUpdateMaterialQty = useCallback(
     (materialId: string, workItemId: string, units: number) => {
@@ -129,6 +161,49 @@ export default function ShoppingListPage() {
       }
     },
     [data, handleUpdateMaterialQty],
+  );
+
+  const handleUpdateMaterialPrice = useCallback(
+    (materialId: string, workItemId: string, price: number, storeName: string) => {
+      // Update local state optimistically
+      setData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          material_items: prev.material_items.map((item) =>
+            item.material_id === materialId && item.work_item_id === workItemId
+              ? { ...item, real_unit_price: price, store_name: storeName }
+              : item,
+          ),
+        };
+      });
+
+      // Queue update — merge with existing pending update for this item
+      const existing = pendingUpdatesRef.current.material_items || [];
+      const idx = existing.findIndex(
+        (u) => u.material_id === materialId && u.work_item_id === workItemId,
+      );
+      if (idx >= 0) {
+        existing[idx].real_unit_price = price;
+        existing[idx].store_name = storeName;
+      } else {
+        // Need to include units_needed for the DTO
+        const currentItem = data?.material_items.find(
+          (m) => m.material_id === materialId && m.work_item_id === workItemId,
+        );
+        existing.push({
+          material_id: materialId,
+          work_item_id: workItemId,
+          units_needed: currentItem?.units_needed ?? 0,
+          real_unit_price: price,
+          store_name: storeName,
+        });
+      }
+      pendingUpdatesRef.current.material_items = existing;
+      hasPriceUpdatesRef.current = true;
+      scheduleSave();
+    },
+    [data, scheduleSave],
   );
 
   const handleUpdateComplementQty = useCallback(
@@ -218,6 +293,41 @@ export default function ShoppingListPage() {
     [scheduleSave],
   );
 
+  const handleUpdateComplementPrice = useCallback(
+    (complementaryMaterialId: string, price: number, storeName: string) => {
+      setData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          complementary_items: prev.complementary_items.map((item) =>
+            item.complementary_material_id === complementaryMaterialId
+              ? { ...item, real_unit_price: price, store_name: storeName }
+              : item,
+          ),
+        };
+      });
+
+      const existing = pendingUpdatesRef.current.complementary_items || [];
+      const idx = existing.findIndex(
+        (u) => u.complementary_material_id === complementaryMaterialId,
+      );
+      if (idx >= 0) {
+        existing[idx].real_unit_price = price;
+        existing[idx].store_name = storeName;
+      } else {
+        existing.push({
+          complementary_material_id: complementaryMaterialId,
+          real_unit_price: price,
+          store_name: storeName,
+        });
+      }
+      pendingUpdatesRef.current.complementary_items = existing;
+      hasPriceUpdatesRef.current = true;
+      scheduleSave();
+    },
+    [scheduleSave],
+  );
+
   const handleDownloadPdf = useCallback(async () => {
     setDownloading(true);
     setError('');
@@ -235,7 +345,7 @@ export default function ShoppingListPage() {
   }, [projectId, projectName]);
 
   const handleRegenerate = useCallback(async () => {
-    if (!confirm('Regenerer la liste ? Les modifications manuelles seront perdues.')) {
+    if (!confirm('Regenerer la liste ? Les modifications manuelles seront perdues (les prix saisis seront conserves).')) {
       return;
     }
     setRegenerating(true);
@@ -252,6 +362,26 @@ export default function ShoppingListPage() {
       setRegenerating(false);
     }
   }, [projectId]);
+
+  const handleFinalizeBudget = useCallback(async () => {
+    if (!confirm('Finaliser le budget ? Le projet sera marque comme termine.')) {
+      return;
+    }
+    setError('');
+    try {
+      const summary = await apiPost<BudgetSummary>(
+        `/projects/${projectId}/shopping-list/budget-summary/finalize`,
+        {},
+      );
+      setBudgetSummary(summary);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Impossible de finaliser le budget'));
+    }
+  }, [projectId]);
+
+  const handleShowPaywall = useCallback(() => {
+    showPaywall('budget_tracking');
+  }, [showPaywall]);
 
   if (isLoading || loading) {
     return (
@@ -359,6 +489,13 @@ export default function ShoppingListPage() {
 
       {data && (
         <>
+          <BudgetDashboard
+            summary={budgetSummary}
+            budgetAllowed={budgetAllowed}
+            onFinalize={handleFinalizeBudget}
+            onShowPaywall={handleShowPaywall}
+          />
+
           <section className="mb-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-stone-900">
@@ -371,8 +508,11 @@ export default function ShoppingListPage() {
             </div>
             <ShoppingListMaterials
               items={data.material_items}
+              budgetAllowed={budgetAllowed}
               onUpdateQuantity={handleUpdateMaterialQty}
               onResetQuantity={handleResetMaterialQty}
+              onUpdatePrice={handleUpdateMaterialPrice}
+              onShowPaywall={handleShowPaywall}
             />
           </section>
 
@@ -380,9 +520,12 @@ export default function ShoppingListPage() {
             <section className="rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
               <ShoppingListComplements
                 items={data.complementary_items}
+                budgetAllowed={budgetAllowed}
                 onUpdateQuantity={handleUpdateComplementQty}
                 onRemove={handleRemoveComplement}
                 onRestore={handleRestoreComplement}
+                onUpdatePrice={handleUpdateComplementPrice}
+                onShowPaywall={handleShowPaywall}
               />
             </section>
           )}

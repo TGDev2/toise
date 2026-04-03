@@ -12,6 +12,8 @@ export interface ShoppingListMaterialItem {
   original_units_needed: number;
   units_needed: number;
   is_manually_adjusted: boolean;
+  real_unit_price?: number | null;
+  store_name?: string | null;
 }
 
 export interface ShoppingListComplementaryItem {
@@ -24,6 +26,27 @@ export interface ShoppingListComplementaryItem {
   quantity: number;
   is_removed: boolean;
   is_calculated?: boolean;
+  real_unit_price?: number | null;
+  store_name?: string | null;
+}
+
+export interface CategoryBreakdown {
+  category: string;
+  label: string;
+  real_cost: number;
+  brute_cost: number;
+}
+
+export interface BudgetSummary {
+  total_real_cost: number;
+  total_brute_cost: number;
+  savings_amount: number;
+  savings_percent: number;
+  items_priced: number;
+  items_total: number;
+  is_complete: boolean;
+  by_category: CategoryBreakdown[];
+  computed_at: string;
 }
 
 export interface ShoppingListResponse {

@@ -6,6 +6,8 @@ import { WorkType } from '../projects/entities/work-type.entity';
 import { ProjectsModule } from '../projects/projects.module';
 import { EstimationsModule } from '../estimations/estimations.module';
 import { UsersModule } from '../users/users.module';
+import { FeatureGatesModule } from '../feature-gates/feature-gates.module';
+import { AnalyticsModule } from '../analytics/analytics.module';
 import { ShoppingListsService } from './shopping-lists.service';
 import { ShoppingListsController } from './shopping-lists.controller';
 import { ShoppingListExportService } from './shopping-list-export.service';
@@ -18,6 +20,8 @@ import { ShoppingListSharedController } from './shopping-list-shared.controller'
     ProjectsModule,
     EstimationsModule,
     UsersModule,
+    FeatureGatesModule,
+    AnalyticsModule,
   ],
   controllers: [
     ShoppingListsController,
