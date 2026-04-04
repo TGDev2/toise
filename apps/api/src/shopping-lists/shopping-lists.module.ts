@@ -29,5 +29,6 @@ import { ShoppingListSharedController } from './shopping-list-shared.controller'
     ShoppingListSharedController,
   ],
   providers: [ShoppingListsService, ShoppingListExportService],
+  exports: [ShoppingListsService],
 })
 export class ShoppingListsModule {}

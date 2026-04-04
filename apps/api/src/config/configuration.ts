@@ -22,6 +22,20 @@ export default () => ({
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
     proPriceId: process.env.STRIPE_PRO_PRICE_ID,
   },
+  priceComparison: {
+    homeDepot: {
+      apiUrl: process.env.HOME_DEPOT_API_URL ?? '',
+      apiKey: process.env.HOME_DEPOT_API_KEY ?? '',
+      enabled: process.env.HOME_DEPOT_ENABLED === 'true',
+    },
+    lowes: {
+      apiUrl: process.env.LOWES_API_URL ?? '',
+      apiKey: process.env.LOWES_API_KEY ?? '',
+      enabled: process.env.LOWES_ENABLED === 'true',
+    },
+    cacheTtlHours: parseInt(process.env.PRICE_CACHE_TTL_HOURS ?? '24', 10),
+    mockEnabled: process.env.PRICE_MOCK_ENABLED !== 'false',
+  },
   storage: {
     provider: process.env.STORAGE_PROVIDER ?? 'local',
     localPath: process.env.STORAGE_LOCAL_PATH ?? './uploads',

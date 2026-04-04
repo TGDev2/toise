@@ -502,6 +502,10 @@ export class ShoppingListsService {
     return shoppingList;
   }
 
+  async saveEntity(entity: ShoppingList): Promise<ShoppingList> {
+    return this.shoppingListRepo.save(entity);
+  }
+
   private async buildTilingContext(
     projectId: string,
     userId: string,
