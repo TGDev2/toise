@@ -27,6 +27,17 @@ import { apiDelete, apiPost } from '@/lib/api';
 import { errorHasCode } from '@/lib/errors';
 import { getFirebaseAuth } from '@/lib/firebase';
 
+export interface CompanyProfilePayload {
+  raison_sociale: string;
+  siret: string;
+  address_line1: string;
+  address_line2?: string;
+  postal_code: string;
+  city: string;
+  phone?: string;
+  specialties?: string[];
+}
+
 interface AppUser {
   id: string;
   email: string | null;
@@ -35,6 +46,7 @@ interface AppUser {
   role: string;
   email_verified: boolean;
   created_at: string;
+  has_company_profile: boolean;
 }
 
 interface AuthContextType {
@@ -47,6 +59,7 @@ interface AuthContextType {
     email: string,
     password: string,
     displayName?: string,
+    companyProfile?: CompanyProfilePayload,
   ) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   loginWithApple: () => Promise<void>;
@@ -111,13 +124,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const register = useCallback(
-    async (email: string, password: string, displayName?: string) => {
+    async (
+      email: string,
+      password: string,
+      displayName?: string,
+      companyProfile?: CompanyProfilePayload,
+    ) => {
       const auth = getFirebaseAuth();
 
       await apiPost('/auth/register', {
         email,
         password,
         display_name: displayName,
+        ...(companyProfile ? { company_profile: companyProfile } : {}),
       });
 
       const credential = await signInWithEmailAndPassword(auth, email, password);

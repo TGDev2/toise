@@ -13,6 +13,7 @@ export class SubscriptionsService {
   private readonly stripe: Stripe;
   private readonly webhookSecret: string;
   private readonly proPriceId: string;
+  private readonly contractorPriceIds: Set<string>;
   private readonly publicUrl: string;
   private readonly logger = new Logger(SubscriptionsService.name);
 
@@ -27,16 +28,26 @@ export class SubscriptionsService {
     this.webhookSecret = this.config.get<string>('stripe.webhookSecret')!;
     this.proPriceId = this.config.get<string>('stripe.proPriceId')!;
     this.publicUrl = this.config.get<string>('publicUrl')!;
+
+    this.contractorPriceIds = new Set(
+      [
+        this.config.get<string>('stripe.contractorEssentielPriceId'),
+        this.config.get<string>('stripe.contractorStandardPriceId'),
+        this.config.get<string>('stripe.contractorPremiumPriceId'),
+      ].filter(Boolean) as string[],
+    );
   }
 
   async getSubscription(userId: string): Promise<Subscription | null> {
     return this.subscriptionsRepo.findOne({ where: { user_id: userId } });
   }
 
-  async createCheckoutSession(user: {
-    id: string;
-    email: string | null;
-  }): Promise<{ url: string }> {
+  async createCheckoutSession(
+    user: { id: string; email: string | null },
+    priceId?: string,
+  ): Promise<{ url: string }> {
+    const selectedPriceId = priceId ?? this.proPriceId;
+    const isContractor = this.contractorPriceIds.has(selectedPriceId);
     let customerId: string;
 
     const existing = await this.subscriptionsRepo.findOne({
@@ -62,8 +73,8 @@ export class SubscriptionsService {
     const session = await this.stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
-      line_items: [{ price: this.proPriceId, quantity: 1 }],
-      subscription_data: { trial_period_days: 7 },
+      line_items: [{ price: selectedPriceId, quantity: 1 }],
+      ...(isContractor ? {} : { subscription_data: { trial_period_days: 7 } }),
       success_url: `${this.publicUrl}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${this.publicUrl}/subscription/cancel`,
       metadata: { user_id: user.id },
@@ -130,6 +141,10 @@ export class SubscriptionsService {
     }
   }
 
+  private extractPriceId(stripeSub: Stripe.Subscription): string | null {
+    return stripeSub.items?.data?.[0]?.price?.id ?? null;
+  }
+
   private extractPeriodFromSubscription(
     stripeSub: Stripe.Subscription,
   ): { start: Date | null; end: Date | null } {
@@ -149,6 +164,12 @@ export class SubscriptionsService {
     return typeof subDetails.subscription === 'string'
       ? subDetails.subscription
       : subDetails.subscription?.id ?? null;
+  }
+
+  private resolvePlanName(priceId: string | null): string {
+    if (!priceId) return 'pro';
+    if (this.contractorPriceIds.has(priceId)) return 'contractor';
+    return 'pro';
   }
 
   private async handleCheckoutCompleted(
@@ -173,12 +194,14 @@ export class SubscriptionsService {
       });
 
     const period = this.extractPeriodFromSubscription(stripeSub);
+    const priceId = this.extractPriceId(stripeSub);
 
     await this.subscriptionsRepo.upsert(
       {
         user_id: userId,
         stripe_customer_id: stripeCustomerId,
         stripe_subscription_id: stripeSubscriptionId,
+        stripe_price_id: priceId,
         status: stripeSub.status as SubscriptionStatus,
         current_period_start: period.start,
         current_period_end: period.end,
@@ -190,10 +213,11 @@ export class SubscriptionsService {
       ['user_id'],
     );
 
-    await this.syncSubscriptionTier(userId, stripeSub.status);
+    await this.syncSubscriptionTier(userId, stripeSub.status, priceId);
 
+    const planName = this.resolvePlanName(priceId);
     this.analyticsService.track('subscription_started', userId, {
-      plan: 'pro',
+      plan: planName,
       trial: stripeSub.status === 'trialing',
     });
   }
@@ -214,13 +238,15 @@ export class SubscriptionsService {
       });
 
     const period = this.extractPeriodFromSubscription(stripeSub);
+    const priceId = this.extractPriceId(stripeSub);
 
     subscription.status = SubscriptionStatus.ACTIVE;
     subscription.current_period_start = period.start;
     subscription.current_period_end = period.end;
+    subscription.stripe_price_id = priceId;
     await this.subscriptionsRepo.save(subscription);
 
-    await this.syncSubscriptionTier(subscription.user_id, 'active');
+    await this.syncSubscriptionTier(subscription.user_id, 'active', priceId);
   }
 
   private async handleInvoicePaymentFailed(
@@ -238,8 +264,9 @@ export class SubscriptionsService {
     subscription.status = SubscriptionStatus.PAST_DUE;
     await this.subscriptionsRepo.save(subscription);
 
+    const planName = this.resolvePlanName(subscription.stripe_price_id);
     this.analyticsService.track('payment_failed', subscription.user_id, {
-      plan: 'pro',
+      plan: planName,
     });
   }
 
@@ -252,17 +279,23 @@ export class SubscriptionsService {
     if (!subscription) return;
 
     const period = this.extractPeriodFromSubscription(stripeSub);
+    const priceId = this.extractPriceId(stripeSub);
 
     subscription.status = stripeSub.status as SubscriptionStatus;
     subscription.cancel_at_period_end = stripeSub.cancel_at_period_end;
     subscription.current_period_start = period.start;
     subscription.current_period_end = period.end;
+    subscription.stripe_price_id = priceId;
     subscription.trial_end = stripeSub.trial_end
       ? new Date(stripeSub.trial_end * 1000)
       : null;
 
     await this.subscriptionsRepo.save(subscription);
-    await this.syncSubscriptionTier(subscription.user_id, stripeSub.status);
+    await this.syncSubscriptionTier(
+      subscription.user_id,
+      stripeSub.status,
+      priceId,
+    );
   }
 
   private async handleSubscriptionDeleted(
@@ -278,19 +311,30 @@ export class SubscriptionsService {
 
     await this.syncSubscriptionTier(subscription.user_id, 'canceled');
 
+    const planName = this.resolvePlanName(subscription.stripe_price_id);
     this.analyticsService.track('subscription_canceled', subscription.user_id, {
-      plan: 'pro',
+      plan: planName,
     });
   }
 
   private async syncSubscriptionTier(
     userId: string,
     stripeStatus: string,
+    stripePriceId?: string | null,
   ): Promise<void> {
-    const proStatuses = ['trialing', 'active', 'past_due'];
-    const tier = proStatuses.includes(stripeStatus)
-      ? SubscriptionTier.PRO
-      : SubscriptionTier.FREE;
+    const activeStatuses = ['trialing', 'active', 'past_due'];
+    if (!activeStatuses.includes(stripeStatus)) {
+      await this.usersService.updateSubscriptionTier(
+        userId,
+        SubscriptionTier.FREE,
+      );
+      return;
+    }
+
+    const tier =
+      stripePriceId && this.contractorPriceIds.has(stripePriceId)
+        ? SubscriptionTier.CONTRACTOR
+        : SubscriptionTier.PRO;
 
     await this.usersService.updateSubscriptionTier(userId, tier);
   }

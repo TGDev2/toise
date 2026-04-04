@@ -4,7 +4,10 @@ import {
   IsString,
   MaxLength,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+import { CreateCompanyProfileDto } from '../../company-profiles/dto/create-company-profile.dto';
 
 export class RegisterDto {
   @IsEmail()
@@ -19,4 +22,9 @@ export class RegisterDto {
   @IsString()
   @MaxLength(100)
   display_name?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CreateCompanyProfileDto)
+  company_profile?: CreateCompanyProfileDto;
 }

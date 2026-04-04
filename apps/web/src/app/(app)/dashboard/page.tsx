@@ -1,6 +1,7 @@
 'use client';
 
 import { GuestPromptModal } from '@/components/auth/GuestPromptModal';
+import { ContractorDashboard } from '@/components/dashboard/ContractorDashboard';
 import { DeleteConfirmDialog } from '@/components/dashboard/DeleteConfirmDialog';
 import { ProjectCard } from '@/components/dashboard/ProjectCard';
 import { useAuth } from '@/contexts/AuthContext';
@@ -211,6 +212,10 @@ export default function DashboardPage() {
     );
   }
 
+  if (appUser?.subscription_tier === 'contractor') {
+    return <ContractorDashboard />;
+  }
+
   const hasProjects = appUser ? apiProjects.length > 0 : guestProjects.length > 0;
   const showPagination = appUser && meta.totalPages > 1;
 
@@ -324,6 +329,30 @@ export default function DashboardPage() {
               );
             }
 
+            if (tier === 'contractor' && (status === 'active' || status === 'trialing')) {
+              return (
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-stone-900">
+                      Plan Contractor
+                      {subscription?.cancel_at_period_end && (
+                        <span className="ml-2 text-xs font-normal text-amber-600">
+                          (annulation prevue)
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={openPortal}
+                    className="shrink-0 rounded-full border border-stone-300 px-5 py-2 text-sm font-semibold text-stone-700 hover:-translate-y-0.5 hover:bg-white"
+                  >
+                    Gerer mon abonnement
+                  </button>
+                </div>
+              );
+            }
+
             if (tier === 'pro' && status === 'active') {
               const nextBilling = subscription?.current_period_end
                 ? new Intl.DateTimeFormat('fr-FR', {
@@ -375,7 +404,7 @@ export default function DashboardPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={openCheckout}
+                  onClick={() => openCheckout()}
                   className="shrink-0 rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-[var(--accent-strong)]"
                 >
                   Passer a Pro

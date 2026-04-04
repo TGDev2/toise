@@ -4,6 +4,7 @@ import type { DecodedIdToken } from 'firebase-admin/auth';
 import { AuthService } from './auth.service';
 import { FirebaseConfig } from '../config/firebase.config';
 import { UsersService } from '../users/users.service';
+import { CompanyProfilesService } from '../company-profiles/company-profiles.service';
 import {
   AuthProvider,
   SubscriptionTier,
@@ -31,6 +32,12 @@ describe('AuthService', () => {
 
   const firebaseConfigMock = {
     getAuth: jest.fn(() => mockFirebaseAuth),
+  };
+
+  const companyProfilesServiceMock = {
+    create: jest.fn(),
+    findByUserId: jest.fn(),
+    update: jest.fn(),
   };
 
   let usersService: typeof usersServiceMock;
@@ -90,6 +97,10 @@ describe('AuthService', () => {
         {
           provide: FirebaseConfig,
           useValue: firebaseConfigMock,
+        },
+        {
+          provide: CompanyProfilesService,
+          useValue: companyProfilesServiceMock,
         },
       ],
     }).compile();

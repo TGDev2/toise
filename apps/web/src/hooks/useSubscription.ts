@@ -6,6 +6,7 @@ import { apiGet, apiPost } from '@/lib/api';
 
 interface SubscriptionData {
   status: string;
+  stripe_price_id: string | null;
   current_period_end: string | null;
   trial_end: string | null;
   cancel_at_period_end: boolean;
@@ -41,9 +42,12 @@ export function useSubscription() {
     refresh();
   }, [refresh]);
 
-  const openCheckout = async () => {
+  const openCheckout = async (priceId?: string) => {
     try {
-      const { url } = await apiPost<{ url: string }>('/subscriptions/checkout');
+      const { url } = await apiPost<{ url: string }>(
+        '/subscriptions/checkout',
+        priceId ? { price_id: priceId } : undefined,
+      );
       window.location.href = url;
     } catch (err) {
       setError(

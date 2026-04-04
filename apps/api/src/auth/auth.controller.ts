@@ -11,6 +11,7 @@ import {
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
+import { CompanyProfilesService } from '../company-profiles/company-profiles.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { MergeGuestDto } from './dto/merge-guest.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -19,7 +20,10 @@ import { FirebaseAuthGuard } from './guards/firebase-auth.guard';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly companyProfilesService: CompanyProfilesService,
+  ) {}
 
   @Post('register')
   @Throttle({ auth: { ttl: 900000, limit: 5 } })
@@ -35,6 +39,9 @@ export class AuthController {
   @UseGuards(FirebaseAuthGuard)
   async sync(@CurrentFirebaseUser() firebaseUser: DecodedIdToken) {
     const user = await this.authService.syncUser(firebaseUser);
+    const companyProfile = await this.companyProfilesService.findByUserId(
+      user.id,
+    );
     return {
       id: user.id,
       email: user.email,
@@ -42,6 +49,7 @@ export class AuthController {
       subscription_tier: user.subscription_tier,
       email_verified: user.email_verified,
       created_at: user.created_at,
+      has_company_profile: !!companyProfile,
     };
   }
 
@@ -57,6 +65,9 @@ export class AuthController {
   @UseGuards(FirebaseAuthGuard)
   async getProfile(@CurrentFirebaseUser() firebaseUser: DecodedIdToken) {
     const user = await this.authService.getProfile(firebaseUser.uid);
+    const companyProfile = await this.companyProfilesService.findByUserId(
+      user.id,
+    );
     return {
       id: user.id,
       email: user.email,
@@ -64,6 +75,7 @@ export class AuthController {
       subscription_tier: user.subscription_tier,
       email_verified: user.email_verified,
       created_at: user.created_at,
+      has_company_profile: !!companyProfile,
     };
   }
 

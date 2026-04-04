@@ -17,6 +17,7 @@ import { FeatureGatesModule } from './feature-gates/feature-gates.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { PriceComparisonModule } from './price-comparison/price-comparison.module';
+import { CompanyProfilesModule } from './company-profiles/company-profiles.module';
 import configuration from './config/configuration';
 
 @Module({
@@ -54,6 +55,7 @@ import configuration from './config/configuration';
     AnalyticsModule,
     SubscriptionsModule,
     PriceComparisonModule,
+    CompanyProfilesModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

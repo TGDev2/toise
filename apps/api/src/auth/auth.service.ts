@@ -7,6 +7,7 @@ import {
 import { DecodedIdToken } from 'firebase-admin/auth';
 import { FirebaseConfig } from '../config/firebase.config';
 import { UsersService } from '../users/users.service';
+import { CompanyProfilesService } from '../company-profiles/company-profiles.service';
 import { AuthProvider, User } from '../users/entities/user.entity';
 import { RegisterDto } from './dto/register.dto';
 
@@ -17,6 +18,7 @@ export class AuthService {
   constructor(
     private readonly firebase: FirebaseConfig,
     private readonly usersService: UsersService,
+    private readonly companyProfilesService: CompanyProfilesService,
   ) {}
 
   async register(dto: RegisterDto): Promise<{ user: User; message: string }> {
@@ -42,6 +44,10 @@ export class AuthService {
         AuthProvider.EMAIL,
         false,
       );
+
+      if (dto.company_profile) {
+        await this.companyProfilesService.create(user.id, dto.company_profile);
+      }
 
       return { user, message: 'Verification email sent' };
     } catch (error) {
