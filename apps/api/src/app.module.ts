@@ -18,6 +18,8 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { PriceComparisonModule } from './price-comparison/price-comparison.module';
 import { CompanyProfilesModule } from './company-profiles/company-profiles.module';
+import { ClientsModule } from './clients/clients.module';
+import { QuotesModule } from './quotes/quotes.module';
 import configuration from './config/configuration';
 
 @Module({
@@ -56,6 +58,8 @@ import configuration from './config/configuration';
     SubscriptionsModule,
     PriceComparisonModule,
     CompanyProfilesModule,
+    ClientsModule,
+    QuotesModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

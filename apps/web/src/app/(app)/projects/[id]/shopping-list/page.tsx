@@ -480,6 +480,18 @@ export default function ShoppingListPage() {
             </svg>
             Partager un lien
           </button>
+          {appUser?.subscription_tier === 'contractor' && (
+            <button
+              type="button"
+              onClick={() => router.push(`/projects/${projectId}/quote/new`)}
+              className="inline-flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-700 shadow-sm hover:bg-stone-50"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                <path fillRule="evenodd" d="M4.5 2A1.5 1.5 0 0 0 3 3.5v13A1.5 1.5 0 0 0 4.5 18h11a1.5 1.5 0 0 0 1.5-1.5V7.621a1.5 1.5 0 0 0-.44-1.06l-4.12-4.122A1.5 1.5 0 0 0 11.378 2H4.5Zm4.75 6.75a.75.75 0 0 1 1.5 0v2.25h2.25a.75.75 0 0 1 0 1.5h-2.25v2.25a.75.75 0 0 1-1.5 0v-2.25H7a.75.75 0 0 1 0-1.5h2.25V8.75Z" clipRule="evenodd" />
+              </svg>
+              Generer un devis
+            </button>
+          )}
           <button
             type="button"
             disabled

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import { apiDelete, apiGet, apiPost } from '@/lib/api';
+import type { Quote, Client } from '@/lib/quote-types';
 import { getErrorMessage } from '@/lib/errors';
 import type { PaginatedProjects, ProjectSummary } from '@/lib/project-types';
 import { ProjectCard } from './ProjectCard';
@@ -34,12 +35,20 @@ export function ContractorDashboard() {
   const [form, setForm] = useState({ name: 'Renovation salon', room_name: 'Salon' });
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [clientsCount, setClientsCount] = useState<number | null>(null);
+  const [quotesCount, setQuotesCount] = useState<number | null>(null);
 
-  // Fetch company profile
+  // Fetch company profile + stats
   useEffect(() => {
     if (!appUser) return;
     apiGet<CompanyProfileData>('/company-profiles/me')
       .then(setCompanyProfile)
+      .catch(() => {});
+    apiGet<Client[]>('/clients')
+      .then((cls) => setClientsCount(cls.length))
+      .catch(() => {});
+    apiGet<Quote[]>('/quotes')
+      .then((qs) => setQuotesCount(qs.length))
       .catch(() => {});
   }, [appUser]);
 
@@ -176,6 +185,13 @@ export function ContractorDashboard() {
           </button>
           <button
             type="button"
+            onClick={() => router.push('/quotes')}
+            className="rounded-full border border-stone-300 px-5 py-2.5 text-sm font-semibold text-stone-700 hover:-translate-y-0.5 hover:bg-white"
+          >
+            Mes devis
+          </button>
+          <button
+            type="button"
             onClick={() => router.push('/settings/company')}
             className="rounded-full border border-stone-300 px-5 py-2.5 text-sm font-semibold text-stone-700 hover:-translate-y-0.5 hover:bg-white"
           >
@@ -241,15 +257,20 @@ export function ContractorDashboard() {
           <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
             Clients
           </p>
-          <p className="mt-1 text-2xl font-bold text-stone-500">-</p>
-          <p className="text-xs text-stone-400">Bientot disponible</p>
+          <p className="mt-1 text-2xl font-bold text-stone-900">
+            {clientsCount ?? '-'}
+          </p>
         </div>
-        <div className="rounded-2xl border border-stone-200 bg-white/85 p-4">
+        <div
+          onClick={() => router.push('/quotes')}
+          className="cursor-pointer rounded-2xl border border-stone-200 bg-white/85 p-4 hover:border-stone-300 transition-colors"
+        >
           <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
             Devis
           </p>
-          <p className="mt-1 text-2xl font-bold text-stone-500">-</p>
-          <p className="text-xs text-stone-400">Bientot disponible</p>
+          <p className="mt-1 text-2xl font-bold text-stone-900">
+            {quotesCount ?? '-'}
+          </p>
         </div>
         <div className="rounded-2xl border border-stone-200 bg-white/85 p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
