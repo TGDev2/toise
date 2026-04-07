@@ -146,6 +146,10 @@ export class PhotosService {
     return photo;
   }
 
+  async findPhotoById(photoId: string): Promise<ProjectPhoto | null> {
+    return this.photoRepo.findOne({ where: { id: photoId } });
+  }
+
   private async assertProjectOwnership(
     projectId: string,
     userId: string,

@@ -1,0 +1,165 @@
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { apiGet } from '@/lib/api';
+import { getErrorMessage } from '@/lib/errors';
+import type { ProjectSummary } from '@/lib/project-types';
+import { useAuth } from '@/contexts/AuthContext';
+import { CommunityShareForm } from '@/components/community/CommunityShareForm';
+
+interface PhotoResponse {
+  id: string;
+  url: string;
+  thumbnail_url: string | null;
+}
+
+export default function ShareProjectPage() {
+  const params = useParams();
+  const router = useRouter();
+  const { appUser, isLoading: authLoading } = useAuth();
+  const projectId = params.id as string;
+
+  const [project, setProject] = useState<ProjectSummary | null>(null);
+  const [photos, setPhotos] = useState<PhotoResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && !appUser) {
+      router.push('/login');
+    }
+  }, [appUser, authLoading, router]);
+
+  const fetchData = useCallback(async () => {
+    try {
+      const [projectData, photosData] = await Promise.all([
+        apiGet<ProjectSummary>(`/projects/${projectId}`),
+        apiGet<PhotoResponse[]>(`/projects/${projectId}/photos`),
+      ]);
+
+      if (projectData.status !== 'completed') {
+        setError('Seul un projet termine peut etre partage dans la communaute.');
+        return;
+      }
+
+      setProject(projectData);
+      setPhotos(photosData);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Impossible de charger le projet'));
+    } finally {
+      setLoading(false);
+    }
+  }, [projectId]);
+
+  useEffect(() => {
+    if (appUser) {
+      fetchData();
+    }
+  }, [appUser, fetchData]);
+
+  if (authLoading || loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center">
+        <p className="text-gray-500">Chargement...</p>
+      </main>
+    );
+  }
+
+  if (success) {
+    return (
+      <main className="mx-auto max-w-2xl px-4 py-8">
+        <div className="rounded-[2rem] border border-emerald-200 bg-emerald-50 p-8 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              className="h-8 w-8 text-emerald-600"
+            >
+              <path
+                fillRule="evenodd"
+                d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-emerald-900">
+            Publication envoyee !
+          </h2>
+          <p className="mt-3 text-sm text-emerald-700">
+            Votre projet a ete soumis a notre equipe de moderation. Il sera
+            visible dans la galerie apres validation, generalement sous 24 a 48
+            heures.
+          </p>
+          <div className="mt-6 flex justify-center gap-3">
+            <Link
+              href="/community"
+              className="rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-emerald-700"
+            >
+              Voir la galerie
+            </Link>
+            <Link
+              href="/dashboard"
+              className="rounded-full border border-stone-300 px-5 py-2.5 text-sm font-semibold text-stone-700 hover:-translate-y-0.5 hover:bg-white"
+            >
+              Retour au dashboard
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (error || !project) {
+    return (
+      <main className="mx-auto max-w-2xl px-4 py-8">
+        <div className="rounded-3xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+          {error || 'Projet non trouve'}
+        </div>
+        <Link
+          href="/dashboard"
+          className="mt-4 inline-block text-sm text-stone-500 hover:text-stone-700"
+        >
+          &larr; Retour au dashboard
+        </Link>
+      </main>
+    );
+  }
+
+  return (
+    <main className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6">
+      {/* Header */}
+      <Link
+        href={`/projects/${projectId}/estimate`}
+        className="inline-flex items-center gap-1 text-sm text-stone-500 hover:text-stone-700"
+      >
+        &larr; Retour au projet
+      </Link>
+
+      <div className="mt-4 rounded-[2rem] border border-stone-200 bg-[var(--surface)] p-6 shadow-[0_25px_80px_rgba(67,39,15,0.10)]">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
+          Partager dans la communaute
+        </p>
+        <h1 className="mt-2 text-2xl font-semibold text-stone-950">
+          {project.name}
+        </h1>
+        <p className="mt-2 text-sm text-stone-500">
+          Partagez votre projet termine avec la communaute. Les informations
+          seront visibles publiquement apres moderation.
+        </p>
+      </div>
+
+      {/* Form */}
+      <div className="mt-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
+        <CommunityShareForm
+          projectId={projectId}
+          photos={photos}
+          onSuccess={() => setSuccess(true)}
+        />
+      </div>
+    </main>
+  );
+}

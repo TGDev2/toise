@@ -32,6 +32,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           >
             Catalogue materiaux
           </Link>
+          <Link
+            href="/admin/community"
+            className="block rounded-lg px-4 py-2 text-sm font-medium text-[var(--foreground)] hover:bg-[var(--accent)]/10"
+          >
+            Moderation galerie
+          </Link>
         </nav>
         <div className="mt-auto pt-8 text-xs text-[var(--foreground)]/50">
           {appUser?.email}

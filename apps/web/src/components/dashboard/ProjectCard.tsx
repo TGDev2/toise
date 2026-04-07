@@ -106,6 +106,15 @@ export function ProjectCard({ project, onDelete }: ProjectCardProps) {
               ? 'Modifier les dimensions'
               : 'Definir les dimensions'}
         </button>
+        {project.status === 'completed' && (
+          <button
+            type="button"
+            onClick={() => router.push(`/projects/${project.id}/share`)}
+            className="rounded-full border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-700 hover:-translate-y-0.5 hover:bg-emerald-50"
+          >
+            Partager dans la communaute
+          </button>
+        )}
         <button
           type="button"
           onClick={(e) => {
