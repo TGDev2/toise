@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddSoftDeleteToProjects1711468800011
-  implements MigrationInterface
-{
+export class AddSoftDeleteToProjects1711468800011 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
       `ALTER TABLE "projects" ADD "deleted_at" TIMESTAMP WITH TIME ZONE NULL`,
@@ -16,8 +14,6 @@ export class AddSoftDeleteToProjects1711468800011
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP INDEX "IDX_projects_user_deleted"`);
 
-    await queryRunner.query(
-      `ALTER TABLE "projects" DROP COLUMN "deleted_at"`,
-    );
+    await queryRunner.query(`ALTER TABLE "projects" DROP COLUMN "deleted_at"`);
   }
 }

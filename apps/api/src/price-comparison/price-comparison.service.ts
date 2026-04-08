@@ -68,7 +68,10 @@ export class PriceComparisonService {
     );
 
     // Build per-supplier price maps
-    const supplierPriceMaps: { adapter: SupplierAdapter; prices: Map<string, SupplierPriceResult> }[] = [];
+    const supplierPriceMaps: {
+      adapter: SupplierAdapter;
+      prices: Map<string, SupplierPriceResult>;
+    }[] = [];
     for (let i = 0; i < adapters.length; i++) {
       const result = adapterResults[i];
       if (result.status === 'fulfilled') {
@@ -90,8 +93,10 @@ export class PriceComparisonService {
         }
       }
       prices.sort((a, b) => {
-        if (a.availability === 'not_found' && b.availability !== 'not_found') return 1;
-        if (b.availability === 'not_found' && a.availability !== 'not_found') return -1;
+        if (a.availability === 'not_found' && b.availability !== 'not_found')
+          return 1;
+        if (b.availability === 'not_found' && a.availability !== 'not_found')
+          return -1;
         return a.unit_price - b.unit_price;
       });
 
@@ -190,7 +195,8 @@ export class PriceComparisonService {
         materialItems[itemIdx] = {
           ...materialItems[itemIdx],
           real_unit_price: cached.price_data.unit_price,
-          store_name: cached.price_data.store_name ?? cached.price_data.supplier_name,
+          store_name:
+            cached.price_data.store_name ?? cached.price_data.supplier_name,
         };
         updated = true;
       }
@@ -222,9 +228,7 @@ export class PriceComparisonService {
       .andWhere('c.material_id IN (:...ids)', { ids: materialIds })
       .andWhere('c.expires_at > :now', { now })
       .andWhere(
-        postalCode
-          ? 'c.postal_code = :postalCode'
-          : 'c.postal_code IS NULL',
+        postalCode ? 'c.postal_code = :postalCode' : 'c.postal_code IS NULL',
         postalCode ? { postalCode } : {},
       )
       .getMany();

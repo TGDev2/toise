@@ -118,7 +118,8 @@ export class ProjectsService {
     const writable = await this.isProjectWritable(projectId, userId, userTier);
     if (!writable) {
       throw new ForbiddenException({
-        message: 'Ce projet est en lecture seule. Passez à Pro pour modifier tous vos projets.',
+        message:
+          'Ce projet est en lecture seule. Passez à Pro pour modifier tous vos projets.',
         error: 'PROJECT_READ_ONLY',
       });
     }
@@ -127,7 +128,10 @@ export class ProjectsService {
   async findByUser(
     userId: string,
     query: ListProjectsQueryDto = {},
-  ): Promise<{ data: Project[]; meta: { total: number; page: number; limit: number; totalPages: number } }> {
+  ): Promise<{
+    data: Project[];
+    meta: { total: number; page: number; limit: number; totalPages: number };
+  }> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 12;
 
@@ -294,10 +298,7 @@ export class ProjectsService {
     await this.openingsRepo.remove(opening);
   }
 
-  async getOpenings(
-    projectId: string,
-    userId: string,
-  ): Promise<Opening[]> {
+  async getOpenings(projectId: string, userId: string): Promise<Opening[]> {
     await this.findOneByUser(projectId, userId);
 
     return this.openingsRepo.find({
@@ -390,10 +391,7 @@ export class ProjectsService {
     await this.projectsRepo.softDelete(projectId);
   }
 
-  async updateStatus(
-    projectId: string,
-    status: ProjectStatus,
-  ): Promise<void> {
+  async updateStatus(projectId: string, status: ProjectStatus): Promise<void> {
     await this.projectsRepo.update(projectId, { status });
   }
 }

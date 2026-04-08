@@ -142,7 +142,15 @@ describe('ProjectsController (e2e)', () => {
       .get('/projects')
       .expect(200)
       .expect((res: request.Response) => {
-        const body = res.body as { data: Array<{ id: string }>; meta: { total: number; page: number; limit: number; totalPages: number } };
+        const body = res.body as {
+          data: Array<{ id: string }>;
+          meta: {
+            total: number;
+            page: number;
+            limit: number;
+            totalPages: number;
+          };
+        };
         expect(Array.isArray(body.data)).toBe(true);
         expect(body.data).toHaveLength(1);
         expect(body.data[0].id).toBe(mockProjectId);

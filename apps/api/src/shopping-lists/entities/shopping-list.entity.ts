@@ -82,7 +82,13 @@ export class ShoppingList {
   @Column({ type: 'jsonb', nullable: true, default: null })
   budget_summary_json!: BudgetSummary | null;
 
-  @Column({ type: 'varchar', length: 64, unique: true, nullable: true, default: null })
+  @Column({
+    type: 'varchar',
+    length: 64,
+    unique: true,
+    nullable: true,
+    default: null,
+  })
   share_token!: string | null;
 
   @Column({ type: 'timestamptz', nullable: true, default: null })

@@ -23,7 +23,9 @@ export class CreateEstimationResults1711468800007 implements MigrationInterface 
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX "IDX_estimation_results_project_created";`);
+    await queryRunner.query(
+      `DROP INDEX "IDX_estimation_results_project_created";`,
+    );
     await queryRunner.query(`DROP TABLE "estimation_results";`);
   }
 }

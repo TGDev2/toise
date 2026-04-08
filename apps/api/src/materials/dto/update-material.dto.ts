@@ -13,7 +13,10 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { MaterialCategory } from '../entities/material-catalog.entity';
-import { CreatePackagingDto, CreateWasteFactorDto } from './create-material.dto';
+import {
+  CreatePackagingDto,
+  CreateWasteFactorDto,
+} from './create-material.dto';
 
 export class UpdateMaterialDto {
   @IsOptional()

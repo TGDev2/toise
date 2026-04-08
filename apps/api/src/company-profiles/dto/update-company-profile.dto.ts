@@ -16,7 +16,9 @@ export class UpdateCompanyProfileDto {
 
   @IsOptional()
   @IsString()
-  @Matches(/^\d{14}$/, { message: 'Le SIRET doit contenir exactement 14 chiffres' })
+  @Matches(/^\d{14}$/, {
+    message: 'Le SIRET doit contenir exactement 14 chiffres',
+  })
   siret?: string;
 
   @IsOptional()

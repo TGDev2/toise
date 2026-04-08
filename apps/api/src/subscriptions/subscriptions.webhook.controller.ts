@@ -16,9 +16,7 @@ import { SubscriptionsService } from './subscriptions.service';
 export class SubscriptionsWebhookController {
   private readonly logger = new Logger(SubscriptionsWebhookController.name);
 
-  constructor(
-    private readonly subscriptionsService: SubscriptionsService,
-  ) {}
+  constructor(private readonly subscriptionsService: SubscriptionsService) {}
 
   @Post('webhook')
   async handleWebhook(

@@ -50,17 +50,15 @@ export class ShoppingListExportController {
       projectId,
       userId,
     );
-    const project = await this.projectsService.findOneByUser(
-      projectId,
-      userId,
-    );
+    const project = await this.projectsService.findOneByUser(projectId, userId);
 
     const buffer = await this.exportService.generatePdf(
       project,
       shoppingList.items_json,
     );
 
-    const safeName = project.name.replace(/[^a-zA-Z0-9À-ÿ\s-]/g, '').trim() || 'liste';
+    const safeName =
+      project.name.replace(/[^a-zA-Z0-9À-ÿ\s-]/g, '').trim() || 'liste';
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader(
       'Content-Disposition',

@@ -46,7 +46,7 @@ export class AnalysisService {
     const photos = await this.photosService.getProjectPhotos(projectId, userId);
     if (photos.length === 0) {
       throw new BadRequestException(
-        'Le projet doit avoir au moins une photo pour lancer l\'analyse',
+        "Le projet doit avoir au moins une photo pour lancer l'analyse",
       );
     }
 
@@ -72,11 +72,10 @@ export class AnalysisService {
 
     // Fire-and-forget processing
     const imagePaths = photos.map((p) => p.storage_url);
-    this.processAnalysis(saved.id, projectId, userId, imagePaths).catch(
-      (err) =>
-        this.logger.error(
-          `Analysis processing failed for job ${saved.id}: ${err.message}`,
-        ),
+    this.processAnalysis(saved.id, projectId, userId, imagePaths).catch((err) =>
+      this.logger.error(
+        `Analysis processing failed for job ${saved.id}: ${err.message}`,
+      ),
     );
 
     return saved;
@@ -94,7 +93,7 @@ export class AnalysisService {
       where: { id: jobId, project_id: projectId },
     });
     if (!job) {
-      throw new NotFoundException('Job d\'analyse non trouve');
+      throw new NotFoundException("Job d'analyse non trouve");
     }
 
     const result: AnalysisStatusDto = {

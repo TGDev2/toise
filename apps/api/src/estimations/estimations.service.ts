@@ -33,10 +33,7 @@ export class EstimationsService {
     userId: string,
     skillLevelOverride?: SkillLevel,
   ): Promise<EstimationResult> {
-    const project = await this.projectsService.findOneByUser(
-      projectId,
-      userId,
-    );
+    const project = await this.projectsService.findOneByUser(projectId, userId);
 
     if (!project.dimensions) {
       throw new BadRequestException(
@@ -75,7 +72,10 @@ export class EstimationsService {
 
       // Load active materials matching this work type's category
       const materials = await this.materialsRepo.find({
-        where: { category: wt.category as MaterialCatalog['category'], is_active: true },
+        where: {
+          category: wt.category as MaterialCatalog['category'],
+          is_active: true,
+        },
         relations: ['packagings', 'waste_factors'],
       });
 
@@ -119,10 +119,7 @@ export class EstimationsService {
 
     const saved = await this.estimationRepo.save(result);
 
-    await this.projectsService.updateStatus(
-      projectId,
-      ProjectStatus.ESTIMATED,
-    );
+    await this.projectsService.updateStatus(projectId, ProjectStatus.ESTIMATED);
 
     return saved;
   }

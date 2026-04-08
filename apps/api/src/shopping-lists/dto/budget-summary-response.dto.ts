@@ -8,7 +8,12 @@ export class BudgetSummaryResponseDto {
   items_priced!: number;
   items_total!: number;
   is_complete!: boolean;
-  by_category!: { category: string; label: string; real_cost: number; brute_cost: number }[];
+  by_category!: {
+    category: string;
+    label: string;
+    real_cost: number;
+    brute_cost: number;
+  }[];
   computed_at!: string;
 
   static fromSummary(summary: BudgetSummary): BudgetSummaryResponseDto {

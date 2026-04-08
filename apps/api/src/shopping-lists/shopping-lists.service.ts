@@ -62,10 +62,7 @@ export class ShoppingListsService {
     return { shoppingList: generated, latestEstimationId: latest.id };
   }
 
-  async generate(
-    projectId: string,
-    userId: string,
-  ): Promise<ShoppingList> {
+  async generate(projectId: string, userId: string): Promise<ShoppingList> {
     const latest = await this.estimationsService.getLatest(projectId, userId);
 
     // Build work_type_code → category map
@@ -243,7 +240,10 @@ export class ShoppingListsService {
       where: { project_id: projectId },
     });
 
-    const priceMap = new Map<string, { real_unit_price?: number | null; store_name?: string | null }>();
+    const priceMap = new Map<
+      string,
+      { real_unit_price?: number | null; store_name?: string | null }
+    >();
     if (existing) {
       for (const item of existing.items_json.material_items) {
         if (item.real_unit_price != null || item.store_name != null) {
@@ -346,7 +346,12 @@ export class ShoppingListsService {
 
   private computeBudgetSummary(
     shoppingList: ShoppingList,
-    estimationItems: { material_id: string; work_item_id: string; theoretical_qty: number; packaging_qty_per_unit: number }[],
+    estimationItems: {
+      material_id: string;
+      work_item_id: string;
+      theoretical_qty: number;
+      packaging_qty_per_unit: number;
+    }[],
   ): BudgetSummary {
     const CATEGORY_LABELS: Record<string, string> = {
       painting: 'Peinture',
@@ -357,7 +362,10 @@ export class ShoppingListsService {
     };
 
     // Build lookup from estimation items for brute quantity computation
-    const estimationMap = new Map<string, { theoretical_qty: number; packaging_qty_per_unit: number }>();
+    const estimationMap = new Map<
+      string,
+      { theoretical_qty: number; packaging_qty_per_unit: number }
+    >();
     for (const item of estimationItems) {
       estimationMap.set(`${item.material_id}:${item.work_item_id}`, {
         theoretical_qty: item.theoretical_qty,
@@ -365,15 +373,17 @@ export class ShoppingListsService {
       });
     }
 
-    const categoryTotals = new Map<string, { real_cost: number; brute_cost: number }>();
+    const categoryTotals = new Map<
+      string,
+      { real_cost: number; brute_cost: number }
+    >();
     let totalRealCost = 0;
     let totalBruteCost = 0;
     let itemsPriced = 0;
 
     const materialItems = shoppingList.items_json.material_items;
-    const complementaryItems = shoppingList.items_json.complementary_items.filter(
-      (c) => !c.is_removed,
-    );
+    const complementaryItems =
+      shoppingList.items_json.complementary_items.filter((c) => !c.is_removed);
 
     for (const item of materialItems) {
       if (item.real_unit_price == null) continue;
@@ -386,14 +396,20 @@ export class ShoppingListsService {
       const est = estimationMap.get(`${item.material_id}:${item.work_item_id}`);
       let bruteCost = realCost;
       if (est) {
-        const bruteAdjustedQty = est.theoretical_qty * (1 + DEFAULT_WASTE_PERCENT / 100);
-        const bruteUnitsNeeded = Math.ceil(bruteAdjustedQty / est.packaging_qty_per_unit);
+        const bruteAdjustedQty =
+          est.theoretical_qty * (1 + DEFAULT_WASTE_PERCENT / 100);
+        const bruteUnitsNeeded = Math.ceil(
+          bruteAdjustedQty / est.packaging_qty_per_unit,
+        );
         bruteCost = item.real_unit_price * bruteUnitsNeeded;
       }
       totalBruteCost += bruteCost;
 
       const cat = item.material_category;
-      const existing = categoryTotals.get(cat) || { real_cost: 0, brute_cost: 0 };
+      const existing = categoryTotals.get(cat) || {
+        real_cost: 0,
+        brute_cost: 0,
+      };
       existing.real_cost += realCost;
       existing.brute_cost += bruteCost;
       categoryTotals.set(cat, existing);
@@ -410,7 +426,8 @@ export class ShoppingListsService {
 
     const itemsTotal = materialItems.length + complementaryItems.length;
 
-    const savingsAmount = Math.round((totalBruteCost - totalRealCost) * 100) / 100;
+    const savingsAmount =
+      Math.round((totalBruteCost - totalRealCost) * 100) / 100;
     const savingsPercent =
       totalBruteCost > 0
         ? Math.round((savingsAmount / totalBruteCost) * 10000) / 100
@@ -466,10 +483,7 @@ export class ShoppingListsService {
     return { share_token: token };
   }
 
-  async revokeShareToken(
-    projectId: string,
-    userId: string,
-  ): Promise<void> {
+  async revokeShareToken(projectId: string, userId: string): Promise<void> {
     await this.projectsService.findOneByUser(projectId, userId);
 
     const shoppingList = await this.shoppingListRepo.findOne({
@@ -477,9 +491,7 @@ export class ShoppingListsService {
     });
 
     if (!shoppingList) {
-      throw new NotFoundException(
-        'No shopping list found for this project.',
-      );
+      throw new NotFoundException('No shopping list found for this project.');
     }
 
     shoppingList.share_token = null;
@@ -487,16 +499,16 @@ export class ShoppingListsService {
     await this.shoppingListRepo.save(shoppingList);
   }
 
-  async findByShareToken(
-    token: string,
-  ): Promise<ShoppingList> {
+  async findByShareToken(token: string): Promise<ShoppingList> {
     const shoppingList = await this.shoppingListRepo.findOne({
       where: { share_token: token },
       relations: ['project'],
     });
 
     if (!shoppingList) {
-      throw new NotFoundException('Shopping list not found or link has expired.');
+      throw new NotFoundException(
+        'Shopping list not found or link has expired.',
+      );
     }
 
     return shoppingList;

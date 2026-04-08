@@ -137,9 +137,7 @@ const seeds: ComplementarySeed[] = [
   },
 ];
 
-export class SeedComplementaryMaterials1711468800009
-  implements MigrationInterface
-{
+export class SeedComplementaryMaterials1711468800009 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     for (const s of seeds) {
       await queryRunner.query(

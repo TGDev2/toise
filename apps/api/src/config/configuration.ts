@@ -21,7 +21,8 @@ export default () => ({
     secretKey: process.env.STRIPE_SECRET_KEY,
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
     proPriceId: process.env.STRIPE_PRO_PRICE_ID,
-    contractorEssentielPriceId: process.env.STRIPE_CONTRACTOR_ESSENTIEL_PRICE_ID,
+    contractorEssentielPriceId:
+      process.env.STRIPE_CONTRACTOR_ESSENTIEL_PRICE_ID,
     contractorStandardPriceId: process.env.STRIPE_CONTRACTOR_STANDARD_PRICE_ID,
     contractorPremiumPriceId: process.env.STRIPE_CONTRACTOR_PREMIUM_PRICE_ID,
   },
@@ -43,12 +44,7 @@ export default () => ({
     provider: process.env.STORAGE_PROVIDER ?? 'local',
     localPath: process.env.STORAGE_LOCAL_PATH ?? './uploads',
     maxFileSizeMb: 20,
-    allowedMimeTypes: [
-      'image/jpeg',
-      'image/png',
-      'image/heic',
-      'image/heif',
-    ],
+    allowedMimeTypes: ['image/jpeg', 'image/png', 'image/heic', 'image/heif'],
     thumbnailWidth: 400,
   },
 });

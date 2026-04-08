@@ -3,7 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import Stripe from 'stripe';
-import { Subscription, SubscriptionStatus } from './entities/subscription.entity';
+import {
+  Subscription,
+  SubscriptionStatus,
+} from './entities/subscription.entity';
 import { UsersService } from '../users/users.service';
 import { SubscriptionTier } from '../users/entities/user.entity';
 import { AnalyticsService } from '../analytics/analytics.service';
@@ -89,7 +92,7 @@ export class SubscriptionsService {
     });
 
     if (!subscription) {
-      throw new BadRequestException("Aucun abonnement trouve.");
+      throw new BadRequestException('Aucun abonnement trouve.');
     }
 
     const session = await this.stripe.billingPortal.sessions.create({
@@ -100,10 +103,7 @@ export class SubscriptionsService {
     return { url: session.url };
   }
 
-  constructWebhookEvent(
-    rawBody: Buffer,
-    signature: string,
-  ): Stripe.Event {
+  constructWebhookEvent(rawBody: Buffer, signature: string): Stripe.Event {
     return this.stripe.webhooks.constructEvent(
       rawBody,
       signature,
@@ -114,27 +114,19 @@ export class SubscriptionsService {
   async handleWebhookEvent(event: Stripe.Event): Promise<void> {
     switch (event.type) {
       case 'checkout.session.completed':
-        await this.handleCheckoutCompleted(
-          event.data.object as Stripe.Checkout.Session,
-        );
+        await this.handleCheckoutCompleted(event.data.object);
         break;
       case 'invoice.paid':
-        await this.handleInvoicePaid(event.data.object as Stripe.Invoice);
+        await this.handleInvoicePaid(event.data.object);
         break;
       case 'invoice.payment_failed':
-        await this.handleInvoicePaymentFailed(
-          event.data.object as Stripe.Invoice,
-        );
+        await this.handleInvoicePaymentFailed(event.data.object);
         break;
       case 'customer.subscription.updated':
-        await this.handleSubscriptionUpdated(
-          event.data.object as Stripe.Subscription,
-        );
+        await this.handleSubscriptionUpdated(event.data.object);
         break;
       case 'customer.subscription.deleted':
-        await this.handleSubscriptionDeleted(
-          event.data.object as Stripe.Subscription,
-        );
+        await this.handleSubscriptionDeleted(event.data.object);
         break;
       default:
         this.logger.log(`Unhandled event type: ${event.type}`);
@@ -145,9 +137,10 @@ export class SubscriptionsService {
     return stripeSub.items?.data?.[0]?.price?.id ?? null;
   }
 
-  private extractPeriodFromSubscription(
-    stripeSub: Stripe.Subscription,
-  ): { start: Date | null; end: Date | null } {
+  private extractPeriodFromSubscription(stripeSub: Stripe.Subscription): {
+    start: Date | null;
+    end: Date | null;
+  } {
     const firstItem = stripeSub.items?.data?.[0];
     if (!firstItem) return { start: null, end: null };
     return {
@@ -163,7 +156,7 @@ export class SubscriptionsService {
     if (!subDetails) return null;
     return typeof subDetails.subscription === 'string'
       ? subDetails.subscription
-      : subDetails.subscription?.id ?? null;
+      : (subDetails.subscription?.id ?? null);
   }
 
   private resolvePlanName(priceId: string | null): string {
@@ -188,10 +181,12 @@ export class SubscriptionsService {
         ? session.customer
         : session.customer.id;
 
-    const stripeSub =
-      await this.stripe.subscriptions.retrieve(stripeSubscriptionId, {
+    const stripeSub = await this.stripe.subscriptions.retrieve(
+      stripeSubscriptionId,
+      {
         expand: ['items.data'],
-      });
+      },
+    );
 
     const period = this.extractPeriodFromSubscription(stripeSub);
     const priceId = this.extractPriceId(stripeSub);
@@ -223,8 +218,7 @@ export class SubscriptionsService {
   }
 
   private async handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
-    const stripeSubscriptionId =
-      this.extractSubscriptionIdFromInvoice(invoice);
+    const stripeSubscriptionId = this.extractSubscriptionIdFromInvoice(invoice);
     if (!stripeSubscriptionId) return;
 
     const subscription = await this.subscriptionsRepo.findOne({
@@ -232,10 +226,12 @@ export class SubscriptionsService {
     });
     if (!subscription) return;
 
-    const stripeSub =
-      await this.stripe.subscriptions.retrieve(stripeSubscriptionId, {
+    const stripeSub = await this.stripe.subscriptions.retrieve(
+      stripeSubscriptionId,
+      {
         expand: ['items.data'],
-      });
+      },
+    );
 
     const period = this.extractPeriodFromSubscription(stripeSub);
     const priceId = this.extractPriceId(stripeSub);
@@ -252,8 +248,7 @@ export class SubscriptionsService {
   private async handleInvoicePaymentFailed(
     invoice: Stripe.Invoice,
   ): Promise<void> {
-    const stripeSubscriptionId =
-      this.extractSubscriptionIdFromInvoice(invoice);
+    const stripeSubscriptionId = this.extractSubscriptionIdFromInvoice(invoice);
     if (!stripeSubscriptionId) return;
 
     const subscription = await this.subscriptionsRepo.findOne({

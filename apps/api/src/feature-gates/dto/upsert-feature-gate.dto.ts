@@ -1,4 +1,10 @@
-import { IsString, IsBoolean, IsOptional, IsIn, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsBoolean,
+  IsOptional,
+  IsIn,
+  MaxLength,
+} from 'class-validator';
 
 export class UpsertFeatureGateDto {
   @IsOptional()

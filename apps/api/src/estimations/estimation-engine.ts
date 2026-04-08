@@ -60,8 +60,7 @@ export class EstimationEngine {
   computeSurface(room: RoomData, surfaceTarget: string): number {
     switch (surfaceTarget) {
       case 'wall': {
-        const grossWall =
-          2 * (room.length_cm + room.width_cm) * room.height_cm;
+        const grossWall = 2 * (room.length_cm + room.width_cm) * room.height_cm;
         const openingsArea = room.openings.reduce(
           (sum, o) => sum + o.width_cm * o.height_cm * o.count,
           0,
@@ -143,7 +142,11 @@ export class EstimationEngine {
         surplus < bestSurplus ||
         (surplus === bestSurplus && best && unitsNeeded < best.units_needed)
       ) {
-        best = { label: pkg.label, qty_per_unit: qtyPerUnit, units_needed: unitsNeeded };
+        best = {
+          label: pkg.label,
+          qty_per_unit: qtyPerUnit,
+          units_needed: unitsNeeded,
+        };
         bestSurplus = surplus;
       }
     }
@@ -154,7 +157,9 @@ export class EstimationEngine {
   computeGrossSurface(room: RoomData, surfaceTarget: string): number {
     switch (surfaceTarget) {
       case 'wall':
-        return (2 * (room.length_cm + room.width_cm) * room.height_cm) / CM2_TO_M2;
+        return (
+          (2 * (room.length_cm + room.width_cm) * room.height_cm) / CM2_TO_M2
+        );
       case 'floor':
       case 'ceiling':
       default:
@@ -190,10 +195,7 @@ export class EstimationEngine {
 
         const adjustedQty = theoreticalQty * (1 + wasteFactor.percent / 100);
 
-        const packaging = this.selectBestPackaging(
-          adjustedQty,
-          mat.packagings,
-        );
+        const packaging = this.selectBestPackaging(adjustedQty, mat.packagings);
 
         items.push({
           work_item_id: wi.id,

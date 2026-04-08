@@ -32,7 +32,9 @@ export class WasteFactor {
   @UpdateDateColumn({ type: 'timestamptz' })
   updated_at!: Date;
 
-  @ManyToOne(() => MaterialCatalog, (m) => m.waste_factors, { onDelete: 'CASCADE' })
+  @ManyToOne(() => MaterialCatalog, (m) => m.waste_factors, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'material_id' })
   material!: MaterialCatalog;
 }

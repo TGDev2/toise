@@ -1,9 +1,4 @@
-import {
-  Controller,
-  Get,
-  Param,
-  Res,
-} from '@nestjs/common';
+import { Controller, Get, Param, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { ShoppingListsService } from './shopping-lists.service';
 import { ShoppingListExportService } from './shopping-list-export.service';
@@ -16,10 +11,9 @@ export class ShoppingListSharedController {
   ) {}
 
   @Get(':token')
-  async getByToken(
-    @Param('token') token: string,
-  ) {
-    const shoppingList = await this.shoppingListsService.findByShareToken(token);
+  async getByToken(@Param('token') token: string) {
+    const shoppingList =
+      await this.shoppingListsService.findByShareToken(token);
     const project = shoppingList.project;
 
     return {
@@ -46,7 +40,8 @@ export class ShoppingListSharedController {
     @Param('token') token: string,
     @Res() res: Response,
   ): Promise<void> {
-    const shoppingList = await this.shoppingListsService.findByShareToken(token);
+    const shoppingList =
+      await this.shoppingListsService.findByShareToken(token);
     const project = shoppingList.project;
 
     const buffer = await this.exportService.generatePdf(
@@ -54,7 +49,8 @@ export class ShoppingListSharedController {
       shoppingList.items_json,
     );
 
-    const safeName = project.name.replace(/[^a-zA-Z0-9À-ÿ\s-]/g, '').trim() || 'liste';
+    const safeName =
+      project.name.replace(/[^a-zA-Z0-9À-ÿ\s-]/g, '').trim() || 'liste';
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader(
       'Content-Disposition',

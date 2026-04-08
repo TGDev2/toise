@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateCompanyProfiles1711468800022
-  implements MigrationInterface
-{
+export class CreateCompanyProfiles1711468800022 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE "company_profiles" (

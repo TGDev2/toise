@@ -1,4 +1,11 @@
-import { EstimationEngine, RoomData, WorkItemInput, MaterialInput, PackagingInput, WasteFactorInput } from './estimation-engine';
+import {
+  EstimationEngine,
+  RoomData,
+  WorkItemInput,
+  MaterialInput,
+  PackagingInput,
+  WasteFactorInput,
+} from './estimation-engine';
 
 describe('EstimationEngine', () => {
   let engine: EstimationEngine;
@@ -45,7 +52,9 @@ describe('EstimationEngine', () => {
     { label: 'Carton 1.44 m²', quantity_per_unit: 1.44, unit: 'm2' },
   ];
 
-  const makePaintMaterial = (overrides?: Partial<MaterialInput>): MaterialInput => ({
+  const makePaintMaterial = (
+    overrides?: Partial<MaterialInput>,
+  ): MaterialInput => ({
     id: 'paint-uuid',
     name: 'Peinture acrylique mate',
     unit: 'L',
@@ -55,7 +64,9 @@ describe('EstimationEngine', () => {
     ...overrides,
   });
 
-  const makeTileMaterial = (overrides?: Partial<MaterialInput>): MaterialInput => ({
+  const makeTileMaterial = (
+    overrides?: Partial<MaterialInput>,
+  ): MaterialInput => ({
     id: 'tile-uuid',
     name: 'Carrelage grès cérame 30x30',
     unit: 'm2',
@@ -79,8 +90,8 @@ describe('EstimationEngine', () => {
     it('should deduct openings from wall surface', () => {
       const room = makeRoom({
         openings: [
-          { width_cm: 90, height_cm: 204, count: 1 },  // door
-          { width_cm: 120, height_cm: 100, count: 1 },  // window
+          { width_cm: 90, height_cm: 204, count: 1 }, // door
+          { width_cm: 120, height_cm: 100, count: 1 }, // window
         ],
       });
       const surface = engine.computeSurface(room, 'wall');
@@ -91,7 +102,7 @@ describe('EstimationEngine', () => {
     it('should handle multiple openings with count > 1', () => {
       const room = makeRoom({
         openings: [
-          { width_cm: 90, height_cm: 204, count: 2 },  // 2 doors
+          { width_cm: 90, height_cm: 204, count: 2 }, // 2 doors
         ],
       });
       const surface = engine.computeSurface(room, 'wall');
@@ -101,18 +112,14 @@ describe('EstimationEngine', () => {
 
     it('should not go negative when openings exceed wall area', () => {
       const room = makeRoom({
-        openings: [
-          { width_cm: 10000, height_cm: 10000, count: 1 },
-        ],
+        openings: [{ width_cm: 10000, height_cm: 10000, count: 1 }],
       });
       expect(engine.computeSurface(room, 'wall')).toBe(0);
     });
 
     it('should calculate floor surface without opening deduction', () => {
       const room = makeRoom({
-        openings: [
-          { width_cm: 90, height_cm: 204, count: 1 },
-        ],
+        openings: [{ width_cm: 90, height_cm: 204, count: 1 }],
       });
       const surface = engine.computeSurface(room, 'floor');
       // 400*300 / 10000 = 12 m²
@@ -171,7 +178,11 @@ describe('EstimationEngine', () => {
 
     it('should handle numeric strings from TypeORM', () => {
       const factors: WasteFactorInput[] = [
-        { pose_type: 'standard', skill_level: 'beginner', factor_percent: '15' as unknown as number },
+        {
+          pose_type: 'standard',
+          skill_level: 'beginner',
+          factor_percent: '15' as unknown as number,
+        },
       ];
       const result = engine.resolveWasteFactor(factors, 'standard', 'beginner');
       expect(result.percent).toBe(15);
@@ -190,7 +201,10 @@ describe('EstimationEngine', () => {
 
     it('should multiply by number of coats for painting', () => {
       const { qty, coats } = engine.computeTheoreticalQty(
-        31.964, 11, { number_of_coats: 2 }, 'painting',
+        31.964,
+        11,
+        { number_of_coats: 2 },
+        'painting',
       );
       // 31.964 / 11 * 2 = 5.812
       expect(qty).toBeCloseTo(5.812, 2);
@@ -199,7 +213,10 @@ describe('EstimationEngine', () => {
 
     it('should default to 2 coats for painting when not specified', () => {
       const { qty, coats } = engine.computeTheoreticalQty(
-        31.964, 11, {}, 'painting',
+        31.964,
+        11,
+        {},
+        'painting',
       );
       expect(qty).toBeCloseTo(5.812, 2);
       expect(coats).toBe(2);
@@ -207,7 +224,10 @@ describe('EstimationEngine', () => {
 
     it('should support 1 coat for painting', () => {
       const { qty, coats } = engine.computeTheoreticalQty(
-        31.964, 11, { number_of_coats: 1 }, 'painting',
+        31.964,
+        11,
+        { number_of_coats: 1 },
+        'painting',
       );
       // 31.964 / 11 * 1 = 2.906
       expect(qty).toBeCloseTo(2.906, 2);
@@ -215,7 +235,12 @@ describe('EstimationEngine', () => {
     });
 
     it('should handle yield as string from TypeORM', () => {
-      const { qty } = engine.computeTheoreticalQty(12, '1' as unknown as number, {}, 'tiling');
+      const { qty } = engine.computeTheoreticalQty(
+        12,
+        '1' as unknown as number,
+        {},
+        'tiling',
+      );
       expect(qty).toBe(12);
     });
   });
@@ -302,16 +327,18 @@ describe('EstimationEngine', () => {
         ],
       });
 
-      const workItems: WorkItemInput[] = [{
-        id: 'wi-1',
-        work_type_code: 'wall_painting',
-        work_type_label: 'Peinture murale',
-        category: 'painting',
-        surface_target: 'wall',
-        skill_level: 'beginner',
-        custom_params: { number_of_coats: 2 },
-        materials: [makePaintMaterial()],
-      }];
+      const workItems: WorkItemInput[] = [
+        {
+          id: 'wi-1',
+          work_type_code: 'wall_painting',
+          work_type_label: 'Peinture murale',
+          category: 'painting',
+          surface_target: 'wall',
+          skill_level: 'beginner',
+          custom_params: { number_of_coats: 2 },
+          materials: [makePaintMaterial()],
+        },
+      ];
 
       const items = engine.computeEstimation(room, workItems);
       expect(items).toHaveLength(1);
@@ -336,16 +363,18 @@ describe('EstimationEngine', () => {
     it('should compute floor tiling estimation with straight pose', () => {
       const room = makeRoom();
 
-      const workItems: WorkItemInput[] = [{
-        id: 'wi-2',
-        work_type_code: 'floor_tiling',
-        work_type_label: 'Carrelage sol',
-        category: 'tiling',
-        surface_target: 'floor',
-        skill_level: 'beginner',
-        custom_params: { tile_format: '30x30', laying_pattern: 'straight' },
-        materials: [makeTileMaterial()],
-      }];
+      const workItems: WorkItemInput[] = [
+        {
+          id: 'wi-2',
+          work_type_code: 'floor_tiling',
+          work_type_label: 'Carrelage sol',
+          category: 'tiling',
+          surface_target: 'floor',
+          skill_level: 'beginner',
+          custom_params: { tile_format: '30x30', laying_pattern: 'straight' },
+          materials: [makeTileMaterial()],
+        },
+      ];
 
       const items = engine.computeEstimation(room, workItems);
       expect(items).toHaveLength(1);
@@ -387,8 +416,13 @@ describe('EstimationEngine', () => {
       const diagonalItems = engine.computeEstimation(room, [diagonalItem]);
 
       // Straight: 15%, Diagonal: 20% = 5 points difference
-      expect(diagonalItems[0].waste_factor_percent - straightItems[0].waste_factor_percent).toBe(5);
-      expect(diagonalItems[0].adjusted_qty).toBeGreaterThan(straightItems[0].adjusted_qty);
+      expect(
+        diagonalItems[0].waste_factor_percent -
+          straightItems[0].waste_factor_percent,
+      ).toBe(5);
+      expect(diagonalItems[0].adjusted_qty).toBeGreaterThan(
+        straightItems[0].adjusted_qty,
+      );
     });
 
     // AC4: Skill level change affects quantities
@@ -407,7 +441,9 @@ describe('EstimationEngine', () => {
       });
 
       const beginner = engine.computeEstimation(room, [makeWI('beginner')])[0];
-      const intermediate = engine.computeEstimation(room, [makeWI('intermediate')])[0];
+      const intermediate = engine.computeEstimation(room, [
+        makeWI('intermediate'),
+      ])[0];
       const expert = engine.computeEstimation(room, [makeWI('expert')])[0];
 
       expect(beginner.waste_factor_percent).toBe(15);
@@ -422,16 +458,18 @@ describe('EstimationEngine', () => {
     it('should apply default 10% waste when no waste factors in catalog', () => {
       const room = makeRoom();
 
-      const workItems: WorkItemInput[] = [{
-        id: 'wi-1',
-        work_type_code: 'floor_tiling',
-        work_type_label: 'Carrelage sol',
-        category: 'tiling',
-        surface_target: 'floor',
-        skill_level: 'beginner',
-        custom_params: { laying_pattern: 'straight' },
-        materials: [makeTileMaterial({ waste_factors: [] })],
-      }];
+      const workItems: WorkItemInput[] = [
+        {
+          id: 'wi-1',
+          work_type_code: 'floor_tiling',
+          work_type_label: 'Carrelage sol',
+          category: 'tiling',
+          surface_target: 'floor',
+          skill_level: 'beginner',
+          custom_params: { laying_pattern: 'straight' },
+          materials: [makeTileMaterial({ waste_factors: [] })],
+        },
+      ];
 
       const items = engine.computeEstimation(room, workItems);
       expect(items[0].waste_factor_percent).toBe(10);
@@ -441,21 +479,21 @@ describe('EstimationEngine', () => {
     // Ceiling painting = floor area
     it('should use floor area for ceiling painting', () => {
       const room = makeRoom({
-        openings: [
-          { width_cm: 90, height_cm: 204, count: 1 },
-        ],
+        openings: [{ width_cm: 90, height_cm: 204, count: 1 }],
       });
 
-      const workItems: WorkItemInput[] = [{
-        id: 'wi-1',
-        work_type_code: 'ceiling_painting',
-        work_type_label: 'Peinture plafond',
-        category: 'painting',
-        surface_target: 'ceiling',
-        skill_level: 'intermediate',
-        custom_params: { number_of_coats: 2 },
-        materials: [makePaintMaterial()],
-      }];
+      const workItems: WorkItemInput[] = [
+        {
+          id: 'wi-1',
+          work_type_code: 'ceiling_painting',
+          work_type_label: 'Peinture plafond',
+          category: 'painting',
+          surface_target: 'ceiling',
+          skill_level: 'intermediate',
+          custom_params: { number_of_coats: 2 },
+          materials: [makePaintMaterial()],
+        },
+      ];
 
       const items = engine.computeEstimation(room, workItems);
       // Ceiling = floor = 12 m² (openings not deducted), gross = net
@@ -466,9 +504,7 @@ describe('EstimationEngine', () => {
     // Multiple work items in one estimation
     it('should handle multiple work items', () => {
       const room = makeRoom({
-        openings: [
-          { width_cm: 90, height_cm: 204, count: 1 },
-        ],
+        openings: [{ width_cm: 90, height_cm: 204, count: 1 }],
       });
 
       const workItems: WorkItemInput[] = [
@@ -507,19 +543,28 @@ describe('EstimationEngine', () => {
     it('should handle multiple materials per work item', () => {
       const room = makeRoom();
 
-      const workItems: WorkItemInput[] = [{
-        id: 'wi-1',
-        work_type_code: 'wall_painting',
-        work_type_label: 'Peinture murale',
-        category: 'painting',
-        surface_target: 'wall',
-        skill_level: 'expert',
-        custom_params: { number_of_coats: 2 },
-        materials: [
-          makePaintMaterial({ id: 'paint-1', name: 'Peinture acrylique mate' }),
-          makePaintMaterial({ id: 'paint-2', name: 'Sous-couche', yield_per_unit: 12 }),
-        ],
-      }];
+      const workItems: WorkItemInput[] = [
+        {
+          id: 'wi-1',
+          work_type_code: 'wall_painting',
+          work_type_label: 'Peinture murale',
+          category: 'painting',
+          surface_target: 'wall',
+          skill_level: 'expert',
+          custom_params: { number_of_coats: 2 },
+          materials: [
+            makePaintMaterial({
+              id: 'paint-1',
+              name: 'Peinture acrylique mate',
+            }),
+            makePaintMaterial({
+              id: 'paint-2',
+              name: 'Sous-couche',
+              yield_per_unit: 12,
+            }),
+          ],
+        },
+      ];
 
       const items = engine.computeEstimation(room, workItems);
       expect(items).toHaveLength(2);
@@ -533,16 +578,18 @@ describe('EstimationEngine', () => {
     it('should default to standard pose_type when not specified', () => {
       const room = makeRoom();
 
-      const workItems: WorkItemInput[] = [{
-        id: 'wi-1',
-        work_type_code: 'wall_painting',
-        work_type_label: 'Peinture murale',
-        category: 'painting',
-        surface_target: 'wall',
-        skill_level: 'beginner',
-        custom_params: {},
-        materials: [makePaintMaterial()],
-      }];
+      const workItems: WorkItemInput[] = [
+        {
+          id: 'wi-1',
+          work_type_code: 'wall_painting',
+          work_type_label: 'Peinture murale',
+          category: 'painting',
+          surface_target: 'wall',
+          skill_level: 'beginner',
+          custom_params: {},
+          materials: [makePaintMaterial()],
+        },
+      ];
 
       const items = engine.computeEstimation(room, workItems);
       expect(items[0].pose_type).toBe('standard');

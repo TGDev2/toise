@@ -23,9 +23,27 @@ import {
   signOut,
   type User as FirebaseUser,
 } from 'firebase/auth';
-import { apiDelete, apiPost } from '@/lib/api';
+import { apiDelete, apiPost, apiPut } from '@/lib/api';
 import { errorHasCode } from '@/lib/errors';
 import { getFirebaseAuth } from '@/lib/firebase';
+
+const LOCAL_PROJECTS_KEY = 'estimate_local_projects';
+
+interface LocalProjectDraft {
+  id: string;
+  name: string;
+  room_name: string;
+  work_type?: string;
+  length_m?: number;
+  width_m?: number;
+  height_m?: number;
+  openings?: Array<{
+    type: 'door' | 'window';
+    width_cm: number;
+    height_cm: number;
+    count: number;
+  }>;
+}
 
 export interface CompanyProfilePayload {
   raison_sociale: string;
@@ -94,6 +112,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       setAppUser(null);
     }
+  }, []);
+
+  const migrateLocalProjects = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+    const raw = localStorage.getItem(LOCAL_PROJECTS_KEY);
+    if (!raw) return;
+
+    let drafts: LocalProjectDraft[];
+    try {
+      const parsed = JSON.parse(raw);
+      drafts = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return;
+    }
+    if (drafts.length === 0) return;
+
+    for (const draft of drafts) {
+      try {
+        const created = await apiPost<{ id: string }>('/projects', {
+          name: draft.name,
+          room_name: draft.room_name,
+          work_type: draft.work_type,
+        });
+
+        if (draft.length_m && draft.width_m && draft.height_m) {
+          await apiPut(`/projects/${created.id}/dimensions`, {
+            length_cm: Math.round(draft.length_m * 100),
+            width_cm: Math.round(draft.width_m * 100),
+            height_cm: Math.round(draft.height_m * 100),
+          });
+        }
+
+        if (draft.openings?.length) {
+          for (const opening of draft.openings) {
+            await apiPost(`/projects/${created.id}/openings`, {
+              type: opening.type,
+              width_cm: opening.width_cm,
+              height_cm: opening.height_cm,
+              count: opening.count,
+            });
+          }
+        }
+      } catch (err) {
+        console.error(`Failed to migrate guest project "${draft.name}":`, err);
+      }
+    }
+
+    localStorage.removeItem(LOCAL_PROJECTS_KEY);
   }, []);
 
   useEffect(() => {
@@ -168,6 +234,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await linkWithCredential(currentUser, credential);
         await sendEmailVerification(currentUser);
         await syncWithBackend();
+        await migrateLocalProjects();
       } catch (error: unknown) {
         if (errorHasCode(error, 'auth/credential-already-in-use')) {
           const anonymousUid = currentUser.uid;
@@ -176,12 +243,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             anonymous_firebase_uid: anonymousUid,
           });
           await syncWithBackend();
+          await migrateLocalProjects();
         } else {
           throw error;
         }
       }
     },
-    [syncWithBackend],
+    [syncWithBackend, migrateLocalProjects],
   );
 
   const convertGuestWithGoogle = useCallback(async () => {
@@ -191,6 +259,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await linkWithPopup(currentUser, googleProvider);
       await syncWithBackend();
+      await migrateLocalProjects();
     } catch (error: unknown) {
       if (errorHasCode(error, 'auth/credential-already-in-use')) {
         const anonymousUid = currentUser.uid;
@@ -199,11 +268,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           anonymous_firebase_uid: anonymousUid,
         });
         await syncWithBackend();
+        await migrateLocalProjects();
       } else {
         throw error;
       }
     }
-  }, [syncWithBackend]);
+  }, [syncWithBackend, migrateLocalProjects]);
 
   const convertGuestWithApple = useCallback(async () => {
     const currentUser = getFirebaseAuth().currentUser;
@@ -212,6 +282,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await linkWithPopup(currentUser, appleProvider);
       await syncWithBackend();
+      await migrateLocalProjects();
     } catch (error: unknown) {
       if (errorHasCode(error, 'auth/credential-already-in-use')) {
         const anonymousUid = currentUser.uid;
@@ -220,11 +291,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           anonymous_firebase_uid: anonymousUid,
         });
         await syncWithBackend();
+        await migrateLocalProjects();
       } else {
         throw error;
       }
     }
-  }, [syncWithBackend]);
+  }, [syncWithBackend, migrateLocalProjects]);
 
   const logout = useCallback(async () => {
     await signOut(getFirebaseAuth());
@@ -234,7 +306,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const deleteAccount = useCallback(async () => {
     await apiDelete('/auth/me');
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('estimate_local_projects');
+      localStorage.removeItem(LOCAL_PROJECTS_KEY);
     }
     await signOut(getFirebaseAuth()).catch(() => undefined);
     setFirebaseUser(null);

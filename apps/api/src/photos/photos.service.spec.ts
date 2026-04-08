@@ -8,12 +8,18 @@ import {
 } from '@nestjs/common';
 import { PhotosService } from './photos.service';
 import { ProjectPhoto, PhotoStatus } from './entities/project-photo.entity';
-import { Project, ProjectStatus, WorkType } from '../projects/entities/project.entity';
+import {
+  Project,
+  ProjectStatus,
+  WorkType,
+} from '../projects/entities/project.entity';
 import { STORAGE_PROVIDER } from './storage/storage.interface';
 
 jest.mock('sharp', () => {
   const mockInstance = {
-    metadata: jest.fn().mockResolvedValue({ format: 'jpeg', width: 1000, height: 800 }),
+    metadata: jest
+      .fn()
+      .mockResolvedValue({ format: 'jpeg', width: 1000, height: 800 }),
     resize: jest.fn().mockReturnThis(),
     jpeg: jest.fn().mockReturnThis(),
     toBuffer: jest.fn().mockResolvedValue(Buffer.from('thumb')),
@@ -78,7 +84,12 @@ const storageMock = {
 const configMock = {
   get: jest.fn((key: string, defaultValue?: unknown) => {
     const map: Record<string, unknown> = {
-      'storage.allowedMimeTypes': ['image/jpeg', 'image/png', 'image/heic', 'image/heif'],
+      'storage.allowedMimeTypes': [
+        'image/jpeg',
+        'image/png',
+        'image/heic',
+        'image/heif',
+      ],
       'storage.thumbnailWidth': 400,
     };
     return map[key] ?? defaultValue;
@@ -125,7 +136,11 @@ describe('PhotosService', () => {
     } as Express.Multer.File;
 
     it('should upload a photo successfully', async () => {
-      const result = await service.uploadPhoto('project-uuid', 'user-uuid', mockFile);
+      const result = await service.uploadPhoto(
+        'project-uuid',
+        'user-uuid',
+        mockFile,
+      );
 
       expect(projectRepoMock.findOne).toHaveBeenCalledWith({
         where: { id: 'project-uuid' },
@@ -162,7 +177,10 @@ describe('PhotosService', () => {
 
   describe('getProjectPhotos', () => {
     it('should return photos ordered by sort_order', async () => {
-      const result = await service.getProjectPhotos('project-uuid', 'user-uuid');
+      const result = await service.getProjectPhotos(
+        'project-uuid',
+        'user-uuid',
+      );
 
       expect(photoRepoMock.find).toHaveBeenCalledWith({
         where: { project_id: 'project-uuid' },

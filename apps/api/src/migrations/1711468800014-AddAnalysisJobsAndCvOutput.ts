@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddAnalysisJobsAndCvOutput1711468800014
-  implements MigrationInterface
-{
+export class AddAnalysisJobsAndCvOutput1711468800014 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Add raw_cv_output_json to room_dimensions
     await queryRunner.query(

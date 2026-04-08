@@ -34,9 +34,7 @@ export class CompanyProfilesController {
   }
 
   @Get('me')
-  async getMyProfile(
-    @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
-  ) {
+  async getMyProfile(@CurrentFirebaseUser() firebaseUser: DecodedIdToken) {
     const user = await this.usersService.findByFirebaseUid(firebaseUser.uid);
     if (!user) throw new NotFoundException('User not found');
     const profile = await this.companyProfilesService.findByUserId(user.id);

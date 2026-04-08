@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import PDFDocument from 'pdfkit';
 import { PassThrough } from 'stream';
-import type { Quote, QuoteLineItem, QuoteStatus } from './entities/quote.entity';
+import type {
+  Quote,
+  QuoteLineItem,
+  QuoteStatus,
+} from './entities/quote.entity';
 import type { CompanyProfile } from '../company-profiles/entities/company-profile.entity';
 import type { Client } from '../clients/entities/client.entity';
 
@@ -281,10 +285,7 @@ export class QuotePdfService {
   private drawMaterialTableHeader(doc: PDFKit.PDFDocument): void {
     const startX = doc.x;
     const y = doc.y;
-    doc
-      .fontSize(8)
-      .font('Helvetica-Bold')
-      .fillColor('#666666');
+    doc.fontSize(8).font('Helvetica-Bold').fillColor('#666666');
     doc.text('Designation', startX, y, { width: 200 });
     doc.text('Qte', startX + 210, y, { width: 40, align: 'center' });
     doc.text('PU HT', startX + 260, y, { width: 80, align: 'right' });
@@ -295,10 +296,7 @@ export class QuotePdfService {
     doc.moveDown(0.2);
   }
 
-  private drawMaterialRow(
-    doc: PDFKit.PDFDocument,
-    item: QuoteLineItem,
-  ): void {
+  private drawMaterialRow(doc: PDFKit.PDFDocument, item: QuoteLineItem): void {
     const startX = doc.x;
     const y = doc.y;
     doc.fontSize(9).font('Helvetica').fillColor('#000000');

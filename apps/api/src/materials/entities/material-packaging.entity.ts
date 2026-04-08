@@ -32,7 +32,9 @@ export class MaterialPackaging {
   @UpdateDateColumn({ type: 'timestamptz' })
   updated_at!: Date;
 
-  @ManyToOne(() => MaterialCatalog, (m) => m.packagings, { onDelete: 'CASCADE' })
+  @ManyToOne(() => MaterialCatalog, (m) => m.packagings, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'material_id' })
   material!: MaterialCatalog;
 }

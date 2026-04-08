@@ -14,8 +14,6 @@ export class AddSourceToOpenings1711468800015 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "openings" DROP COLUMN "cv_confidence"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "openings" DROP COLUMN "source"`,
-    );
+    await queryRunner.query(`ALTER TABLE "openings" DROP COLUMN "source"`);
   }
 }

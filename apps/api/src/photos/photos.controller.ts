@@ -25,12 +25,7 @@ import { PhotoResponseDto } from './dto/photo-response.dto';
 import { ProjectPhoto } from './entities/project-photo.entity';
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
-const ALLOWED_MIMES = [
-  'image/jpeg',
-  'image/png',
-  'image/heic',
-  'image/heif',
-];
+const ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/heic', 'image/heif'];
 
 function mimeFilter(
   _req: unknown,
@@ -97,11 +92,7 @@ export class PhotosController {
       throw new BadRequestException('Aucun fichier fourni');
     }
     const userId = await this.resolveUserId(firebaseUser);
-    const photo = await this.photosService.uploadPhoto(
-      projectId,
-      userId,
-      file,
-    );
+    const photo = await this.photosService.uploadPhoto(projectId, userId, file);
     return this.toDto(photo);
   }
 
@@ -111,10 +102,7 @@ export class PhotosController {
     @Param('id', ParseUUIDPipe) projectId: string,
   ): Promise<PhotoResponseDto[]> {
     const userId = await this.resolveUserId(firebaseUser);
-    const photos = await this.photosService.getProjectPhotos(
-      projectId,
-      userId,
-    );
+    const photos = await this.photosService.getProjectPhotos(projectId, userId);
     return photos.map((p) => this.toDto(p));
   }
 

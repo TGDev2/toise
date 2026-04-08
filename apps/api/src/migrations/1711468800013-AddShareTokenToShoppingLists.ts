@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddShareTokenToShoppingLists1711468800013
-  implements MigrationInterface
-{
+export class AddShareTokenToShoppingLists1711468800013 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
       `ALTER TABLE "shopping_lists" ADD "share_token" VARCHAR(64) NULL`,

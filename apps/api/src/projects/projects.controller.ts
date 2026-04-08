@@ -74,7 +74,10 @@ export class ProjectsController {
     @Query() query: ListProjectsQueryDto,
   ) {
     const user = await this.resolveUser(firebaseUser);
-    const { data, meta } = await this.projectsService.findByUser(user.id, query);
+    const { data, meta } = await this.projectsService.findByUser(
+      user.id,
+      query,
+    );
 
     // Determine writable project IDs for free-tier users
     const unlimitedAllowed = await this.featureGatesService.isFeatureAllowed(
@@ -180,7 +183,11 @@ export class ProjectsController {
     @Body() dto: UpdateDimensionsDto,
   ) {
     const user = await this.resolveUser(firebaseUser);
-    await this.projectsService.ensureProjectWritable(id, user.id, user.subscription_tier);
+    await this.projectsService.ensureProjectWritable(
+      id,
+      user.id,
+      user.subscription_tier,
+    );
 
     // Check if current dimensions are CV-sourced for correction logging
     const currentDims = await this.projectsService.getDimensions(id, user.id);
@@ -198,7 +205,13 @@ export class ProjectsController {
       for (const field of fields) {
         if (currentDims[field] !== dto[field]) {
           this.cvCorrectionService
-            .logCorrection(id, 'dimension', field, currentDims[field], dto[field])
+            .logCorrection(
+              id,
+              'dimension',
+              field,
+              currentDims[field],
+              dto[field],
+            )
             .catch(() => {});
         }
       }
@@ -239,7 +252,11 @@ export class ProjectsController {
     @Body() dto: CreateOpeningDto,
   ) {
     const user = await this.resolveUser(firebaseUser);
-    await this.projectsService.ensureProjectWritable(id, user.id, user.subscription_tier);
+    await this.projectsService.ensureProjectWritable(
+      id,
+      user.id,
+      user.subscription_tier,
+    );
     const opening = await this.projectsService.addOpening(id, user.id, dto);
     return {
       id: opening.id,
@@ -274,7 +291,11 @@ export class ProjectsController {
     @Body() dto: UpdateOpeningDto,
   ) {
     const user = await this.resolveUser(firebaseUser);
-    await this.projectsService.ensureProjectWritable(id, user.id, user.subscription_tier);
+    await this.projectsService.ensureProjectWritable(
+      id,
+      user.id,
+      user.subscription_tier,
+    );
     const opening = await this.projectsService.updateOpening(
       id,
       user.id,
@@ -298,7 +319,11 @@ export class ProjectsController {
     @Param('openingId', ParseUUIDPipe) openingId: string,
   ) {
     const user = await this.resolveUser(firebaseUser);
-    await this.projectsService.ensureProjectWritable(id, user.id, user.subscription_tier);
+    await this.projectsService.ensureProjectWritable(
+      id,
+      user.id,
+      user.subscription_tier,
+    );
     await this.projectsService.removeOpening(id, user.id, openingId);
   }
 
@@ -309,7 +334,11 @@ export class ProjectsController {
     @Body() dto: SaveWorkItemsDto,
   ) {
     const user = await this.resolveUser(firebaseUser);
-    await this.projectsService.ensureProjectWritable(id, user.id, user.subscription_tier);
+    await this.projectsService.ensureProjectWritable(
+      id,
+      user.id,
+      user.subscription_tier,
+    );
     const items = await this.projectsService.saveWorkItems(id, user.id, dto);
     return items.map((item) => ({
       id: item.id,

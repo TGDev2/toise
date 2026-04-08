@@ -1,13 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { User, AuthProvider, SubscriptionTier } from './entities/user.entity';
+import { Project } from '../projects/entities/project.entity';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly usersRepo: Repository<User>,
+    @InjectRepository(Project)
+    private readonly projectsRepo: Repository<Project>,
   ) {}
 
   async findByFirebaseUid(firebaseUid: string): Promise<User | null> {
@@ -49,13 +52,14 @@ export class UsersService {
     return this.usersRepo.save(user);
   }
 
-  transferProjects(fromUserId: string, toUserId: string): Promise<void> {
-    void fromUserId;
-    void toUserId;
-    // Will be implemented when the projects module exists.
-    // For now this is a placeholder for the guest merge flow.
-    // await this.projectsRepo.update({ user_id: fromUserId }, { user_id: toUserId });
-    return Promise.resolve();
+  async transferProjects(
+    fromUserId: string,
+    toUserId: string,
+  ): Promise<void> {
+    await this.projectsRepo.update(
+      { user_id: fromUserId, deleted_at: IsNull() },
+      { user_id: toUserId },
+    );
   }
 
   async updateSubscriptionTier(

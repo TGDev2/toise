@@ -42,9 +42,7 @@ export class SubscriptionsController {
   }
 
   @Get('current')
-  async getCurrent(
-    @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
-  ) {
+  async getCurrent(@CurrentFirebaseUser() firebaseUser: DecodedIdToken) {
     const user = await this.usersService.findByFirebaseUid(firebaseUser.uid);
     if (!user) {
       throw new Error('User not found');

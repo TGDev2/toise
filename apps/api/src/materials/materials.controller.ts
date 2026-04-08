@@ -25,10 +25,7 @@ export class MaterialsController {
   constructor(private readonly materialsService: MaterialsService) {}
 
   @Post()
-  async create(
-    @CurrentAppUser() user: User,
-    @Body() dto: CreateMaterialDto,
-  ) {
+  async create(@CurrentAppUser() user: User, @Body() dto: CreateMaterialDto) {
     return this.materialsService.create(dto, user.id);
   }
 

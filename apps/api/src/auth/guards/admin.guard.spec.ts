@@ -66,7 +66,7 @@ describe('AdminGuard', () => {
     const ctx = createMockContext({ uid: 'firebase-uid' });
     await guard.canActivate(ctx);
 
-    const request = ctx.switchToHttp().getRequest() as Record<string, unknown>;
+    const request = ctx.switchToHttp().getRequest();
     expect(request.appUser).toEqual(adminUser);
   });
 });

@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateCommunityGallery1711468800026
-  implements MigrationInterface
-{
+export class CreateCommunityGallery1711468800026 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE "community_projects" (

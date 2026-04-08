@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddCalculatedComplementaryMaterials1711468800010
-  implements MigrationInterface
-{
+export class AddCalculatedComplementaryMaterials1711468800010 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Add formula_code column
     await queryRunner.query(

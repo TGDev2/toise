@@ -423,19 +423,15 @@ describe('ProjectsService', () => {
       workTypesRepoMock.find.mockResolvedValueOnce([mockWorkType]);
       workItemsRepoMock.find.mockResolvedValueOnce([mockWorkItem]);
 
-      const result = await service.saveWorkItems(
-        'project-uuid',
-        'user-uuid',
-        {
-          items: [
-            {
-              work_type_id: 'wt-wall-painting',
-              skill_level: SkillLevel.BEGINNER,
-              custom_params: {},
-            },
-          ],
-        },
-      );
+      const result = await service.saveWorkItems('project-uuid', 'user-uuid', {
+        items: [
+          {
+            work_type_id: 'wt-wall-painting',
+            skill_level: SkillLevel.BEGINNER,
+            custom_params: {},
+          },
+        ],
+      });
 
       expect(workItemsRepoMock.delete).toHaveBeenCalledWith({
         project_id: 'project-uuid',
@@ -492,22 +488,18 @@ describe('ProjectsService', () => {
       };
       workItemsRepoMock.find.mockResolvedValueOnce([tilingWorkItem]);
 
-      const result = await service.saveWorkItems(
-        'project-uuid',
-        'user-uuid',
-        {
-          items: [
-            {
-              work_type_id: 'wt-floor-tiling',
-              skill_level: SkillLevel.BEGINNER,
-              custom_params: {
-                tile_format: '30x30',
-                laying_pattern: 'straight',
-              },
+      const result = await service.saveWorkItems('project-uuid', 'user-uuid', {
+        items: [
+          {
+            work_type_id: 'wt-floor-tiling',
+            skill_level: SkillLevel.BEGINNER,
+            custom_params: {
+              tile_format: '30x30',
+              laying_pattern: 'straight',
             },
-          ],
-        },
-      );
+          },
+        ],
+      });
 
       expect(result).toEqual([tilingWorkItem]);
     });

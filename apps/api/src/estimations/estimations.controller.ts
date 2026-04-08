@@ -62,10 +62,7 @@ export class EstimationsController {
     @Param('id', ParseUUIDPipe) projectId: string,
   ): Promise<EstimationResponseDto[]> {
     const userId = await this.resolveUserId(firebaseUser);
-    const results = await this.estimationsService.getHistory(
-      projectId,
-      userId,
-    );
+    const results = await this.estimationsService.getHistory(projectId, userId);
     return results.map(EstimationResponseDto.fromEntity);
   }
 }

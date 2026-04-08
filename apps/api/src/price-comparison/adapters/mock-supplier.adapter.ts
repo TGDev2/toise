@@ -53,10 +53,14 @@ export class MockSupplierAdapter implements SupplierAdapter {
     const results = new Map<string, SupplierPriceResult>();
 
     for (const item of items) {
-      const basePrice =
-        BASE_PRICES[item.material_category] ?? 30;
-      const variance = ((hashCode(item.material_name + this.supplierKey) % 30) - 15) / 100;
-      const unitPrice = +(basePrice * this.baseMultiplier * (1 + variance)).toFixed(2);
+      const basePrice = BASE_PRICES[item.material_category] ?? 30;
+      const variance =
+        ((hashCode(item.material_name + this.supplierKey) % 30) - 15) / 100;
+      const unitPrice = +(
+        basePrice *
+        this.baseMultiplier *
+        (1 + variance)
+      ).toFixed(2);
 
       results.set(item.material_id, {
         supplier_key: this.supplierKey,

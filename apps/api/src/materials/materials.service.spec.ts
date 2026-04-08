@@ -3,7 +3,10 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { MaterialsService } from './materials.service';
-import { MaterialCatalog, MaterialCategory } from './entities/material-catalog.entity';
+import {
+  MaterialCatalog,
+  MaterialCategory,
+} from './entities/material-catalog.entity';
 import { MaterialPackaging } from './entities/material-packaging.entity';
 import { WasteFactor } from './entities/waste-factor.entity';
 
@@ -59,8 +62,8 @@ const mockManager = {
 };
 
 const dataSourceMock = {
-  transaction: jest.fn((cb: (manager: typeof mockManager) => Promise<unknown>) =>
-    cb(mockManager),
+  transaction: jest.fn(
+    (cb: (manager: typeof mockManager) => Promise<unknown>) => cb(mockManager),
   ),
 };
 
@@ -112,7 +115,9 @@ describe('MaterialsService', () => {
           category: MaterialCategory.PAINTING,
           unit: 'L',
           yield_per_unit: 10,
-          packagings: [{ label: 'Pot 2.5 L', quantity_per_unit: 2.5, unit: 'L' }],
+          packagings: [
+            { label: 'Pot 2.5 L', quantity_per_unit: 2.5, unit: 'L' },
+          ],
         },
         'user-uuid',
       );

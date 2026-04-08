@@ -20,7 +20,9 @@ export class CompanyProfilesService {
       where: { user_id: userId },
     });
     if (existingByUser) {
-      throw new ConflictException('Un profil entreprise existe deja pour cet utilisateur');
+      throw new ConflictException(
+        'Un profil entreprise existe deja pour cet utilisateur',
+      );
     }
 
     const existingBySiret = await this.repo.findOne({

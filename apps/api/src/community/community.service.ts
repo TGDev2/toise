@@ -418,9 +418,7 @@ export class CommunityService {
       throw new NotFoundException('Publication communautaire non trouvee');
     }
     if (entry.moderation_status !== ModerationStatus.PENDING) {
-      throw new BadRequestException(
-        'Ce projet a deja ete modere',
-      );
+      throw new BadRequestException('Ce projet a deja ete modere');
     }
 
     if (dto.action === ModerationAction.APPROVE) {

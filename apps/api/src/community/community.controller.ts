@@ -47,9 +47,7 @@ export class CommunityController {
     return user?.id ?? null;
   }
 
-  private async requireUserId(
-    firebaseUser: DecodedIdToken,
-  ): Promise<string> {
+  private async requireUserId(firebaseUser: DecodedIdToken): Promise<string> {
     const user = await this.usersService.findByFirebaseUid(firebaseUser.uid);
     if (!user) throw new NotFoundException('User not found');
     return user.id;
@@ -59,9 +57,7 @@ export class CommunityController {
 
   @Get('admin/pending')
   @UseGuards(FirebaseAuthGuard, AdminGuard)
-  async listPending(
-    @Query() query: ListCommunityQueryDto,
-  ) {
+  async listPending(@Query() query: ListCommunityQueryDto) {
     return this.communityService.listPendingForModeration(
       query.page,
       query.limit,

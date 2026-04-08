@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateSupplierPriceCache1711468800020
-  implements MigrationInterface
-{
+export class CreateSupplierPriceCache1711468800020 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE "supplier_price_cache" (
@@ -33,9 +31,7 @@ export class CreateSupplierPriceCache1711468800020
     await queryRunner.query(
       `DELETE FROM "feature_gates" WHERE "feature_key" = 'price_comparison'`,
     );
-    await queryRunner.query(
-      `DROP INDEX "IDX_supplier_price_cache_expires"`,
-    );
+    await queryRunner.query(`DROP INDEX "IDX_supplier_price_cache_expires"`);
     await queryRunner.query(`DROP TABLE "supplier_price_cache"`);
   }
 }

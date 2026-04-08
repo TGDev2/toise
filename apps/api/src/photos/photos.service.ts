@@ -51,7 +51,9 @@ export class PhotosService {
   ): Promise<ProjectPhoto> {
     await this.assertProjectOwnership(projectId, userId);
 
-    const count = await this.photoRepo.count({ where: { project_id: projectId } });
+    const count = await this.photoRepo.count({
+      where: { project_id: projectId },
+    });
     if (count >= MAX_PHOTOS_PER_PROJECT) {
       throw new BadRequestException(
         `Maximum ${MAX_PHOTOS_PER_PROJECT} photos par projet`,

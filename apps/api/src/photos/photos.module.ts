@@ -9,10 +9,7 @@ import { STORAGE_PROVIDER } from './storage/storage.interface';
 import { LocalStorageService } from './storage/local-storage.service';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([ProjectPhoto, Project]),
-    UsersModule,
-  ],
+  imports: [TypeOrmModule.forFeature([ProjectPhoto, Project]), UsersModule],
   controllers: [PhotosController],
   providers: [
     PhotosService,

@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateWorkTypesAndProjectWorkItems1711468800003
-  implements MigrationInterface
-{
+export class CreateWorkTypesAndProjectWorkItems1711468800003 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE "work_types" (

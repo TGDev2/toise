@@ -36,17 +36,17 @@ function computeTilingAdhesive(ctx: ComplementaryContext): number {
 }
 
 function computeTilingGrout(ctx: ComplementaryContext): number {
-  return Math.ceil(
-    (ctx.total_surface_m2 * GROUT_KG_PER_M2) / GROUT_BAG_KG,
-  );
+  return Math.ceil((ctx.total_surface_m2 * GROUT_KG_PER_M2) / GROUT_BAG_KG);
 }
 
 function computeTilingSpacers(ctx: ComplementaryContext): number {
-  const tileAreaM2 =
-    (ctx.tile_length_cm * ctx.tile_width_cm) / 10_000;
+  const tileAreaM2 = (ctx.tile_length_cm * ctx.tile_width_cm) / 10_000;
   if (tileAreaM2 <= 0) return 1;
   const tileCount = ctx.total_surface_m2 / tileAreaM2;
-  return Math.max(1, Math.ceil((tileCount * SPACERS_PER_TILE) / SPACERS_PER_SACHET));
+  return Math.max(
+    1,
+    Math.ceil((tileCount * SPACERS_PER_TILE) / SPACERS_PER_SACHET),
+  );
 }
 
 export function computeComplementaryQuantity(

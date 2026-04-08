@@ -49,7 +49,9 @@ export class QuotesService {
     // Build items snapshot with margin
     const marginPercent = dto.material_margin_percent;
     const items: QuoteLineItem[] = shoppingList.items_json.material_items
-      .filter((item) => item.real_unit_price != null && item.real_unit_price > 0)
+      .filter(
+        (item) => item.real_unit_price != null && item.real_unit_price > 0,
+      )
       .map((item) => {
         const basePrice = Number(item.real_unit_price);
         const priceWithMargin = basePrice * (1 + marginPercent / 100);
@@ -68,7 +70,10 @@ export class QuotesService {
       });
 
     // Calculate totals
-    const subtotalMaterials = items.reduce((sum, i) => sum + i.line_total_ht, 0);
+    const subtotalMaterials = items.reduce(
+      (sum, i) => sum + i.line_total_ht,
+      0,
+    );
     const subtotalLabor = this.computeLaborTotal(dto);
     const discountPercent = dto.discount_percent ?? 0;
     const totalHt =
@@ -105,10 +110,7 @@ export class QuotesService {
     return this.repo.save(quote);
   }
 
-  async findAllByUser(
-    userId: string,
-    status?: QuoteStatus,
-  ): Promise<Quote[]> {
+  async findAllByUser(userId: string, status?: QuoteStatus): Promise<Quote[]> {
     const where: Record<string, unknown> = { user_id: userId };
     if (status) {
       where.status = status;
@@ -157,8 +159,10 @@ export class QuotesService {
       quote.labor_estimated_hours = dto.labor_estimated_hours;
     if (dto.labor_flat_amount !== undefined)
       quote.labor_flat_amount = dto.labor_flat_amount;
-    if (dto.payment_terms !== undefined) quote.payment_terms = dto.payment_terms;
-    if (dto.validity_days !== undefined) quote.validity_days = dto.validity_days;
+    if (dto.payment_terms !== undefined)
+      quote.payment_terms = dto.payment_terms;
+    if (dto.validity_days !== undefined)
+      quote.validity_days = dto.validity_days;
     if (dto.notes !== undefined) quote.notes = dto.notes;
     if (dto.tva_rate !== undefined) quote.tva_rate = dto.tva_rate;
     if (dto.discount_percent !== undefined)

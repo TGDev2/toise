@@ -119,10 +119,7 @@ export class QuotesController {
 
     let client = null;
     if (quote.client_id) {
-      client = await this.clientsService.findOneByUser(
-        quote.client_id,
-        userId,
-      );
+      client = await this.clientsService.findOneByUser(quote.client_id, userId);
     }
 
     const buffer = await this.quotePdfService.generatePdf(

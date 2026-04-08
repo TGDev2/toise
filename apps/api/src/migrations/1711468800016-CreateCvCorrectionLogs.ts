@@ -26,9 +26,7 @@ export class CreateCvCorrectionLogs1711468800016 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `DROP INDEX "IDX_cv_correction_logs_project_id"`,
-    );
+    await queryRunner.query(`DROP INDEX "IDX_cv_correction_logs_project_id"`);
     await queryRunner.query(`DROP TABLE "cv_correction_logs"`);
   }
 }

@@ -50,11 +50,14 @@ export class FeatureGatesService {
     featureKey: string,
     dto: UpsertFeatureGateDto,
   ): Promise<FeatureGate> {
-    let gate = await this.gatesRepo.findOne({ where: { feature_key: featureKey } });
+    let gate = await this.gatesRepo.findOne({
+      where: { feature_key: featureKey },
+    });
 
     if (gate) {
       if (dto.label_fr !== undefined) gate.label_fr = dto.label_fr;
-      if (dto.description_fr !== undefined) gate.description_fr = dto.description_fr;
+      if (dto.description_fr !== undefined)
+        gate.description_fr = dto.description_fr;
       if (dto.min_tier !== undefined) gate.min_tier = dto.min_tier;
       if (dto.is_enabled !== undefined) gate.is_enabled = dto.is_enabled;
     } else {

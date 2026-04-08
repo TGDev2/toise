@@ -108,10 +108,7 @@ export class ShoppingListExportService {
       // Table header
       const startX = doc.x;
       const y = doc.y;
-      doc
-        .fontSize(8)
-        .font('Helvetica-Bold')
-        .fillColor('#666666');
+      doc.fontSize(8).font('Helvetica-Bold').fillColor('#666666');
       doc.text('Article', startX, y, { width: 280 });
       doc.text('Qté', startX + 300, y, { width: 60, align: 'center' });
       doc.text('Unité', startX + 370, y, { width: 80 });
@@ -161,10 +158,7 @@ export class ShoppingListExportService {
   private drawTableHeader(doc: PDFKit.PDFDocument): void {
     const startX = doc.x;
     const y = doc.y;
-    doc
-      .fontSize(8)
-      .font('Helvetica-Bold')
-      .fillColor('#666666');
+    doc.fontSize(8).font('Helvetica-Bold').fillColor('#666666');
     doc.text('Article', startX, y, { width: 200 });
     doc.text('Type de travaux', startX + 210, y, { width: 120 });
     doc.text('Qté', startX + 340, y, { width: 40, align: 'center' });
@@ -205,15 +199,11 @@ export class ShoppingListExportService {
     doc.fontSize(9).font('Helvetica');
     const name = item.is_calculated ? `${item.name} (estimé)` : item.name;
     doc.text(name, startX, y, { width: 280 });
-    doc
-      .font('Helvetica-Bold')
-      .text(String(item.quantity), startX + 300, y, {
-        width: 60,
-        align: 'center',
-      });
-    doc
-      .font('Helvetica')
-      .text(item.unit_label, startX + 370, y, { width: 80 });
+    doc.font('Helvetica-Bold').text(String(item.quantity), startX + 300, y, {
+      width: 60,
+      align: 'center',
+    });
+    doc.font('Helvetica').text(item.unit_label, startX + 370, y, { width: 80 });
     doc.moveDown(0.4);
   }
 
