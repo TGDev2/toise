@@ -14,6 +14,7 @@ import {
 import { EstimationResult } from '../estimations/entities/estimation-result.entity';
 import { ShoppingListsService } from '../shopping-lists/shopping-lists.service';
 import { ProjectsService } from '../projects/projects.service';
+import { ClientsService } from '../clients/clients.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
 import { UpdateQuoteDto } from './dto/update-quote.dto';
 
@@ -26,6 +27,7 @@ export class QuotesService {
     private readonly estimationRepo: Repository<EstimationResult>,
     private readonly shoppingListsService: ShoppingListsService,
     private readonly projectsService: ProjectsService,
+    private readonly clientsService: ClientsService,
   ) {}
 
   async create(userId: string, dto: CreateQuoteDto): Promise<Quote> {
@@ -38,6 +40,11 @@ export class QuotesService {
     });
     if (!estimation) {
       throw new NotFoundException('Estimation non trouvee pour ce projet');
+    }
+
+    // Verify client belongs to user when provided
+    if (dto.client_id) {
+      await this.clientsService.findOneByUser(dto.client_id, userId);
     }
 
     // Get shopping list for prices
@@ -151,7 +158,12 @@ export class QuotesService {
     }
 
     // Apply updates
-    if (dto.client_id !== undefined) quote.client_id = dto.client_id;
+    if (dto.client_id !== undefined) {
+      if (dto.client_id !== null) {
+        await this.clientsService.findOneByUser(dto.client_id, userId);
+      }
+      quote.client_id = dto.client_id;
+    }
     if (dto.labor_type !== undefined) quote.labor_type = dto.labor_type;
     if (dto.labor_hourly_rate !== undefined)
       quote.labor_hourly_rate = dto.labor_hourly_rate;
