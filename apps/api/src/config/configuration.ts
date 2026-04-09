@@ -38,7 +38,11 @@ export default () => ({
       enabled: process.env.LOWES_ENABLED === 'true',
     },
     cacheTtlHours: parseInt(process.env.PRICE_CACHE_TTL_HOURS ?? '24', 10),
-    mockEnabled: process.env.PRICE_MOCK_ENABLED !== 'false',
+    // Mock supplier adapters are strictly opt-in: set PRICE_MOCK_ENABLED=true
+    // only in dev/test. In production, no real adapter is wired yet, so the
+    // `price_comparison` feature gate is disabled in the DB — enabling the
+    // mock here would only serve fabricated CAD prices to paying users.
+    mockEnabled: process.env.PRICE_MOCK_ENABLED === 'true',
   },
   storage: {
     provider: process.env.STORAGE_PROVIDER ?? 'local',
