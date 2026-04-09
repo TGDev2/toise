@@ -19,7 +19,9 @@ services:
     ports:
       - '8000:8000'
     volumes:
-      - ./uploads:/data/uploads
+      # CV service only reads uploaded images, never writes them.
+      # Read-only mount limits blast radius of any future path-traversal bug.
+      - ./uploads:/data/uploads:ro
     environment:
       - UPLOADS_PATH=/data/uploads
     deploy:

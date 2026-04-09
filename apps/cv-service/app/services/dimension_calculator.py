@@ -1,5 +1,6 @@
 import logging
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Optional
 
 import cv2
@@ -21,6 +22,26 @@ from app.services.reference_detector import ReferenceDetector
 logger = logging.getLogger(__name__)
 
 IOU_DEDUP_THRESHOLD = 0.4
+
+
+def _resolve_upload_path(image_path: str) -> Path:
+    """
+    Resolve an uploaded image path safely inside UPLOADS_PATH.
+
+    Defense in depth on top of AnalyzeRequest.image_paths validation:
+    after resolving symlinks and normalizing, the final path must still
+    be contained within the configured uploads directory, otherwise
+    ValueError is raised.
+    """
+    uploads_root = Path(settings.uploads_path).resolve()
+    candidate = (uploads_root / image_path).resolve()
+    try:
+        candidate.relative_to(uploads_root)
+    except ValueError as exc:
+        raise ValueError(
+            f"image path escapes uploads directory: {image_path!r}"
+        ) from exc
+    return candidate
 
 
 @dataclass
@@ -162,7 +183,12 @@ class DimensionCalculator:
         reference_object: Optional[ReferenceObject],
     ) -> Optional[PerImageResult]:
         """Process a single image through the full pipeline."""
-        full_path = f"{settings.uploads_path}/{image_path}"
+        try:
+            full_path = _resolve_upload_path(image_path)
+        except ValueError as e:
+            logger.warning(f"Rejected unsafe image path {image_path!r}: {e}")
+            return None
+
         logger.info(f"Processing image: {full_path}")
 
         try:

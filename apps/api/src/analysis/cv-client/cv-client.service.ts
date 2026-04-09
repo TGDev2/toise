@@ -1,7 +1,40 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+
+/**
+ * Reject any image path that could escape the shared uploads volume.
+ * Defense in depth: the CV service also validates and resolves paths,
+ * but we fail fast here to avoid calling the downstream service at all
+ * with attacker-controlled traversal sequences.
+ */
+function assertSafeUploadPath(imagePath: string): void {
+  if (typeof imagePath !== 'string' || imagePath.length === 0) {
+    throw new BadRequestException('image path must be a non-empty string');
+  }
+  if (imagePath.includes('\0')) {
+    throw new BadRequestException('image path contains a null byte');
+  }
+  if (imagePath.includes('\\')) {
+    throw new BadRequestException('image path must not contain backslashes');
+  }
+  if (imagePath.startsWith('/')) {
+    throw new BadRequestException('image path must be relative');
+  }
+  // Windows-style drive letter (e.g. C:\ or C:/)
+  if (/^[a-zA-Z]:[\\/]/.test(imagePath)) {
+    throw new BadRequestException('image path must be relative');
+  }
+  const segments = imagePath.split('/');
+  if (segments.some((segment) => segment === '..')) {
+    throw new BadRequestException("image path must not contain '..' segments");
+  }
+}
 
 export interface CvAnalysisRequest {
   image_paths: string[];
@@ -57,6 +90,11 @@ export class CvClientService {
   }
 
   async analyze(request: CvAnalysisRequest): Promise<CvAnalysisResponse> {
+    if (!Array.isArray(request.image_paths) || request.image_paths.length === 0) {
+      throw new BadRequestException('image_paths must not be empty');
+    }
+    request.image_paths.forEach(assertSafeUploadPath);
+
     this.logger.log(
       `Calling CV service at ${this.baseUrl}/analyze with ${request.image_paths.length} image(s)`,
     );
