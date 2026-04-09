@@ -17,6 +17,7 @@ export class SubscriptionsService {
   private readonly webhookSecret: string;
   private readonly proPriceId: string;
   private readonly contractorPriceIds: Set<string>;
+  private readonly allowedPriceIds: Set<string>;
   private readonly publicUrl: string;
   private readonly logger = new Logger(SubscriptionsService.name);
 
@@ -39,6 +40,11 @@ export class SubscriptionsService {
         this.config.get<string>('stripe.contractorPremiumPriceId'),
       ].filter(Boolean) as string[],
     );
+
+    this.allowedPriceIds = new Set<string>([
+      this.proPriceId,
+      ...this.contractorPriceIds,
+    ]);
   }
 
   async getSubscription(userId: string): Promise<Subscription | null> {
@@ -50,6 +56,9 @@ export class SubscriptionsService {
     priceId?: string,
   ): Promise<{ url: string }> {
     const selectedPriceId = priceId ?? this.proPriceId;
+    if (!this.allowedPriceIds.has(selectedPriceId)) {
+      throw new BadRequestException('Offre invalide.');
+    }
     const isContractor = this.contractorPriceIds.has(selectedPriceId);
     let customerId: string;
 
