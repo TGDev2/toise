@@ -10,6 +10,7 @@ import type { App } from 'supertest/types';
 import { AuthController } from '../src/auth/auth.controller';
 import { AuthService } from '../src/auth/auth.service';
 import { FirebaseAuthGuard } from '../src/auth/guards/firebase-auth.guard';
+import { CompanyProfilesService } from '../src/company-profiles/company-profiles.service';
 import {
   AuthProvider,
   SubscriptionTier,
@@ -38,6 +39,10 @@ const authServiceMock = {
   mergeGuestAccount: jest.fn(),
 };
 
+const companyProfilesServiceMock = {
+  findByUserId: jest.fn(),
+};
+
 describe('AuthController (e2e)', () => {
   let app: INestApplication<App>;
 
@@ -53,6 +58,7 @@ describe('AuthController (e2e)', () => {
     authServiceMock.getProfile.mockResolvedValue(mockUser);
     authServiceMock.deleteAccount.mockResolvedValue(undefined);
     authServiceMock.mergeGuestAccount.mockResolvedValue(mockUser);
+    companyProfilesServiceMock.findByUserId.mockResolvedValue(null);
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
@@ -60,6 +66,10 @@ describe('AuthController (e2e)', () => {
         {
           provide: AuthService,
           useValue: authServiceMock,
+        },
+        {
+          provide: CompanyProfilesService,
+          useValue: companyProfilesServiceMock,
         },
       ],
     })
@@ -146,6 +156,7 @@ describe('AuthController (e2e)', () => {
       subscription_tier: mockUser.subscription_tier,
       email_verified: mockUser.email_verified,
       created_at: mockUser.created_at.toISOString(),
+      has_company_profile: false,
     });
 
     expect(authServiceMock.syncUser).toHaveBeenCalledWith(
@@ -163,6 +174,7 @@ describe('AuthController (e2e)', () => {
       subscription_tier: mockUser.subscription_tier,
       email_verified: mockUser.email_verified,
       created_at: mockUser.created_at.toISOString(),
+      has_company_profile: false,
     });
 
     expect(authServiceMock.getProfile).toHaveBeenCalledWith(

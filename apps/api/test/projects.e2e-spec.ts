@@ -10,6 +10,8 @@ import type { App } from 'supertest/types';
 import { ProjectsController } from '../src/projects/projects.controller';
 import { ProjectsService } from '../src/projects/projects.service';
 import { UsersService } from '../src/users/users.service';
+import { FeatureGatesService } from '../src/feature-gates/feature-gates.service';
+import { CvCorrectionService } from '../src/analysis/cv-correction.service';
 import { FirebaseAuthGuard } from '../src/auth/guards/firebase-auth.guard';
 import {
   WorkType,
@@ -19,6 +21,7 @@ import {
   ConfidenceScore,
   DimensionSource,
 } from '../src/projects/entities/room-dimensions.entity';
+import { SubscriptionTier } from '../src/users/entities/user.entity';
 
 const mockUserId = '123e4567-e89b-12d3-a456-426614174000';
 const mockProjectId = '223e4567-e89b-12d3-a456-426614174000';
@@ -56,13 +59,27 @@ const projectsServiceMock = {
     meta: { total: 1, page: 1, limit: 12, totalPages: 1 },
   }),
   findOneByUser: jest.fn().mockResolvedValue(mockProject),
+  getWritableProjectIds: jest.fn().mockResolvedValue([mockProjectId]),
+  isProjectWritable: jest.fn().mockResolvedValue(true),
+  ensureProjectWritable: jest.fn().mockResolvedValue(undefined),
   updateDimensions: jest.fn().mockResolvedValue(mockDimensions),
   getDimensions: jest.fn().mockResolvedValue(mockDimensions),
   softDeleteProject: jest.fn().mockResolvedValue(undefined),
 };
 
 const usersServiceMock = {
-  findByFirebaseUid: jest.fn().mockResolvedValue({ id: mockUserId }),
+  findByFirebaseUid: jest.fn().mockResolvedValue({
+    id: mockUserId,
+    subscription_tier: SubscriptionTier.FREE,
+  }),
+};
+
+const featureGatesServiceMock = {
+  isFeatureAllowed: jest.fn().mockResolvedValue(true),
+};
+
+const cvCorrectionServiceMock = {
+  logCorrection: jest.fn().mockResolvedValue(undefined),
 };
 
 describe('ProjectsController (e2e)', () => {
@@ -76,6 +93,14 @@ describe('ProjectsController (e2e)', () => {
       providers: [
         { provide: ProjectsService, useValue: projectsServiceMock },
         { provide: UsersService, useValue: usersServiceMock },
+        {
+          provide: FeatureGatesService,
+          useValue: featureGatesServiceMock,
+        },
+        {
+          provide: CvCorrectionService,
+          useValue: cvCorrectionServiceMock,
+        },
       ],
     })
       .overrideGuard(FirebaseAuthGuard)
@@ -127,6 +152,7 @@ describe('ProjectsController (e2e)', () => {
     expect(projectsServiceMock.createProject).toHaveBeenCalledWith(
       mockUserId,
       expect.objectContaining({ name: 'Renovation salon' }),
+      SubscriptionTier.FREE,
     );
   });
 

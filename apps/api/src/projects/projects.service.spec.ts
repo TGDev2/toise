@@ -5,6 +5,8 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import { FeatureGatesService } from '../feature-gates/feature-gates.service';
+import { SubscriptionTier } from '../users/entities/user.entity';
 import { ProjectsService } from './projects.service';
 import { Project, WorkType, ProjectStatus } from './entities/project.entity';
 import {
@@ -70,6 +72,7 @@ const mockDimensions: RoomDimensions = {
 const projectsRepoMock = {
   create: jest.fn().mockReturnValue(mockProject),
   save: jest.fn().mockResolvedValue(mockProject),
+  count: jest.fn().mockResolvedValue(0),
   find: jest.fn().mockResolvedValue([mockProject]),
   findOne: jest.fn().mockResolvedValue(mockProject),
   findAndCount: jest.fn().mockResolvedValue([[mockProject], 1]),
@@ -157,6 +160,10 @@ const workItemsRepoMock = {
   delete: jest.fn().mockResolvedValue({ affected: 0 }),
 };
 
+const featureGatesServiceMock = {
+  isFeatureAllowed: jest.fn().mockResolvedValue(true),
+};
+
 describe('ProjectsService', () => {
   let service: ProjectsService;
 
@@ -180,6 +187,10 @@ describe('ProjectsService', () => {
           provide: getRepositoryToken(ProjectWorkItem),
           useValue: workItemsRepoMock,
         },
+        {
+          provide: FeatureGatesService,
+          useValue: featureGatesServiceMock,
+        },
       ],
     }).compile();
 
@@ -202,6 +213,23 @@ describe('ProjectsService', () => {
       });
       expect(projectsRepoMock.save).toHaveBeenCalled();
       expect(result).toEqual(mockProject);
+    });
+
+    it('blocks free tier users when the project limit is reached', async () => {
+      featureGatesServiceMock.isFeatureAllowed.mockResolvedValueOnce(false);
+      projectsRepoMock.count.mockResolvedValueOnce(2);
+
+      await expect(
+        service.createProject(
+          'user-uuid',
+          {
+            name: 'Renovation salon',
+            room_name: 'Salon',
+            work_type: WorkType.PAINTING,
+          },
+          SubscriptionTier.FREE,
+        ),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 
@@ -332,6 +360,8 @@ describe('ProjectsService', () => {
         width_cm: 90,
         height_cm: 204,
         count: 1,
+        source: OpeningSource.MANUAL,
+        cv_confidence: null,
       });
       expect(openingsRepoMock.save).toHaveBeenCalled();
       expect(result).toEqual(mockOpening);
