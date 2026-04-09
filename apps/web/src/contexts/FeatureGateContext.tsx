@@ -69,7 +69,7 @@ export function FeatureGateProvider({ children }: { children: ReactNode }) {
     (featureKey: string): boolean => {
       if (!appUser) return false;
       const gate = gates.find((g) => g.feature_key === featureKey);
-      if (!gate) return true; // unknown gate = no restriction
+      if (!gate) return false; // unknown feature = fail-closed (matches API contract)
       if (!gate.is_enabled) return false;
 
       const userRank = TIER_RANK[appUser.subscription_tier] ?? 0;

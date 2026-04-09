@@ -44,7 +44,10 @@ export class SubscriptionsWebhookController {
     } catch (err) {
       this.logger.error(
         `Error processing webhook event ${event.type}: ${(err as Error).message}`,
+        (err as Error).stack,
       );
+      res.status(500).json({ error: 'Webhook processing failed' });
+      return;
     }
 
     res.status(200).json({ received: true });

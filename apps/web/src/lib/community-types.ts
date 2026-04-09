@@ -41,7 +41,7 @@ export interface CommunityComment {
   id: string;
   content: string;
   user_display_name: string;
-  user_id: string;
+  is_owner: boolean;
   created_at: string;
 }
 

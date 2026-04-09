@@ -298,7 +298,12 @@ export class CommunityService {
     });
   }
 
-  async listComments(communityProjectId: string, page = 1, limit = 20) {
+  async listComments(
+    communityProjectId: string,
+    page = 1,
+    limit = 20,
+    currentUserId?: string | null,
+  ) {
     const entry = await this.communityRepo.findOne({
       where: {
         id: communityProjectId,
@@ -324,7 +329,7 @@ export class CommunityService {
         id: c.id,
         content: c.content,
         user_display_name: this.maskEmail(c.user?.email),
-        user_id: c.user_id,
+        is_owner: currentUserId != null && c.user_id === currentUserId,
         created_at: c.created_at.toISOString(),
       })),
       meta: {

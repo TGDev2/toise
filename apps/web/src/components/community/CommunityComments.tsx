@@ -133,7 +133,7 @@ export function CommunityComments({
                 </span>
               </div>
               <p className="mt-2 text-sm text-stone-600">{comment.content}</p>
-              {appUser && comment.user_id === appUser.id && (
+              {appUser && comment.is_owner && (
                 <button
                   type="button"
                   onClick={() => handleDelete(comment.id)}

@@ -179,10 +179,17 @@ export class CommunityController {
   @Get(':id/comments')
   @UseGuards(OptionalAuthGuard)
   async listComments(
+    @CurrentFirebaseUser() firebaseUser: DecodedIdToken | null,
     @Param('id', ParseUUIDPipe) id: string,
     @Query() query: ListCommunityQueryDto,
   ) {
-    return this.communityService.listComments(id, query.page, query.limit);
+    const userId = await this.resolveUserId(firebaseUser);
+    return this.communityService.listComments(
+      id,
+      query.page,
+      query.limit,
+      userId,
+    );
   }
 
   @Post(':id/comments')
