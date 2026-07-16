@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/lib/errors';
+import { Logo } from '@/components/Logo';
 
 const highlights = [
   'Commencez un projet sans compte et convertissez-le au moment de la sauvegarde.',
@@ -41,7 +42,9 @@ export default function HomePage() {
     <main className="flex min-h-screen flex-1 items-center px-4 py-12 sm:px-6 lg:px-8">
       <div className="mx-auto grid w-full max-w-6xl gap-10 lg:grid-cols-[1.15fr_0.85fr]">
         <section className="rounded-[2rem] border border-amber-950/10 bg-[var(--surface)] p-8 shadow-[0_25px_80px_rgba(67,39,15,0.10)] sm:p-10">
-          <div className="inline-flex items-center rounded-full border border-emerald-900/10 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-900">
+          <Logo height={30} priority />
+
+          <div className="mt-6 inline-flex items-center rounded-full border border-emerald-900/10 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-900">
             EstiMate MVP
           </div>
 
