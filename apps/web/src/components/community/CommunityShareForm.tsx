@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+
 import { useState } from 'react';
 import { apiPost } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
@@ -77,19 +79,19 @@ export function CommunityShareForm({
     setError('');
 
     if (!gdprConsent) {
-      setError('Vous devez accepter le partage de vos donnees.');
+      setError('Vous devez accepter le partage de vos données.');
       return;
     }
 
     const costCents = Math.round(parseFloat(totalCostEuros) * 100);
     if (isNaN(costCents) || costCents < 0) {
-      setError('Le cout total doit etre un nombre valide.');
+      setError('Le coût total doit être un nombre valide.');
       return;
     }
 
     const days = parseInt(durationDays, 10);
     if (isNaN(days) || days < 1) {
-      setError('La duree doit etre au moins 1 jour.');
+      setError('La durée doit être au moins 1 jour.');
       return;
     }
 
@@ -137,7 +139,7 @@ export function CommunityShareForm({
           maxLength={255}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Ex: Renovation salle de bain - carrelage mural"
+          placeholder="Ex : Rénovation salle de bain - carrelage mural"
           className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm text-stone-900 focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
         />
       </label>
@@ -161,7 +163,7 @@ export function CommunityShareForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block space-y-2">
           <span className="text-sm font-medium text-stone-700">
-            Cout total (EUR) *
+            Coût total (EUR) *
           </span>
           <input
             type="number"
@@ -176,7 +178,7 @@ export function CommunityShareForm({
         </label>
         <label className="block space-y-2">
           <span className="text-sm font-medium text-stone-700">
-            Duree du projet (jours) *
+            Durée du projet (jours) *
           </span>
           <input
             type="number"
@@ -193,7 +195,7 @@ export function CommunityShareForm({
       {/* Materials */}
       <div className="space-y-3">
         <span className="text-sm font-medium text-stone-700">
-          Materiaux utilises
+          Matériaux utilises
         </span>
         {materials.map((mat, idx) => (
           <div key={idx} className="flex gap-2">
@@ -201,14 +203,14 @@ export function CommunityShareForm({
               type="text"
               value={mat.name}
               onChange={(e) => updateMaterial(idx, 'name', e.target.value)}
-              placeholder="Nom du materiau"
+              placeholder="Nom du matériau"
               className="flex-1 rounded-2xl border border-stone-300 px-4 py-2 text-sm text-stone-900 focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
             />
             <input
               type="text"
               value={mat.quantity}
               onChange={(e) => updateMaterial(idx, 'quantity', e.target.value)}
-              placeholder="Quantite"
+              placeholder="Quantité"
               className="w-32 rounded-2xl border border-stone-300 px-4 py-2 text-sm text-stone-900 focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
             />
             {materials.length > 1 && (
@@ -227,7 +229,7 @@ export function CommunityShareForm({
           onClick={addMaterial}
           className="text-sm font-medium text-[var(--accent)] hover:underline"
         >
-          + Ajouter un materiau
+          + Ajouter un matériau
         </button>
       </div>
 
@@ -239,7 +241,7 @@ export function CommunityShareForm({
               Photos &quot;Avant&quot;
             </span>
             <p className="text-xs text-stone-500">
-              Selectionnez les photos montrant l&apos;etat avant les travaux.
+              Sélectionnez les photos montrant l&apos;etat avant les travaux.
             </p>
             <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
               {photos.map((photo) => (
@@ -251,18 +253,20 @@ export function CommunityShareForm({
                   }
                   className={`relative aspect-square overflow-hidden rounded-xl border-2 ${
                     beforePhotoIds.includes(photo.id)
-                      ? 'border-blue-500'
+                      ? 'border-[var(--accent)]'
                       : 'border-transparent'
                   }`}
                 >
-                  <img
+                  <Image
                     src={`${API_URL}${photo.thumbnail_url ?? photo.url}`}
                     alt="Photo du projet"
-                    className="h-full w-full object-cover"
+                    fill
+                    sizes="(max-width: 640px) 33vw, 20vw"
+                    className="object-cover"
                   />
                   {beforePhotoIds.includes(photo.id) && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-blue-500/20">
-                      <span className="rounded-full bg-blue-500 px-2 py-0.5 text-xs font-bold text-white">
+                    <div className="absolute inset-0 flex items-center justify-center bg-[var(--accent)]/20">
+                      <span className="rounded-full bg-[var(--accent)] px-2 py-0.5 text-xs font-bold text-white">
                         Avant
                       </span>
                     </div>
@@ -275,10 +279,10 @@ export function CommunityShareForm({
           {/* Photo selection - After */}
           <div className="space-y-3">
             <span className="text-sm font-medium text-stone-700">
-              Photos &quot;Apres&quot;
+              Photos &quot;Après&quot;
             </span>
             <p className="text-xs text-stone-500">
-              Selectionnez les photos montrant le resultat final.
+              Sélectionnez les photos montrant le résultat final.
             </p>
             <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
               {photos.map((photo) => (
@@ -294,15 +298,17 @@ export function CommunityShareForm({
                       : 'border-transparent'
                   }`}
                 >
-                  <img
+                  <Image
                     src={`${API_URL}${photo.thumbnail_url ?? photo.url}`}
                     alt="Photo du projet"
-                    className="h-full w-full object-cover"
+                    fill
+                    sizes="(max-width: 640px) 33vw, 20vw"
+                    className="object-cover"
                   />
                   {afterPhotoIds.includes(photo.id) && (
                     <div className="absolute inset-0 flex items-center justify-center bg-emerald-500/20">
                       <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-xs font-bold text-white">
-                        Apres
+                        Après
                       </span>
                     </div>
                   )}
@@ -323,8 +329,8 @@ export function CommunityShareForm({
         />
         <span className="text-sm text-stone-600">
           J&apos;accepte que les informations de mon projet (photos, dimensions,
-          materiaux, cout) soient partagees publiquement dans la galerie
-          communautaire. Je peux retirer ma publication a tout moment. *
+          matériaux, coût) soient partagees publiquement dans la galerie
+          communautaire. Je peux retirer ma publication à tout moment. *
         </span>
       </label>
 
@@ -334,7 +340,7 @@ export function CommunityShareForm({
         disabled={submitting || !gdprConsent}
         className="w-full rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {submitting ? 'Envoi en cours...' : 'Soumettre a la communaute'}
+        {submitting ? 'Envoi en cours...' : 'Soumettre a la communauté'}
       </button>
     </form>
   );

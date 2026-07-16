@@ -24,7 +24,7 @@ export function ShareLinkPanel({ projectId, onClose }: ShareLinkPanelProps) {
       );
       setShareUrl(result.share_url);
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Impossible de generer le lien'));
+      setError(getErrorMessage(err, 'Impossible de générer le lien'));
     } finally {
       setLoading(false);
     }
@@ -81,7 +81,7 @@ export function ShareLinkPanel({ projectId, onClose }: ShareLinkPanelProps) {
           disabled={loading}
           className="w-full rounded-xl bg-stone-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-stone-800 disabled:opacity-50"
         >
-          {loading ? 'Generation...' : 'Generer un lien de partage'}
+          {loading ? 'Generation...' : 'Générer un lien de partage'}
         </button>
       ) : (
         <div className="space-y-3">

@@ -2,8 +2,8 @@
 
 import { GuestPromptModal } from '@/components/auth/GuestPromptModal';
 import { ContractorDashboard } from '@/components/dashboard/ContractorDashboard';
-import { DeleteConfirmDialog } from '@/components/dashboard/DeleteConfirmDialog';
 import { ProjectCard } from '@/components/dashboard/ProjectCard';
+import { Alert, Button, ConfirmDialog, Input, Skeleton, useToast } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeatureGates } from '@/contexts/FeatureGateContext';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -70,12 +70,13 @@ export default function DashboardPage() {
   const [apiLoading, setApiLoading] = useState(false);
 
   // Shared state
+  const toast = useToast();
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [showGuestPrompt, setShowGuestPrompt] = useState(false);
-  const [feedback, setFeedback] = useState('');
   const [error, setError] = useState('');
+  const [showAccountConfirm, setShowAccountConfirm] = useState(false);
   const [isAccountDeleting, setIsAccountDeleting] = useState(false);
-  const [form, setForm] = useState({ name: 'Renovation salon', room_name: 'Salon' });
+  const [form, setForm] = useState({ name: 'Rénovation salon', room_name: 'Salon' });
 
   // Delete dialog state
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
@@ -124,18 +125,13 @@ export default function DashboardPage() {
   };
 
   const handleDeleteAccount = async () => {
-    if (
-      typeof window !== 'undefined' &&
-      !window.confirm('Supprimer definitivement votre compte et vos donnees ?')
-    ) {
-      return;
-    }
     setError('');
     setIsAccountDeleting(true);
     try {
       await deleteAccount();
       router.push('/login');
     } catch (err: unknown) {
+      setShowAccountConfirm(false);
       setError(getErrorMessage(err, 'Impossible de supprimer le compte'));
     } finally {
       setIsAccountDeleting(false);
@@ -176,7 +172,7 @@ export default function DashboardPage() {
         showPaywall('unlimited_projects');
         return;
       }
-      setError(getErrorMessage(err, 'Impossible de creer le projet'));
+      setError(getErrorMessage(err, 'Impossible de créer le projet'));
     }
   };
 
@@ -188,7 +184,7 @@ export default function DashboardPage() {
     try {
       await apiDelete(`/projects/${deleteTarget.id}`);
       setDeleteTarget(null);
-      setFeedback('Projet supprime avec succes.');
+      toast.success('Projet supprimé avec succès.');
       await fetchProjects(page);
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Impossible de supprimer le projet'));
@@ -206,8 +202,12 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <p className="text-gray-500">Chargement...</p>
+      <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
+        <Skeleton className="h-40 rounded-[2rem]" />
+        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          <Skeleton className="h-48 rounded-[2rem]" />
+          <Skeleton className="h-48 rounded-[2rem]" />
+        </div>
       </main>
     );
   }
@@ -232,7 +232,7 @@ export default function DashboardPage() {
           </h1>
           {isGuest && (
             <p className="mt-3 text-sm text-amber-700">
-              Mode invite - vous pouvez preparer un projet, puis creer votre
+              Mode invité — vous pouvez préparer un projet, puis créer votre
               compte au moment de la sauvegarde.
             </p>
           )}
@@ -241,28 +241,19 @@ export default function DashboardPage() {
           )}
         </div>
         <div className="flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => setIsComposerOpen((v) => !v)}
-            className="rounded-full bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-[var(--accent-strong)]"
-          >
-            {isComposerOpen ? 'Fermer le formulaire' : 'Creer un projet'}
-          </button>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="rounded-full border border-stone-300 px-5 py-2.5 text-sm font-semibold text-stone-700 hover:-translate-y-0.5 hover:bg-white"
-          >
-            {isGuest ? 'Quitter le mode invite' : 'Deconnexion'}
-          </button>
+          <Button onClick={() => setIsComposerOpen((v) => !v)}>
+            {isComposerOpen ? 'Fermer le formulaire' : 'Créer un projet'}
+          </Button>
+          <Button variant="secondary" onClick={handleLogout}>
+            {isGuest ? 'Quitter le mode invité' : 'Déconnexion'}
+          </Button>
           {appUser && (
             <button
               type="button"
-              onClick={handleDeleteAccount}
-              disabled={isAccountDeleting}
-              className="rounded-full border border-red-200 px-5 py-2.5 text-sm font-semibold text-red-700 hover:-translate-y-0.5 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={() => setShowAccountConfirm(true)}
+              className="rounded-full border border-red-200 px-5 py-2.5 text-sm font-semibold text-red-700 hover:-translate-y-0.5 hover:bg-red-50"
             >
-              {isAccountDeleting ? 'Suppression...' : 'Supprimer mon compte'}
+              Supprimer mon compte
             </button>
           )}
         </div>
@@ -280,20 +271,16 @@ export default function DashboardPage() {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-sm font-semibold text-red-700">
-                      Probleme de paiement
+                      Problème de paiement
                     </p>
                     <p className="mt-1 text-xs text-red-600">
-                      Mettez a jour votre moyen de paiement pour conserver vos
-                      fonctionnalites Pro.
+                      Mettez à jour votre moyen de paiement pour conserver vos
+                      fonctionnalités Pro.
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={openPortal}
-                    className="shrink-0 rounded-full bg-red-600 px-5 py-2 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-red-700"
-                  >
-                    Mettre a jour
-                  </button>
+                  <Button variant="danger" onClick={openPortal} className="shrink-0">
+                    Mettre à jour
+                  </Button>
                 </div>
               );
             }
@@ -318,13 +305,9 @@ export default function DashboardPage() {
                       </p>
                     )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={openPortal}
-                    className="shrink-0 rounded-full border border-stone-300 px-5 py-2 text-sm font-semibold text-stone-700 hover:-translate-y-0.5 hover:bg-white"
-                  >
-                    Gerer mon abonnement
-                  </button>
+                  <Button variant="secondary" onClick={openPortal} className="shrink-0">
+                    Gérer mon abonnement
+                  </Button>
                 </div>
               );
             }
@@ -337,18 +320,14 @@ export default function DashboardPage() {
                       Plan Contractor
                       {subscription?.cancel_at_period_end && (
                         <span className="ml-2 text-xs font-normal text-amber-600">
-                          (annulation prevue)
+                          (annulation prévue)
                         </span>
                       )}
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={openPortal}
-                    className="shrink-0 rounded-full border border-stone-300 px-5 py-2 text-sm font-semibold text-stone-700 hover:-translate-y-0.5 hover:bg-white"
-                  >
-                    Gerer mon abonnement
-                  </button>
+                  <Button variant="secondary" onClick={openPortal} className="shrink-0">
+                    Gérer mon abonnement
+                  </Button>
                 </div>
               );
             }
@@ -368,25 +347,21 @@ export default function DashboardPage() {
                       Plan Pro
                       {subscription?.cancel_at_period_end && (
                         <span className="ml-2 text-xs font-normal text-amber-600">
-                          (annulation prevue)
+                          (annulation prévue)
                         </span>
                       )}
                     </p>
                     {nextBilling && (
                       <p className="mt-1 text-xs text-stone-500">
                         {subscription?.cancel_at_period_end
-                          ? `Actif jusqu'au ${nextBilling}`
-                          : `Prochain prelevement le ${nextBilling}`}
+                          ? `Actif jusqu'àu ${nextBilling}`
+                          : `Prochain prélèvement le ${nextBilling}`}
                       </p>
                     )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={openPortal}
-                    className="shrink-0 rounded-full border border-stone-300 px-5 py-2 text-sm font-semibold text-stone-700 hover:-translate-y-0.5 hover:bg-white"
-                  >
-                    Gerer mon abonnement
-                  </button>
+                  <Button variant="secondary" onClick={openPortal} className="shrink-0">
+                    Gérer mon abonnement
+                  </Button>
                 </div>
               );
             }
@@ -399,78 +374,54 @@ export default function DashboardPage() {
                     Plan gratuit
                   </p>
                   <p className="mt-1 text-xs text-stone-500">
-                    Passez a Pro pour debloquer toutes les fonctionnalites.
+                    Passez à Pro pour débloquer toutes les fonctionnalités.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => openCheckout()}
-                  className="shrink-0 rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-[var(--accent-strong)]"
-                >
-                  Passer a Pro
-                </button>
+                <Button onClick={() => openCheckout()} className="shrink-0">
+                  Passer à Pro
+                </Button>
               </div>
             );
           })()}
         </div>
       )}
 
-      {/* Feedback & Error */}
-      {feedback && (
-        <div className="mt-6 rounded-3xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-800">
-          {feedback}
-        </div>
-      )}
+      {/* Error */}
       {error && (
-        <div className="mt-6 rounded-3xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+        <Alert variant="error" className="mt-6">
           {error}
-        </div>
+        </Alert>
       )}
 
       {/* Create Project Form */}
       {isComposerOpen && (
         <section className="mt-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
           <h2 className="text-xl font-semibold text-stone-950">
-            Preparer un brouillon de projet
+            Préparer un brouillon de projet
           </h2>
           <p className="mt-2 text-sm text-stone-600">
-            Le visiteur peut avancer sans compte jusqu&apos;a l&apos;etape de
+            Le visiteur peut avancer sans compte jusqu&apos;à l&apos;étape de
             sauvegarde.
           </p>
           <form onSubmit={handleCreateDraft} className="mt-6 grid gap-4 md:grid-cols-2">
-            <label className="space-y-2">
-              <span className="text-sm font-medium text-stone-700">
-                Nom du projet
-              </span>
-              <input
-                required
-                value={form.name}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, name: e.target.value }))
-                }
-                className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm text-stone-900 focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
-              />
-            </label>
-            <label className="space-y-2">
-              <span className="text-sm font-medium text-stone-700">
-                Piece concernee
-              </span>
-              <input
-                required
-                value={form.room_name}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, room_name: e.target.value }))
-                }
-                className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm text-stone-900 focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
-              />
-            </label>
+            <Input
+              label="Nom du projet"
+              required
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            />
+            <Input
+              label="Pièce concernée"
+              required
+              value={form.room_name}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, room_name: e.target.value }))
+              }
+            />
             <div className="md:col-span-2">
-              <button
-                type="submit"
-                className="rounded-full bg-stone-950 px-5 py-3 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-stone-800"
-              >
+              <Button type="submit" size="lg">
                 Continuer vers les dimensions
-              </button>
+              </Button>
             </div>
           </form>
         </section>
@@ -478,8 +429,9 @@ export default function DashboardPage() {
 
       {/* Loading state for API projects */}
       {appUser && apiLoading && (
-        <div className="mt-6 flex justify-center">
-          <p className="text-sm text-stone-500">Chargement des projets...</p>
+        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          <Skeleton className="h-48 rounded-[2rem]" />
+          <Skeleton className="h-48 rounded-[2rem]" />
         </div>
       )}
 
@@ -513,7 +465,7 @@ export default function DashboardPage() {
                     {project.name}
                   </h2>
                   <p className="mt-1 text-sm text-stone-600">
-                    Piece : {project.room_name}
+                    Pièce : {project.room_name}
                   </p>
                 </div>
                 <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-600">
@@ -545,20 +497,14 @@ export default function DashboardPage() {
               ) : null}
 
               <div className="mt-5 flex flex-wrap gap-3">
-                <button
-                  type="button"
+                <Button
                   onClick={() => router.push(`/projects/${project.id}/dimensions`)}
-                  className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-[var(--accent-strong)]"
                 >
-                  {project.length_m ? 'Modifier les dimensions' : 'Definir les dimensions'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowGuestPrompt(true)}
-                  className="rounded-full border border-stone-300 px-4 py-2 text-sm font-semibold text-stone-700 hover:-translate-y-0.5 hover:bg-white"
-                >
+                  {project.length_m ? 'Modifier les dimensions' : 'Définir les dimensions'}
+                </Button>
+                <Button variant="secondary" onClick={() => setShowGuestPrompt(true)}>
                   Sauvegarder dans mon compte
-                </button>
+                </Button>
               </div>
             </article>
           ))}
@@ -568,25 +514,25 @@ export default function DashboardPage() {
       {/* Pagination */}
       {showPagination && (
         <div className="mt-6 flex items-center justify-center gap-4">
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="sm"
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className="rounded-full border border-stone-300 px-4 py-2 text-sm font-semibold text-stone-700 hover:-translate-y-0.5 hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
           >
-            &larr; Precedent
-          </button>
+            &larr; Précédent
+          </Button>
           <span className="text-sm text-stone-600">
             Page {meta.page} / {meta.totalPages}
           </span>
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="sm"
             disabled={page >= meta.totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="rounded-full border border-stone-300 px-4 py-2 text-sm font-semibold text-stone-700 hover:-translate-y-0.5 hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
           >
             Suivant &rarr;
-          </button>
+          </Button>
         </div>
       )}
 
@@ -597,26 +543,49 @@ export default function DashboardPage() {
             Aucun projet pour le moment
           </h2>
           <p className="mt-3 text-sm text-stone-600">
-            Creez un premier brouillon pour couvrir le parcours visiteur,
-            sauvegarde et conversion vers un compte.
+            Créez un premier brouillon : dimensions, travaux, estimation et
+            liste d&apos;achat en quelques minutes.
           </p>
-          <button
-            type="button"
+          <Button
+            size="lg"
+            className="mt-6"
             onClick={() => setIsComposerOpen(true)}
-            className="mt-6 rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-[var(--accent-strong)]"
           >
-            Creer mon premier projet
-          </button>
+            Créer mon premier projet
+          </Button>
         </section>
       )}
 
       {/* Delete Confirmation Dialog */}
-      <DeleteConfirmDialog
-        isOpen={deleteTarget !== null}
-        projectName={deleteTarget?.name ?? ''}
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Supprimer le projet"
+        message={
+          <>
+            Vous allez supprimer le projet{' '}
+            <span className="font-semibold text-stone-800">
+              {deleteTarget?.name}
+            </span>
+            . Il sera conservé pendant 30 jours avant suppression définitive.
+          </>
+        }
+        confirmLabel="Confirmer la suppression"
+        destructive
+        busy={isDeleting}
         onConfirm={handleDeleteProject}
         onCancel={() => setDeleteTarget(null)}
-        isDeleting={isDeleting}
+      />
+
+      {/* Account Deletion Dialog */}
+      <ConfirmDialog
+        open={showAccountConfirm}
+        title="Supprimer mon compte"
+        message="Votre compte et toutes vos données seront supprimés définitivement. Cette action est irréversible."
+        confirmLabel="Supprimer définitivement"
+        destructive
+        busy={isAccountDeleting}
+        onConfirm={handleDeleteAccount}
+        onCancel={() => setShowAccountConfirm(false)}
       />
 
       {/* Guest Prompt Modal */}
@@ -625,8 +594,8 @@ export default function DashboardPage() {
         onClose={() => setShowGuestPrompt(false)}
         onSuccess={() => {
           setShowGuestPrompt(false);
-          setFeedback(
-            "Compte cree. Si vous avez choisi l'inscription par email, verifiez votre boite de reception.",
+          toast.success(
+            "Compte créé. Si vous avez choisi l'inscription par email, vérifiez votre boîte de réception.",
           );
         }}
       />

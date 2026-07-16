@@ -92,7 +92,7 @@ export default function NewQuotePage() {
       setClients(cls);
     } catch (err: unknown) {
       setError(
-        getErrorMessage(err, 'Impossible de charger les donnees du projet'),
+        getErrorMessage(err, 'Impossible de charger les données du projet'),
       );
     } finally {
       setLoading(false);
@@ -159,7 +159,7 @@ export default function NewQuotePage() {
       const created = await apiPost<Quote>('/quotes', payload);
       router.push(`/quotes/${created.id}`);
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Impossible de creer le devis'));
+      setError(getErrorMessage(err, 'Impossible de créer le devis'));
     } finally {
       setSubmitting(false);
     }
@@ -198,10 +198,10 @@ export default function NewQuotePage() {
           Nouveau devis
         </p>
         <h1 className="mt-2 text-3xl font-semibold text-stone-950">
-          Generer un devis
+          Générer un devis
         </h1>
         <p className="mt-2 text-sm text-stone-500">
-          {pricedItems.length} materiau(x) avec prix renseigne(s)
+          {pricedItems.length} matériau(x) avec prix renseigne(s)
         </p>
       </div>
 
@@ -213,8 +213,8 @@ export default function NewQuotePage() {
 
       {pricedItems.length === 0 && (
         <div className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
-          Aucun materiau n&apos;a de prix renseigne dans la liste de courses.
-          Renseignez les prix avant de creer un devis.
+          Aucun matériau n&apos;a de prix renseigne dans la liste de courses.
+          Renseignez les prix avant de créer un devis.
         </div>
       )}
 
@@ -235,7 +235,7 @@ export default function NewQuotePage() {
         {/* Margin */}
         <section className="rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
           <h2 className="text-lg font-semibold text-stone-950">
-            Marge materiaux
+            Marge matériaux
           </h2>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             <label className="space-y-2">
@@ -331,7 +331,7 @@ export default function NewQuotePage() {
                 </label>
                 <label className="space-y-2">
                   <span className="text-sm font-medium text-stone-700">
-                    Heures estimees
+                    Heures estimées
                   </span>
                   <input
                     type="number"
@@ -381,7 +381,7 @@ export default function NewQuotePage() {
           </div>
           <label className="mt-4 block space-y-2">
             <span className="text-sm font-medium text-stone-700">
-              Conditions de reglement
+              Conditions de règlement
             </span>
             <textarea
               rows={3}
@@ -408,7 +408,7 @@ export default function NewQuotePage() {
           </h2>
           <div className="mt-4 space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-stone-600">Sous-total materiaux HT</span>
+              <span className="text-stone-600">Sous-total matériaux HT</span>
               <span className="font-medium">
                 {formatPrice(subtotalMaterials)} EUR
               </span>
@@ -451,7 +451,7 @@ export default function NewQuotePage() {
             disabled={submitting || pricedItems.length === 0}
             className="rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {submitting ? 'Creation...' : 'Creer le devis'}
+            {submitting ? 'Creation...' : 'Créer le devis'}
           </button>
           <button
             type="button"

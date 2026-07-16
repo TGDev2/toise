@@ -46,7 +46,7 @@ export class MockSupplierAdapter implements SupplierAdapter {
     this.baseMultiplier = config.baseMultiplier;
   }
 
-  async lookupPrices(
+  lookupPrices(
     items: SupplierLookupItem[],
     _postalCode?: string,
   ): Promise<Map<string, SupplierPriceResult>> {
@@ -75,10 +75,10 @@ export class MockSupplierAdapter implements SupplierAdapter {
       });
     }
 
-    return results;
+    return Promise.resolve(results);
   }
 
-  async healthCheck(): Promise<boolean> {
-    return true;
+  healthCheck(): Promise<boolean> {
+    return Promise.resolve(true);
   }
 }

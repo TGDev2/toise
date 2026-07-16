@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { WORK_TYPE_LABELS } from '@/lib/project-types';
 import type { CommunityProjectSummary } from '@/lib/community-types';
 
@@ -26,11 +27,13 @@ export function CommunityProjectCard({ project }: CommunityProjectCardProps) {
       className="group block rounded-[2rem] border border-stone-200 bg-white/85 shadow-[0_20px_50px_rgba(67,39,15,0.08)] transition-all hover:-translate-y-1 hover:shadow-[0_25px_60px_rgba(67,39,15,0.12)]"
     >
       {project.thumbnail_url ? (
-        <div className="aspect-[4/3] overflow-hidden rounded-t-[2rem]">
-          <img
+        <div className="relative aspect-[4/3] overflow-hidden rounded-t-[2rem]">
+          <Image
             src={`${API_URL}${project.thumbnail_url}`}
             alt={project.title}
-            className="h-full w-full object-cover transition-transform group-hover:scale-105"
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            className="object-cover transition-transform group-hover:scale-105"
           />
         </div>
       ) : (

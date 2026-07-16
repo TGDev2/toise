@@ -114,11 +114,11 @@ export default function AdminCommunityPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold text-[var(--foreground)]">
-        Moderation galerie communautaire
+        Modération galerie communautaire
       </h1>
       <p className="mt-2 text-sm text-[var(--foreground)]/60">
         {meta.total} projet{meta.total > 1 ? 's' : ''} en attente de
-        moderation
+        modération
       </p>
 
       {error && (
@@ -141,7 +141,7 @@ export default function AdminCommunityPage() {
 
       {!loading && projects.length === 0 && (
         <p className="mt-6 text-sm text-[var(--foreground)]/60">
-          Aucun projet en attente de moderation.
+          Aucun projet en attente de modération.
         </p>
       )}
 
@@ -173,9 +173,9 @@ export default function AdminCommunityPage() {
             )}
 
             <div className="mt-3 flex flex-wrap gap-4 text-sm text-[var(--foreground)]/60">
-              <span>Cout : {formatCost(project.total_cost_cents)}</span>
+              <span>Coût : {formatCost(project.total_cost_cents)}</span>
               <span>
-                Duree : {project.duration_days} jour
+                Durée : {project.duration_days} jour
                 {project.duration_days > 1 ? 's' : ''}
               </span>
               <span>
@@ -184,14 +184,14 @@ export default function AdminCommunityPage() {
               </span>
               <span>
                 Photos : {project.before_photo_ids.length} avant,{' '}
-                {project.after_photo_ids.length} apres
+                {project.after_photo_ids.length} après
               </span>
             </div>
 
             {project.materials_list.length > 0 && (
               <div className="mt-3">
                 <span className="text-xs font-medium text-[var(--foreground)]/50">
-                  Materiaux :
+                  Matériaux :
                 </span>
                 <span className="ml-1 text-sm text-[var(--foreground)]/70">
                   {project.materials_list
@@ -262,7 +262,7 @@ export default function AdminCommunityPage() {
             onClick={() => fetchPending(meta.page - 1)}
             className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Precedent
+            Précédent
           </button>
           <span className="text-sm text-stone-600">
             Page {meta.page} / {meta.totalPages}

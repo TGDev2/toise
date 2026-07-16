@@ -46,7 +46,7 @@ export default function HomePage() {
           </div>
 
           <h1 className="mt-6 max-w-3xl text-4xl font-semibold leading-tight text-stone-950 sm:text-5xl">
-            Demarrez un projet de renovation sans friction, puis sauvegardez-le
+            Démarrez un projet de rénovation sans friction, puis sauvegardez-le
             avec le mode d&apos;authentification de votre choix.
           </h1>
 
@@ -76,7 +76,7 @@ export default function HomePage() {
                 href="/register"
                 className="rounded-full border border-transparent px-6 py-3 text-center text-sm font-semibold text-stone-700 hover:text-stone-950"
               >
-                Creer un compte
+                Créer un compte
               </Link>
             )}
           </div>
@@ -125,8 +125,8 @@ export default function HomePage() {
                 3. Verification et reset
               </p>
               <p className="mt-2 text-sm leading-7 text-stone-300">
-                Les inscriptions email declenchent un email de verification et
-                les comptes non verifies sont refuses a la connexion classique.
+                Les inscriptions email déclenchent un email de vérification et
+                les comptes non verifies sont refuses à la connexion classique.
               </p>
             </div>
           </div>

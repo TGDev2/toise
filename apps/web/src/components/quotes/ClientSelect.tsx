@@ -48,7 +48,7 @@ export function ClientSelect({
       setShowNewForm(false);
       setForm({ name: '', email: '', phone: '', address_line1: '', postal_code: '', city: '' });
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Impossible de creer le client'));
+      setError(getErrorMessage(err, 'Impossible de créer le client'));
     } finally {
       setCreating(false);
     }
@@ -159,7 +159,7 @@ export function ClientSelect({
             disabled={creating}
             className="rounded-full bg-stone-950 px-4 py-2 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-stone-800 disabled:opacity-60"
           >
-            {creating ? 'Creation...' : 'Creer le client'}
+            {creating ? 'Creation...' : 'Créer le client'}
           </button>
         </form>
       )}

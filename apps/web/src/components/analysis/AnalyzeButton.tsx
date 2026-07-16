@@ -50,7 +50,7 @@ export function AnalyzeButton({
               />
             </div>
             <p className="mt-1 text-xs text-blue-600">
-              {progressPct}% — Temps estime : environ 30 secondes
+              {progressPct}% — Temps estimé : environ 30 secondes
             </p>
           </div>
         </div>
@@ -62,7 +62,7 @@ export function AnalyzeButton({
     return (
       <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4">
         <p className="text-sm font-medium text-red-800">
-          L&apos;analyse automatique a echoue
+          L&apos;analyse automatique a échoué
         </p>
         <div className="mt-3 flex gap-3">
           <button
@@ -70,7 +70,7 @@ export function AnalyzeButton({
             onClick={onStart}
             className="rounded-full border border-red-300 px-4 py-1.5 text-sm text-red-700 hover:-translate-y-0.5 hover:bg-red-100"
           >
-            Reessayer
+            Réessayer
           </button>
           <button
             type="button"
@@ -112,12 +112,15 @@ export function AnalyzeButton({
           />
         </svg>
         <div>
-          <p className="text-sm font-medium text-emerald-800">
+          <p className="flex items-center gap-2 text-sm font-medium text-emerald-800">
             Analyser les photos automatiquement
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+              Bêta
+            </span>
           </p>
           <p className="text-xs text-emerald-600">
             {hasPhotos
-              ? 'Detection des dimensions a partir de vos photos (~30s)'
+              ? 'Estimation approximative des dimensions à partir de vos photos (~30s) — à vérifier avant de continuer'
               : 'Ajoutez des photos au projet pour activer l\'analyse'}
           </p>
         </div>

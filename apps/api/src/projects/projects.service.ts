@@ -363,7 +363,7 @@ export class ProjectsService {
       }),
     );
 
-    const saved = await this.workItemsRepo.save(entities);
+    await this.workItemsRepo.save(entities);
 
     // Return with work_type relation loaded
     return this.workItemsRepo.find({

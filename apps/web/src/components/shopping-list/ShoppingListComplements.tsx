@@ -112,7 +112,7 @@ function ComplementRow({
                     ? 'text-stone-300 hover:text-stone-400'
                     : 'text-stone-400 hover:bg-stone-100 hover:text-stone-600'
               }`}
-              title={budgetAllowed === false ? 'Fonctionnalite Pro' : 'Saisir le prix reel'}
+              title={budgetAllowed === false ? 'Fonctionnalité Pro' : 'Saisir le prix reel'}
               aria-label="Saisir le prix reel"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
@@ -137,7 +137,7 @@ function ComplementRow({
               onBlur={handleBlur}
               onKeyDown={handleKeyDown}
               className="w-16 rounded-xl border border-stone-200 bg-stone-50 px-2 py-1.5 text-center text-sm font-semibold text-stone-900 focus:border-stone-400 focus:bg-white focus:outline-none"
-              aria-label={`Quantite pour ${item.name}`}
+              aria-label={`Quantité pour ${item.name}`}
             />
           )}
           <span className="text-sm text-stone-500">{item.unit_label}</span>
@@ -248,7 +248,7 @@ export function ShoppingListComplements({
 
       {activeItems.length === 0 ? (
         <p className="py-4 text-sm text-stone-400">
-          Tous les accessoires ont ete retires.
+          Tous les accessoires ont été retires.
         </p>
       ) : (
         <div className="space-y-3">

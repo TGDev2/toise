@@ -129,10 +129,10 @@ describe('WorkSelectionForm', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/veuillez selectionner au moins un type de travaux/i),
+        screen.getByText(/veuillez sélectionner au moins un type de travaux/i),
       ).toBeInTheDocument();
       expect(
-        screen.getByText(/veuillez selectionner votre niveau de competence/i),
+        screen.getByText(/veuillez sélectionner votre niveau de competence/i),
       ).toBeInTheDocument();
     });
 
@@ -145,7 +145,7 @@ describe('WorkSelectionForm', () => {
     fireEvent.click(screen.getByLabelText(/debutant/i));
 
     expect(
-      screen.getByText(/facteur de perte sera augmente/i),
+      screen.getByText(/facteur de perte sera augmenté/i),
     ).toBeInTheDocument();
   });
 

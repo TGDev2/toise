@@ -15,10 +15,7 @@ import {
   DimensionSource,
 } from './entities/room-dimensions.entity';
 import { Opening, OpeningType, OpeningSource } from './entities/opening.entity';
-import {
-  WorkType as WorkTypeEntity,
-  ContextualQuestion,
-} from './entities/work-type.entity';
+import { WorkType as WorkTypeEntity } from './entities/work-type.entity';
 import {
   ProjectWorkItem,
   SkillLevel,

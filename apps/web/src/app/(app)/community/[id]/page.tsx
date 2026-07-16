@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { CommunityPhotoCompare } from '@/components/community/CommunityPhotoCompare';
 import { CommunityLikeButton } from '@/components/community/CommunityLikeButton';
 import { CommunityComments } from '@/components/community/CommunityComments';
+import { Alert, ConfirmDialog, Skeleton } from '@/components/ui';
 
 function formatCost(cents: number): string {
   return new Intl.NumberFormat('fr-FR', {
@@ -29,6 +30,7 @@ export default function CommunityDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [withdrawing, setWithdrawing] = useState(false);
+  const [showWithdrawConfirm, setShowWithdrawConfirm] = useState(false);
 
   const fetchDetail = useCallback(async () => {
     try {
@@ -48,13 +50,6 @@ export default function CommunityDetailPage() {
   }, [fetchDetail]);
 
   const handleWithdraw = async () => {
-    if (
-      !window.confirm(
-        'Retirer ce projet de la galerie ? Cette action est irreversible.',
-      )
-    ) {
-      return;
-    }
     setWithdrawing(true);
     try {
       await apiDelete(`/community/${communityProjectId}`);
@@ -62,13 +57,15 @@ export default function CommunityDetailPage() {
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Impossible de retirer le projet'));
       setWithdrawing(false);
+      setShowWithdrawConfirm(false);
     }
   };
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <p className="text-gray-500">Chargement...</p>
+      <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6">
+        <Skeleton className="h-40 rounded-[2rem]" />
+        <Skeleton className="mt-6 h-72 rounded-[2rem]" />
       </main>
     );
   }
@@ -76,14 +73,12 @@ export default function CommunityDetailPage() {
   if (error || !project) {
     return (
       <main className="mx-auto max-w-4xl px-4 py-8">
-        <div className="rounded-3xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
-          {error || 'Projet non trouve'}
-        </div>
+        <Alert variant="error">{error || 'Projet non trouvé'}</Alert>
         <Link
           href="/community"
           className="mt-4 inline-block text-sm text-stone-500 hover:text-stone-700"
         >
-          &larr; Retour a la galerie
+          &larr; Retour à la galerie
         </Link>
       </main>
     );
@@ -99,7 +94,7 @@ export default function CommunityDetailPage() {
         href="/community"
         className="inline-flex items-center gap-1 text-sm text-stone-500 hover:text-stone-700"
       >
-        &larr; Retour a la galerie
+        &larr; Retour à la galerie
       </Link>
 
       {/* Header */}
@@ -131,7 +126,7 @@ export default function CommunityDetailPage() {
           {project.is_owner && (
             <button
               type="button"
-              onClick={handleWithdraw}
+              onClick={() => setShowWithdrawConfirm(true)}
               disabled={withdrawing}
               className="rounded-full border border-red-200 px-5 py-2.5 text-sm font-semibold text-red-600 hover:-translate-y-0.5 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -154,7 +149,7 @@ export default function CommunityDetailPage() {
       {/* Photos */}
       <div className="mt-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
         <h2 className="mb-4 text-lg font-semibold text-stone-950">
-          Photos avant / apres
+          Photos avant / après
         </h2>
         <CommunityPhotoCompare
           communityProjectId={communityProjectId}
@@ -171,7 +166,7 @@ export default function CommunityDetailPage() {
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-2xl bg-stone-50 p-4">
             <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
-              Cout total
+              Coût total
             </p>
             <p className="mt-2 text-lg font-semibold text-stone-950">
               {formatCost(project.total_cost_cents)}
@@ -179,7 +174,7 @@ export default function CommunityDetailPage() {
           </div>
           <div className="rounded-2xl bg-stone-50 p-4">
             <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
-              Duree
+              Durée
             </p>
             <p className="mt-2 text-lg font-semibold text-stone-950">
               {project.duration_days} jour{project.duration_days > 1 ? 's' : ''}
@@ -211,7 +206,7 @@ export default function CommunityDetailPage() {
       {project.materials_list.length > 0 && (
         <div className="mt-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
           <h2 className="text-lg font-semibold text-stone-950">
-            Materiaux utilises
+            Matériaux utilisés
           </h2>
           <div className="mt-4 space-y-2">
             {project.materials_list.map((mat, idx) => (
@@ -233,6 +228,17 @@ export default function CommunityDetailPage() {
       <div className="mt-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
         <CommunityComments communityProjectId={communityProjectId} />
       </div>
+
+      <ConfirmDialog
+        open={showWithdrawConfirm}
+        title="Retirer de la galerie"
+        message="Ce projet sera retiré de la galerie communautaire. Cette action est irréversible."
+        confirmLabel="Retirer"
+        destructive
+        busy={withdrawing}
+        onConfirm={handleWithdraw}
+        onCancel={() => setShowWithdrawConfirm(false)}
+      />
     </main>
   );
 }

@@ -1,4 +1,9 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -7,13 +12,14 @@ import {
   Subscription,
   SubscriptionStatus,
 } from './entities/subscription.entity';
+import { StripeEvent } from './entities/stripe-event.entity';
 import { UsersService } from '../users/users.service';
 import { SubscriptionTier } from '../users/entities/user.entity';
 import { AnalyticsService } from '../analytics/analytics.service';
 
 @Injectable()
 export class SubscriptionsService {
-  private readonly stripe: Stripe;
+  private readonly stripeClient: Stripe | null;
   private readonly webhookSecret: string;
   private readonly proPriceId: string;
   private readonly contractorPriceIds: Set<string>;
@@ -24,11 +30,23 @@ export class SubscriptionsService {
   constructor(
     @InjectRepository(Subscription)
     private readonly subscriptionsRepo: Repository<Subscription>,
+    @InjectRepository(StripeEvent)
+    private readonly stripeEventsRepo: Repository<StripeEvent>,
     private readonly usersService: UsersService,
     private readonly analyticsService: AnalyticsService,
     private readonly config: ConfigService,
   ) {
-    this.stripe = new Stripe(this.config.get<string>('stripe.secretKey')!);
+    const secretKey = this.config.get<string>('stripe.secretKey');
+    if (secretKey) {
+      this.stripeClient = new Stripe(secretKey);
+    } else {
+      // La validation d'env garantit la clé en production ; en dev, l'app
+      // démarre sans Stripe et les endpoints de paiement renvoient 503.
+      this.stripeClient = null;
+      this.logger.warn(
+        'STRIPE_SECRET_KEY absente — les paiements sont désactivés (dev uniquement).',
+      );
+    }
     this.webhookSecret = this.config.get<string>('stripe.webhookSecret')!;
     this.proPriceId = this.config.get<string>('stripe.proPriceId')!;
     this.publicUrl = this.config.get<string>('publicUrl')!;
@@ -45,6 +63,15 @@ export class SubscriptionsService {
       this.proPriceId,
       ...this.contractorPriceIds,
     ]);
+  }
+
+  private get stripe(): Stripe {
+    if (!this.stripeClient) {
+      throw new ServiceUnavailableException(
+        'Les paiements sont temporairement indisponibles.',
+      );
+    }
+    return this.stripeClient;
   }
 
   async getSubscription(userId: string): Promise<Subscription | null> {
@@ -118,6 +145,28 @@ export class SubscriptionsService {
       signature,
       this.webhookSecret,
     );
+  }
+
+  /**
+   * Réserve un event Stripe pour traitement. Renvoie false si l'event a déjà
+   * été traité (retry Stripe) : il doit alors être ignoré.
+   */
+  async claimWebhookEvent(event: Stripe.Event): Promise<boolean> {
+    const result = await this.stripeEventsRepo
+      .createQueryBuilder()
+      .insert()
+      .values({ event_id: event.id, event_type: event.type })
+      .orIgnore()
+      .execute();
+    return result.identifiers.length > 0;
+  }
+
+  /**
+   * Libère un event dont le traitement a échoué, pour que le retry Stripe
+   * puisse le rejouer.
+   */
+  async releaseWebhookEvent(eventId: string): Promise<void> {
+    await this.stripeEventsRepo.delete({ event_id: eventId });
   }
 
   async handleWebhookEvent(event: Stripe.Event): Promise<void> {

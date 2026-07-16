@@ -37,33 +37,41 @@ const TIER_RANK: Record<string, number> = {
 
 const FeatureGateContext = createContext<FeatureGateContextType | null>(null);
 
+// Référence stable pour éviter de recréer les callbacks dépendant de `gates`.
+const EMPTY_GATES: FeatureGateConfig[] = [];
+
 export function FeatureGateProvider({ children }: { children: ReactNode }) {
   const { appUser } = useAuth();
-  const [gates, setGates] = useState<FeatureGateConfig[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Gates rattachés à l'utilisateur qui les a chargés : évite d'exposer les
+  // gates d'une session précédente après un changement de compte.
+  const [fetched, setFetched] = useState<{
+    userId: string;
+    gates: FeatureGateConfig[];
+  } | null>(null);
   const [paywallFeature, setPaywallFeature] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!appUser) {
-      setGates([]);
-      setIsLoading(false);
-      return;
-    }
+    if (!appUser) return;
 
+    const userId = appUser.id;
     let cancelled = false;
     apiGet<FeatureGateConfig[]>('/feature-gates')
       .then((data) => {
-        if (!cancelled) setGates(data);
+        if (!cancelled) setFetched({ userId, gates: data });
       })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
+      .catch(() => {
+        // Fail-closed : aucune feature payante accessible si le chargement échoue.
+        if (!cancelled) setFetched({ userId, gates: [] });
       });
 
     return () => {
       cancelled = true;
     };
   }, [appUser]);
+
+  const gates =
+    appUser && fetched?.userId === appUser.id ? fetched.gates : EMPTY_GATES;
+  const isLoading = Boolean(appUser) && fetched?.userId !== appUser?.id;
 
   const isFeatureAllowed = useCallback(
     (featureKey: string): boolean => {

@@ -1,10 +1,12 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Auth } from 'firebase-admin/auth';
 import * as admin from 'firebase-admin';
 
 @Injectable()
 export class FirebaseConfig implements OnModuleInit {
+  private readonly logger = new Logger(FirebaseConfig.name);
+
   constructor(private config: ConfigService) {}
 
   onModuleInit(): void {
@@ -21,8 +23,15 @@ export class FirebaseConfig implements OnModuleInit {
             privateKey,
           }),
         });
+      } else if (process.env.NODE_ENV === 'production') {
+        throw new Error(
+          'Identifiants Firebase manquants (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) : la vérification des tokens est impossible en production.',
+        );
       } else {
         // Fallback for development with Firebase Emulator
+        this.logger.warn(
+          'Identifiants Firebase absents — initialisation en mode émulateur (dev uniquement). La vérification des tokens échouera contre le vrai Firebase.',
+        );
         admin.initializeApp({ projectId: projectId ?? 'estimate-dev' });
       }
     }

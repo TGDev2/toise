@@ -7,7 +7,6 @@ import {
   IsOptional,
   MaxLength,
   Min,
-  Max,
   ArrayMinSize,
   ValidateNested,
 } from 'class-validator';

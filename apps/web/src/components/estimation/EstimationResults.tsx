@@ -48,7 +48,7 @@ export function EstimationResults({ items }: EstimationResultsProps) {
   if (items.length === 0) {
     return (
       <p className="py-8 text-center text-stone-400">
-        Aucun materiau a estimer.
+        Aucun matériau a estimer.
       </p>
     );
   }

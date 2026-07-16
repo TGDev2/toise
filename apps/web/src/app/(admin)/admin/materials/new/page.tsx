@@ -29,12 +29,12 @@ export default function NewMaterialPage() {
   return (
     <div>
       <h1 className="mb-6 text-2xl font-bold text-[var(--foreground)]">
-        Nouveau materiau
+        Nouveau matériau
       </h1>
       <MaterialForm
         onSubmit={handleSubmit}
         isLoading={isLoading}
-        submitLabel="Creer le materiau"
+        submitLabel="Créer le matériau"
       />
     </div>
   );

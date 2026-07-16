@@ -2065,13 +2065,13 @@ export class SeedMaterialsCatalog1711468800006 implements MigrationInterface {
 
     for (const mat of materials) {
       // Insert material, get its id back
-      const result = await queryRunner.query(
+      const result = (await queryRunner.query(
         `INSERT INTO "materials_catalog" ("name", "category", "unit", "yield_per_unit")
          VALUES ($1, $2, $3, $4)
          ON CONFLICT ("name", "category") DO NOTHING
          RETURNING "id"`,
         [mat.name, mat.category, mat.unit, mat.yield_per_unit],
-      );
+      )) as { id: string }[];
 
       if (result.length === 0) continue; // already existed
       const materialId = result[0].id;

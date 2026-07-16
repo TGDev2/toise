@@ -96,7 +96,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 const googleProvider = new GoogleAuthProvider();
 const appleProvider = new OAuthProvider('apple.com');
 const EMAIL_VERIFICATION_REQUIRED_MESSAGE =
-  'Verifiez votre email pour activer votre compte avant de vous connecter.';
+  'Vérifiez votre email pour activer votre compte avant de vous connecter.';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
@@ -165,9 +165,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = onIdTokenChanged(getFirebaseAuth(), async (user) => {
       setFirebaseUser(user);
+      // Cookie non sensible lu par le middleware pour éviter le flash de
+      // contenu protégé. Ce n'est PAS une barrière de sécurité : l'API
+      // vérifie le token Firebase sur chaque requête.
       if (user) {
+        document.cookie =
+          'estimate_auth=1; path=/; max-age=2592000; samesite=lax';
         await syncWithBackend();
       } else {
+        document.cookie = 'estimate_auth=; path=/; max-age=0';
         setAppUser(null);
       }
       setIsLoading(false);

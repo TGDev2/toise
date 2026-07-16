@@ -107,7 +107,7 @@ describe('GuestPromptModal', () => {
     );
 
     expect(
-      screen.getByRole('link', { name: /politique de confidentialite/i }),
+      screen.getByRole('link', { name: /politique de confidentialité/i }),
     ).toHaveAttribute('href', '/privacy');
   });
 });

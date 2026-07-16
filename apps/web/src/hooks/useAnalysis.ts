@@ -133,7 +133,7 @@ export function useAnalysis(projectId: string): UseAnalysisReturn {
         setError(
           err instanceof Error
             ? err.message
-            : 'Erreur lors de la verification du statut',
+            : 'Erreur lors de la vérification du statut',
         );
       }
     };

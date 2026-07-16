@@ -54,7 +54,7 @@ export function ProjectCard({ project, onDelete }: ProjectCardProps) {
             {project.name}
           </h2>
           <p className="mt-1 text-sm text-stone-600">
-            Piece : {project.room_name}
+            Pièce : {project.room_name}
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -101,10 +101,10 @@ export function ProjectCard({ project, onDelete }: ProjectCardProps) {
           className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-[var(--accent-strong)]"
         >
           {project.status === 'estimated' || project.status === 'completed'
-            ? 'Voir les resultats'
+            ? 'Voir les résultats'
             : project.dimensions
               ? 'Modifier les dimensions'
-              : 'Definir les dimensions'}
+              : 'Définir les dimensions'}
         </button>
         {project.status === 'completed' && (
           <button
@@ -112,7 +112,7 @@ export function ProjectCard({ project, onDelete }: ProjectCardProps) {
             onClick={() => router.push(`/projects/${project.id}/share`)}
             className="rounded-full border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-700 hover:-translate-y-0.5 hover:bg-emerald-50"
           >
-            Partager dans la communaute
+            Partager dans la communauté
           </button>
         )}
         <button

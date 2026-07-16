@@ -22,12 +22,14 @@ import { ClientsModule } from './clients/clients.module';
 import { QuotesModule } from './quotes/quotes.module';
 import { CommunityModule } from './community/community.module';
 import configuration from './config/configuration';
+import { validate } from './config/env.validation';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
+      validate,
     }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],

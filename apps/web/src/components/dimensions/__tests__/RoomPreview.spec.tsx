@@ -7,7 +7,7 @@ describe('RoomPreview', () => {
     const svg = screen.getByRole('img');
     expect(svg).toHaveAttribute(
       'aria-label',
-      'Apercu de la piece (dimensions non definies)',
+      'Aperçu de la pièce (dimensions non définies)',
     );
   });
 

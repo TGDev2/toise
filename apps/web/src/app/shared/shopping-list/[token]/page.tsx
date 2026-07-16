@@ -40,7 +40,7 @@ export default function SharedShoppingListPage() {
         const res = await fetch(`${API_URL}/shared/shopping-list/${token}`);
         if (!res.ok) {
           if (res.status === 404) {
-            setError('Ce lien de partage est invalide ou a expire.');
+            setError('Ce lien de partage est invalide ou a expiré.');
           } else {
             setError('Impossible de charger la liste.');
           }
@@ -73,7 +73,7 @@ export default function SharedShoppingListPage() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {
-      setError('Impossible de telecharger le PDF.');
+      setError('Impossible de télécharger le PDF.');
     } finally {
       setDownloading(false);
     }
@@ -132,14 +132,14 @@ export default function SharedShoppingListPage() {
             <path d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z" />
             <path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" />
           </svg>
-          {downloading ? 'Telechargement...' : 'Telecharger PDF'}
+          {downloading ? 'Téléchargement...' : 'Télécharger PDF'}
         </button>
       </div>
 
       <section className="mb-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-stone-900">
-            Materiaux a acheter
+            Matériaux à acheter
           </h2>
           <span className="rounded-full bg-stone-100 px-3 py-1 text-sm text-stone-600">
             {data.material_items.length} article
@@ -157,7 +157,7 @@ export default function SharedShoppingListPage() {
 
       <footer className="mt-8 border-t border-stone-100 pt-4 text-center">
         <p className="text-xs text-stone-400">
-          Liste generee par EstiMate
+          Liste générée par EstiMate
         </p>
       </footer>
     </main>

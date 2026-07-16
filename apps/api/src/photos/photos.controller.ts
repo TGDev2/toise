@@ -12,6 +12,7 @@ import {
   UploadedFile,
   UseGuards,
   UseInterceptors,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { DecodedIdToken } from 'firebase-admin/auth';
@@ -55,7 +56,7 @@ export class PhotosController {
   private async resolveUserId(firebaseUser: DecodedIdToken): Promise<string> {
     const user = await this.usersService.findByFirebaseUid(firebaseUser.uid);
     if (!user) {
-      throw new Error('User not found');
+      throw new UnauthorizedException('Utilisateur non authentifié.');
     }
     return user.id;
   }

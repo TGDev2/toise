@@ -11,6 +11,7 @@ import { AnalyzeButton } from '@/components/analysis/AnalyzeButton';
 import { AnalysisResultPanel } from '@/components/analysis/AnalysisResultPanel';
 import { ReferenceObjectPrompt } from '@/components/analysis/ReferenceObjectPrompt';
 import { useAnalysis } from '@/hooks/useAnalysis';
+import { Alert, Skeleton } from '@/components/ui';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -166,15 +167,10 @@ export default function DimensionsPage() {
     analysis.reset();
   }, [analysis]);
 
-  const handleRetryWithReference = useCallback(
-    async (_type: string, _heightCm: number) => {
-      // For iteration 1, we just re-trigger the analysis
-      // Reference object support in the API will be added in iteration 2
-      analysis.reset();
-      await analysis.startAnalysis();
-    },
-    [analysis],
-  );
+  const handleRetryAnalysis = useCallback(async () => {
+    analysis.reset();
+    await analysis.startAnalysis();
+  }, [analysis]);
 
   const handleSave = useCallback(
     async (lengthCm: number, widthCm: number, heightCm: number, openings: Opening[]) => {
@@ -231,8 +227,9 @@ export default function DimensionsPage() {
 
   if (isLoading || !loaded) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <p className="text-gray-500">Chargement...</p>
+      <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="mt-6 h-96 rounded-[2rem]" />
       </main>
     );
   }
@@ -255,7 +252,7 @@ export default function DimensionsPage() {
           &larr; Retour au dashboard
         </button>
         <h1 className="mt-2 text-3xl font-semibold text-stone-950">
-          Dimensions de la piece
+          Dimensions de la pièce
         </h1>
         {projectName && (
           <p className="mt-1 text-sm text-stone-500">{projectName}</p>
@@ -263,9 +260,9 @@ export default function DimensionsPage() {
       </div>
 
       {error && (
-        <div className="mb-6 rounded-3xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+        <Alert variant="error" className="mb-6">
           {error}
-        </div>
+        </Alert>
       )}
 
       {/* CV Analysis Section */}
@@ -273,7 +270,7 @@ export default function DimensionsPage() {
         <div className="mb-6">
           {analysis.status === 'no_reference' ? (
             <ReferenceObjectPrompt
-              onRetryWithReference={handleRetryWithReference}
+              onRetry={handleRetryAnalysis}
               onManualFallback={handleManualFallback}
             />
           ) : (

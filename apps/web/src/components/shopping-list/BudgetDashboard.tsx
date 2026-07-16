@@ -65,8 +65,8 @@ export function BudgetDashboard({
     if (!summary) return [];
     return summary.by_category.map((cat) => ({
       name: cat.label,
-      'Cout optimise': Math.round(cat.real_cost * 100) / 100,
-      'Cout brut': Math.round(cat.brute_cost * 100) / 100,
+      'Coût optimise': Math.round(cat.real_cost * 100) / 100,
+      'Coût brut': Math.round(cat.brute_cost * 100) / 100,
     }));
   }, [summary]);
 
@@ -77,7 +77,7 @@ export function BudgetDashboard({
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-stone-900">
-              Suivi budgetaire
+              Suivi budgétaire
             </h2>
             <p className="mt-1 text-sm text-stone-500">
               Saisissez vos prix reels et decouvrez combien vous economisez grace
@@ -89,7 +89,7 @@ export function BudgetDashboard({
             onClick={onShowPaywall}
             className="shrink-0 rounded-full bg-stone-900 px-5 py-2 text-sm font-medium text-white hover:bg-stone-800"
           >
-            Passer a Pro
+            Passer à Pro
           </button>
         </div>
       </section>
@@ -101,7 +101,7 @@ export function BudgetDashboard({
     return (
       <section className="mb-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
         <h2 className="text-lg font-semibold text-stone-900">
-          Suivi budgetaire
+          Suivi budgétaire
         </h2>
         <p className="mt-2 text-sm text-stone-500">
           Cliquez sur l&apos;icone prix de chaque article pour saisir le prix
@@ -119,7 +119,7 @@ export function BudgetDashboard({
     <section className="mb-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
       <div className="mb-5 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-stone-900">
-          Suivi budgetaire
+          Suivi budgétaire
         </h2>
         <span className="rounded-full bg-stone-100 px-3 py-1 text-xs text-stone-600">
           {summary.items_priced}/{summary.items_total} articles renseignes
@@ -139,12 +139,12 @@ export function BudgetDashboard({
       {/* Stat cards */}
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard
-          label="Cout reel (optimise)"
+          label="Coût reel (optimise)"
           value={`${summary.total_real_cost.toFixed(2)}`}
           suffix="EUR"
         />
         <StatCard
-          label="Cout brut (sans optimisation)"
+          label="Coût brut (sans optimisation)"
           value={`${summary.total_brute_cost.toFixed(2)}`}
           suffix="EUR"
         />
@@ -192,12 +192,12 @@ export function BudgetDashboard({
                   wrapperStyle={{ fontSize: '13px' }}
                 />
                 <Bar
-                  dataKey="Cout optimise"
+                  dataKey="Coût optimise"
                   fill="#10b981"
                   radius={[6, 6, 0, 0]}
                 />
                 <Bar
-                  dataKey="Cout brut"
+                  dataKey="Coût brut"
                   fill="#d6d3d1"
                   radius={[6, 6, 0, 0]}
                 />

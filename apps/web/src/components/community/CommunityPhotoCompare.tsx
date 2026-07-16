@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
 interface CommunityPhotoCompareProps {
@@ -26,11 +28,13 @@ export function CommunityPhotoCompare({
         {beforePhotoIds.length > 0 ? (
           <div className="grid gap-2">
             {beforePhotoIds.map((id) => (
-              <img
+              <Image
                 key={id}
                 src={buildUrl(id)}
                 alt="Avant travaux"
-                className="w-full rounded-2xl object-cover"
+                width={800}
+                height={600}
+                className="h-auto w-full rounded-2xl object-cover"
               />
             ))}
           </div>
@@ -44,16 +48,18 @@ export function CommunityPhotoCompare({
       {/* After */}
       <div>
         <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-stone-500">
-          Apres
+          Après
         </h3>
         {afterPhotoIds.length > 0 ? (
           <div className="grid gap-2">
             {afterPhotoIds.map((id) => (
-              <img
+              <Image
                 key={id}
                 src={buildUrl(id)}
-                alt="Apres travaux"
-                className="w-full rounded-2xl object-cover"
+                alt="Après travaux"
+                width={800}
+                height={600}
+                className="h-auto w-full rounded-2xl object-cover"
               />
             ))}
           </div>

@@ -12,10 +12,10 @@ const CATEGORIES = [
 
 const UNITS = [
   { value: 'L', label: 'Litres (L)' },
-  { value: 'm2', label: 'Metres carres (m2)' },
-  { value: 'm', label: 'Metres lineaires (m)' },
+  { value: 'm2', label: 'Mètres carrés (m2)' },
+  { value: 'm', label: 'Mètres linéaires (m)' },
   { value: 'kg', label: 'Kilogrammes (kg)' },
-  { value: 'unit', label: 'Unite (piece)' },
+  { value: 'unit', label: 'Unité (pièce)' },
 ];
 
 const SKILL_LEVELS = [
@@ -228,7 +228,7 @@ export function MaterialForm({
         </div>
         <div>
           <label className={labelClass}>
-            Unite de mesure <span className="text-red-500">*</span>
+            Unité de mesure <span className="text-red-500">*</span>
           </label>
           <select
             value={unit}
@@ -246,7 +246,7 @@ export function MaterialForm({
         </div>
         <div>
           <label className={labelClass}>
-            Rendement par unite <span className="text-red-500">*</span>
+            Rendement par unité <span className="text-red-500">*</span>
           </label>
           <input
             type="number"
@@ -279,7 +279,7 @@ export function MaterialForm({
               />
               <input
                 type="number"
-                placeholder="Quantite"
+                placeholder="Quantité"
                 value={pkg.quantity_per_unit}
                 onChange={(e) =>
                   updatePackaging(index, 'quantity_per_unit', e.target.value)
@@ -290,7 +290,7 @@ export function MaterialForm({
               />
               <input
                 type="text"
-                placeholder="Unite"
+                placeholder="Unité"
                 value={pkg.unit}
                 onChange={(e) =>
                   updatePackaging(index, 'unit', e.target.value)

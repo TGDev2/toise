@@ -97,7 +97,7 @@ export default function EstimatePage() {
           &larr; Retour aux travaux
         </button>
         <h1 className="mt-2 text-3xl font-semibold text-stone-950">
-          Estimation des materiaux
+          Estimation des matériaux
         </h1>
         {projectName && (
           <p className="mt-1 text-sm text-stone-500">{projectName}</p>
@@ -120,7 +120,7 @@ export default function EstimatePage() {
           disabled={isCalculating}
         />
         <p className="mt-2 text-xs text-stone-400">
-          Changer le niveau recalcule automatiquement les quantites avec les
+          Changer le niveau recalcule automatiquement les quantités avec les
           facteurs de perte adaptes.
         </p>
       </section>
@@ -136,10 +136,10 @@ export default function EstimatePage() {
           <>
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-stone-900">
-                Materiaux necessaires
+                Matériaux nécessaires
               </h2>
               <span className="rounded-full bg-stone-100 px-3 py-1 text-sm text-stone-600">
-                {estimation.total_items} materiau{estimation.total_items > 1 ? 'x' : ''}
+                {estimation.total_items} matériau{estimation.total_items > 1 ? 'x' : ''}
               </span>
             </div>
             <EstimationResults items={estimation.items} />

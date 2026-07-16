@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/lib/errors';
+import { Alert, Button, Input } from '@/components/ui';
 
 export function ForgotPasswordForm() {
   const { forgotPassword } = useAuth();
@@ -29,71 +30,60 @@ export function ForgotPasswordForm() {
   if (sent) {
     return (
       <div className="w-full max-w-md space-y-4 text-center">
-        <div className="rounded-lg bg-green-50 p-6">
-          <h2 className="text-lg font-semibold text-green-800">Email envoye</h2>
-          <p className="mt-2 text-sm text-green-700">
+        <div className="rounded-[2rem] border border-[var(--accent)]/30 bg-[var(--accent)]/5 p-6">
+          <h2 className="text-lg font-semibold text-[var(--accent-strong)]">
+            Email envoyé
+          </h2>
+          <p className="mt-2 text-sm text-stone-700">
             Si un compte existe avec l&apos;adresse <strong>{email}</strong>,
-            vous recevrez un lien de reinitialisation valide pendant 1 heure.
+            vous recevrez un lien de réinitialisation valide pendant 1 heure.
           </p>
         </div>
         <Link
           href="/login"
-          className="text-sm font-medium text-blue-600 hover:text-blue-500"
+          className="text-sm font-medium text-[var(--accent)] hover:text-[var(--accent-strong)]"
         >
-          Retour a la connexion
+          Retour à la connexion
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-md space-y-6">
+    <div className="w-full max-w-md space-y-6 rounded-[2rem] border border-stone-200 bg-white p-8 shadow-[0_25px_80px_rgba(67,39,15,0.10)]">
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Mot de passe oublie
+        <h1 className="text-2xl font-bold text-stone-950">
+          Mot de passe oublié
         </h1>
-        <p className="mt-2 text-sm text-gray-600">
-          Entrez votre email pour recevoir un lien de reinitialisation
+        <p className="mt-2 text-sm text-stone-600">
+          Entrez votre email pour recevoir un lien de réinitialisation
         </p>
       </div>
 
-      {error && (
-        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-          {error}
-        </div>
-      )}
+      {error && <Alert variant="error">{error}</Alert>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label
-            htmlFor="email"
-            className="block text-sm font-medium text-gray-700"
-          >
-            Email
-          </label>
-          <input
-            id="email"
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            placeholder="vous@exemple.com"
-          />
-        </div>
+        <Input
+          id="email"
+          type="email"
+          label="Email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="vous@exemple.com"
+        />
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-        >
-          {loading ? 'Envoi...' : 'Envoyer le lien'}
-        </button>
+        <Button type="submit" loading={loading} className="w-full">
+          Envoyer le lien
+        </Button>
       </form>
 
-      <p className="text-center text-sm text-gray-600">
-        <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
-          Retour a la connexion
+      <p className="text-center text-sm text-stone-600">
+        <Link
+          href="/login"
+          className="font-medium text-[var(--accent)] hover:text-[var(--accent-strong)]"
+        >
+          Retour à la connexion
         </Link>
       </p>
     </div>

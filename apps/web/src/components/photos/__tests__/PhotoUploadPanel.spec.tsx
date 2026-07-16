@@ -61,8 +61,8 @@ describe('PhotoUploadPanel', () => {
       />,
     );
 
-    expect(screen.getByText('Photos de la piece')).toBeInTheDocument();
-    expect(screen.getByText(/Photographiez les coins opposes/)).toBeInTheDocument();
+    expect(screen.getByText('Photos de la pièce')).toBeInTheDocument();
+    expect(screen.getByText(/Photographiez les coins opposés/)).toBeInTheDocument();
   });
 
   it('shows photo count', () => {
@@ -131,7 +131,7 @@ describe('PhotoUploadPanel', () => {
     expect(
       screen.getByText('Format non supporte. Formats acceptes : JPEG, PNG, HEIC'),
     ).toBeInTheDocument();
-    expect(screen.getByText('Reessayer')).toBeInTheDocument();
+    expect(screen.getByText('Réessayer')).toBeInTheDocument();
   });
 
   it('hides dropzone when canAddMore is false', () => {

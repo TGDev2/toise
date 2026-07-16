@@ -19,6 +19,6 @@ describe('StatusBadge', () => {
 
   it('renders the correct label for completed', () => {
     render(<StatusBadge status="completed" />);
-    expect(screen.getByText('Termine')).toBeInTheDocument();
+    expect(screen.getByText('Terminé')).toBeInTheDocument();
   });
 });

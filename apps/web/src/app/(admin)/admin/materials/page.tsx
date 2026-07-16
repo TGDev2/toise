@@ -65,13 +65,13 @@ export default function MaterialsListPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[var(--foreground)]">
-          Catalogue materiaux
+          Catalogue matériaux
         </h1>
         <Link
           href="/admin/materials/new"
           className="rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--accent-strong)]"
         >
-          Creer un materiau
+          Créer un matériau
         </Link>
       </div>
 
@@ -96,8 +96,8 @@ export default function MaterialsListPage() {
         <div className="rounded-2xl bg-[var(--surface)] p-8 text-center">
           <p className="text-[var(--foreground)]/60">
             {category
-              ? `Aucun materiau disponible pour la categorie "${CATEGORY_LABELS[category] ?? category}".`
-              : 'Aucun materiau dans le catalogue.'}
+              ? `Aucun matériau disponible pour la categorie "${CATEGORY_LABELS[category] ?? category}".`
+              : 'Aucun matériau dans le catalogue.'}
           </p>
         </div>
       ) : (
@@ -112,7 +112,7 @@ export default function MaterialsListPage() {
                   Categorie
                 </th>
                 <th className="px-4 py-3 font-semibold text-[var(--foreground)]">
-                  Unite
+                  Unité
                 </th>
                 <th className="px-4 py-3 font-semibold text-[var(--foreground)]">
                   Rendement
@@ -154,7 +154,7 @@ export default function MaterialsListPage() {
                       </span>
                     ) : (
                       <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
-                        Desactive
+                        Désactivé
                       </span>
                     )}
                   </td>
@@ -166,7 +166,7 @@ export default function MaterialsListPage() {
       )}
 
       <p className="mt-4 text-xs text-[var(--foreground)]/40">
-        {materials.length} materiau{materials.length !== 1 ? 'x' : ''} affiche
+        {materials.length} matériau{materials.length !== 1 ? 'x' : ''} affiche
         {materials.length !== 1 ? 's' : ''}
       </p>
     </div>

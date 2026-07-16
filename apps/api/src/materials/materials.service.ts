@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { MaterialCatalog } from './entities/material-catalog.entity';
 import { MaterialPackaging } from './entities/material-packaging.entity';
 import { WasteFactor } from './entities/waste-factor.entity';
@@ -102,7 +102,7 @@ export class MaterialsService {
     dto: UpdateMaterialDto,
     userId: string,
   ): Promise<MaterialCatalog> {
-    const material = await this.findOne(id);
+    await this.findOne(id);
 
     return this.dataSource.transaction(async (manager) => {
       const { packagings, waste_factors, ...materialFields } = dto;
@@ -164,7 +164,7 @@ export class MaterialsService {
 
   private async findOneWithManager(
     id: string,
-    manager: any,
+    manager: EntityManager,
   ): Promise<MaterialCatalog> {
     const material = await manager.findOne(MaterialCatalog, {
       where: { id },

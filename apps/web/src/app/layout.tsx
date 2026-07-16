@@ -3,12 +3,27 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { FeatureGateProvider } from '@/contexts/FeatureGateContext';
 import { PaywallModal } from '@/components/paywall/PaywallModal';
 import { CookieConsent } from '@/components/CookieConsent';
+import { ToastProvider } from '@/components/ui/Toast';
 import './globals.css';
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+
 export const metadata: Metadata = {
-  title: 'EstiMate - Estimation materiaux renovation',
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: 'EstiMate — Estimation de matériaux de rénovation',
+    template: '%s | EstiMate',
+  },
   description:
-    'Estimez precisement vos materiaux de renovation grace a la vision par ordinateur et des calculs intelligents.',
+    'Estimez précisément vos matériaux de rénovation grâce à la vision par ordinateur et des calculs intelligents.',
+  openGraph: {
+    type: 'website',
+    locale: 'fr_FR',
+    siteName: 'EstiMate',
+    title: 'EstiMate — Estimation de matériaux de rénovation',
+    description:
+      'Scannez votre pièce, sélectionnez vos travaux, obtenez une liste d\'achat précise.',
+  },
 };
 
 export default function RootLayout({
@@ -19,13 +34,15 @@ export default function RootLayout({
   return (
     <html lang="fr" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
-        <AuthProvider>
-          <FeatureGateProvider>
-            {children}
-            <PaywallModal />
-            <CookieConsent />
-          </FeatureGateProvider>
-        </AuthProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <FeatureGateProvider>
+              {children}
+              <PaywallModal />
+              <CookieConsent />
+            </FeatureGateProvider>
+          </AuthProvider>
+        </ToastProvider>
       </body>
     </html>
   );

@@ -38,7 +38,7 @@ export const SKILL_LEVELS = [
     value: 'beginner',
     label: 'Debutant',
     description:
-      'Le facteur de perte sera augmente pour compenser les erreurs de decoupe plus frequentes.',
+      'Le facteur de perte sera augmenté pour compenser les erreurs de découpe plus fréquentes.',
   },
   {
     value: 'intermediate',

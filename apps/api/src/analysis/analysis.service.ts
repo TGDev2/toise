@@ -7,11 +7,11 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { AnalysisJob, AnalysisJobStatus } from './entities/analysis-job.entity';
 import {
   CvClientService,
   type CvAnalysisResponse,
-  type CvDetectedOpening,
 } from './cv-client/cv-client.service';
 import { ProjectsService } from '../projects/projects.service';
 import { PhotosService } from '../photos/photos.service';
@@ -72,10 +72,11 @@ export class AnalysisService {
 
     // Fire-and-forget processing
     const imagePaths = photos.map((p) => p.storage_url);
-    this.processAnalysis(saved.id, projectId, userId, imagePaths).catch((err) =>
-      this.logger.error(
-        `Analysis processing failed for job ${saved.id}: ${err.message}`,
-      ),
+    this.processAnalysis(saved.id, projectId, userId, imagePaths).catch(
+      (err: Error) =>
+        this.logger.error(
+          `Analysis processing failed for job ${saved.id}: ${err.message}`,
+        ),
     );
 
     return saved;
@@ -155,7 +156,9 @@ export class AnalysisService {
       // Store result (including no_reference status)
       await this.jobRepo.update(jobId, {
         status: AnalysisJobStatus.COMPLETED,
-        result_json: cvResponse as any,
+        result_json: cvResponse as unknown as QueryDeepPartialEntity<
+          Record<string, unknown>
+        >,
         completed_at: new Date(),
         progress_pct: 100,
       });

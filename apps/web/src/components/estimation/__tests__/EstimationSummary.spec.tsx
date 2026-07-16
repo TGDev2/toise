@@ -50,6 +50,6 @@ describe('EstimationSummary', () => {
 
   it('should show correct material count badge', () => {
     render(<EstimationSummary items={makeMultiWorkTypeItems()} />);
-    expect(screen.getByText('2 materiaux')).toBeInTheDocument();
+    expect(screen.getByText('2 matériaux')).toBeInTheDocument();
   });
 });

@@ -6,6 +6,7 @@ import {
 } from '@/components/admin/MaterialForm';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { apiGet, apiPatch, apiPut } from '@/lib/api';
+import { Alert, ConfirmDialog, Skeleton } from '@/components/ui';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -46,6 +47,7 @@ export default function EditMaterialPage() {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
+  const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
   const [error, setError] = useState('');
 
   const fetchMaterial = useCallback(async () => {
@@ -54,7 +56,7 @@ export default function EditMaterialPage() {
       setMaterial(data);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'Impossible de charger le materiau',
+        err instanceof Error ? err.message : 'Impossible de charger le matériau',
       );
     } finally {
       setLoading(false);
@@ -76,17 +78,15 @@ export default function EditMaterialPage() {
   };
 
   const handleDeactivate = async () => {
-    if (!confirm('Desactiver ce materiau ? Il ne sera plus utilise dans les calculs futurs.')) {
-      return;
-    }
     setDeactivating(true);
     try {
       await apiPatch(`/admin/materials/${id}/deactivate`);
       router.push('/admin/materials');
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'Erreur lors de la desactivation',
+        err instanceof Error ? err.message : 'Erreur lors de la désactivation',
       );
+      setShowDeactivateConfirm(false);
     } finally {
       setDeactivating(false);
     }
@@ -96,18 +96,15 @@ export default function EditMaterialPage() {
 
   if (loading) {
     return (
-      <p className="py-8 text-center text-[var(--foreground)]/60">
-        Chargement...
-      </p>
+      <div className="py-8">
+        <Skeleton className="h-8 w-72" />
+        <Skeleton className="mt-6 h-96 rounded-[2rem]" />
+      </div>
     );
   }
 
   if (error && !material) {
-    return (
-      <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700">
-        {error}
-      </div>
-    );
+    return <Alert variant="error">{error}</Alert>;
   }
 
   if (!material) return null;
@@ -120,29 +117,29 @@ export default function EditMaterialPage() {
         </h1>
         {material.is_active && (
           <button
-            onClick={handleDeactivate}
+            onClick={() => setShowDeactivateConfirm(true)}
             disabled={deactivating}
             className="rounded-xl border border-red-300 px-5 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
           >
-            {deactivating ? 'Desactivation...' : 'Desactiver'}
+            Désactiver
           </button>
         )}
         {!material.is_active && (
-          <span className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-500">
-            Desactive
+          <span className="rounded-full bg-stone-100 px-3 py-1 text-sm font-medium text-stone-500">
+            Désactivé
           </span>
         )}
       </div>
 
       {error && (
-        <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+        <Alert variant="error" className="mb-4">
           {error}
-        </div>
+        </Alert>
       )}
 
       {material.modified_at && (
         <p className="mb-4 text-xs text-[var(--foreground)]/50">
-          Derniere modification :{' '}
+          Dernière modification :{' '}
           {new Intl.DateTimeFormat('fr-FR', {
             dateStyle: 'medium',
             timeStyle: 'short',
@@ -161,7 +158,18 @@ export default function EditMaterialPage() {
         }}
         onSubmit={handleSubmit}
         isLoading={isSubmitting}
-        submitLabel="Mettre a jour"
+        submitLabel="Mettre à jour"
+      />
+
+      <ConfirmDialog
+        open={showDeactivateConfirm}
+        title="Désactiver ce matériau"
+        message="Il ne sera plus utilisé dans les calculs futurs."
+        confirmLabel="Désactiver"
+        destructive
+        busy={deactivating}
+        onConfirm={handleDeactivate}
+        onCancel={() => setShowDeactivateConfirm(false)}
       />
     </div>
   );

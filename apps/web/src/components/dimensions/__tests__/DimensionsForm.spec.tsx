@@ -17,7 +17,7 @@ describe('DimensionsForm', () => {
 
   it('renders unit selector with metric selected', () => {
     render(<DimensionsForm onSave={mockSave} />);
-    const metricBtn = screen.getByRole('radio', { name: /metres/i });
+    const metricBtn = screen.getByRole('radio', { name: /mètres/i });
     expect(metricBtn).toBeChecked();
   });
 
@@ -57,7 +57,7 @@ describe('DimensionsForm', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/vous n'avez pas ajoute de portes ou fenetres/i),
+        screen.getByText(/vous n'avez pas ajoute de portes ou fenêtres/i),
       ).toBeInTheDocument();
     });
 
@@ -78,7 +78,7 @@ describe('DimensionsForm', () => {
         onSave={mockSave}
       />,
     );
-    expect(screen.getByText(/surface totale estimee/i)).toBeInTheDocument();
+    expect(screen.getByText(/surface totale estimée/i)).toBeInTheDocument();
     expect(screen.getByText(/surface nette des murs/i)).toBeInTheDocument();
   });
 

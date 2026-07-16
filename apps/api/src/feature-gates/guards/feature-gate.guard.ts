@@ -8,6 +8,7 @@ import { Reflector } from '@nestjs/core';
 import { UsersService } from '../../users/users.service';
 import { FeatureGatesService } from '../feature-gates.service';
 import { FEATURE_KEY } from '../decorators/require-feature.decorator';
+import type { Request } from 'express';
 
 @Injectable()
 export class FeatureGateGuard implements CanActivate {
@@ -24,7 +25,7 @@ export class FeatureGateGuard implements CanActivate {
     );
     if (!featureKey) return true;
 
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<Request>();
     const firebaseUser = request.firebaseUser;
 
     if (!firebaseUser) {
@@ -33,7 +34,9 @@ export class FeatureGateGuard implements CanActivate {
 
     let user = request.appUser;
     if (!user) {
-      user = await this.usersService.findByFirebaseUid(firebaseUser.uid);
+      user =
+        (await this.usersService.findByFirebaseUid(firebaseUser.uid)) ??
+        undefined;
       request.appUser = user;
     }
 

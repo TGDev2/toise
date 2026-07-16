@@ -15,7 +15,7 @@ export function CommunityGalleryGrid({ projects }: CommunityGalleryGridProps) {
           Aucun projet dans la galerie
         </h2>
         <p className="mt-3 text-sm text-stone-600">
-          Soyez le premier a partager votre projet termine avec la communaute !
+          Soyez le premier a partager votre projet terminé avec la communauté !
         </p>
       </div>
     );

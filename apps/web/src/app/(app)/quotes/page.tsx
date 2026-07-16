@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeatureGates } from '@/contexts/FeatureGateContext';
@@ -138,7 +139,7 @@ export default function QuotesListPage() {
             Aucun devis
           </h2>
           <p className="mt-3 text-sm text-stone-600">
-            Creez votre premier devis depuis un projet avec une estimation.
+            Créez votre premier devis depuis un projet avec une estimation.
           </p>
         </div>
       )}
@@ -146,10 +147,10 @@ export default function QuotesListPage() {
       {!loading && quotes.length > 0 && (
         <div className="mt-6 space-y-4">
           {quotes.map((quote) => (
-            <article
+            <Link
               key={quote.id}
-              onClick={() => router.push(`/quotes/${quote.id}`)}
-              className="cursor-pointer rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)] hover:border-stone-300 hover:shadow-lg transition-all"
+              href={`/quotes/${quote.id}`}
+              className="block rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)] transition-all hover:border-stone-300 hover:shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
@@ -173,7 +174,7 @@ export default function QuotesListPage() {
                   {formatPrice(Number(quote.total_ttc))} EUR TTC
                 </span>
               </div>
-            </article>
+            </Link>
           ))}
         </div>
       )}

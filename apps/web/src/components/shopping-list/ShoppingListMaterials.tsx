@@ -128,7 +128,7 @@ function MaterialRow({
                     ? 'text-stone-300 hover:text-stone-400'
                     : 'text-stone-400 hover:bg-stone-100 hover:text-stone-600'
               }`}
-              title={budgetAllowed === false ? 'Fonctionnalite Pro' : 'Saisir le prix reel'}
+              title={budgetAllowed === false ? 'Fonctionnalité Pro' : 'Saisir le prix reel'}
               aria-label="Saisir le prix reel"
             >
               {budgetAllowed === false ? (
@@ -147,7 +147,7 @@ function MaterialRow({
               type="button"
               onClick={handleReset}
               className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 hover:bg-amber-200"
-              title="Reinitialiser la quantite"
+              title="Reinitialiser la quantité"
             >
               Modifie
             </button>
@@ -165,7 +165,7 @@ function MaterialRow({
               onBlur={handleBlur}
               onKeyDown={handleKeyDown}
               className="w-16 rounded-xl border border-stone-200 bg-stone-50 px-2 py-1.5 text-center text-sm font-semibold text-stone-900 focus:border-stone-400 focus:bg-white focus:outline-none"
-              aria-label={`Quantite pour ${item.material_name}`}
+              aria-label={`Quantité pour ${item.material_name}`}
             />
           )}
           <span className="text-sm text-stone-500">
@@ -259,7 +259,7 @@ export function ShoppingListMaterials({
   if (items.length === 0) {
     return (
       <p className="py-8 text-center text-stone-400">
-        Aucun materiau dans la liste.
+        Aucun matériau dans la liste.
       </p>
     );
   }

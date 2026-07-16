@@ -54,8 +54,8 @@ export function RoomPreview({
   const rectY = (viewBoxH - rectH) / 2;
 
   const ariaLabel = isValid
-    ? `Vue de dessus de la piece : ${formatDimension(lengthCm, unitSystem)} x ${formatDimension(widthCm, unitSystem)}`
-    : 'Apercu de la piece (dimensions non definies)';
+    ? `Vue de dessus de la pièce : ${formatDimension(lengthCm, unitSystem)} x ${formatDimension(widthCm, unitSystem)}`
+    : 'Aperçu de la pièce (dimensions non définies)';
 
   // Compute opening indicators along walls
   const doors = openings.filter((o) => o.type === 'door');

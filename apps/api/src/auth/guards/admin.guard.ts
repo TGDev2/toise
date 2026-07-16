@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { UsersService } from '../../users/users.service';
 import { UserRole } from '../../users/entities/user.entity';
 
@@ -12,7 +13,7 @@ export class AdminGuard implements CanActivate {
   constructor(private readonly usersService: UsersService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<Request>();
     const firebaseUser = request.firebaseUser;
 
     if (!firebaseUser) {

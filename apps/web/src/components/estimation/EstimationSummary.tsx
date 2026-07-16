@@ -46,7 +46,7 @@ export function EstimationSummary({ items }: EstimationSummaryProps) {
           Recapitulatif global
         </h2>
         <span className="rounded-full bg-stone-100 px-3 py-1 text-sm text-stone-600">
-          {consolidated.length} materiau{consolidated.length > 1 ? 'x' : ''}
+          {consolidated.length} matériau{consolidated.length > 1 ? 'x' : ''}
         </span>
       </div>
 

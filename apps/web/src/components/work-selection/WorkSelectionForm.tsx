@@ -115,7 +115,7 @@ export function WorkSelectionForm({
           Type de travaux
         </h2>
         <p className="mb-4 text-sm text-stone-500">
-          Selectionnez un ou plusieurs types de travaux prevus.
+          Sélectionnez un ou plusieurs types de travaux prévus.
         </p>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
@@ -158,7 +158,7 @@ export function WorkSelectionForm({
 
         {touched && selectedTypeIds.size === 0 && (
           <p className="mt-3 text-sm text-red-600">
-            Veuillez selectionner au moins un type de travaux.
+            Veuillez sélectionner au moins un type de travaux.
           </p>
         )}
       </div>
@@ -205,7 +205,7 @@ export function WorkSelectionForm({
 
         {touched && skillLevel === '' && (
           <p className="mt-3 text-sm text-red-600">
-            Veuillez selectionner votre niveau de competence.
+            Veuillez sélectionner votre niveau de competence.
           </p>
         )}
       </div>

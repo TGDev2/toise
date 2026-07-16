@@ -11,6 +11,7 @@ import { ShoppingListComplements } from '@/components/shopping-list/ShoppingList
 import { ShareLinkPanel } from '@/components/shopping-list/ShareLinkPanel';
 import { BudgetDashboard } from '@/components/shopping-list/BudgetDashboard';
 import { PriceComparisonPanel } from '@/components/shopping-list/PriceComparisonPanel';
+import { Alert, ConfirmDialog, Skeleton } from '@/components/ui';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -35,6 +36,8 @@ export default function ShoppingListPage() {
   const [budgetSummary, setBudgetSummary] = useState<BudgetSummary | null>(null);
   const [comparing, setComparing] = useState(false);
   const [comparisonData, setComparisonData] = useState<PriceComparisonResponse | null>(null);
+  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
+  const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
 
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingUpdatesRef = useRef<{
@@ -343,16 +346,13 @@ export default function ShoppingListPage() {
         `liste-courses-${safeName}.pdf`,
       );
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Impossible de telecharger le PDF'));
+      setError(getErrorMessage(err, 'Impossible de télécharger le PDF'));
     } finally {
       setDownloading(false);
     }
   }, [projectId, projectName]);
 
   const handleRegenerate = useCallback(async () => {
-    if (!confirm('Regenerer la liste ? Les modifications manuelles seront perdues (les prix saisis seront conserves).')) {
-      return;
-    }
     setRegenerating(true);
     setError('');
     try {
@@ -362,16 +362,14 @@ export default function ShoppingListPage() {
       );
       setData(result);
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Impossible de regenerer la liste'));
+      setError(getErrorMessage(err, 'Impossible de régénérer la liste'));
     } finally {
       setRegenerating(false);
+      setShowRegenerateConfirm(false);
     }
   }, [projectId]);
 
   const handleFinalizeBudget = useCallback(async () => {
-    if (!confirm('Finaliser le budget ? Le projet sera marque comme termine.')) {
-      return;
-    }
     setError('');
     try {
       const summary = await apiPost<BudgetSummary>(
@@ -381,6 +379,8 @@ export default function ShoppingListPage() {
       setBudgetSummary(summary);
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Impossible de finaliser le budget'));
+    } finally {
+      setShowFinalizeConfirm(false);
     }
   }, [projectId]);
 
@@ -424,8 +424,10 @@ export default function ShoppingListPage() {
 
   if (isLoading || loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <p className="text-gray-500">Chargement...</p>
+      <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="mt-6 h-64 rounded-[2rem]" />
+        <Skeleton className="mt-6 h-48 rounded-[2rem]" />
       </main>
     );
   }
@@ -438,7 +440,7 @@ export default function ShoppingListPage() {
           onClick={() => router.push(`/projects/${projectId}/estimate`)}
           className="text-sm text-stone-500 hover:text-stone-700"
         >
-          &larr; Retour a l&apos;estimation
+          &larr; Retour à l&apos;estimation
         </button>
         <div className="mt-2 flex items-center gap-3">
           <h1 className="text-3xl font-semibold text-stone-950">
@@ -467,7 +469,7 @@ export default function ShoppingListPage() {
               <path d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z" />
               <path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" />
             </svg>
-            {downloading ? 'Telechargement...' : 'Telecharger PDF'}
+            {downloading ? 'Téléchargement...' : 'Télécharger PDF'}
           </button>
           <button
             type="button"
@@ -489,21 +491,9 @@ export default function ShoppingListPage() {
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
                 <path fillRule="evenodd" d="M4.5 2A1.5 1.5 0 0 0 3 3.5v13A1.5 1.5 0 0 0 4.5 18h11a1.5 1.5 0 0 0 1.5-1.5V7.621a1.5 1.5 0 0 0-.44-1.06l-4.12-4.122A1.5 1.5 0 0 0 11.378 2H4.5Zm4.75 6.75a.75.75 0 0 1 1.5 0v2.25h2.25a.75.75 0 0 1 0 1.5h-2.25v2.25a.75.75 0 0 1-1.5 0v-2.25H7a.75.75 0 0 1 0-1.5h2.25V8.75Z" clipRule="evenodd" />
               </svg>
-              Generer un devis
+              Générer un devis
             </button>
           )}
-          <button
-            type="button"
-            disabled
-            className="inline-flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-400 shadow-sm opacity-50 cursor-not-allowed"
-            title="Bientot disponible"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-              <path d="M3 4a2 2 0 0 0-2 2v1.161l8.441 4.221a1.25 1.25 0 0 0 1.118 0L19 7.162V6a2 2 0 0 0-2-2H3Z" />
-              <path d="m19 8.839-7.77 3.885a2.75 2.75 0 0 1-2.46 0L1 8.839V14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.839Z" />
-            </svg>
-            Envoyer par email
-          </button>
           <button
             type="button"
             onClick={handleComparePrices}
@@ -537,23 +527,23 @@ export default function ShoppingListPage() {
       )}
 
       {error && (
-        <div className="mb-6 rounded-3xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+        <Alert variant="error" className="mb-6">
           {error}
-        </div>
+        </Alert>
       )}
 
       {data?.is_stale && (
         <div className="mb-6 flex items-center justify-between rounded-3xl border border-amber-200 bg-amber-50 px-5 py-4">
           <p className="text-sm text-amber-800">
-            L&apos;estimation a ete mise a jour. La liste peut ne plus etre a jour.
+            L&apos;estimation a été mise à jour. La liste peut ne plus être à jour.
           </p>
           <button
             type="button"
-            onClick={handleRegenerate}
+            onClick={() => setShowRegenerateConfirm(true)}
             disabled={regenerating}
             className="ml-4 shrink-0 rounded-full bg-amber-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
           >
-            {regenerating ? 'Regeneration...' : 'Regenerer'}
+            {regenerating ? 'Régénération...' : 'Régénérer'}
           </button>
         </div>
       )}
@@ -563,14 +553,14 @@ export default function ShoppingListPage() {
           <BudgetDashboard
             summary={budgetSummary}
             budgetAllowed={budgetAllowed}
-            onFinalize={handleFinalizeBudget}
+            onFinalize={() => setShowFinalizeConfirm(true)}
             onShowPaywall={handleShowPaywall}
           />
 
           <section className="mb-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-stone-900">
-                Materiaux a acheter
+                Matériaux à acheter
               </h2>
               <span className="rounded-full bg-stone-100 px-3 py-1 text-sm text-stone-600">
                 {data.material_items.length} article
@@ -602,6 +592,25 @@ export default function ShoppingListPage() {
           )}
         </>
       )}
+
+      <ConfirmDialog
+        open={showRegenerateConfirm}
+        title="Régénérer la liste"
+        message="Les modifications manuelles seront perdues (les prix saisis seront conservés)."
+        confirmLabel="Régénérer"
+        busy={regenerating}
+        onConfirm={handleRegenerate}
+        onCancel={() => setShowRegenerateConfirm(false)}
+      />
+
+      <ConfirmDialog
+        open={showFinalizeConfirm}
+        title="Finaliser le budget"
+        message="Le projet sera marqué comme terminé."
+        confirmLabel="Finaliser"
+        onConfirm={handleFinalizeBudget}
+        onCancel={() => setShowFinalizeConfirm(false)}
+      />
     </main>
   );
 }

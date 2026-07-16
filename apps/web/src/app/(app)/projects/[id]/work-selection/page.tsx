@@ -57,7 +57,7 @@ export default function WorkSelectionPage() {
           setProjectName(project.name);
           setInitialSelections(items);
         } else {
-          // Guest mode: use hardcoded work types from local reference
+          // Guest mode: use hardcoded work types from local référence
           // In guest mode we don't have the API, so we use a minimal set
           const raw = localStorage.getItem(STORAGE_KEY);
           const projects: LocalProject[] = raw ? JSON.parse(raw) : [];

@@ -11,13 +11,13 @@ import {
   Put,
   Query,
   UseGuards,
+  UnauthorizedException,
 } from '@nestjs/common';
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
 import { UsersService } from '../users/users.service';
 import type { User } from '../users/entities/user.entity';
-import { SubscriptionTier } from '../users/entities/user.entity';
 import { ProjectsService } from './projects.service';
 import { FeatureGatesService } from '../feature-gates/feature-gates.service';
 import { CvCorrectionService } from '../analysis/cv-correction.service';
@@ -42,7 +42,7 @@ export class ProjectsController {
   private async resolveUser(firebaseUser: DecodedIdToken): Promise<User> {
     const user = await this.usersService.findByFirebaseUid(firebaseUser.uid);
     if (!user) {
-      throw new Error('User not found');
+      throw new UnauthorizedException('Utilisateur non authentifié.');
     }
     return user;
   }

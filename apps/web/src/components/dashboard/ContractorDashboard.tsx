@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import { apiDelete, apiGet, apiPost } from '@/lib/api';
@@ -9,7 +10,14 @@ import type { Quote, Client } from '@/lib/quote-types';
 import { getErrorMessage } from '@/lib/errors';
 import type { PaginatedProjects, ProjectSummary } from '@/lib/project-types';
 import { ProjectCard } from './ProjectCard';
-import { DeleteConfirmDialog } from './DeleteConfirmDialog';
+import {
+  Alert,
+  Button,
+  ConfirmDialog,
+  Input,
+  Skeleton,
+  useToast,
+} from '@/components/ui';
 
 interface CompanyProfileData {
   raison_sociale: string;
@@ -22,6 +30,7 @@ export function ContractorDashboard() {
   const { appUser, logout, deleteAccount } = useAuth();
   const { subscription, openPortal } = useSubscription();
   const router = useRouter();
+  const toast = useToast();
 
   const [companyProfile, setCompanyProfile] = useState<CompanyProfileData | null>(null);
   const [apiProjects, setApiProjects] = useState<ProjectSummary[]>([]);
@@ -29,10 +38,10 @@ export function ContractorDashboard() {
   const [page, setPage] = useState(1);
   const [apiLoading, setApiLoading] = useState(false);
   const [isComposerOpen, setIsComposerOpen] = useState(false);
-  const [feedback, setFeedback] = useState('');
   const [error, setError] = useState('');
+  const [showAccountConfirm, setShowAccountConfirm] = useState(false);
   const [isAccountDeleting, setIsAccountDeleting] = useState(false);
-  const [form, setForm] = useState({ name: 'Renovation salon', room_name: 'Salon' });
+  const [form, setForm] = useState({ name: 'Rénovation salon', room_name: 'Salon' });
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [clientsCount, setClientsCount] = useState<number | null>(null);
@@ -78,18 +87,13 @@ export function ContractorDashboard() {
   };
 
   const handleDeleteAccount = async () => {
-    if (
-      typeof window !== 'undefined' &&
-      !window.confirm('Supprimer definitivement votre compte et vos donnees ?')
-    ) {
-      return;
-    }
     setError('');
     setIsAccountDeleting(true);
     try {
       await deleteAccount();
       router.push('/login');
     } catch (err: unknown) {
+      setShowAccountConfirm(false);
       setError(getErrorMessage(err, 'Impossible de supprimer le compte'));
     } finally {
       setIsAccountDeleting(false);
@@ -106,7 +110,7 @@ export function ContractorDashboard() {
       });
       router.push(`/projects/${created.id}/photos`);
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Impossible de creer le projet'));
+      setError(getErrorMessage(err, 'Impossible de créer le projet'));
     }
   };
 
@@ -117,7 +121,7 @@ export function ContractorDashboard() {
     try {
       await apiDelete(`/projects/${deleteTarget.id}`);
       setDeleteTarget(null);
-      setFeedback('Projet supprime avec succes.');
+      toast.success('Projet supprimé avec succès.');
       await fetchProjects(page);
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Impossible de supprimer le projet'));
@@ -166,7 +170,7 @@ export function ContractorDashboard() {
               {companyProfile.specialties.map((s) => (
                 <span
                   key={s}
-                  className="rounded-full bg-blue-50 px-3 py-0.5 text-xs font-medium text-blue-700"
+                  className="rounded-full bg-[var(--accent)]/10 px-3 py-0.5 text-xs font-medium text-[var(--accent-strong)]"
                 >
                   {s}
                 </span>
@@ -176,41 +180,27 @@ export function ContractorDashboard() {
           <p className="mt-2 text-sm text-stone-500">{appUser.email}</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => setIsComposerOpen((v) => !v)}
-            className="rounded-full bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-[var(--accent-strong)]"
-          >
+          <Button onClick={() => setIsComposerOpen((v) => !v)}>
             {isComposerOpen ? 'Fermer' : 'Nouveau chantier'}
-          </button>
-          <button
-            type="button"
-            onClick={() => router.push('/quotes')}
-            className="rounded-full border border-stone-300 px-5 py-2.5 text-sm font-semibold text-stone-700 hover:-translate-y-0.5 hover:bg-white"
-          >
+          </Button>
+          <Button variant="secondary" onClick={() => router.push('/quotes')}>
             Mes devis
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="secondary"
             onClick={() => router.push('/settings/company')}
-            className="rounded-full border border-stone-300 px-5 py-2.5 text-sm font-semibold text-stone-700 hover:-translate-y-0.5 hover:bg-white"
           >
             Profil entreprise
-          </button>
+          </Button>
+          <Button variant="secondary" onClick={handleLogout}>
+            Déconnexion
+          </Button>
           <button
             type="button"
-            onClick={handleLogout}
-            className="rounded-full border border-stone-300 px-5 py-2.5 text-sm font-semibold text-stone-700 hover:-translate-y-0.5 hover:bg-white"
+            onClick={() => setShowAccountConfirm(true)}
+            className="rounded-full border border-red-200 px-5 py-2.5 text-sm font-semibold text-red-700 hover:-translate-y-0.5 hover:bg-red-50"
           >
-            Deconnexion
-          </button>
-          <button
-            type="button"
-            onClick={handleDeleteAccount}
-            disabled={isAccountDeleting}
-            className="rounded-full border border-red-200 px-5 py-2.5 text-sm font-semibold text-red-700 hover:-translate-y-0.5 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isAccountDeleting ? 'Suppression...' : 'Supprimer mon compte'}
+            Supprimer mon compte
           </button>
         </div>
       </div>
@@ -223,30 +213,26 @@ export function ContractorDashboard() {
               Plan Contractor
               {subscription?.cancel_at_period_end && (
                 <span className="ml-2 text-xs font-normal text-amber-600">
-                  (annulation prevue)
+                  (annulation prévue)
                 </span>
               )}
             </p>
             {nextBilling && (
               <p className="mt-1 text-xs text-stone-500">
                 {subscription?.cancel_at_period_end
-                  ? `Actif jusqu'au ${nextBilling}`
-                  : `Prochain prelevement le ${nextBilling}`}
+                  ? `Actif jusqu'àu ${nextBilling}`
+                  : `Prochain prélèvement le ${nextBilling}`}
               </p>
             )}
           </div>
-          <button
-            type="button"
-            onClick={openPortal}
-            className="shrink-0 rounded-full border border-stone-300 px-5 py-2 text-sm font-semibold text-stone-700 hover:-translate-y-0.5 hover:bg-white"
-          >
-            Gerer mon abonnement
-          </button>
+          <Button variant="secondary" onClick={openPortal} className="shrink-0">
+            Gérer mon abonnement
+          </Button>
         </div>
       </div>
 
       {/* Stats row */}
-      <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-3">
         <div className="rounded-2xl border border-stone-200 bg-white/85 p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
             Chantiers
@@ -261,9 +247,9 @@ export function ContractorDashboard() {
             {clientsCount ?? '-'}
           </p>
         </div>
-        <div
-          onClick={() => router.push('/quotes')}
-          className="cursor-pointer rounded-2xl border border-stone-200 bg-white/85 p-4 hover:border-stone-300 transition-colors"
+        <Link
+          href="/quotes"
+          className="rounded-2xl border border-stone-200 bg-white/85 p-4 transition-colors hover:border-stone-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
         >
           <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
             Devis
@@ -271,26 +257,14 @@ export function ContractorDashboard() {
           <p className="mt-1 text-2xl font-bold text-stone-900">
             {quotesCount ?? '-'}
           </p>
-        </div>
-        <div className="rounded-2xl border border-stone-200 bg-white/85 p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
-            Ce mois
-          </p>
-          <p className="mt-1 text-2xl font-bold text-stone-500">-</p>
-          <p className="text-xs text-stone-400">Bientot disponible</p>
-        </div>
+        </Link>
       </div>
 
-      {/* Feedback & Error */}
-      {feedback && (
-        <div className="mt-6 rounded-3xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-800">
-          {feedback}
-        </div>
-      )}
+      {/* Error */}
       {error && (
-        <div className="mt-6 rounded-3xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+        <Alert variant="error" className="mt-6">
           {error}
-        </div>
+        </Alert>
       )}
 
       {/* Create Project Form */}
@@ -300,39 +274,24 @@ export function ContractorDashboard() {
             Nouveau chantier
           </h2>
           <form onSubmit={handleCreateProject} className="mt-6 grid gap-4 md:grid-cols-2">
-            <label className="space-y-2">
-              <span className="text-sm font-medium text-stone-700">
-                Nom du chantier
-              </span>
-              <input
-                required
-                value={form.name}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, name: e.target.value }))
-                }
-                className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm text-stone-900 focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
-              />
-            </label>
-            <label className="space-y-2">
-              <span className="text-sm font-medium text-stone-700">
-                Piece concernee
-              </span>
-              <input
-                required
-                value={form.room_name}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, room_name: e.target.value }))
-                }
-                className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm text-stone-900 focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
-              />
-            </label>
+            <Input
+              label="Nom du chantier"
+              required
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            />
+            <Input
+              label="Pièce concernée"
+              required
+              value={form.room_name}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, room_name: e.target.value }))
+              }
+            />
             <div className="md:col-span-2">
-              <button
-                type="submit"
-                className="rounded-full bg-stone-950 px-5 py-3 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-stone-800"
-              >
-                Creer le chantier
-              </button>
+              <Button type="submit" size="lg">
+                Créer le chantier
+              </Button>
             </div>
           </form>
         </section>
@@ -344,8 +303,9 @@ export function ContractorDashboard() {
           Mes chantiers
         </h2>
         {apiLoading && (
-          <div className="flex justify-center">
-            <p className="text-sm text-stone-500">Chargement des chantiers...</p>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Skeleton className="h-48 rounded-[2rem]" />
+            <Skeleton className="h-48 rounded-[2rem]" />
           </div>
         )}
         {!apiLoading && apiProjects.length > 0 && (
@@ -365,15 +325,15 @@ export function ContractorDashboard() {
               Aucun chantier pour le moment
             </h3>
             <p className="mt-3 text-sm text-stone-600">
-              Creez votre premier chantier pour commencer.
+              Créez votre premier chantier pour commencer.
             </p>
-            <button
-              type="button"
+            <Button
+              size="lg"
+              className="mt-6"
               onClick={() => setIsComposerOpen(true)}
-              className="mt-6 rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-[var(--accent-strong)]"
             >
-              Creer mon premier chantier
-            </button>
+              Créer mon premier chantier
+            </Button>
           </div>
         )}
       </section>
@@ -381,35 +341,58 @@ export function ContractorDashboard() {
       {/* Pagination */}
       {meta.totalPages > 1 && (
         <div className="mt-6 flex items-center justify-center gap-4">
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="sm"
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className="rounded-full border border-stone-300 px-4 py-2 text-sm font-semibold text-stone-700 hover:-translate-y-0.5 hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
           >
-            &larr; Precedent
-          </button>
+            &larr; Précédent
+          </Button>
           <span className="text-sm text-stone-600">
             Page {meta.page} / {meta.totalPages}
           </span>
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="sm"
             disabled={page >= meta.totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="rounded-full border border-stone-300 px-4 py-2 text-sm font-semibold text-stone-700 hover:-translate-y-0.5 hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
           >
             Suivant &rarr;
-          </button>
+          </Button>
         </div>
       )}
 
       {/* Delete Confirmation Dialog */}
-      <DeleteConfirmDialog
-        isOpen={deleteTarget !== null}
-        projectName={deleteTarget?.name ?? ''}
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Supprimer le projet"
+        message={
+          <>
+            Vous allez supprimer le projet{' '}
+            <span className="font-semibold text-stone-800">
+              {deleteTarget?.name}
+            </span>
+            . Il sera conservé pendant 30 jours avant suppression définitive.
+          </>
+        }
+        confirmLabel="Confirmer la suppression"
+        destructive
+        busy={isDeleting}
         onConfirm={handleDeleteProject}
         onCancel={() => setDeleteTarget(null)}
-        isDeleting={isDeleting}
+      />
+
+      {/* Account Deletion Dialog */}
+      <ConfirmDialog
+        open={showAccountConfirm}
+        title="Supprimer mon compte"
+        message="Votre compte et toutes vos données seront supprimés définitivement. Cette action est irréversible."
+        confirmLabel="Supprimer définitivement"
+        destructive
+        busy={isAccountDeleting}
+        onConfirm={handleDeleteAccount}
+        onCancel={() => setShowAccountConfirm(false)}
       />
     </main>
   );

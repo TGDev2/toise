@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
@@ -90,7 +86,10 @@ export class CvClientService {
   }
 
   async analyze(request: CvAnalysisRequest): Promise<CvAnalysisResponse> {
-    if (!Array.isArray(request.image_paths) || request.image_paths.length === 0) {
+    if (
+      !Array.isArray(request.image_paths) ||
+      request.image_paths.length === 0
+    ) {
       throw new BadRequestException('image_paths must not be empty');
     }
     request.image_paths.forEach(assertSafeUploadPath);

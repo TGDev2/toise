@@ -10,7 +10,6 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
-import { extname } from 'path';
 import sharp from 'sharp';
 import { Project } from '../projects/entities/project.entity';
 import { ProjectPhoto, PhotoStatus } from './entities/project-photo.entity';
@@ -90,7 +89,8 @@ export class PhotosService {
     const saved = await this.photoRepo.save(photo);
 
     this.generateThumbnail(saved.id, file.buffer, projectId, fileId).catch(
-      (err) => this.logger.error(`Thumbnail generation failed: ${err.message}`),
+      (err: Error) =>
+        this.logger.error(`Thumbnail generation failed: ${err.message}`),
     );
 
     return saved;

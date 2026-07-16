@@ -52,13 +52,13 @@ export default function CommunityGalleryPage() {
       <div className="flex flex-col gap-4 rounded-[2rem] border border-stone-200 bg-[var(--surface)] p-6 shadow-[0_25px_80px_rgba(67,39,15,0.10)] lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-2xl">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
-            Communaute
+            Communauté
           </p>
           <h1 className="mt-2 text-3xl font-semibold text-stone-950">
-            Galerie des projets termines
+            Galerie des projets terminés
           </h1>
           <p className="mt-3 text-sm text-stone-500">
-            Decouvrez les realisations de la communaute et inspirez-vous pour
+            Decouvrez les realisations de la communauté et inspirez-vous pour
             vos prochains travaux.
           </p>
         </div>
@@ -108,7 +108,7 @@ export default function CommunityGalleryPage() {
                 onClick={() => setPage((p) => p - 1)}
                 className="rounded-full border border-stone-300 px-4 py-2 text-sm font-semibold text-stone-700 hover:-translate-y-0.5 hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
               >
-                &larr; Precedent
+                &larr; Précédent
               </button>
               <span className="text-sm text-stone-600">
                 Page {projects.meta.page} / {projects.meta.totalPages}

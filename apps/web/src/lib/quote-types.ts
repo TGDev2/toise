@@ -92,10 +92,10 @@ export interface CreateClientPayload {
 
 export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
   draft: 'Brouillon',
-  sent: 'Envoye',
+  sent: 'Envoyé',
   accepted: 'Accepte',
-  refused: 'Refuse',
-  negotiation: 'En negociation',
+  refused: 'Refusé',
+  negotiation: 'En négociation',
 };
 
 export const QUOTE_STATUS_COLORS: Record<QuoteStatus, string> = {

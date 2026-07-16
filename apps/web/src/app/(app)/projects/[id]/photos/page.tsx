@@ -109,7 +109,7 @@ export default function PhotosPage() {
               onClick={handleSkip}
               className="rounded-xl border border-stone-300 px-6 py-3 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-50"
             >
-              Passer cette etape
+              Passer cette étape
             </button>
 
             <div className="flex gap-3">

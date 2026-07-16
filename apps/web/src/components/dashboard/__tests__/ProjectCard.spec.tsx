@@ -9,7 +9,7 @@ jest.mock('next/navigation', () => ({
 
 const baseProject: ProjectSummary = {
   id: 'test-uuid',
-  name: 'Renovation salon',
+  name: 'Rénovation salon',
   room_name: 'Salon',
   work_type: 'painting',
   status: 'draft',
@@ -27,7 +27,7 @@ describe('ProjectCard', () => {
 
   it('renders project name and room', () => {
     render(<ProjectCard project={baseProject} onDelete={onDelete} />);
-    expect(screen.getByText('Renovation salon')).toBeInTheDocument();
+    expect(screen.getByText('Rénovation salon')).toBeInTheDocument();
     expect(screen.getByText(/Salon/)).toBeInTheDocument();
   });
 
@@ -54,21 +54,21 @@ describe('ProjectCard', () => {
 
   it('navigates to dimensions for draft projects', () => {
     render(<ProjectCard project={baseProject} onDelete={onDelete} />);
-    fireEvent.click(screen.getByText('Definir les dimensions'));
+    fireEvent.click(screen.getByText('Définir les dimensions'));
     expect(mockPush).toHaveBeenCalledWith('/projects/test-uuid/dimensions');
   });
 
   it('navigates to estimate for estimated projects', () => {
     const project: ProjectSummary = { ...baseProject, status: 'estimated' };
     render(<ProjectCard project={project} onDelete={onDelete} />);
-    fireEvent.click(screen.getByText('Voir les resultats'));
+    fireEvent.click(screen.getByText('Voir les résultats'));
     expect(mockPush).toHaveBeenCalledWith('/projects/test-uuid/estimate');
   });
 
   it('navigates to estimate for completed projects', () => {
     const project: ProjectSummary = { ...baseProject, status: 'completed' };
     render(<ProjectCard project={project} onDelete={onDelete} />);
-    fireEvent.click(screen.getByText('Voir les resultats'));
+    fireEvent.click(screen.getByText('Voir les résultats'));
     expect(mockPush).toHaveBeenCalledWith('/projects/test-uuid/estimate');
   });
 

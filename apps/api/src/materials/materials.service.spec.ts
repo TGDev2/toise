@@ -206,7 +206,7 @@ describe('MaterialsService', () => {
       expect(materialRepoMock.update).toHaveBeenCalledWith('mat-uuid', {
         is_active: false,
         modified_by: 'admin-uuid',
-        modified_at: expect.any(Date),
+        modified_at: expect.any(Date) as Date,
       });
     });
   });

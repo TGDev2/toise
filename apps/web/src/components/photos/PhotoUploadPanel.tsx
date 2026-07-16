@@ -30,11 +30,11 @@ export function PhotoUploadPanel({
       {/* Header */}
       <div>
         <h2 className="text-lg font-semibold text-stone-900">
-          Photos de la piece
+          Photos de la pièce
         </h2>
         <p className="mt-1 text-sm text-stone-600">
           Ajoutez 1 a {maxPhotos} photos pour faciliter l&apos;analyse des dimensions.
-          Photographiez les coins opposes et les murs entiers.
+          Photographiez les coins opposés et les murs entiers.
         </p>
       </div>
 
@@ -44,9 +44,9 @@ export function PhotoUploadPanel({
           Conseils pour de meilleures photos :
         </p>
         <ul className="mt-2 space-y-1 text-xs text-amber-700">
-          <li>&#8226; Photographiez depuis les coins opposes de la piece</li>
+          <li>&#8226; Photographiez depuis les coins opposés de la pièce</li>
           <li>&#8226; Incluez le sol et le plafond dans le cadre</li>
-          <li>&#8226; Assurez un bon eclairage naturel</li>
+          <li>&#8226; Assurez un bon éclairage naturel</li>
           <li>&#8226; Capturez chaque mur en entier</li>
         </ul>
       </div>

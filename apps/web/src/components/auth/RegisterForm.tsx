@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useAuth, type CompanyProfilePayload } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/lib/errors';
+import { Alert, Button, Input } from '@/components/ui';
 import { OAuthButtons } from './OAuthButtons';
 
 const SPECIALTIES = [
@@ -13,8 +14,8 @@ const SPECIALTIES = [
   'Parquet',
   'Cloison',
   'Plomberie',
-  'Electricite',
-  'Maconnerie',
+  'Électricité',
+  'Maçonnerie',
   'Menuiserie',
   'Isolation',
   'Toiture',
@@ -42,7 +43,7 @@ function getPasswordStrength(password: string): {
     return { label: 'Moyen', color: 'bg-yellow-500', width: 'w-2/4' };
   }
   if (score === 3) {
-    return { label: 'Bon', color: 'bg-blue-500', width: 'w-3/4' };
+    return { label: 'Bon', color: 'bg-[var(--accent)]', width: 'w-3/4' };
   }
 
   return { label: 'Fort', color: 'bg-green-500', width: 'w-full' };
@@ -89,7 +90,7 @@ export function RegisterForm() {
     }
 
     if (password.length < 8) {
-      setError('Le mot de passe doit contenir au moins 8 caracteres');
+      setError('Le mot de passe doit contenir au moins 8 caractères');
       return;
     }
 
@@ -103,7 +104,7 @@ export function RegisterForm() {
         return;
       }
       if (!addressLine1.trim() || !postalCode.trim() || !city.trim()) {
-        setError("L'adresse complete est obligatoire");
+        setError("L'adresse complète est obligatoire");
         return;
       }
     }
@@ -126,7 +127,7 @@ export function RegisterForm() {
       await register(email, password, undefined, companyProfile);
       setSuccess(true);
     } catch (err: unknown) {
-      setError(getErrorMessage(err, "Echec de l'inscription"));
+      setError(getErrorMessage(err, "Échec de l'inscription"));
     } finally {
       setLoading(false);
     }
@@ -139,7 +140,7 @@ export function RegisterForm() {
       await provider();
       router.push('/dashboard');
     } catch (err: unknown) {
-      setError(getErrorMessage(err, "Echec de l'inscription"));
+      setError(getErrorMessage(err, "Échec de l'inscription"));
     } finally {
       setLoading(false);
     }
@@ -148,43 +149,43 @@ export function RegisterForm() {
   if (success) {
     return (
       <div className="w-full max-w-md space-y-4 text-center">
-        <div className="rounded-lg bg-green-50 p-6">
-          <h2 className="text-lg font-semibold text-green-800">
+        <div className="rounded-[2rem] border border-[var(--accent)]/30 bg-[var(--accent)]/5 p-6">
+          <h2 className="text-lg font-semibold text-[var(--accent-strong)]">
             Vérifiez votre email
           </h2>
-          <p className="mt-2 text-sm text-green-700">
+          <p className="mt-2 text-sm text-stone-700">
             Un email de confirmation a été envoyé à <strong>{email}</strong>.
             Cliquez sur le lien pour activer votre compte.
           </p>
         </div>
         <Link
           href="/login"
-          className="text-sm font-medium text-blue-600 hover:text-blue-500"
+          className="text-sm font-medium text-[var(--accent)] hover:text-[var(--accent-strong)]"
         >
-          Retour a la connexion
+          Retour à la connexion
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-md space-y-6">
+    <div className="w-full max-w-md space-y-6 rounded-[2rem] border border-stone-200 bg-white p-8 shadow-[0_25px_80px_rgba(67,39,15,0.10)]">
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900">Créer un compte</h1>
-        <p className="mt-2 text-sm text-gray-600">
+        <h1 className="text-2xl font-bold text-stone-950">Créer un compte</h1>
+        <p className="mt-2 text-sm text-stone-600">
           Commencez à estimer vos matériaux
         </p>
       </div>
 
       {/* Account type toggle */}
-      <div className="flex rounded-lg border border-gray-300 p-1">
+      <div className="flex rounded-full border border-stone-300 p-1">
         <button
           type="button"
           onClick={() => setAccountType('particulier')}
-          className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+          className={`flex-1 rounded-full px-3 py-2 text-sm font-medium transition-colors ${
             accountType === 'particulier'
-              ? 'bg-blue-600 text-white'
-              : 'text-gray-600 hover:text-gray-900'
+              ? 'bg-[var(--accent)] text-white'
+              : 'text-stone-600 hover:text-stone-900'
           }`}
         >
           Particulier
@@ -192,21 +193,17 @@ export function RegisterForm() {
         <button
           type="button"
           onClick={() => setAccountType('professionnel')}
-          className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+          className={`flex-1 rounded-full px-3 py-2 text-sm font-medium transition-colors ${
             accountType === 'professionnel'
-              ? 'bg-blue-600 text-white'
-              : 'text-gray-600 hover:text-gray-900'
+              ? 'bg-[var(--accent)] text-white'
+              : 'text-stone-600 hover:text-stone-900'
           }`}
         >
           Professionnel
         </button>
       </div>
 
-      {error && (
-        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-          {error}
-        </div>
-      )}
+      {error && <Alert variant="error">{error}</Alert>}
 
       {accountType === 'particulier' && (
         <>
@@ -218,234 +215,157 @@ export function RegisterForm() {
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300" />
+              <div className="w-full border-t border-stone-200" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="bg-white px-2 text-gray-500">ou</span>
+              <span className="bg-white px-2 text-stone-500">ou</span>
             </div>
           </div>
         </>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label
-            htmlFor="email"
-            className="block text-sm font-medium text-gray-700"
-          >
-            Email
-          </label>
-          <input
-            id="email"
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            placeholder="vous@exemple.com"
-          />
-        </div>
+        <Input
+          id="email"
+          type="email"
+          label="Email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="vous@exemple.com"
+        />
 
         <div>
-          <label
-            htmlFor="password"
-            className="block text-sm font-medium text-gray-700"
-          >
-            Mot de passe
-          </label>
-          <input
+          <Input
             id="password"
             type="password"
+            label="Mot de passe"
             required
             minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            placeholder="8 caracteres minimum"
+            placeholder="8 caractères minimum"
           />
           {password.length > 0 && (
             <div className="mt-2">
-              <div className="h-1.5 w-full rounded-full bg-gray-200">
+              <div className="h-1.5 w-full rounded-full bg-stone-200">
                 <div
                   className={`h-1.5 rounded-full ${strength.color} ${strength.width} transition-all`}
                 />
               </div>
-              <p className="mt-1 text-xs text-gray-500">{strength.label}</p>
+              <p className="mt-1 text-xs text-stone-500">{strength.label}</p>
             </div>
           )}
         </div>
 
-        <div>
-          <label
-            htmlFor="confirmPassword"
-            className="block text-sm font-medium text-gray-700"
-          >
-            Confirmer le mot de passe
-          </label>
-          <input
-            id="confirmPassword"
-            type="password"
-            required
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
+        <Input
+          id="confirmPassword"
+          type="password"
+          label="Confirmer le mot de passe"
+          required
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+        />
 
         {/* Company profile fields (professional only) */}
         {accountType === 'professionnel' && (
-          <div className="space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
-            <h3 className="text-sm font-semibold text-gray-800">
+          <div className="space-y-4 rounded-2xl border border-stone-200 bg-stone-50 p-4">
+            <h3 className="text-sm font-semibold text-stone-800">
               Informations entreprise
             </h3>
 
-            <div>
-              <label
-                htmlFor="raisonSociale"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Raison sociale *
-              </label>
-              <input
-                id="raisonSociale"
-                type="text"
-                required
-                value={raisonSociale}
-                onChange={(e) => setRaisonSociale(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="Nom de votre entreprise"
-              />
-            </div>
+            <Input
+              id="raisonSociale"
+              type="text"
+              label="Raison sociale *"
+              required
+              value={raisonSociale}
+              onChange={(e) => setRaisonSociale(e.target.value)}
+              placeholder="Nom de votre entreprise"
+            />
 
-            <div>
-              <label
-                htmlFor="siret"
-                className="block text-sm font-medium text-gray-700"
-              >
-                SIRET *
-              </label>
-              <input
-                id="siret"
-                type="text"
-                required
-                maxLength={14}
-                value={siret}
-                onChange={(e) =>
-                  setSiret(e.target.value.replace(/\D/g, '').slice(0, 14))
-                }
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="14 chiffres"
-              />
-              {siret.length > 0 && siret.length < 14 && (
-                <p className="mt-1 text-xs text-gray-500">
-                  {siret.length}/14 chiffres
-                </p>
-              )}
-            </div>
+            <Input
+              id="siret"
+              type="text"
+              label="SIRET *"
+              required
+              maxLength={14}
+              value={siret}
+              onChange={(e) =>
+                setSiret(e.target.value.replace(/\D/g, '').slice(0, 14))
+              }
+              placeholder="14 chiffres"
+              hint={
+                siret.length > 0 && siret.length < 14
+                  ? `${siret.length}/14 chiffres`
+                  : undefined
+              }
+            />
 
-            <div>
-              <label
-                htmlFor="addressLine1"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Adresse *
-              </label>
-              <input
-                id="addressLine1"
-                type="text"
-                required
-                value={addressLine1}
-                onChange={(e) => setAddressLine1(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="Numero et rue"
-              />
-            </div>
+            <Input
+              id="addressLine1"
+              type="text"
+              label="Adresse *"
+              required
+              value={addressLine1}
+              onChange={(e) => setAddressLine1(e.target.value)}
+              placeholder="Numéro et rue"
+            />
 
-            <div>
-              <label
-                htmlFor="addressLine2"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Complement d&apos;adresse
-              </label>
-              <input
-                id="addressLine2"
-                type="text"
-                value={addressLine2}
-                onChange={(e) => setAddressLine2(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="Batiment, etage..."
-              />
-            </div>
+            <Input
+              id="addressLine2"
+              type="text"
+              label="Complément d'adresse"
+              value={addressLine2}
+              onChange={(e) => setAddressLine2(e.target.value)}
+              placeholder="Bâtiment, étage..."
+            />
 
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label
-                  htmlFor="postalCode"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Code postal *
-                </label>
-                <input
-                  id="postalCode"
-                  type="text"
-                  required
-                  value={postalCode}
-                  onChange={(e) => setPostalCode(e.target.value)}
-                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="75001"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="city"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Ville *
-                </label>
-                <input
-                  id="city"
-                  type="text"
-                  required
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="Paris"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label
-                htmlFor="phone"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Telephone
-              </label>
-              <input
-                id="phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="06 12 34 56 78"
+              <Input
+                id="postalCode"
+                type="text"
+                label="Code postal *"
+                required
+                value={postalCode}
+                onChange={(e) => setPostalCode(e.target.value)}
+                placeholder="75001"
+              />
+              <Input
+                id="city"
+                type="text"
+                label="Ville *"
+                required
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="Paris"
               />
             </div>
 
+            <Input
+              id="phone"
+              type="tel"
+              label="Téléphone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="06 12 34 56 78"
+            />
+
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Specialites
-              </label>
+              <span className="block text-sm font-medium text-stone-700">
+                Spécialités
+              </span>
               <div className="mt-2 flex flex-wrap gap-2">
                 {SPECIALTIES.map((s) => (
                   <button
                     key={s}
                     type="button"
                     onClick={() => toggleSpecialty(s)}
+                    aria-pressed={specialties.includes(s)}
                     className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                       specialties.includes(s)
-                        ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-300'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        ? 'bg-[var(--accent)]/10 text-[var(--accent-strong)] ring-1 ring-[var(--accent)]/40'
+                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
                     }`}
                   >
                     {s}
@@ -456,26 +376,28 @@ export function RegisterForm() {
           </div>
         )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-        >
-          {loading ? 'Inscription...' : "S'inscrire"}
-        </button>
+        <Button type="submit" loading={loading} className="w-full">
+          S&apos;inscrire
+        </Button>
       </form>
 
-      <p className="text-center text-xs leading-6 text-gray-500">
+      <p className="text-center text-xs leading-6 text-stone-500">
         En vous inscrivant, vous acceptez notre{' '}
-        <Link href="/privacy" className="font-medium text-blue-600 hover:text-blue-500">
-          politique de confidentialite
+        <Link
+          href="/privacy"
+          className="font-medium text-[var(--accent)] hover:text-[var(--accent-strong)]"
+        >
+          politique de confidentialité
         </Link>
         .
       </p>
 
-      <p className="text-center text-sm text-gray-600">
-        Deja un compte ?{' '}
-        <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
+      <p className="text-center text-sm text-stone-600">
+        Déjà un compte ?{' '}
+        <Link
+          href="/login"
+          className="font-medium text-[var(--accent)] hover:text-[var(--accent-strong)]"
+        >
           Se connecter
         </Link>
       </p>

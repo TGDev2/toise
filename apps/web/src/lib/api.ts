@@ -124,15 +124,21 @@ export async function apiUpload<T>(
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve(JSON.parse(xhr.responseText));
       } else {
+        let error: Record<string, unknown>;
         try {
-          reject(new Error(JSON.parse(xhr.responseText).message));
+          error = JSON.parse(xhr.responseText) as Record<string, unknown>;
         } catch {
-          reject(new Error(`HTTP ${xhr.status}`));
+          error = { message: `HTTP ${xhr.status}` };
+        }
+        try {
+          throwApiError(error, xhr.status);
+        } catch (err) {
+          reject(err as Error);
         }
       }
     };
 
-    xhr.onerror = () => reject(new Error('Erreur reseau'));
+    xhr.onerror = () => reject(new ApiError('Erreur réseau', 'NETWORK_ERROR'));
     xhr.send(formData);
   });
 }

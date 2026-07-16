@@ -22,7 +22,7 @@ describe('OpeningsSection', () => {
       />,
     );
     expect(screen.getByText(/\+ porte/i)).toBeInTheDocument();
-    expect(screen.getByText(/\+ fenetre/i)).toBeInTheDocument();
+    expect(screen.getByText(/\+ fenêtre/i)).toBeInTheDocument();
   });
 
   it('calls onAdd with door defaults when clicking + Porte', () => {
@@ -44,7 +44,7 @@ describe('OpeningsSection', () => {
     });
   });
 
-  it('calls onAdd with window defaults when clicking + Fenetre', () => {
+  it('calls onAdd with window defaults when clicking + Fenêtre', () => {
     render(
       <OpeningsSection
         openings={[]}
@@ -54,7 +54,7 @@ describe('OpeningsSection', () => {
         grossWallAreaCm2={450000}
       />,
     );
-    fireEvent.click(screen.getByText(/\+ fenetre/i));
+    fireEvent.click(screen.getByText(/\+ fenêtre/i));
     expect(mockAdd).toHaveBeenCalledWith({
       type: 'window',
       width_cm: 120,
@@ -78,7 +78,7 @@ describe('OpeningsSection', () => {
       />,
     );
     expect(screen.getByText('Porte')).toBeInTheDocument();
-    expect(screen.getByText('Fenetre')).toBeInTheDocument();
+    expect(screen.getByText('Fenêtre')).toBeInTheDocument();
   });
 
   it('calls onRemove with correct index when delete is clicked', () => {
@@ -146,6 +146,6 @@ describe('OpeningsSection', () => {
         grossWallAreaCm2={450000}
       />,
     );
-    expect(screen.getByText(/aucune ouverture ajoutee/i)).toBeInTheDocument();
+    expect(screen.getByText(/aucune ouverture ajoutée/i)).toBeInTheDocument();
   });
 });

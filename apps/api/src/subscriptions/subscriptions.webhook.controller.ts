@@ -1,7 +1,6 @@
 import {
   Controller,
   Post,
-  Req,
   Res,
   Headers,
   Logger,
@@ -39,6 +38,13 @@ export class SubscriptionsWebhookController {
       return;
     }
 
+    const claimed = await this.subscriptionsService.claimWebhookEvent(event);
+    if (!claimed) {
+      this.logger.log(`Duplicate webhook event ignored: ${event.id}`);
+      res.status(200).json({ received: true, duplicate: true });
+      return;
+    }
+
     try {
       await this.subscriptionsService.handleWebhookEvent(event);
     } catch (err) {
@@ -46,6 +52,8 @@ export class SubscriptionsWebhookController {
         `Error processing webhook event ${event.type}: ${(err as Error).message}`,
         (err as Error).stack,
       );
+      // Libère l'event pour que le retry Stripe puisse le rejouer.
+      await this.subscriptionsService.releaseWebhookEvent(event.id);
       res.status(500).json({ error: 'Webhook processing failed' });
       return;
     }

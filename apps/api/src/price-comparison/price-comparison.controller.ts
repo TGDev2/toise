@@ -5,6 +5,7 @@ import {
   ParseUUIDPipe,
   Post,
   UseGuards,
+  UnauthorizedException,
 } from '@nestjs/common';
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
@@ -28,7 +29,7 @@ export class PriceComparisonController {
   private async resolveUserId(firebaseUser: DecodedIdToken): Promise<string> {
     const user = await this.usersService.findByFirebaseUid(firebaseUser.uid);
     if (!user) {
-      throw new Error('User not found');
+      throw new UnauthorizedException('Utilisateur non authentifié.');
     }
     return user.id;
   }

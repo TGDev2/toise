@@ -22,7 +22,7 @@ const PRO_BENEFITS = [
         <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 0 1-9.201 2.466l-.312-.311h2.433a.75.75 0 0 0 0-1.5H4.28a.75.75 0 0 0-.75.75v3.955a.75.75 0 0 0 1.5 0v-2.134l.313.312a7 7 0 0 0 11.712-3.138.75.75 0 0 0-1.449-.4Zm1.002-5.478a.75.75 0 0 0-.468.91 5.5 5.5 0 0 1-9.2 2.467l-.313-.312h2.434a.75.75 0 0 0 0-1.5H4.813a.75.75 0 0 0-.75.75v3.955a.75.75 0 0 0 1.5 0V10.08l.312.313a7 7 0 0 0 11.713-3.138.75.75 0 0 0-.91-.468Z" clipRule="evenodd" />
       </svg>
     ),
-    text: 'Facteurs de perte avances pour plus de precision',
+    text: 'Facteurs de perte avancés pour plus de précision',
   },
   {
     icon: (
@@ -30,7 +30,7 @@ const PRO_BENEFITS = [
         <path d="M2 4.25A2.25 2.25 0 0 1 4.25 2h2.5A2.25 2.25 0 0 1 9 4.25v2.5A2.25 2.25 0 0 1 6.75 9h-2.5A2.25 2.25 0 0 1 2 6.75v-2.5ZM2 13.25A2.25 2.25 0 0 1 4.25 11h2.5A2.25 2.25 0 0 1 9 13.25v2.5A2.25 2.25 0 0 1 6.75 18h-2.5A2.25 2.25 0 0 1 2 15.75v-2.5ZM11 4.25A2.25 2.25 0 0 1 13.25 2h2.5A2.25 2.25 0 0 1 18 4.25v2.5A2.25 2.25 0 0 1 15.75 9h-2.5A2.25 2.25 0 0 1 11 6.75v-2.5ZM15.25 11h-2.5A2.25 2.25 0 0 0 10.5 13.25v2.5A2.25 2.25 0 0 0 12.75 18h2.5A2.25 2.25 0 0 0 17.5 15.75v-2.5A2.25 2.25 0 0 0 15.25 11Z" />
       </svg>
     ),
-    text: 'Projets illimites',
+    text: 'Projets illimités',
   },
   {
     icon: (
@@ -38,7 +38,7 @@ const PRO_BENEFITS = [
         <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM8.732 6.232a2.5 2.5 0 0 1 3.536 0 .75.75 0 1 0 1.06-1.06 4 4 0 0 0-5.656 0 .75.75 0 0 0 1.06 1.06ZM6.5 9v.5a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1h-5a1 1 0 0 0-1 1Zm.25 5.75a.75.75 0 0 0 0 1.5h6.5a.75.75 0 0 0 0-1.5h-6.5Z" clipRule="evenodd" />
       </svg>
     ),
-    text: 'Suivi budgetaire',
+    text: 'Suivi budgétaire',
   },
 ];
 
@@ -116,6 +116,7 @@ function ProPaywallContent({
         <div className="flex justify-end">
           <button
             onClick={onClose}
+            aria-label="Fermer"
             className="rounded-full p-1 text-stone-400 hover:bg-stone-100 hover:text-stone-600"
           >
             <svg
@@ -123,6 +124,7 @@ function ProPaywallContent({
               viewBox="0 0 20 20"
               fill="currentColor"
               className="h-5 w-5"
+              aria-hidden="true"
             >
               <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
             </svg>
@@ -149,14 +151,14 @@ function ProPaywallContent({
 
         {/* Title */}
         <h2 className="mb-2 text-center text-xl font-bold text-stone-900">
-          Passez a EstiMate Pro
+          Passez à EstiMate Pro
         </h2>
 
         {/* Subtitle */}
         {gate && (
           <p className="mb-6 text-center text-sm text-stone-500">
             <span className="font-medium text-stone-700">{gate.label_fr}</span>{' '}
-            est une fonctionnalite Pro
+            est une fonctionnalité Pro
           </p>
         )}
 
@@ -195,7 +197,7 @@ function ProPaywallContent({
 
         {/* Secondary */}
         <p className="mt-3 text-center text-xs text-stone-400">
-          Annulable a tout moment. Sans engagement.
+          Annulable à tout moment. Sans engagement.
         </p>
       </div>
     </div>

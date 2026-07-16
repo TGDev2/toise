@@ -9,6 +9,7 @@ import {
   Post,
   Res,
   UseGuards,
+  UnauthorizedException,
 } from '@nestjs/common';
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import type { Response } from 'express';
@@ -34,7 +35,7 @@ export class ShoppingListExportController {
   private async resolveUserId(firebaseUser: DecodedIdToken): Promise<string> {
     const user = await this.usersService.findByFirebaseUid(firebaseUser.uid);
     if (!user) {
-      throw new Error('User not found');
+      throw new UnauthorizedException('Utilisateur non authentifié.');
     }
     return user.id;
   }

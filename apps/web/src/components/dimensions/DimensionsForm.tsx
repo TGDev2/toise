@@ -189,7 +189,7 @@ export function DimensionsForm({
         {/* Unit selector */}
         <fieldset>
           <legend className="text-sm font-medium text-stone-700 mb-2">
-            Systeme d&apos;unites
+            Système d&apos;unités
           </legend>
           <div className="flex gap-1 rounded-2xl bg-stone-100 p-1">
             {(['metric', 'imperial'] as const).map((unit) => (
@@ -209,7 +209,7 @@ export function DimensionsForm({
                   onChange={() => handleUnitChange(unit)}
                   className="sr-only"
                 />
-                {unit === 'metric' ? 'Metres' : 'Pieds / Pouces'}
+                {unit === 'metric' ? 'Mètres' : 'Pieds / Pouces'}
               </label>
             ))}
           </div>
@@ -290,7 +290,7 @@ export function DimensionsForm({
         {showZeroOpeningsSuggestion && (
           <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
             <p className="text-sm text-blue-800">
-              Vous n&apos;avez pas ajoute de portes ou fenetres. Souhaitez-vous continuer ?
+              Vous n&apos;avez pas ajoute de portes ou fenêtres. Souhaitez-vous continuer ?
             </p>
             <div className="mt-2 flex gap-2">
               <button
@@ -334,7 +334,7 @@ export function DimensionsForm({
         {surfaceM2 > 0 && (
           <div className="rounded-2xl bg-stone-50 border border-stone-200 p-4 space-y-3">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
-              Surface totale estimee
+              Surface totale estimée
             </p>
             <p className="text-2xl font-semibold text-stone-900">
               {surfaceM2.toFixed(1)} m&sup2;

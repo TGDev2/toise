@@ -3,6 +3,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { apiGet, apiPut } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
+import { Alert, Button, Input, Skeleton, useToast } from '@/components/ui';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -13,8 +14,8 @@ const SPECIALTIES = [
   'Parquet',
   'Cloison',
   'Plomberie',
-  'Electricite',
-  'Maconnerie',
+  'Électricité',
+  'Maçonnerie',
   'Menuiserie',
   'Isolation',
   'Toiture',
@@ -35,11 +36,11 @@ interface CompanyProfile {
 export default function CompanySettingsPage() {
   const { appUser, isLoading: authLoading } = useAuth();
   const router = useRouter();
+  const toast = useToast();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   const [raisonSociale, setRaisonSociale] = useState('');
   const [siret, setSiret] = useState('');
@@ -83,7 +84,6 @@ export default function CompanySettingsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
     setSaving(true);
 
     try {
@@ -97,9 +97,9 @@ export default function CompanySettingsPage() {
         ...(phone ? { phone } : {}),
         specialties,
       });
-      setSuccess('Profil mis a jour avec succes.');
+      toast.success('Profil mis à jour avec succès.');
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Impossible de mettre a jour le profil'));
+      setError(getErrorMessage(err, 'Impossible de mettre à jour le profil'));
     } finally {
       setSaving(false);
     }
@@ -107,8 +107,9 @@ export default function CompanySettingsPage() {
 
   if (authLoading || loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <p className="text-gray-500">Chargement...</p>
+      <main className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="mt-6 h-[32rem] rounded-[2rem]" />
       </main>
     );
   }
@@ -118,7 +119,7 @@ export default function CompanySettingsPage() {
       <div className="mb-6">
         <Link
           href="/dashboard"
-          className="text-sm font-medium text-blue-600 hover:text-blue-500"
+          className="text-sm font-medium text-[var(--accent)] hover:text-[var(--accent-strong)]"
         >
           &larr; Retour au dashboard
         </Link>
@@ -129,156 +130,96 @@ export default function CompanySettingsPage() {
           Profil entreprise
         </h1>
         <p className="mt-2 text-sm text-stone-500">
-          Gerez les informations de votre entreprise.
+          Gérez les informations de votre entreprise.
         </p>
 
         {error && (
-          <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          <Alert variant="error" className="mt-4">
             {error}
-          </div>
-        )}
-        {success && (
-          <div className="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">
-            {success}
-          </div>
+          </Alert>
         )}
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          <div>
-            <label
-              htmlFor="raisonSociale"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Raison sociale
-            </label>
-            <input
-              id="raisonSociale"
-              type="text"
-              required
-              value={raisonSociale}
-              onChange={(e) => setRaisonSociale(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
+          <Input
+            id="raisonSociale"
+            type="text"
+            label="Raison sociale"
+            required
+            value={raisonSociale}
+            onChange={(e) => setRaisonSociale(e.target.value)}
+          />
 
-          <div>
-            <label
-              htmlFor="siret"
-              className="block text-sm font-medium text-gray-700"
-            >
-              SIRET
-            </label>
-            <input
-              id="siret"
-              type="text"
-              required
-              maxLength={14}
-              value={siret}
-              onChange={(e) =>
-                setSiret(e.target.value.replace(/\D/g, '').slice(0, 14))
-              }
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
+          <Input
+            id="siret"
+            type="text"
+            label="SIRET"
+            required
+            maxLength={14}
+            value={siret}
+            onChange={(e) =>
+              setSiret(e.target.value.replace(/\D/g, '').slice(0, 14))
+            }
+          />
 
-          <div>
-            <label
-              htmlFor="addressLine1"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Adresse
-            </label>
-            <input
-              id="addressLine1"
-              type="text"
-              required
-              value={addressLine1}
-              onChange={(e) => setAddressLine1(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
+          <Input
+            id="addressLine1"
+            type="text"
+            label="Adresse"
+            required
+            value={addressLine1}
+            onChange={(e) => setAddressLine1(e.target.value)}
+          />
 
-          <div>
-            <label
-              htmlFor="addressLine2"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Complement d&apos;adresse
-            </label>
-            <input
-              id="addressLine2"
-              type="text"
-              value={addressLine2}
-              onChange={(e) => setAddressLine2(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
+          <Input
+            id="addressLine2"
+            type="text"
+            label="Complément d'adresse"
+            value={addressLine2}
+            onChange={(e) => setAddressLine2(e.target.value)}
+          />
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label
-                htmlFor="postalCode"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Code postal
-              </label>
-              <input
-                id="postalCode"
-                type="text"
-                required
-                value={postalCode}
-                onChange={(e) => setPostalCode(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="city"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Ville
-              </label>
-              <input
-                id="city"
-                type="text"
-                required
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label
-              htmlFor="phone"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Telephone
-            </label>
-            <input
-              id="phone"
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            <Input
+              id="postalCode"
+              type="text"
+              label="Code postal"
+              required
+              value={postalCode}
+              onChange={(e) => setPostalCode(e.target.value)}
+            />
+            <Input
+              id="city"
+              type="text"
+              label="Ville"
+              required
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
             />
           </div>
 
+          <Input
+            id="phone"
+            type="tel"
+            label="Téléphone"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+
           <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Specialites
-            </label>
+            <span className="block text-sm font-medium text-stone-700">
+              Spécialités
+            </span>
             <div className="mt-2 flex flex-wrap gap-2">
               {SPECIALTIES.map((s) => (
                 <button
                   key={s}
                   type="button"
                   onClick={() => toggleSpecialty(s)}
+                  aria-pressed={specialties.includes(s)}
                   className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                     specialties.includes(s)
-                      ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-300'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      ? 'bg-[var(--accent)]/10 text-[var(--accent-strong)] ring-1 ring-[var(--accent)]/40'
+                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
                   }`}
                 >
                   {s}
@@ -287,13 +228,9 @@ export default function CompanySettingsPage() {
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={saving}
-            className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            {saving ? 'Enregistrement...' : 'Enregistrer les modifications'}
-          </button>
+          <Button type="submit" loading={saving} className="w-full">
+            Enregistrer les modifications
+          </Button>
         </form>
       </div>
     </main>

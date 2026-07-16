@@ -44,14 +44,14 @@ export function OpeningsSection({
             onClick={() => onAdd({ ...WINDOW_DEFAULTS })}
             className="rounded-xl bg-stone-100 px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-200 transition-colors"
           >
-            + Fenetre
+            + Fenêtre
           </button>
         </div>
       </div>
 
       {openings.length === 0 && (
         <p className="text-xs text-stone-400 italic">
-          Aucune ouverture ajoutee
+          Aucune ouverture ajoutée
         </p>
       )}
 
@@ -71,7 +71,7 @@ export function OpeningsSection({
           className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800"
         >
           Les dimensions semblent incoherentes : la surface totale des
-          ouvertures depasse la surface brute des murs.
+          ouvertures dépasse la surface brute des murs.
         </div>
       )}
     </div>
@@ -86,7 +86,7 @@ interface OpeningRowProps {
 }
 
 function OpeningRow({ opening, index, onUpdate, onRemove }: OpeningRowProps) {
-  const label = opening.type === 'door' ? 'Porte' : 'Fenetre';
+  const label = opening.type === 'door' ? 'Porte' : 'Fenêtre';
   const prefix = `opening-${index}`;
 
   return (

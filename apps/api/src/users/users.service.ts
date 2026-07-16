@@ -52,10 +52,7 @@ export class UsersService {
     return this.usersRepo.save(user);
   }
 
-  async transferProjects(
-    fromUserId: string,
-    toUserId: string,
-  ): Promise<void> {
+  async transferProjects(fromUserId: string, toUserId: string): Promise<void> {
     await this.projectsRepo.update(
       { user_id: fromUserId, deleted_at: IsNull() },
       { user_id: toUserId },

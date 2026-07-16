@@ -25,7 +25,7 @@ export default function SubscriptionCancelPage() {
           Souscription annulee
         </h1>
         <p className="mt-3 text-sm text-stone-600">
-          Vous n&apos;avez pas ete debite. Vous pouvez souscrire a tout moment
+          Vous n&apos;avez pas ete debite. Vous pouvez souscrire à tout moment
           depuis votre tableau de bord.
         </p>
 

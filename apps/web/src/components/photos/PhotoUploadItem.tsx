@@ -76,7 +76,7 @@ export function PhotoUploadItem({
                 }}
                 className="rounded-lg bg-white/90 px-3 py-1 text-xs font-medium text-red-700 hover:bg-white"
               >
-                Reessayer
+                Réessayer
               </button>
             )}
           </div>

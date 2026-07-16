@@ -1,28 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import PDFDocument from 'pdfkit';
 import { PassThrough } from 'stream';
-import type {
-  Quote,
-  QuoteLineItem,
-  QuoteStatus,
-} from './entities/quote.entity';
+import { LaborType } from './entities/quote.entity';
+import type { Quote, QuoteLineItem } from './entities/quote.entity';
 import type { CompanyProfile } from '../company-profiles/entities/company-profile.entity';
 import type { Client } from '../clients/entities/client.entity';
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Brouillon',
-  sent: 'Envoye',
-  accepted: 'Accepte',
-  refused: 'Refuse',
-  negotiation: 'En negociation',
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  painting: 'Peinture',
-  tiling: 'Carrelage',
-  flooring: 'Parquet / Sol',
-  partition: 'Cloison',
-  wall_covering: 'Revetement mural',
+  sent: 'Envoyé',
+  accepted: 'Accepté',
+  refused: 'Refusé',
+  negotiation: 'En négociation',
 };
 
 @Injectable()
@@ -38,8 +27,6 @@ export class QuotePdfService {
 
     const chunks: Buffer[] = [];
     stream.on('data', (chunk: Buffer) => chunks.push(chunk));
-
-    const pageWidth = 495;
 
     // ── Company header (top-left) ──
     doc
@@ -149,7 +136,7 @@ export class QuotePdfService {
     doc.moveDown(0.3);
 
     doc.fontSize(10).font('Helvetica');
-    if (quote.labor_type === 'hourly') {
+    if (quote.labor_type === LaborType.HOURLY) {
       const rate = Number(quote.labor_hourly_rate) || 0;
       const hours = Number(quote.labor_estimated_hours) || 0;
       doc.text(

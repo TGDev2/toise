@@ -54,7 +54,7 @@ export default function SubscriptionSuccessPage() {
           Bienvenue dans EstiMate Pro !
         </h1>
         <p className="mt-3 text-sm text-stone-600">
-          Votre essai gratuit de 7 jours a commence. Toutes les fonctionnalites
+          Votre essai gratuit de 7 jours a commence. Toutes les fonctionnalités
           Pro sont maintenant deverrouillees.
         </p>
 

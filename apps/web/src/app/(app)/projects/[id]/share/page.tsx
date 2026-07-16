@@ -41,7 +41,7 @@ export default function ShareProjectPage() {
       ]);
 
       if (projectData.status !== 'completed') {
-        setError('Seul un projet termine peut etre partage dans la communaute.');
+        setError('Seul un projet terminé peut être partagé dans la communauté.');
         return;
       }
 
@@ -87,11 +87,11 @@ export default function ShareProjectPage() {
             </svg>
           </div>
           <h2 className="text-xl font-semibold text-emerald-900">
-            Publication envoyee !
+            Publication envoyée !
           </h2>
           <p className="mt-3 text-sm text-emerald-700">
-            Votre projet a ete soumis a notre equipe de moderation. Il sera
-            visible dans la galerie apres validation, generalement sous 24 a 48
+            Votre projet a été soumis a notre equipe de modération. Il sera
+            visible dans la galerie après validation, generalement sous 24 a 48
             heures.
           </p>
           <div className="mt-6 flex justify-center gap-3">
@@ -141,14 +141,14 @@ export default function ShareProjectPage() {
 
       <div className="mt-4 rounded-[2rem] border border-stone-200 bg-[var(--surface)] p-6 shadow-[0_25px_80px_rgba(67,39,15,0.10)]">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
-          Partager dans la communaute
+          Partager dans la communauté
         </p>
         <h1 className="mt-2 text-2xl font-semibold text-stone-950">
           {project.name}
         </h1>
         <p className="mt-2 text-sm text-stone-500">
-          Partagez votre projet termine avec la communaute. Les informations
-          seront visibles publiquement apres moderation.
+          Partagez votre projet terminé avec la communauté. Les informations
+          seront visibles publiquement après modération.
         </p>
       </div>
 

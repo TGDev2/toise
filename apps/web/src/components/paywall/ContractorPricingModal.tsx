@@ -1,56 +1,57 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAnalytics } from '@/hooks/useAnalytics';
-import { apiPost } from '@/lib/api';
+import { apiGet, apiPost } from '@/lib/api';
 
 interface ContractorPricingModalProps {
   onClose: () => void;
   triggerFeature?: string;
 }
 
+interface ApiPlan {
+  key: string;
+  label: string;
+  price: number;
+  price_id: string | null;
+}
+
 const CONTRACTOR_PLANS = [
   {
-    key: 'essentiel',
+    key: 'contractor_essentiel',
     label: 'Essentiel',
-    price: 50,
+    fallbackPrice: 50,
     features: [
-      'Projets illimites',
+      'Projets illimités',
       'Export de devis PDF',
       'Gestion de clients',
-      'Toutes les fonctionnalites Pro',
+      'Toutes les fonctionnalités Pro',
     ],
   },
   {
-    key: 'standard',
+    key: 'contractor_standard',
     label: 'Standard',
-    price: 100,
+    fallbackPrice: 100,
     popular: true,
     features: [
       'Tout Essentiel +',
-      'Modeles de devis personnalises',
-      'Historique clients avance',
+      'Modèles de devis personnalisés',
+      'Historique clients avancé',
       'Support prioritaire',
     ],
   },
   {
-    key: 'premium',
+    key: 'contractor_premium',
     label: 'Premium',
-    price: 200,
+    fallbackPrice: 200,
     features: [
       'Tout Standard +',
       'Multi-utilisateurs',
-      'API d\'integration',
-      'Accompagnement dedie',
+      "API d'intégration",
+      'Accompagnement dédié',
     ],
   },
 ];
-
-const PRICE_ID_ENV: Record<string, string> = {
-  essentiel: process.env.NEXT_PUBLIC_STRIPE_CONTRACTOR_ESSENTIEL_PRICE_ID ?? '',
-  standard: process.env.NEXT_PUBLIC_STRIPE_CONTRACTOR_STANDARD_PRICE_ID ?? '',
-  premium: process.env.NEXT_PUBLIC_STRIPE_CONTRACTOR_PREMIUM_PRICE_ID ?? '',
-};
 
 export function ContractorPricingModal({
   onClose,
@@ -59,9 +60,22 @@ export function ContractorPricingModal({
   const { track } = useAnalytics();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [apiPlans, setApiPlans] = useState<Record<string, ApiPlan>>({});
+
+  useEffect(() => {
+    apiGet<{ plans: ApiPlan[] }>('/subscriptions/plans')
+      .then(({ plans }) => {
+        setApiPlans(
+          Object.fromEntries(plans.map((plan) => [plan.key, plan])),
+        );
+      })
+      .catch(() => {
+        setError('Impossible de charger les offres. Réessayez plus tard.');
+      });
+  }, []);
 
   const handleSelect = async (planKey: string) => {
-    const priceId = PRICE_ID_ENV[planKey];
+    const priceId = apiPlans[planKey]?.price_id;
     if (!priceId) {
       setError('Plan non disponible pour le moment.');
       return;
@@ -78,7 +92,7 @@ export function ContractorPricingModal({
       const { url } = await apiPost<{ url: string }>('/subscriptions/checkout', {
         price_id: priceId,
       });
-      window.location.href = url;
+      window.location.assign(url);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Erreur lors de la souscription.',
@@ -94,11 +108,13 @@ export function ContractorPricingModal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="mx-4 w-full max-w-3xl rounded-[2rem] border border-stone-200 bg-white p-8 shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
+      <div className="mx-4 max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[2rem] border border-stone-200 bg-white p-8 shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
         {/* Close button */}
         <div className="flex justify-end">
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Fermer"
             className="rounded-full p-1 text-stone-400 hover:bg-stone-100 hover:text-stone-600"
           >
             <svg
@@ -106,6 +122,7 @@ export function ContractorPricingModal({
               viewBox="0 0 20 20"
               fill="currentColor"
               className="h-5 w-5"
+              aria-hidden="true"
             >
               <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
             </svg>
@@ -131,12 +148,12 @@ export function ContractorPricingModal({
               key={plan.key}
               className={`relative rounded-2xl border p-6 ${
                 plan.popular
-                  ? 'border-blue-300 bg-blue-50/50 shadow-md'
+                  ? 'border-[var(--accent)]/40 bg-[var(--accent)]/5 shadow-md'
                   : 'border-stone-200'
               }`}
             >
               {plan.popular && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-blue-600 px-3 py-0.5 text-xs font-medium text-white">
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[var(--accent)] px-3 py-0.5 text-xs font-medium text-white">
                   Populaire
                 </span>
               )}
@@ -145,7 +162,7 @@ export function ContractorPricingModal({
               </h3>
               <p className="mt-2">
                 <span className="text-2xl font-bold text-stone-900">
-                  {plan.price} &euro;
+                  {apiPlans[plan.key]?.price ?? plan.fallbackPrice} &euro;
                 </span>
                 <span className="text-sm text-stone-500"> /mois</span>
               </p>
@@ -156,7 +173,8 @@ export function ContractorPricingModal({
                       xmlns="http://www.w3.org/2000/svg"
                       viewBox="0 0 20 20"
                       fill="currentColor"
-                      className="mt-0.5 h-4 w-4 shrink-0 text-green-500"
+                      className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]"
+                      aria-hidden="true"
                     >
                       <path
                         fillRule="evenodd"
@@ -174,7 +192,7 @@ export function ContractorPricingModal({
                 disabled={loadingPlan !== null}
                 className={`mt-6 w-full rounded-full px-4 py-2.5 text-sm font-semibold transition-all hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 ${
                   plan.popular
-                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    ? 'bg-[var(--accent)] text-white hover:bg-[var(--accent-strong)]'
                     : 'bg-stone-900 text-white hover:bg-stone-800'
                 }`}
               >
@@ -185,7 +203,7 @@ export function ContractorPricingModal({
         </div>
 
         <p className="mt-4 text-center text-xs text-stone-400">
-          Sans engagement. Annulable a tout moment.
+          Sans engagement. Annulable à tout moment.
         </p>
       </div>
     </div>

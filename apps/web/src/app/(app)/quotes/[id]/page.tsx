@@ -6,8 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { apiGet, apiPatch, apiDelete, apiDownload } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { QuoteStatusBadge } from '@/components/quotes/QuoteStatusBadge';
+import { Alert, Button, ConfirmDialog, Skeleton } from '@/components/ui';
 import type { Quote, QuoteStatus } from '@/lib/quote-types';
-import { QUOTE_STATUS_LABELS } from '@/lib/quote-types';
 
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat('fr-FR', {
@@ -22,10 +22,10 @@ function formatPrice(v: number): string {
 }
 
 const STATUS_ACTIONS: { status: QuoteStatus; label: string; color: string }[] = [
-  { status: 'sent', label: 'Marquer envoye', color: 'bg-blue-600 text-white hover:bg-blue-700' },
-  { status: 'accepted', label: 'Accepte', color: 'bg-emerald-600 text-white hover:bg-emerald-700' },
-  { status: 'refused', label: 'Refuse', color: 'bg-red-600 text-white hover:bg-red-700' },
-  { status: 'negotiation', label: 'En negociation', color: 'bg-amber-600 text-white hover:bg-amber-700' },
+  { status: 'sent', label: 'Marquer envoyé', color: 'bg-[var(--accent)] text-white hover:bg-[var(--accent-strong)]' },
+  { status: 'accepted', label: 'Accepté', color: 'bg-emerald-600 text-white hover:bg-emerald-700' },
+  { status: 'refused', label: 'Refusé', color: 'bg-red-600 text-white hover:bg-red-700' },
+  { status: 'negotiation', label: 'En négociation', color: 'bg-amber-600 text-white hover:bg-amber-700' },
 ];
 
 export default function QuoteDetailPage() {
@@ -38,6 +38,8 @@ export default function QuoteDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !appUser) {
@@ -71,7 +73,7 @@ export default function QuoteDetailPage() {
       });
       setQuote(updated);
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Impossible de mettre a jour le statut'));
+      setError(getErrorMessage(err, 'Impossible de mettre à jour le statut'));
     } finally {
       setActionLoading(false);
     }
@@ -79,29 +81,27 @@ export default function QuoteDetailPage() {
 
   const handleDownloadPdf = async () => {
     if (!quote) return;
+    setDownloading(true);
     try {
       await apiDownload(
         `/quotes/${quoteId}/export/pdf`,
         `devis-${quote.quote_number}.pdf`,
       );
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Impossible de telecharger le PDF'));
+      setError(getErrorMessage(err, 'Impossible de télécharger le PDF'));
+    } finally {
+      setDownloading(false);
     }
   };
 
   const handleDelete = async () => {
-    if (
-      !quote ||
-      typeof window === 'undefined' ||
-      !window.confirm('Supprimer ce devis brouillon ?')
-    ) {
-      return;
-    }
+    if (!quote) return;
     setActionLoading(true);
     try {
       await apiDelete(`/quotes/${quoteId}`);
       router.push('/quotes');
     } catch (err: unknown) {
+      setShowDeleteConfirm(false);
       setError(getErrorMessage(err, 'Impossible de supprimer le devis'));
     } finally {
       setActionLoading(false);
@@ -110,8 +110,9 @@ export default function QuoteDetailPage() {
 
   if (isLoading || loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <p className="text-gray-500">Chargement...</p>
+      <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6">
+        <Skeleton className="h-40 rounded-[2rem]" />
+        <Skeleton className="mt-6 h-64 rounded-[2rem]" />
       </main>
     );
   }
@@ -119,16 +120,14 @@ export default function QuoteDetailPage() {
   if (!quote) {
     return (
       <main className="mx-auto w-full max-w-4xl px-4 py-8">
-        <div className="rounded-3xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
-          {error || 'Devis non trouve'}
-        </div>
-        <button
-          type="button"
+        <Alert variant="error">{error || 'Devis non trouvé'}</Alert>
+        <Button
+          variant="secondary"
+          className="mt-4"
           onClick={() => router.push('/quotes')}
-          className="mt-4 rounded-full border border-stone-300 px-5 py-2.5 text-sm font-semibold text-stone-700 hover:bg-white"
         >
           Retour aux devis
-        </button>
+        </Button>
       </main>
     );
   }
@@ -157,27 +156,19 @@ export default function QuoteDetailPage() {
           )}
         </div>
         <div className="flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={handleDownloadPdf}
-            className="rounded-full bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-[var(--accent-strong)]"
-          >
-            Telecharger PDF
-          </button>
-          <button
-            type="button"
-            onClick={() => router.push('/quotes')}
-            className="rounded-full border border-stone-300 px-5 py-2.5 text-sm font-semibold text-stone-700 hover:-translate-y-0.5 hover:bg-white"
-          >
+          <Button onClick={handleDownloadPdf} loading={downloading}>
+            Télécharger PDF
+          </Button>
+          <Button variant="secondary" onClick={() => router.push('/quotes')}>
             Retour aux devis
-          </button>
+          </Button>
         </div>
       </div>
 
       {error && (
-        <div className="mt-6 rounded-3xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+        <Alert variant="error" className="mt-6">
           {error}
-        </div>
+        </Alert>
       )}
 
       {/* Status actions */}
@@ -197,7 +188,7 @@ export default function QuoteDetailPage() {
           <button
             type="button"
             disabled={actionLoading}
-            onClick={handleDelete}
+            onClick={() => setShowDeleteConfirm(true)}
             className="rounded-full border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
           >
             Supprimer
@@ -226,14 +217,14 @@ export default function QuoteDetailPage() {
       {/* Materials */}
       <section className="mt-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
         <h2 className="text-lg font-semibold text-stone-950">
-          Detail des materiaux
+          Détail des matériaux
         </h2>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-stone-200 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
-                <th className="pb-2 pr-4">Designation</th>
-                <th className="pb-2 pr-4 text-center">Qte</th>
+                <th className="pb-2 pr-4">Désignation</th>
+                <th className="pb-2 pr-4 text-center">Qté</th>
                 <th className="pb-2 pr-4 text-right">PU HT</th>
                 <th className="pb-2 text-right">Total HT</th>
               </tr>
@@ -296,7 +287,7 @@ export default function QuoteDetailPage() {
         <h2 className="text-lg font-semibold text-stone-950">Totaux</h2>
         <div className="mt-4 space-y-2 text-sm">
           <div className="flex justify-between">
-            <span className="text-stone-600">Sous-total materiaux HT</span>
+            <span className="text-stone-600">Sous-total matériaux HT</span>
             <span className="font-medium">
               {formatPrice(Number(quote.subtotal_materials_ht))} EUR
             </span>
@@ -345,7 +336,7 @@ export default function QuoteDetailPage() {
       {quote.payment_terms && (
         <section className="mt-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
           <h2 className="text-lg font-semibold text-stone-950">
-            Conditions de reglement
+            Conditions de règlement
           </h2>
           <p className="mt-3 text-sm text-stone-700 whitespace-pre-line">
             {quote.payment_terms}
@@ -367,20 +358,31 @@ export default function QuoteDetailPage() {
       <section className="mt-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
         <h2 className="text-lg font-semibold text-stone-950">Historique</h2>
         <div className="mt-3 space-y-1 text-sm text-stone-600">
-          <p>Cree le {formatDate(quote.created_at)}</p>
-          {quote.sent_at && <p>Envoye le {formatDate(quote.sent_at)}</p>}
+          <p>Créé le {formatDate(quote.created_at)}</p>
+          {quote.sent_at && <p>Envoyé le {formatDate(quote.sent_at)}</p>}
           {quote.accepted_at && (
-            <p>Accepte le {formatDate(quote.accepted_at)}</p>
+            <p>Accepté le {formatDate(quote.accepted_at)}</p>
           )}
           {quote.refused_at && (
-            <p>Refuse le {formatDate(quote.refused_at)}</p>
+            <p>Refusé le {formatDate(quote.refused_at)}</p>
           )}
           <p className="text-xs text-stone-400">
-            Marge materiaux : {Number(quote.material_margin_percent)} % |
-            Validite : {quote.validity_days} jours
+            Marge matériaux : {Number(quote.material_margin_percent)} % |
+            Validité : {quote.validity_days} jours
           </p>
         </div>
       </section>
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="Supprimer le devis"
+        message="Ce devis brouillon sera supprimé définitivement."
+        confirmLabel="Supprimer"
+        destructive
+        busy={actionLoading}
+        onConfirm={handleDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </main>
   );
 }

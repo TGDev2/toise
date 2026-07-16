@@ -1,6 +1,10 @@
 export default () => ({
   port: parseInt(process.env.PORT ?? '3001', 10),
   publicUrl: process.env.PUBLIC_URL ?? 'http://localhost:3000',
+  corsOrigins: (process.env.CORS_ORIGIN ?? 'http://localhost:3000')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean),
   database: {
     host: process.env.DB_HOST ?? 'localhost',
     port: parseInt(process.env.DB_PORT ?? '5432', 10),
@@ -15,7 +19,8 @@ export default () => ({
   },
   cvService: {
     url: process.env.CV_SERVICE_URL ?? 'http://localhost:8000',
-    timeoutMs: parseInt(process.env.CV_SERVICE_TIMEOUT_MS ?? '60000', 10),
+    // L'inférence CPU sur 3-5 photos peut dépasser 60 s : défaut à 120 s.
+    timeoutMs: parseInt(process.env.CV_SERVICE_TIMEOUT_MS ?? '120000', 10),
   },
   stripe: {
     secretKey: process.env.STRIPE_SECRET_KEY,

@@ -8,20 +8,20 @@ export default function PrivacyPage() {
       </Link>
 
       <h1 className="mt-6 text-3xl font-bold text-gray-900">
-        Politique de confidentialite
+        Politique de confidentialité
       </h1>
       <p className="mt-2 text-sm text-gray-500">
-        Derniere mise a jour : mars 2026
+        Dernière mise à jour : mars 2026
       </p>
 
       <div className="mt-8 space-y-6 text-gray-700">
         <section>
           <h2 className="text-xl font-semibold text-gray-900">
-            1. Donnees collectees
+            1. Données collectees
           </h2>
           <p className="mt-2">
-            EstiMate collecte uniquement les donnees necessaires au
-            fonctionnement du service : adresse email, donnees de projet
+            EstiMate collecte uniquement les données nécessaires au
+            fonctionnement du service : adresse email, données de projet
             (dimensions, types de travaux), et photos uploadees pour
             l&apos;analyse par vision par ordinateur.
           </p>
@@ -29,12 +29,12 @@ export default function PrivacyPage() {
 
         <section>
           <h2 className="text-xl font-semibold text-gray-900">
-            2. Utilisation des donnees
+            2. Utilisation des données
           </h2>
           <p className="mt-2">
-            Vos donnees sont utilisees exclusivement pour fournir le service
-            d&apos;estimation de materiaux, gerer votre compte, et ameliorer la
-            precision de nos calculs.
+            Vos données sont utilisees exclusivement pour fournir le service
+            d&apos;estimation de matériaux, gerer votre compte, et améliorer la
+            précision de nos calculs.
           </p>
         </section>
 
@@ -43,7 +43,7 @@ export default function PrivacyPage() {
             3. Stockage et securite
           </h2>
           <p className="mt-2">
-            Les donnees sont stockees de maniere securisee sur des serveurs
+            Les données sont stockees de maniere securisee sur des serveurs
             conformes aux normes europeennes. Les mots de passe sont haches et
             les communications sont chiffrees via HTTPS.
           </p>
@@ -52,9 +52,9 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-xl font-semibold text-gray-900">4. Vos droits</h2>
           <p className="mt-2">
-            Conformement au RGPD, vous disposez d&apos;un droit d&apos;acces, de
-            rectification et de suppression de vos donnees personnelles. Vous
-            pouvez supprimer votre compte a tout moment depuis les parametres
+            Conformement au RGPD, vous disposez d&apos;un droit d&apos;accès, de
+            rectification et de suppression de vos données personnelles. Vous
+            pouvez supprimer votre compte à tout moment depuis les paramètres
             de votre profil.
           </p>
         </section>
@@ -71,7 +71,7 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-xl font-semibold text-gray-900">6. Contact</h2>
           <p className="mt-2">
-            Pour toute question relative a vos donnees personnelles,
+            Pour toute question relative a vos données personnelles,
             contactez-nous a privacy@estimate.app.
           </p>
         </section>

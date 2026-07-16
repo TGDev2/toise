@@ -71,31 +71,36 @@ export function usePhotoUpload(projectId: string) {
         fileToUpload = entry.file;
       }
 
-      updatePhoto(entry.localId, { status: 'uploading', progress: 0 });
+      let retryCount = entry.retryCount;
+      // Boucle de retry (plutôt que récursion) : MAX_RETRIES tentatives au total.
+      for (;;) {
+        updatePhoto(entry.localId, { status: 'uploading', progress: 0 });
 
-      try {
-        const result = await apiUpload<ServerPhoto>(
-          `/projects/${projectId}/photos`,
-          fileToUpload,
-          (percent) => updatePhoto(entry.localId, { progress: percent }),
-        );
-        updatePhoto(entry.localId, {
-          status: 'ready',
-          progress: 100,
-          serverPhoto: result,
-          error: null,
-        });
-      } catch (err) {
-        const retryCount = entry.retryCount + 1;
-        if (retryCount < MAX_RETRIES) {
-          updatePhoto(entry.localId, { retryCount });
-          await uploadSingleFile({ ...entry, retryCount });
-        } else {
+        try {
+          const result = await apiUpload<ServerPhoto>(
+            `/projects/${projectId}/photos`,
+            fileToUpload,
+            (percent) => updatePhoto(entry.localId, { progress: percent }),
+          );
+          updatePhoto(entry.localId, {
+            status: 'ready',
+            progress: 100,
+            serverPhoto: result,
+            error: null,
+          });
+          return;
+        } catch (err) {
+          retryCount += 1;
+          if (retryCount < MAX_RETRIES) {
+            updatePhoto(entry.localId, { retryCount });
+            continue;
+          }
           updatePhoto(entry.localId, {
             status: 'error',
-            error: (err as Error).message || 'Echec de l\'upload',
+            error: (err as Error).message || 'Échec de l\'upload',
             retryCount,
           });
+          return;
         }
       }
     },
@@ -119,7 +124,7 @@ export function usePhotoUpload(projectId: string) {
         } else if (file.size > MAX_SIZE_BYTES) {
           validFiles.push({
             file,
-            error: 'La photo depasse 20 Mo',
+            error: 'La photo dépasse 20 Mo',
           });
         } else {
           validFiles.push({ file, error: null });

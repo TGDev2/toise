@@ -1,0 +1,12 @@
+node_modules
+**/node_modules
+**/dist
+**/.next
+**/coverage
+uploads
+.git
+.env
+.env.*
+!.env.example
+tasks
+docs

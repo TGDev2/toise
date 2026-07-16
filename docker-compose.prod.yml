@@ -1,0 +1,125 @@
+# Déploiement production sur VPS.
+#   1. Copier .env.example vers .env et renseigner TOUTES les valeurs.
+#   2. docker compose -f docker-compose.prod.yml up -d --build
+# Un reverse proxy (Caddy recommandé, TLS automatique) doit exposer :
+#   - web  (port 3000)  → https://votre-domaine.fr
+#   - api  (port 3001)  → https://api.votre-domaine.fr (ou /api sur le même domaine)
+# Voir docs/DEPLOY.md.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: estimate-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-estimate}
+      POSTGRES_USER: ${DB_USERNAME:-estimate}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD requis}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME:-estimate} -d ${DB_NAME:-estimate}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: estimate-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      cv-service:
+        condition: service_started
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USERNAME:-estimate}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD requis}
+      DB_NAME: ${DB_NAME:-estimate}
+      CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN requis}
+      PUBLIC_URL: ${PUBLIC_URL:?PUBLIC_URL requis}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:?}
+      FIREBASE_CLIENT_EMAIL: ${FIREBASE_CLIENT_EMAIL:?}
+      FIREBASE_PRIVATE_KEY: ${FIREBASE_PRIVATE_KEY:?}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:?}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:?}
+      STRIPE_PRO_PRICE_ID: ${STRIPE_PRO_PRICE_ID:?}
+      STRIPE_CONTRACTOR_ESSENTIEL_PRICE_ID: ${STRIPE_CONTRACTOR_ESSENTIEL_PRICE_ID:-}
+      STRIPE_CONTRACTOR_STANDARD_PRICE_ID: ${STRIPE_CONTRACTOR_STANDARD_PRICE_ID:-}
+      STRIPE_CONTRACTOR_PREMIUM_PRICE_ID: ${STRIPE_CONTRACTOR_PREMIUM_PRICE_ID:-}
+      CV_SERVICE_URL: http://cv-service:8000
+      CV_SERVICE_TIMEOUT_MS: ${CV_SERVICE_TIMEOUT_MS:-120000}
+      STORAGE_PROVIDER: local
+      STORAGE_LOCAL_PATH: /app/uploads
+      PRICE_MOCK_ENABLED: 'false'
+    volumes:
+      - uploads:/app/uploads
+    ports:
+      - '127.0.0.1:3001:3001'
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3001/api/v1/health || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL requis}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?NEXT_PUBLIC_SITE_URL requis}
+        NEXT_PUBLIC_FIREBASE_API_KEY: ${NEXT_PUBLIC_FIREBASE_API_KEY:?}
+        NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN:?}
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${NEXT_PUBLIC_FIREBASE_PROJECT_ID:?}
+        NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID:?}
+    container_name: estimate-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - '127.0.0.1:3000:3000'
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3000 || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  cv-service:
+    build:
+      context: ./apps/cv-service
+      dockerfile: Dockerfile
+    container_name: estimate-cv
+    restart: unless-stopped
+    volumes:
+      # Le CV service ne fait que lire les images uploadées ; montage en
+      # lecture seule pour limiter l'impact d'un éventuel path traversal.
+      - uploads:/data/uploads:ro
+    environment:
+      - UPLOADS_PATH=/data/uploads
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    deploy:
+      resources:
+        limits:
+          # torch + transformers + inférence : 2G est trop juste.
+          memory: 4G
+
+volumes:
+  pgdata:
+  uploads:
