@@ -147,6 +147,8 @@ Copier `.env.example` vers `.env` et renseigner les valeurs :
 - [Architecture technique](docs/ARCHITECTURE.md)
 - [Référence API REST](docs/API.md)
 - [Contexte produit](docs/CONTEXT.md)
+- [Stratégie produit — analyse d'écart et architecture cible](docs/PRODUCT_STRATEGY.md)
+- [Backlog priorisé](docs/BACKLOG.md)
 - [Backend API](apps/api/README.md)
 - [Frontend Web](apps/web/README.md)
 - [CV Service](apps/cv-service/README.md)
