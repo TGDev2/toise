@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/lib/errors';
 import { Logo } from '@/components/Logo';
+import { LANDING_PLANS } from '@/lib/pricing';
 
 const demoListItems = [
   { label: 'Peinture murale mate blanche', detail: '1 pot 10 L + 1 pot 2,5 L' },
@@ -57,42 +58,6 @@ const proofPoints = [
     title: 'Honnêtes sur la photo',
     description:
       'L’analyse photo est en bêta : chaque mesure est affichée avec son niveau de confiance et reste corrigeable en un clic. Nous publierons la précision mesurée sur de vrais chantiers.',
-  },
-];
-
-const plans = [
-  {
-    name: 'Gratuit',
-    price: '0 €',
-    period: '',
-    features: [
-      '2 projets actifs',
-      'Estimation complète des quantités',
-      'Liste d’achats avec export PDF',
-    ],
-    highlighted: false,
-  },
-  {
-    name: 'Pro',
-    price: '9,99 €',
-    period: '/mois',
-    features: [
-      'Projets illimités',
-      'Analyse photo et suivi de budget',
-      'Essai gratuit de 7 jours',
-    ],
-    highlighted: true,
-  },
-  {
-    name: 'Contractor',
-    price: 'dès 50 €',
-    period: '/mois',
-    features: [
-      'Devis PDF conformes (TVA, mentions)',
-      'Fichier clients intégré',
-      'Pensé pour chiffrer chez le client',
-    ],
-    highlighted: false,
   },
 ];
 
@@ -331,7 +296,7 @@ export default function HomePage() {
             projets, Contractor si vous êtes du métier.
           </p>
           <div className="mt-8 grid gap-5 md:grid-cols-3">
-            {plans.map((plan) => (
+            {LANDING_PLANS.map((plan) => (
               <div
                 key={plan.name}
                 className={
@@ -364,6 +329,14 @@ export default function HomePage() {
               </div>
             ))}
           </div>
+          <div className="mt-6">
+            <Link
+              href="/pricing"
+              className="text-sm font-semibold text-[var(--accent)] hover:text-[var(--accent-strong)]"
+            >
+              Voir le détail des tarifs →
+            </Link>
+          </div>
         </section>
 
         {/* CTA final */}
@@ -381,6 +354,9 @@ export default function HomePage() {
         <footer className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-stone-300/60 pt-8 text-sm text-stone-600 sm:flex-row">
           <p>© {new Date().getFullYear()} EstiMate</p>
           <nav className="flex gap-6">
+            <Link href="/pricing" className="hover:text-stone-950">
+              Tarifs
+            </Link>
             <Link href="/privacy" className="hover:text-stone-950">
               Confidentialité
             </Link>
