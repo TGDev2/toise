@@ -357,6 +357,9 @@ export default function HomePage() {
             <Link href="/pricing" className="hover:text-stone-950">
               Tarifs
             </Link>
+            <Link href="/calculateurs" className="hover:text-stone-950">
+              Calculateurs gratuits
+            </Link>
             <Link href="/privacy" className="hover:text-stone-950">
               Confidentialité
             </Link>

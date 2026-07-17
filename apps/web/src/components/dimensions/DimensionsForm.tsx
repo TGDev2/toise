@@ -31,6 +31,8 @@ interface DimensionsFormProps {
   initialOpenings?: Opening[];
   onSave: (lengthCm: number, widthCm: number, heightCm: number, openings: Opening[]) => Promise<void>;
   isSaving?: boolean;
+  submitLabel?: string;
+  savingLabel?: string;
 }
 
 const inputClass =
@@ -65,6 +67,8 @@ export function DimensionsForm({
   initialOpenings = [],
   onSave,
   isSaving = false,
+  submitLabel = 'Enregistrer les dimensions',
+  savingLabel = 'Enregistrement...',
 }: DimensionsFormProps) {
   const [unitSystem, setUnitSystem] = useState<UnitSystem>('metric');
   const [metric, setMetric] = useState<MetricValues>(
@@ -315,7 +319,7 @@ export function DimensionsForm({
           disabled={isSaving || (touched && !isValid)}
           className="rounded-full bg-stone-950 px-6 py-3 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isSaving ? 'Enregistrement...' : 'Enregistrer les dimensions'}
+          {isSaving ? savingLabel : submitLabel}
         </button>
       </div>
 

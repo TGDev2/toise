@@ -12,10 +12,13 @@ export class CreateSupplierPriceCache1711468800020 implements MigrationInterface
         "postal_code" varchar(10) DEFAULT NULL,
         "fetched_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
         "expires_at" TIMESTAMP WITH TIME ZONE NOT NULL,
-        CONSTRAINT "PK_supplier_price_cache" PRIMARY KEY ("id"),
-        CONSTRAINT "UQ_supplier_price_cache_lookup" UNIQUE ("supplier_key", "material_id", COALESCE("postal_code", ''))
+        CONSTRAINT "PK_supplier_price_cache" PRIMARY KEY ("id")
       )
     `);
+
+    await queryRunner.query(
+      `CREATE UNIQUE INDEX "UQ_supplier_price_cache_lookup" ON "supplier_price_cache" ("supplier_key", "material_id", COALESCE("postal_code", ''))`,
+    );
 
     await queryRunner.query(
       `CREATE INDEX "IDX_supplier_price_cache_expires" ON "supplier_price_cache" ("expires_at")`,
@@ -32,6 +35,7 @@ export class CreateSupplierPriceCache1711468800020 implements MigrationInterface
       `DELETE FROM "feature_gates" WHERE "feature_key" = 'price_comparison'`,
     );
     await queryRunner.query(`DROP INDEX "IDX_supplier_price_cache_expires"`);
+    await queryRunner.query(`DROP INDEX "UQ_supplier_price_cache_lookup"`);
     await queryRunner.query(`DROP TABLE "supplier_price_cache"`);
   }
 }

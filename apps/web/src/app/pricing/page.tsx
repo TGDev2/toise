@@ -298,6 +298,9 @@ export default function PricingPage() {
             <Link href="/" className="hover:text-stone-950">
               Accueil
             </Link>
+            <Link href="/calculateurs" className="hover:text-stone-950">
+              Calculateurs gratuits
+            </Link>
             <Link href="/privacy" className="hover:text-stone-950">
               Confidentialité
             </Link>

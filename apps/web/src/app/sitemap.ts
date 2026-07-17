@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next';
+import { CALCULATOR_SLUGS } from '@/lib/calculators';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
 
@@ -14,6 +15,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly',
       priority: 0.8,
     },
+    {
+      url: `${BASE_URL}/calculateurs`,
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+    ...CALCULATOR_SLUGS.map((slug) => ({
+      url: `${BASE_URL}/calculateurs/${slug}`,
+      changeFrequency: 'monthly' as const,
+      priority: 0.8,
+    })),
     {
       url: `${BASE_URL}/login`,
       changeFrequency: 'yearly',
