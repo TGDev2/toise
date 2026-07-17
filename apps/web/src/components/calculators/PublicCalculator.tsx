@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { DimensionsForm } from '@/components/dimensions/DimensionsForm';
 import { EstimationResults } from '@/components/estimation/EstimationResults';
 import { SkillLevelSelector } from '@/components/estimation/SkillLevelSelector';
-import { Alert } from '@/components/ui';
+import { Alert, Input, useToast } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiPost, apiPut } from '@/lib/api';
 import type { CalculatorConfig, CalculatorVariant } from '@/lib/calculators';
@@ -57,9 +58,31 @@ function buildCustomParams(
   return custom;
 }
 
+function buildEstimateBasePayload(
+  dims: SavedDimensions,
+  variant: CalculatorVariant,
+  skillLevel: string,
+  paramValues: Record<string, string>,
+) {
+  return {
+    length_cm: dims.lengthCm,
+    width_cm: dims.widthCm,
+    height_cm: dims.heightCm,
+    openings: dims.openings.map((o) => ({
+      width_cm: o.width_cm,
+      height_cm: o.height_cm,
+      count: o.count,
+    })),
+    work_type_code: variant.code,
+    skill_level: skillLevel,
+    custom_params: buildCustomParams(variant, paramValues),
+  };
+}
+
 export function PublicCalculator({ config }: PublicCalculatorProps) {
   const { appUser, isGuest, startGuestSession } = useAuth();
   const router = useRouter();
+  const toast = useToast();
 
   const [variantCode, setVariantCode] = useState(config.variants[0].code);
   const [skillLevel, setSkillLevel] = useState('intermediate');
@@ -71,6 +94,9 @@ export function PublicCalculator({ config }: PublicCalculatorProps) {
   const [isComputing, setIsComputing] = useState(false);
   const [isSavingProject, setIsSavingProject] = useState(false);
   const [error, setError] = useState('');
+  const [captureEmail, setCaptureEmail] = useState('');
+  const [captureConsent, setCaptureConsent] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   const variant =
     config.variants.find((v) => v.code === variantCode) ?? config.variants[0];
@@ -96,19 +122,12 @@ export function PublicCalculator({ config }: PublicCalculatorProps) {
     try {
       const response = await apiPost<PublicEstimateResponse>(
         '/public/calculators/estimate',
-        {
-          length_cm: lengthCm,
-          width_cm: widthCm,
-          height_cm: heightCm,
-          openings: openings.map((o) => ({
-            width_cm: o.width_cm,
-            height_cm: o.height_cm,
-            count: o.count,
-          })),
-          work_type_code: variant.code,
-          skill_level: skillLevel,
-          custom_params: buildCustomParams(variant, paramValues),
-        },
+        buildEstimateBasePayload(
+          { lengthCm, widthCm, heightCm, openings },
+          variant,
+          skillLevel,
+          paramValues,
+        ),
       );
       setItems(response.items);
       setSavedDims({ lengthCm, widthCm, heightCm, openings });
@@ -116,6 +135,27 @@ export function PublicCalculator({ config }: PublicCalculatorProps) {
       setError(getErrorMessage(err, 'Impossible de calculer l’estimation'));
     } finally {
       setIsComputing(false);
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!savedDims || !captureConsent) return;
+    setIsSendingEmail(true);
+    try {
+      await apiPost('/public/calculators/estimate-email', {
+        ...buildEstimateBasePayload(savedDims, variant, skillLevel, paramValues),
+        email: captureEmail,
+        consent: captureConsent,
+      });
+      toast.success(
+        'Merci ! Si votre adresse est valide, vous recevrez votre estimation par e-mail sous peu.',
+      );
+      setCaptureEmail('');
+      setCaptureConsent(false);
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Impossible d’envoyer l’estimation par e-mail'));
+    } finally {
+      setIsSendingEmail(false);
     }
   };
 
@@ -296,6 +336,49 @@ export function PublicCalculator({ config }: PublicCalculatorProps) {
             >
               {isSavingProject ? 'Sauvegarde...' : 'Sauvegarder mon projet'}
             </button>
+          </div>
+
+          <div className="rounded-2xl border border-stone-200 bg-white p-6">
+            <h3 className="text-lg font-semibold text-stone-950">
+              Recevoir cette estimation par e-mail
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-stone-600">
+              Indiquez votre adresse pour recevoir le détail de cette
+              estimation par e-mail.
+            </p>
+            <div className="mt-4 space-y-3">
+              <Input
+                type="email"
+                label="Votre e-mail"
+                placeholder="vous@exemple.fr"
+                value={captureEmail}
+                onChange={(e) => setCaptureEmail(e.target.value)}
+              />
+              <label className="flex items-start gap-3 rounded-2xl border border-stone-200 bg-stone-50 p-4">
+                <input
+                  type="checkbox"
+                  checked={captureConsent}
+                  onChange={(e) => setCaptureConsent(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-stone-300 text-[var(--accent)] focus:ring-[var(--accent)]"
+                />
+                <span className="text-sm text-stone-600">
+                  J&apos;accepte de recevoir cette estimation par e-mail et,
+                  occasionnellement, des actualités EstiMate. Voir notre{' '}
+                  <Link href="/privacy" className="underline">
+                    politique de confidentialité
+                  </Link>
+                  .
+                </span>
+              </label>
+              <button
+                type="button"
+                onClick={handleSendEmail}
+                disabled={isSendingEmail || !captureConsent || !captureEmail}
+                className="w-full rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSendingEmail ? 'Envoi en cours...' : 'Recevoir par e-mail'}
+              </button>
+            </div>
           </div>
         </div>
       )}

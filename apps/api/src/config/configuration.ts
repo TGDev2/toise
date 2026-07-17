@@ -31,6 +31,11 @@ export default () => ({
     contractorStandardPriceId: process.env.STRIPE_CONTRACTOR_STANDARD_PRICE_ID,
     contractorPremiumPriceId: process.env.STRIPE_CONTRACTOR_PREMIUM_PRICE_ID,
   },
+  brevo: {
+    apiKey: process.env.BREVO_API_KEY,
+    senderEmail: process.env.BREVO_SENDER_EMAIL,
+    senderName: process.env.BREVO_SENDER_NAME ?? 'EstiMate',
+  },
   priceComparison: {
     homeDepot: {
       apiUrl: process.env.HOME_DEPOT_API_URL ?? '',

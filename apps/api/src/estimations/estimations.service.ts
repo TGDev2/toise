@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -9,6 +10,7 @@ import {
   EstimationLineItem,
   EstimationResult,
 } from './entities/estimation-result.entity';
+import { EmailCapture } from './entities/email-capture.entity';
 import { MaterialCatalog } from '../materials/entities/material-catalog.entity';
 import { ProjectsService } from '../projects/projects.service';
 import {
@@ -21,6 +23,9 @@ import { SkillLevel } from '../projects/entities/project-work-item.entity';
 import { ProjectStatus } from '../projects/entities/project.entity';
 import { WorkType } from '../projects/entities/work-type.entity';
 import { PublicEstimateRequestDto } from './dto/public-estimate-request.dto';
+import { PublicEstimateEmailDto } from './dto/public-estimate-email.dto';
+import { EmailService } from '../email/email.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 
 export interface PublicEstimateResponse {
   work_type_code: string;
@@ -30,8 +35,14 @@ export interface PublicEstimateResponse {
   items: EstimationLineItem[];
 }
 
+export interface PublicEstimateEmailResponse {
+  sent: boolean;
+}
+
 @Injectable()
 export class EstimationsService {
+  private readonly logger = new Logger(EstimationsService.name);
+
   constructor(
     @InjectRepository(EstimationResult)
     private readonly estimationRepo: Repository<EstimationResult>,
@@ -39,8 +50,12 @@ export class EstimationsService {
     private readonly materialsRepo: Repository<MaterialCatalog>,
     @InjectRepository(WorkType)
     private readonly workTypesRepo: Repository<WorkType>,
+    @InjectRepository(EmailCapture)
+    private readonly emailCaptureRepo: Repository<EmailCapture>,
     private readonly projectsService: ProjectsService,
     private readonly engine: EstimationEngine,
+    private readonly emailService: EmailService,
+    private readonly analyticsService: AnalyticsService,
   ) {}
 
   private async loadMaterialInputs(category: string): Promise<MaterialInput[]> {
@@ -184,6 +199,56 @@ export class EstimationsService {
       total_items: items.length,
       items,
     };
+  }
+
+  async emailEstimate(
+    dto: PublicEstimateEmailDto,
+  ): Promise<PublicEstimateEmailResponse> {
+    if (!dto.consent) {
+      throw new BadRequestException(
+        'Le consentement est requis pour recevoir cette estimation par e-mail.',
+      );
+    }
+
+    // Ne jamais faire confiance à un résultat fourni par le client : on
+    // recalcule toujours côté serveur avant de l'inclure dans l'e-mail.
+    const result = await this.estimatePublic(dto);
+
+    const entry = this.emailCaptureRepo.create({
+      email: dto.email,
+      work_type_code: result.work_type_code,
+      skill_level: result.skill_level,
+      estimate_snapshot: result.items,
+      consent: true,
+      consent_at: new Date(),
+    });
+    const saved = await this.emailCaptureRepo.save(entry);
+
+    let sent = false;
+    try {
+      await this.emailService.sendCalculatorResultEmail(dto.email, {
+        workTypeLabel: result.work_type_label,
+        items: result.items,
+      });
+      saved.email_sent_at = new Date();
+      await this.emailCaptureRepo.save(saved);
+      sent = true;
+    } catch (err) {
+      // Ne jamais logger l'adresse elle-même, seulement l'id de la capture.
+      this.logger.warn(
+        `Échec de l'envoi Brevo pour la capture ${saved.id}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+
+    this.analyticsService.track('email_capture', null, {
+      work_type_code: result.work_type_code,
+      skill_level: result.skill_level,
+      sent,
+    });
+
+    return { sent };
   }
 
   async getLatest(

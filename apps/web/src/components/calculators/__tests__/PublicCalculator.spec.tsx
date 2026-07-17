@@ -25,6 +25,17 @@ jest.mock('@/lib/api', () => ({
   apiPut: jest.fn(),
 }));
 
+const mockToast = {
+  success: jest.fn(),
+  error: jest.fn(),
+  info: jest.fn(),
+};
+
+jest.mock('@/components/ui', () => ({
+  ...jest.requireActual('@/components/ui'),
+  useToast: () => mockToast,
+}));
+
 const mockApiPost = apiPost as jest.MockedFunction<typeof apiPost>;
 
 const estimateResponse = {
@@ -86,6 +97,97 @@ describe('PublicCalculator', () => {
     localStorage.clear();
     mockAuth.appUser = null;
     mockAuth.isGuest = false;
+  });
+
+  it('renders the email-capture card with an unchecked box and a disabled submit button', async () => {
+    mockApiPost.mockResolvedValue(estimateResponse);
+    render(<PublicCalculator config={config} />);
+
+    await fillAndCompute();
+
+    expect(
+      await screen.findByLabelText(/votre e-mail/i),
+    ).toBeInTheDocument();
+    const consentBox = screen.getByRole('checkbox');
+    expect(consentBox).not.toBeChecked();
+    expect(
+      screen.getByRole('button', { name: /recevoir par e-mail/i }),
+    ).toBeDisabled();
+  });
+
+  it('keeps the submit button disabled when the email is filled but consent is unchecked', async () => {
+    mockApiPost.mockResolvedValue(estimateResponse);
+    render(<PublicCalculator config={config} />);
+
+    await fillAndCompute();
+    fireEvent.change(screen.getByLabelText(/votre e-mail/i), {
+      target: { value: 'visiteur@example.fr' },
+    });
+
+    expect(
+      screen.getByRole('button', { name: /recevoir par e-mail/i }),
+    ).toBeDisabled();
+  });
+
+  it('sends the estimate by email once the box is checked, then shows a success toast and resets the form', async () => {
+    mockApiPost.mockResolvedValue(estimateResponse);
+    render(<PublicCalculator config={config} />);
+
+    await fillAndCompute();
+    fireEvent.change(screen.getByLabelText(/votre e-mail/i), {
+      target: { value: 'visiteur@example.fr' },
+    });
+    fireEvent.click(screen.getByRole('checkbox'));
+
+    const submitButton = screen.getByRole('button', {
+      name: /recevoir par e-mail/i,
+    });
+    expect(submitButton).not.toBeDisabled();
+
+    await act(async () => {
+      fireEvent.click(submitButton);
+    });
+
+    await waitFor(() => {
+      expect(mockApiPost).toHaveBeenCalledWith(
+        '/public/calculators/estimate-email',
+        {
+          length_cm: 400,
+          width_cm: 300,
+          height_cm: 250,
+          openings: [],
+          work_type_code: 'wall_painting',
+          skill_level: 'intermediate',
+          custom_params: { number_of_coats: 2 },
+          email: 'visiteur@example.fr',
+          consent: true,
+        },
+      );
+      expect(mockToast.success).toHaveBeenCalled();
+    });
+
+    expect(screen.getByLabelText(/votre e-mail/i)).toHaveValue('');
+    expect(screen.getByRole('checkbox')).not.toBeChecked();
+  });
+
+  it('shows an error toast when the email-send request fails', async () => {
+    mockApiPost.mockResolvedValue(estimateResponse);
+    render(<PublicCalculator config={config} />);
+
+    await fillAndCompute();
+    fireEvent.change(screen.getByLabelText(/votre e-mail/i), {
+      target: { value: 'visiteur@example.fr' },
+    });
+    fireEvent.click(screen.getByRole('checkbox'));
+
+    mockApiPost.mockRejectedValueOnce(new Error('Trop de tentatives'));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /recevoir par e-mail/i }));
+    });
+
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith('Trop de tentatives');
+    });
   });
 
   it('renders variant toggle, skill selector and params', () => {

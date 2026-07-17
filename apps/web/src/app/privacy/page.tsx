@@ -11,7 +11,7 @@ export default function PrivacyPage() {
         Politique de confidentialité
       </h1>
       <p className="mt-2 text-sm text-gray-500">
-        Dernière mise à jour : mars 2026
+        Dernière mise à jour : juillet 2026
       </p>
 
       <div className="mt-8 space-y-6 text-gray-700">
@@ -23,7 +23,10 @@ export default function PrivacyPage() {
             EstiMate collecte uniquement les données nécessaires au
             fonctionnement du service : adresse email, données de projet
             (dimensions, types de travaux), et photos uploadees pour
-            l&apos;analyse par vision par ordinateur.
+            l&apos;analyse par vision par ordinateur. Sur nos calculateurs
+            gratuits accessibles sans compte, nous collectons également votre
+            adresse e-mail lorsque vous demandez à recevoir votre estimation
+            par e-mail, avec votre consentement explicite.
           </p>
         </section>
 
@@ -35,6 +38,14 @@ export default function PrivacyPage() {
             Vos données sont utilisees exclusivement pour fournir le service
             d&apos;estimation de matériaux, gerer votre compte, et améliorer la
             précision de nos calculs.
+          </p>
+          <p className="mt-2">
+            Lorsque vous demandez à recevoir une estimation par e-mail depuis
+            un calculateur, votre adresse est utilisée pour vous envoyer cette
+            estimation et, si vous y avez consenti, pour vous adresser
+            occasionnellement des actualités EstiMate. Vous pouvez à tout
+            moment demander le retrait de votre adresse en nous contactant
+            (voir section 6).
           </p>
         </section>
 
