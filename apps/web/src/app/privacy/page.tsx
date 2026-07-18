@@ -1,92 +1,77 @@
-import Link from 'next/link';
+import type { Metadata } from 'next';
+import { LegalLayout, Section, P, LegalLink } from '@/components/legal/LegalLayout';
+
+export const metadata: Metadata = {
+  title: 'Politique de confidentialité',
+  description:
+    'Politique de confidentialité d’EstiMate : données collectées, utilisation, stockage, vos droits RGPD et cookies.',
+  alternates: { canonical: '/privacy' },
+};
 
 export default function PrivacyPage() {
   return (
-    <main className="mx-auto max-w-3xl px-4 py-12">
-      <Link href="/" className="text-sm text-blue-600 hover:text-blue-500">
-        &larr; Retour
-      </Link>
+    <LegalLayout title="Politique de confidentialité" updated="juillet 2026">
+      <Section title="1. Données collectées">
+        <P>
+          EstiMate collecte uniquement les données nécessaires au fonctionnement
+          du service : adresse email, données de projet (dimensions, types de
+          travaux), et photos uploadées pour l’analyse par vision par
+          ordinateur. Sur nos calculateurs gratuits accessibles sans compte,
+          nous collectons également votre adresse e-mail lorsque vous demandez à
+          recevoir votre estimation par e-mail, avec votre consentement
+          explicite.
+        </P>
+      </Section>
 
-      <h1 className="mt-6 text-3xl font-bold text-gray-900">
-        Politique de confidentialité
-      </h1>
-      <p className="mt-2 text-sm text-gray-500">
-        Dernière mise à jour : juillet 2026
-      </p>
+      <Section title="2. Utilisation des données">
+        <P>
+          Vos données sont utilisées exclusivement pour fournir le service
+          d’estimation de matériaux, gérer votre compte, et améliorer la
+          précision de nos calculs.
+        </P>
+        <P>
+          Lorsque vous demandez à recevoir une estimation par e-mail depuis un
+          calculateur, votre adresse est utilisée pour vous envoyer cette
+          estimation et, si vous y avez consenti, pour vous adresser
+          occasionnellement des actualités EstiMate. Vous pouvez à tout moment
+          demander le retrait de votre adresse en nous contactant (voir section
+          6).
+        </P>
+      </Section>
 
-      <div className="mt-8 space-y-6 text-gray-700">
-        <section>
-          <h2 className="text-xl font-semibold text-gray-900">
-            1. Données collectees
-          </h2>
-          <p className="mt-2">
-            EstiMate collecte uniquement les données nécessaires au
-            fonctionnement du service : adresse email, données de projet
-            (dimensions, types de travaux), et photos uploadees pour
-            l&apos;analyse par vision par ordinateur. Sur nos calculateurs
-            gratuits accessibles sans compte, nous collectons également votre
-            adresse e-mail lorsque vous demandez à recevoir votre estimation
-            par e-mail, avec votre consentement explicite.
-          </p>
-        </section>
+      <Section title="3. Stockage et sécurité">
+        <P>
+          Les données sont stockées de manière sécurisée sur des serveurs
+          conformes aux normes européennes. Les mots de passe sont hachés et les
+          communications sont chiffrées via HTTPS.
+        </P>
+      </Section>
 
-        <section>
-          <h2 className="text-xl font-semibold text-gray-900">
-            2. Utilisation des données
-          </h2>
-          <p className="mt-2">
-            Vos données sont utilisees exclusivement pour fournir le service
-            d&apos;estimation de matériaux, gerer votre compte, et améliorer la
-            précision de nos calculs.
-          </p>
-          <p className="mt-2">
-            Lorsque vous demandez à recevoir une estimation par e-mail depuis
-            un calculateur, votre adresse est utilisée pour vous envoyer cette
-            estimation et, si vous y avez consenti, pour vous adresser
-            occasionnellement des actualités EstiMate. Vous pouvez à tout
-            moment demander le retrait de votre adresse en nous contactant
-            (voir section 6).
-          </p>
-        </section>
+      <Section title="4. Vos droits">
+        <P>
+          Conformément au RGPD, vous disposez d’un droit d’accès, de
+          rectification et de suppression de vos données personnelles. Vous
+          pouvez supprimer votre compte à tout moment depuis les paramètres de
+          votre profil.
+        </P>
+      </Section>
 
-        <section>
-          <h2 className="text-xl font-semibold text-gray-900">
-            3. Stockage et securite
-          </h2>
-          <p className="mt-2">
-            Les données sont stockees de maniere securisee sur des serveurs
-            conformes aux normes europeennes. Les mots de passe sont haches et
-            les communications sont chiffrees via HTTPS.
-          </p>
-        </section>
+      <Section title="5. Cookies">
+        <P>
+          EstiMate utilise uniquement des cookies essentiels au fonctionnement
+          de l’authentification. Aucun cookie de suivi publicitaire n’est
+          utilisé.
+        </P>
+      </Section>
 
-        <section>
-          <h2 className="text-xl font-semibold text-gray-900">4. Vos droits</h2>
-          <p className="mt-2">
-            Conformement au RGPD, vous disposez d&apos;un droit d&apos;accès, de
-            rectification et de suppression de vos données personnelles. Vous
-            pouvez supprimer votre compte à tout moment depuis les paramètres
-            de votre profil.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-semibold text-gray-900">5. Cookies</h2>
-          <p className="mt-2">
-            EstiMate utilise uniquement des cookies essentiels au
-            fonctionnement de l&apos;authentification. Aucun cookie de suivi
-            publicitaire n&apos;est utilise.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-semibold text-gray-900">6. Contact</h2>
-          <p className="mt-2">
-            Pour toute question relative a vos données personnelles,
-            contactez-nous a privacy@estimate.app.
-          </p>
-        </section>
-      </div>
-    </main>
+      <Section title="6. Contact">
+        <P>
+          Pour toute question relative à vos données personnelles, contactez-nous
+          à privacy@estimate.app. Pour les informations légales relatives à
+          l’éditeur, consultez nos{' '}
+          <LegalLink href="/mentions-legales">mentions légales</LegalLink>.
+        </P>
+      </Section>
+    </LegalLayout>
   );
 }

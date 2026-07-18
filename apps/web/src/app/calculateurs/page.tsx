@@ -109,15 +109,24 @@ export default function CalculatorsHubPage() {
 
         <footer className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-stone-300/60 pt-8 text-sm text-stone-600 sm:flex-row">
           <p>© {new Date().getFullYear()} EstiMate</p>
-          <nav className="flex gap-6">
+          <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2">
             <Link href="/" className="hover:text-stone-950">
               Accueil
             </Link>
             <Link href="/pricing" className="hover:text-stone-950">
               Tarifs
             </Link>
+            <Link href="/cgu" className="hover:text-stone-950">
+              CGU
+            </Link>
+            <Link href="/cgv" className="hover:text-stone-950">
+              CGV
+            </Link>
             <Link href="/privacy" className="hover:text-stone-950">
               Confidentialité
+            </Link>
+            <Link href="/mentions-legales" className="hover:text-stone-950">
+              Mentions légales
             </Link>
           </nav>
         </footer>

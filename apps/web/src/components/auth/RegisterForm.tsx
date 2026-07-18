@@ -382,7 +382,14 @@ export function RegisterForm() {
       </form>
 
       <p className="text-center text-xs leading-6 text-stone-500">
-        En vous inscrivant, vous acceptez notre{' '}
+        En vous inscrivant, vous acceptez nos{' '}
+        <Link
+          href="/cgu"
+          className="font-medium text-[var(--accent)] hover:text-[var(--accent-strong)]"
+        >
+          conditions générales d&apos;utilisation
+        </Link>{' '}
+        et notre{' '}
         <Link
           href="/privacy"
           className="font-medium text-[var(--accent)] hover:text-[var(--accent-strong)]"
