@@ -1,0 +1,7 @@
+chiffreo.fr {
+	reverse_proxy localhost:3000
+}
+
+api.chiffreo.fr {
+	reverse_proxy localhost:3001
+}
