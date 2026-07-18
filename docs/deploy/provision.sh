@@ -12,6 +12,11 @@ if ! command -v docker >/dev/null 2>&1; then
   curl -fsSL https://get.docker.com | sh
 fi
 
+echo "==> Installation GnuPG (requis par Caddy ci-dessous et par les sauvegardes chiffrées — OPS-3)"
+if ! command -v gpg >/dev/null 2>&1; then
+  apt-get install -y gnupg
+fi
+
 echo "==> Installation Caddy (dépôt officiel — pas dans les dépôts Debian/Ubuntu)"
 if ! command -v caddy >/dev/null 2>&1; then
   apt-get install -y debian-keyring debian-archive-keyring apt-transport-https curl

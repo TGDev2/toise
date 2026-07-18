@@ -103,15 +103,16 @@ Deux volumes Docker contiennent les données persistantes :
 - `pgdata` — base PostgreSQL
 - `uploads` — photos des projets
 
-Exemple de sauvegarde quotidienne (cron) :
+La procédure complète (chiffrement GPG, rotation, cron, et surtout la
+**restauration testée** sur une base jetable) est documentée dans
+[`docs/deploy/BACKUP.md`](deploy/BACKUP.md). Une fois la clé GPG et
+`/etc/chiffreo/backup.env` en place (`BACKUP.md` §3), l'installation se
+résume à une ligne de crontab :
 
 ```bash
-# Base de données
-docker exec chiffreo-db pg_dump -U chiffreo chiffreo | gzip > /backup/chiffreo-$(date +%F).sql.gz
-
-# Uploads
-docker run --rm -v chiffreo_uploads:/data -v /backup:/backup alpine \
-  tar czf /backup/uploads-$(date +%F).tar.gz -C /data .
+sudo crontab -e
+# ajouter :
+15 3 * * * bash /opt/chiffreo/docs/deploy/backup.sh >> /var/log/chiffreo-backup.log 2>&1
 ```
 
 ## 6. Mise à jour de l'application
