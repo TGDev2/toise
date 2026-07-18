@@ -115,7 +115,69 @@ sudo crontab -e
 15 3 * * * bash /opt/chiffreo/docs/deploy/backup.sh >> /var/log/chiffreo-backup.log 2>&1
 ```
 
-## 6. Mise à jour de l'application
+## 6. Déploiement continu (CD)
+
+Une fois les sections 1 à 3 faites au moins une fois (VPS provisionné, `.env`
+renseigné, premier `docker compose up -d --build` réussi), les mises à jour de
+`api`/`web` peuvent être automatisées : `.github/workflows/deploy.yml` se
+déclenche sur un tag `vX.Y.Z`, rejoue la CI (`ci.yml`, en `workflow_call`)
+comme garde-fou, construit et pousse les images vers GHCR
+(`ghcr.io/tgdev2/chiffreo-api` et `-web`), puis se connecte en SSH au VPS pour
+synchroniser `docker-compose.prod.yml` et faire `docker compose pull` +
+`up -d` sur `api`/`web` uniquement (`cv-service` reste construit depuis les
+sources sur le VPS, hors périmètre de cette CD).
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Le pipeline ne bootstrap pas un VPS neuf : il suppose `/opt/chiffreo` déjà
+cloné et fonctionnel (même chemin que `docs/deploy/backup.sh`).
+
+### Secrets GitHub requis
+
+À renseigner dans *Settings → Secrets and variables → Actions* du dépôt.
+
+| Secret | Usage |
+|---|---|
+| `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_FIREBASE_APP_ID` | build-args figés dans l'image `web` (mêmes valeurs que dans le `.env` du VPS) |
+| `VPS_SSH_HOST` | IP ou domaine du VPS |
+| `VPS_SSH_USER` | utilisateur SSH capable de lancer `docker` (root aujourd'hui, comme le reste de ce guide) |
+| `VPS_SSH_KEY` | clé privée SSH (idéalement une clé dédiée au déploiement plutôt que la clé personnelle/root, à ajouter dans `authorized_keys` du VPS) |
+| `VPS_SSH_KNOWN_HOSTS` | empreinte du VPS, épinglée à l'avance (pas de confiance au premier contact) |
+
+Génération de `VPS_SSH_KNOWN_HOSTS` :
+
+```bash
+ssh-keyscan -H -t ed25519,rsa <ip-ou-domaine-vps> > known_hosts_chiffreo
+# Vérifier l'empreinte affichée contre celle donnée par la console web du
+# fournisseur VPS avant de coller le contenu du fichier dans le secret.
+```
+
+L'authentification au registre GHCR n'a besoin d'aucun secret supplémentaire :
+le job de build pousse avec le `GITHUB_TOKEN` automatique, et le job de
+déploiement relaie ce même token (valable seulement le temps du run) au VPS
+par SSH pour le `pull`, puis `docker logout` — aucun identifiant de registre
+durable n'est stocké sur le VPS.
+
+### Rollback
+
+```bash
+# Sur le VPS, dans /opt/chiffreo :
+IMAGE_TAG=v1.0.0 docker compose -f docker-compose.prod.yml pull api web
+IMAGE_TAG=v1.0.0 docker compose -f docker-compose.prod.yml up -d api web
+```
+
+### Limites connues
+
+- Redémarrage bref d'`api`/`web` à chaque déploiement (identique au flux
+  manuel `--build` existant, pas une régression).
+- `:latest` sur GHCR reflète le tag/build le plus récent, pas nécessairement
+  le plus haut en semver — la CD elle-même ne s'appuie jamais dessus, elle
+  épingle toujours `IMAGE_TAG` explicitement.
+
+## 7. Déploiement manuel (secours / premier déploiement)
 
 ```bash
 git pull

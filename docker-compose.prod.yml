@@ -4,7 +4,8 @@
 # Un reverse proxy (Caddy recommandé, TLS automatique) doit exposer :
 #   - web  (port 3000)  → https://votre-domaine.fr
 #   - api  (port 3001)  → https://api.votre-domaine.fr (ou /api sur le même domaine)
-# Voir docs/DEPLOY.md.
+# Voir docs/DEPLOY.md — section "Déploiement continu (CD)" pour le flux automatisé
+# (api/web sont alors mis à jour via `image:`/IMAGE_TAG plutôt que reconstruits ici).
 
 name: chiffreo
 
@@ -26,6 +27,9 @@ services:
       retries: 5
 
   api:
+    # `image:` sert au flux CD (`docker compose pull` sur le VPS, cf. DEPLOY.md) ;
+    # `build:` reste le secours pour une construction manuelle depuis les sources.
+    image: ghcr.io/tgdev2/chiffreo-api:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -75,6 +79,8 @@ services:
       start_period: 30s
 
   web:
+    # Voir le commentaire sur `api.image` ci-dessus : même logique CD/secours.
+    image: ghcr.io/tgdev2/chiffreo-web:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: apps/web/Dockerfile
