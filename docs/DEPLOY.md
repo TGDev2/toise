@@ -187,6 +187,46 @@ docker compose -f docker-compose.prod.yml up -d --build
 Les migrations éventuelles sont appliquées automatiquement au redémarrage de
 l'API.
 
+## 8. Monitoring (Sentry)
+
+Optionnel — no-op si les variables sont absentes (l'API démarre et log un
+avertissement, le build web reste inchangé). Sans ça, un incident (DB en
+panne, webhook Stripe qui échoue) ne se voit qu'en allant lire les logs.
+
+1. Créer **deux** projets sur [sentry.io](https://sentry.io) (ou un
+   self-hosted) : un projet *Node* pour l'API, un projet *Next.js* pour le
+   web — chacun donne son propre DSN.
+2. Renseigner dans `.env` :
+
+   | Variable | Rôle |
+   |---|---|
+   | `SENTRY_DSN` | DSN du projet Node (API) |
+   | `SENTRY_TRACES_SAMPLE_RATE` | Taux d'échantillonnage des traces API (défaut `0.2`) |
+   | `NEXT_PUBLIC_SENTRY_DSN` | DSN du projet Next.js (web) — figé au build de l'image, comme les autres `NEXT_PUBLIC_*` |
+   | `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE` | Taux d'échantillonnage des traces web (défaut `0.2`) |
+
+3. **Alerte** : chaque projet Sentry envoie par défaut un e-mail à la
+   création de toute nouvelle issue — aucune règle supplémentaire n'est
+   requise pour une alerte minimale. Vérifier dans le dashboard (Alerts)
+   que cette règle par défaut résout bien vers un destinataire réel (elle
+   notifie les « Issue Owners » — sans règle d'ownership configurée sur un
+   projet neuf, confirmer qu'elle retombe sur l'équipe/vous plutôt que sur
+   personne).
+   - Le healthcheck DB (`/api/v1/health`) et le webhook Stripe (échec de
+     traitement uniquement, tag `component: stripe-webhook` — pas les
+     signatures invalides, bruit de scanners attendu sur un endpoint
+     public) remontent tous les deux comme des issues via ce même mécanisme.
+4. **Uptime réel** (processus API totalement mort, pas juste une DB en
+   panne — aucun code embarqué ne peut s'auto-signaler dans ce cas) :
+   créer un **Sentry Uptime Monitor** (Alerts → Uptime Monitors) pointé sur
+   `https://api.chiffreo.fr/api/v1/health`, et optionnellement un second sur
+   `https://chiffreo.fr`. Sentry ping depuis l'extérieur et alerte si
+   l'endpoint ne répond plus.
+5. **Limite connue** : pas d'upload de source maps (`withSentryConfig`
+   volontairement omis — nécessiterait `SENTRY_AUTH_TOKEN`/org/project en
+   secrets CI supplémentaires, hors périmètre « minimal »). Les stack traces
+   web en prod ne seront pas dé-minifiées dans le dashboard Sentry.
+
 ## Dépannage
 
 | Symptôme | Piste |
@@ -195,3 +235,4 @@ l'API.
 | Checkout Stripe → 503 | `STRIPE_SECRET_KEY` absente (l'API tourne mais les paiements sont désactivés) |
 | Analyse CV systématiquement en échec | vérifier `docker logs chiffreo-cv` ; augmenter `CV_SERVICE_TIMEOUT_MS` ou la limite mémoire (4 G par défaut) |
 | Images de la galerie cassées | `NEXT_PUBLIC_API_URL` au build web ne correspond pas à l'URL publique de l'API |
+| Rien n'apparaît dans Sentry | `SENTRY_DSN`/`NEXT_PUBLIC_SENTRY_DSN` absente (voir le warn au boot de l'API) ou DSN erroné — le SDK avale silencieusement les échecs d'envoi, jamais d'erreur bruyante |

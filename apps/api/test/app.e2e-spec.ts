@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, Module } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppController } from './../src/app.controller';
@@ -7,7 +8,13 @@ import { AppService } from './../src/app.service';
 
 @Module({
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: DataSource,
+      useValue: { query: jest.fn().mockResolvedValue([]) },
+    },
+  ],
 })
 class TestAppModule {}
 
@@ -33,5 +40,12 @@ describe('AppController (e2e)', () => {
       .get('/api/v1')
       .expect(200)
       .expect('Hello World!');
+  });
+
+  it('/api/v1/health (GET)', () => {
+    return request(app.getHttpServer())
+      .get('/api/v1/health')
+      .expect(200)
+      .expect({ status: 'ok' });
   });
 });

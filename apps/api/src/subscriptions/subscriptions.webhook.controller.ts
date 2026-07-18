@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
 import type { Response } from 'express';
+import * as Sentry from '@sentry/node';
 import { SubscriptionsService } from './subscriptions.service';
 
 @Controller('subscriptions')
@@ -52,6 +53,10 @@ export class SubscriptionsWebhookController {
         `Error processing webhook event ${event.type}: ${(err as Error).message}`,
         (err as Error).stack,
       );
+      // Signal distinct de l'échec de vérification de signature (bruit de
+      // scanners attendu sur un endpoint public) : ceci est un event validé
+      // et réclamé dont le traitement métier a réellement échoué.
+      Sentry.captureException(err, { tags: { component: 'stripe-webhook' } });
       // Libère l'event pour que le retry Stripe puisse le rejouer.
       await this.subscriptionsService.releaseWebhookEvent(event.id);
       res.status(500).json({ error: 'Webhook processing failed' });

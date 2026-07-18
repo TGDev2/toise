@@ -1,3 +1,4 @@
+import './instrument';
 import { NestFactory } from '@nestjs/core';
 import { ConsoleLogger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
