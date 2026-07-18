@@ -27,7 +27,7 @@ import { apiDelete, apiPost, apiPut } from '@/lib/api';
 import { errorHasCode } from '@/lib/errors';
 import { getFirebaseAuth } from '@/lib/firebase';
 
-const LOCAL_PROJECTS_KEY = 'estimate_local_projects';
+const LOCAL_PROJECTS_KEY = 'chiffreo_local_projects';
 
 interface LocalProjectDraft {
   id: string;
@@ -170,10 +170,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // vérifie le token Firebase sur chaque requête.
       if (user) {
         document.cookie =
-          'estimate_auth=1; path=/; max-age=2592000; samesite=lax';
+          'chiffreo_auth=1; path=/; max-age=2592000; samesite=lax';
         await syncWithBackend();
       } else {
-        document.cookie = 'estimate_auth=; path=/; max-age=0';
+        document.cookie = 'chiffreo_auth=; path=/; max-age=0';
         setAppUser(null);
       }
       setIsLoading(false);

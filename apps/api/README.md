@@ -1,4 +1,4 @@
-# EstiMate — Backend API
+# Chiffréo — Backend API
 
 Backend REST API construit avec **NestJS 11** et **TypeORM** sur **PostgreSQL 16**.
 
@@ -203,9 +203,9 @@ Toutes les variables d'environnement sont chargées via `ConfigModule` et centra
 | `PORT` | Port du serveur | `3001` |
 | `DB_HOST` | Hôte PostgreSQL | `localhost` |
 | `DB_PORT` | Port PostgreSQL | `5432` |
-| `DB_USERNAME` | Utilisateur DB | `estimate` |
-| `DB_PASSWORD` | Mot de passe DB | `estimate_dev` |
-| `DB_NAME` | Nom de la base | `estimate` |
+| `DB_USERNAME` | Utilisateur DB | `chiffreo` |
+| `DB_PASSWORD` | Mot de passe DB | `chiffreo_dev` |
+| `DB_NAME` | Nom de la base | `chiffreo` |
 | `CORS_ORIGIN` | Origine CORS autorisée | `http://localhost:3000` |
 | `FIREBASE_PROJECT_ID` | ID du projet Firebase | — |
 | `FIREBASE_CLIENT_EMAIL` | Email du service account | — |

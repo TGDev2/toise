@@ -6,11 +6,11 @@ WORKDIR /repo
 
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/api/package.json apps/api/
-RUN pnpm install --frozen-lockfile --filter @estimate/api
+RUN pnpm install --frozen-lockfile --filter @chiffreo/api
 
 COPY apps/api apps/api
-RUN pnpm --filter @estimate/api build \
-  && pnpm --filter @estimate/api deploy --prod --legacy /prod/api
+RUN pnpm --filter @chiffreo/api build \
+  && pnpm --filter @chiffreo/api deploy --prod --legacy /prod/api
 
 FROM node:22-alpine AS runner
 ENV NODE_ENV=production

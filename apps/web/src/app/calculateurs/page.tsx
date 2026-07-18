@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     'Calculateurs gratuits pour vos travaux de rénovation : peinture, carrelage, parquet. Estimez vos quantités de matériaux en quelques secondes, sans inscription.',
   alternates: { canonical: '/calculateurs' },
   openGraph: {
-    title: 'Calculateurs travaux gratuits | EstiMate',
+    title: 'Calculateurs travaux gratuits | Chiffréo',
     description:
       'Estimez vos quantités de matériaux (peinture, carrelage, parquet) en quelques secondes, sans inscription.',
     url: '/calculateurs',
@@ -30,7 +30,7 @@ export default function CalculatorsHubPage() {
       <div className="mx-auto w-full max-w-6xl">
         <header className="flex items-center justify-between py-6">
           <Link href="/">
-            <Logo height={30} priority />
+            <Logo height={30} />
           </Link>
           <nav className="flex items-center gap-3">
             <Link
@@ -87,7 +87,7 @@ export default function CalculatorsHubPage() {
             Besoin de plus qu’un calcul ?
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-base text-stone-700">
-            EstiMate transforme votre estimation en projet complet : liste de
+            Chiffréo transforme votre estimation en projet complet : liste de
             courses, suivi de chantier et devis. Deux projets offerts, sans
             carte bancaire.
           </p>
@@ -108,7 +108,7 @@ export default function CalculatorsHubPage() {
         </section>
 
         <footer className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-stone-300/60 pt-8 text-sm text-stone-600 sm:flex-row">
-          <p>© {new Date().getFullYear()} EstiMate</p>
+          <p>© {new Date().getFullYear()} Chiffréo</p>
           <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2">
             <Link href="/" className="hover:text-stone-950">
               Accueil

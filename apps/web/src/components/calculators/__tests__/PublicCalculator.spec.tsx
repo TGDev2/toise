@@ -239,7 +239,7 @@ describe('PublicCalculator', () => {
     });
 
     const drafts = JSON.parse(
-      localStorage.getItem('estimate_local_projects') ?? '[]',
+      localStorage.getItem('chiffreo_local_projects') ?? '[]',
     );
     expect(drafts).toHaveLength(1);
     expect(drafts[0]).toMatchObject({

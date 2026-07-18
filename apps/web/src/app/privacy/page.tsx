@@ -4,7 +4,7 @@ import { LegalLayout, Section, P, LegalLink } from '@/components/legal/LegalLayo
 export const metadata: Metadata = {
   title: 'Politique de confidentialité',
   description:
-    'Politique de confidentialité d’EstiMate : données collectées, utilisation, stockage, vos droits RGPD et cookies.',
+    'Politique de confidentialité d’Chiffréo : données collectées, utilisation, stockage, vos droits RGPD et cookies.',
   alternates: { canonical: '/privacy' },
 };
 
@@ -13,7 +13,7 @@ export default function PrivacyPage() {
     <LegalLayout title="Politique de confidentialité" updated="juillet 2026">
       <Section title="1. Données collectées">
         <P>
-          EstiMate collecte uniquement les données nécessaires au fonctionnement
+          Chiffréo collecte uniquement les données nécessaires au fonctionnement
           du service : adresse email, données de projet (dimensions, types de
           travaux), et photos uploadées pour l’analyse par vision par
           ordinateur. Sur nos calculateurs gratuits accessibles sans compte,
@@ -33,7 +33,7 @@ export default function PrivacyPage() {
           Lorsque vous demandez à recevoir une estimation par e-mail depuis un
           calculateur, votre adresse est utilisée pour vous envoyer cette
           estimation et, si vous y avez consenti, pour vous adresser
-          occasionnellement des actualités EstiMate. Vous pouvez à tout moment
+          occasionnellement des actualités Chiffréo. Vous pouvez à tout moment
           demander le retrait de votre adresse en nous contactant (voir section
           6).
         </P>
@@ -58,7 +58,7 @@ export default function PrivacyPage() {
 
       <Section title="5. Cookies">
         <P>
-          EstiMate utilise uniquement des cookies essentiels au fonctionnement
+          Chiffréo utilise uniquement des cookies essentiels au fonctionnement
           de l’authentification. Aucun cookie de suivi publicitaire n’est
           utilisé.
         </P>
@@ -67,7 +67,7 @@ export default function PrivacyPage() {
       <Section title="6. Contact">
         <P>
           Pour toute question relative à vos données personnelles, contactez-nous
-          à privacy@estimate.app. Pour les informations légales relatives à
+          à privacy@chiffreo.fr. Pour les informations légales relatives à
           l’éditeur, consultez nos{' '}
           <LegalLink href="/mentions-legales">mentions légales</LegalLink>.
         </P>

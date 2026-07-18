@@ -2,8 +2,8 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'EstiMate — Estimation de matériaux de rénovation',
-    short_name: 'EstiMate',
+    name: 'Chiffréo — Estimation de matériaux de rénovation',
+    short_name: 'Chiffréo',
     description:
       'Estimez précisément vos matériaux de rénovation : dimensions, travaux, liste d\'achat.',
     start_url: '/dashboard',

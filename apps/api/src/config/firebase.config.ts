@@ -32,7 +32,7 @@ export class FirebaseConfig implements OnModuleInit {
         this.logger.warn(
           'Identifiants Firebase absents — initialisation en mode émulateur (dev uniquement). La vérification des tokens échouera contre le vrai Firebase.',
         );
-        admin.initializeApp({ projectId: projectId ?? 'estimate-dev' });
+        admin.initializeApp({ projectId: projectId ?? 'chiffreo-dev' });
       }
     }
   }

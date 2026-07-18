@@ -7,7 +7,7 @@ import { NextResponse, type NextRequest } from 'next/server';
  * redirection côté client en secours.
  */
 export function proxy(request: NextRequest) {
-  const hasSession = request.cookies.has('estimate_auth');
+  const hasSession = request.cookies.has('chiffreo_auth');
 
   if (!hasSession) {
     const loginUrl = new URL('/login', request.url);

@@ -107,7 +107,7 @@ export default function HomePage() {
     <main className="flex-1 px-4 pb-16 sm:px-6 lg:px-8">
       <div className="mx-auto w-full max-w-6xl">
         <header className="flex items-center justify-between py-6">
-          <Logo height={30} priority />
+          <Logo height={30} />
           <nav className="flex items-center gap-3">
             <Link
               href={hasSession ? '/dashboard' : '/login'}
@@ -139,7 +139,7 @@ export default function HomePage() {
 
             <p className="mt-5 max-w-xl text-lg leading-8 text-stone-700">
               Sur un chantier amateur, une part des pots, cartons et rouleaux
-              finit à la cave. EstiMate photographie votre pièce, calcule les
+              finit à la cave. Chiffréo photographie votre pièce, calcule les
               quantités exactes — ouvertures déduites, pertes de coupe, couches —
               et génère votre liste d&apos;achats chiffrée.
             </p>
@@ -352,7 +352,7 @@ export default function HomePage() {
         </section>
 
         <footer className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-stone-300/60 pt-8 text-sm text-stone-600 sm:flex-row">
-          <p>© {new Date().getFullYear()} EstiMate</p>
+          <p>© {new Date().getFullYear()} Chiffréo</p>
           <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2">
             <Link href="/pricing" className="hover:text-stone-950">
               Tarifs

@@ -1,8 +1,8 @@
-# Architecture technique — EstiMate
+# Architecture technique — Chiffréo
 
 ## Vue d'ensemble
 
-EstiMate est un **monorepo pnpm** composé de 3 applications communicant via REST HTTP :
+Chiffréo est un **monorepo pnpm** composé de 3 applications communicant via REST HTTP :
 
 ```
                         ┌──────────────────────────────────┐

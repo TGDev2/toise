@@ -41,7 +41,7 @@ export class BrevoClientService {
         'BREVO_API_KEY ou BREVO_SENDER_EMAIL absent(e) — l’envoi d’e-mails est désactivé (dev uniquement).',
       );
     }
-    this.senderName = this.config.get<string>('brevo.senderName', 'EstiMate');
+    this.senderName = this.config.get<string>('brevo.senderName', 'Chiffréo');
   }
 
   async sendTransactionalEmail(

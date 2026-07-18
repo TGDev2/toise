@@ -12,7 +12,7 @@ import { WorkSelectionForm } from '@/components/work-selection/WorkSelectionForm
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
-const STORAGE_KEY = 'estimate_local_projects';
+const STORAGE_KEY = 'chiffreo_local_projects';
 
 interface LocalProject {
   id: string;

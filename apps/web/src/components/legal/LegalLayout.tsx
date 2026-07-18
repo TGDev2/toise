@@ -26,7 +26,7 @@ export function LegalLayout({
       <div className="mx-auto w-full max-w-3xl">
         <header className="flex items-center justify-between py-6">
           <Link href="/">
-            <Logo height={30} priority />
+            <Logo height={30} />
           </Link>
           <nav className="flex items-center gap-3">
             <Link
@@ -55,7 +55,7 @@ export function LegalLayout({
         </article>
 
         <footer className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-stone-300/60 pt-8 text-sm text-stone-600 sm:flex-row">
-          <p>© {new Date().getFullYear()} EstiMate</p>
+          <p>© {new Date().getFullYear()} Chiffréo</p>
           <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2">
             {FOOTER_LINKS.map((link) => (
               <Link

@@ -1,14 +1,22 @@
 # Déploiement en production (VPS + Docker Compose)
 
-Ce guide décrit le déploiement d'EstiMate sur un VPS (Hetzner, OVH, Scaleway…)
+Ce guide décrit le déploiement d'Chiffréo sur un VPS (Hetzner, OVH, Scaleway…)
 avec Docker Compose et Caddy comme reverse proxy (TLS automatique).
 
 ## Prérequis
 
-- Un VPS Linux (4 Go de RAM minimum — le service CV consomme jusqu'à 4 Go
-  pendant l'inférence ; 8 Go recommandés), Docker + Docker Compose installés.
-- Un nom de domaine pointant vers le VPS (ex. `estimate.fr` et
-  `api.estimate.fr`).
+- Un VPS Linux Ubuntu/Debian (4 Go de RAM minimum — le service CV consomme
+  jusqu'à 4 Go pendant l'inférence ; 8 Go recommandés, ex. Hetzner CX32).
+- Un nom de domaine pointant vers le VPS via des enregistrements DNS `A` (et
+  `AAAA` en IPv6) — ex. `chiffreo.fr` et `api.chiffreo.fr`.
+- Exécuter [`docs/deploy/provision.sh`](deploy/provision.sh) sur le VPS neuf
+  (root) : installe Docker + Compose, Caddy (dépôt officiel — absent des
+  dépôts Debian/Ubuntu par défaut) et configure le pare-feu UFW
+  (SSH/80/443 uniquement).
+
+  ```bash
+  ssh root@<ip> 'bash -s' < docs/deploy/provision.sh
+  ```
 - Un projet **Firebase** avec Authentication activée (Email/Password, Google,
   Apple, Anonyme) et un service account (clé privée JSON).
 - Un compte **Stripe** avec les produits/prix créés (plan Pro obligatoire,
@@ -17,7 +25,7 @@ avec Docker Compose et Caddy comme reverse proxy (TLS automatique).
 ## 1. Préparer l'environnement
 
 ```bash
-git clone <repository-url> && cd Estimate
+git clone <repository-url> && cd Chiffreo
 cp .env.example .env
 ```
 
@@ -28,12 +36,12 @@ critiques sont validées au démarrage de l'API (démarrage refusé si absentes)
 |---|---|
 | `NODE_ENV` | `production` |
 | `DB_PASSWORD` | mot de passe fort généré |
-| `CORS_ORIGIN` | `https://estimate.fr` |
-| `PUBLIC_URL` | `https://estimate.fr` |
+| `CORS_ORIGIN` | `https://chiffreo.fr` |
+| `PUBLIC_URL` | `https://chiffreo.fr` |
 | `FIREBASE_PROJECT_ID` / `FIREBASE_CLIENT_EMAIL` / `FIREBASE_PRIVATE_KEY` | depuis la clé de service account |
 | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_PRO_PRICE_ID` | depuis le dashboard Stripe |
-| `NEXT_PUBLIC_API_URL` | `https://api.estimate.fr/api/v1` |
-| `NEXT_PUBLIC_SITE_URL` | `https://estimate.fr` |
+| `NEXT_PUBLIC_API_URL` | `https://api.chiffreo.fr/api/v1` |
+| `NEXT_PUBLIC_SITE_URL` | `https://chiffreo.fr` |
 | `NEXT_PUBLIC_FIREBASE_*` | config web Firebase |
 
 > ⚠️ Les variables `NEXT_PUBLIC_*` sont **figées au build de l'image web**.
@@ -65,23 +73,11 @@ seul le reverse proxy les rend accessibles de l'extérieur.
 
 ## 3. Reverse proxy (Caddy)
 
-```bash
-sudo apt install caddy
-```
-
-`/etc/caddy/Caddyfile` :
-
-```caddy
-estimate.fr {
-    reverse_proxy localhost:3000
-}
-
-api.estimate.fr {
-    reverse_proxy localhost:3001
-}
-```
+Caddy est déjà installé par `provision.sh`. Copier le Caddyfile du repo puis
+recharger :
 
 ```bash
+sudo cp docs/deploy/Caddyfile /etc/caddy/Caddyfile
 sudo systemctl reload caddy
 ```
 
@@ -91,7 +87,7 @@ Caddy obtient et renouvelle automatiquement les certificats TLS.
 
 Dans le dashboard Stripe → Developers → Webhooks, créer un endpoint :
 
-- URL : `https://api.estimate.fr/api/v1/subscriptions/webhook`
+- URL : `https://api.chiffreo.fr/api/v1/subscriptions/webhook`
 - Événements : `checkout.session.completed`, `invoice.paid`,
   `invoice.payment_failed`, `customer.subscription.updated`,
   `customer.subscription.deleted`
@@ -111,10 +107,10 @@ Exemple de sauvegarde quotidienne (cron) :
 
 ```bash
 # Base de données
-docker exec estimate-db pg_dump -U estimate estimate | gzip > /backup/estimate-$(date +%F).sql.gz
+docker exec chiffreo-db pg_dump -U chiffreo chiffreo | gzip > /backup/chiffreo-$(date +%F).sql.gz
 
 # Uploads
-docker run --rm -v estimate_uploads:/data -v /backup:/backup alpine \
+docker run --rm -v chiffreo_uploads:/data -v /backup:/backup alpine \
   tar czf /backup/uploads-$(date +%F).tar.gz -C /data .
 ```
 
@@ -134,5 +130,5 @@ l'API.
 |---|---|
 | L'API refuse de démarrer avec « Configuration invalide » | une variable requise manque dans `.env` (le message liste lesquelles) |
 | Checkout Stripe → 503 | `STRIPE_SECRET_KEY` absente (l'API tourne mais les paiements sont désactivés) |
-| Analyse CV systématiquement en échec | vérifier `docker logs estimate-cv` ; augmenter `CV_SERVICE_TIMEOUT_MS` ou la limite mémoire (4 G par défaut) |
+| Analyse CV systématiquement en échec | vérifier `docker logs chiffreo-cv` ; augmenter `CV_SERVICE_TIMEOUT_MS` ou la limite mémoire (4 G par défaut) |
 | Images de la galerie cassées | `NEXT_PUBLIC_API_URL` au build web ne correspond pas à l'URL publique de l'API |

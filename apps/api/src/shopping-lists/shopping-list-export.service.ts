@@ -128,7 +128,7 @@ export class ShoppingListExportService {
     doc
       .fontSize(8)
       .fillColor('#999999')
-      .text(`Généré par EstiMate — ${dateStr}`, { align: 'center' });
+      .text(`Généré par Chiffréo — ${dateStr}`, { align: 'center' });
 
     doc.end();
 

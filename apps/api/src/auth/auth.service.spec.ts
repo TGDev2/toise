@@ -68,11 +68,11 @@ describe('AuthService', () => {
     const { firebase, uid, ...tokenOverrides } = overrides;
 
     return {
-      aud: 'estimate-test',
+      aud: 'chiffreo-test',
       auth_time: 0,
       exp: 0,
       iat: 0,
-      iss: 'https://securetoken.google.com/estimate-test',
+      iss: 'https://securetoken.google.com/chiffreo-test',
       uid,
       sub: uid,
       firebase: {

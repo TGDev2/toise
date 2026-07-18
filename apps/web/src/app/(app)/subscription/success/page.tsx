@@ -51,7 +51,7 @@ export default function SubscriptionSuccessPage() {
         </div>
 
         <h1 className="text-2xl font-bold text-stone-900">
-          Bienvenue dans EstiMate Pro !
+          Bienvenue dans Chiffréo Pro !
         </h1>
         <p className="mt-3 text-sm text-stone-600">
           Votre essai gratuit de 7 jours a commence. Toutes les fonctionnalités

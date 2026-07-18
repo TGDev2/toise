@@ -12,8 +12,8 @@ const httpServiceMock = {
 function makeConfigMock(overrides: Record<string, unknown> = {}) {
   const map: Record<string, unknown> = {
     'brevo.apiKey': 'test-api-key',
-    'brevo.senderEmail': 'estimations@estimate.fr',
-    'brevo.senderName': 'EstiMate',
+    'brevo.senderEmail': 'estimations@chiffreo.fr',
+    'brevo.senderName': 'Chiffréo',
     ...overrides,
   };
   return {
@@ -56,7 +56,7 @@ describe('BrevoClientService.sendTransactionalEmail', () => {
     expect(httpServiceMock.post).toHaveBeenCalledWith(
       'https://api.brevo.com/v3/smtp/email',
       expect.objectContaining({
-        sender: { name: 'EstiMate', email: 'estimations@estimate.fr' },
+        sender: { name: 'Chiffréo', email: 'estimations@chiffreo.fr' },
         to: [{ email: 'visiteur@example.fr' }],
         subject: 'Votre estimation',
         htmlContent: '<p>Hello</p>',

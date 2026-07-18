@@ -22,7 +22,7 @@ function escapeHtml(value: string): string {
 export function buildCalculatorResultEmail(
   data: CalculatorResultEmailData,
 ): RenderedEmail {
-  const subject = `Votre estimation EstiMate — ${data.workTypeLabel}`;
+  const subject = `Votre estimation Chiffréo — ${data.workTypeLabel}`;
 
   const rows = data.items
     .map(
@@ -44,7 +44,7 @@ export function buildCalculatorResultEmail(
       <tbody>${rows}</tbody>
     </table>
     <p style="font-size:12px;color:#a8a29e;margin-top:32px;">
-      Vous recevez cet e-mail suite à votre demande sur EstiMate. Pour toute question ou pour ne plus recevoir nos e-mails, contactez-nous à privacy@estimate.app.
+      Vous recevez cet e-mail suite à votre demande sur Chiffréo. Pour toute question ou pour ne plus recevoir nos e-mails, contactez-nous à privacy@chiffreo.fr.
     </p>
   </div>
 </body></html>`;
@@ -56,8 +56,8 @@ export function buildCalculatorResultEmail(
       (i) => `- ${i.material_name} : ${i.units_needed} × ${i.packaging_label}`,
     ),
     '',
-    'Vous recevez cet e-mail suite à votre demande sur EstiMate.',
-    'Pour ne plus recevoir nos e-mails, contactez-nous à privacy@estimate.app.',
+    'Vous recevez cet e-mail suite à votre demande sur Chiffréo.',
+    'Pour ne plus recevoir nos e-mails, contactez-nous à privacy@chiffreo.fr.',
   ].join('\n');
 
   return { subject, html, text };

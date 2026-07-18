@@ -17,9 +17,9 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @estimate/api lint
-      - run: pnpm --filter @estimate/api build
-      - run: pnpm --filter @estimate/api test
+      - run: pnpm --filter @chiffreo/api lint
+      - run: pnpm --filter @chiffreo/api build
+      - run: pnpm --filter @chiffreo/api test
 
   web:
     name: Web (lint, build, tests)
@@ -32,9 +32,9 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @estimate/web lint
-      - run: pnpm --filter @estimate/web test
-      - run: pnpm --filter @estimate/web build
+      - run: pnpm --filter @chiffreo/web lint
+      - run: pnpm --filter @chiffreo/web test
+      - run: pnpm --filter @chiffreo/web build
         env:
           NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
 

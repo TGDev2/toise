@@ -1,4 +1,4 @@
-# EstiMate — Frontend Web
+# Chiffréo — Frontend Web
 
 Application web construite avec **Next.js 16** (App Router), **React 19** et **Tailwind CSS 4**.
 
@@ -158,7 +158,7 @@ Fournit l'état d'authentification à toute l'application. Wrappé dans `layout.
 | `forgotPassword(email)` | Réinitialisation du mot de passe |
 | `syncWithBackend()` | Synchroniser le profil avec le backend |
 
-**Migration des projets guest :** Lors de la conversion d'un compte invité, les projets stockés en `localStorage` (clé `estimate_local_projects`) sont automatiquement migrés vers le backend via `migrateLocalProjects()`.
+**Migration des projets guest :** Lors de la conversion d'un compte invité, les projets stockés en `localStorage` (clé `chiffreo_local_projects`) sont automatiquement migrés vers le backend via `migrateLocalProjects()`.
 
 ### FeatureGateContext
 

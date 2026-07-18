@@ -1,4 +1,4 @@
-# EstiMate — Stratégie produit : analyse d'écart, architecture cible et recommandations
+# Chiffréo — Stratégie produit : analyse d'écart, architecture cible et recommandations
 
 > **Statut** : document de travail — juillet 2026
 > **Complète** : [CONTEXT.md](CONTEXT.md) (brief de cadrage, mars 2026) et [ARCHITECTURE.md](ARCHITECTURE.md)
@@ -90,7 +90,7 @@ Monorepo pnpm à trois applications : `apps/api` (NestJS 11 + PostgreSQL/TypeORM
 
 ### 4.1 Marché : France/Belgique d'abord (recommandé)
 
-La vision cite Home Depot et Lowe's ; le produit réel est intégralement français : langue en dur, EUR, TVA 20 %, SIRET, catalogue matériaux français, cible VPS `estimate.fr`. Réécrire tout cela pour l'Amérique du Nord coûterait des mois (i18n, catalogue, fiscalité, partenaires) pour un marché plus concurrentiel.
+La vision cite Home Depot et Lowe's ; le produit réel est intégralement français : langue en dur, EUR, TVA 20 %, SIRET, catalogue matériaux français, cible VPS `chiffreo.fr`. Réécrire tout cela pour l'Amérique du Nord coûterait des mois (i18n, catalogue, fiscalité, partenaires) pour un marché plus concurrentiel.
 
 **Recommandation** : assumer FR/BE comme marché de lancement.
 - Partenaires distribution cibles : **Leroy Merlin, ManoMano (programme d'affiliation existant, le plus accessible), Castorama, Brico Dépôt**. L'affiliation (lien sortant commissionné) est atteignable sans partenariat commercial, contrairement à un « seamless checkout ».

@@ -1,4 +1,4 @@
-# Guide de contribution — EstiMate
+# Guide de contribution — Chiffréo
 
 ## Prérequis
 
@@ -13,7 +13,7 @@
 ```bash
 # 1. Cloner le repo
 git clone <repository-url>
-cd Estimate
+cd Chiffreo
 
 # 2. Installer les dépendances
 pnpm install
@@ -143,7 +143,7 @@ pnpm test:web
 2. Créer les fichiers : `*.module.ts`, `*.controller.ts`, `*.service.ts`
 3. Créer les entités dans `entities/`
 4. Créer les DTOs dans `dto/` avec les validations `class-validator`
-5. Générer une migration : `pnpm --filter @estimate/api migration:generate -- ./migrations/NomMigration`
+5. Générer une migration : `pnpm --filter @chiffreo/api migration:generate -- ./migrations/NomMigration`
 6. Importer le module dans `app.module.ts`
 7. Écrire les tests
 
@@ -168,15 +168,15 @@ pnpm test:web
 ### API (Jest)
 
 ```bash
-pnpm --filter @estimate/api test          # Unitaires
-pnpm --filter @estimate/api test:cov      # Avec couverture
-pnpm --filter @estimate/api test:e2e      # End-to-end
+pnpm --filter @chiffreo/api test          # Unitaires
+pnpm --filter @chiffreo/api test:cov      # Avec couverture
+pnpm --filter @chiffreo/api test:e2e      # End-to-end
 ```
 
 ### Web (Jest)
 
 ```bash
-pnpm --filter @estimate/web test
+pnpm --filter @chiffreo/web test
 ```
 
 ### Couverture minimale

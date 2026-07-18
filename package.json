@@ -1,17 +1,17 @@
 {
-  "name": "estimate",
+  "name": "chiffreo",
   "private": true,
-  "description": "EstiMate — DIY material estimation app",
+  "description": "Chiffréo — estimation de matériaux et chiffrage de travaux",
   "packageManager": "pnpm@10.11.0",
   "scripts": {
-    "dev:api": "pnpm --filter @estimate/api dev",
-    "dev:web": "pnpm --filter @estimate/web dev",
-    "build:api": "pnpm --filter @estimate/api build",
-    "build:web": "pnpm --filter @estimate/web build",
-    "test:api": "pnpm --filter @estimate/api test && pnpm --filter @estimate/api test:e2e",
-    "test:web": "pnpm --filter @estimate/web test",
-    "lint": "pnpm --filter @estimate/api lint && pnpm --filter @estimate/web lint",
+    "dev:api": "pnpm --filter @chiffreo/api dev",
+    "dev:web": "pnpm --filter @chiffreo/web dev",
+    "build:api": "pnpm --filter @chiffreo/api build",
+    "build:web": "pnpm --filter @chiffreo/web build",
+    "test:api": "pnpm --filter @chiffreo/api test && pnpm --filter @chiffreo/api test:e2e",
+    "test:web": "pnpm --filter @chiffreo/web test",
+    "lint": "pnpm --filter @chiffreo/api lint && pnpm --filter @chiffreo/web lint",
     "dev:cv": "cd apps/cv-service && uvicorn app.main:app --reload --port 8000",
-    "db:migrate": "pnpm --filter @estimate/api migration:run"
+    "db:migrate": "pnpm --filter @chiffreo/api migration:run"
   }
 }

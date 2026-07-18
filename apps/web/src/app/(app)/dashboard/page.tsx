@@ -27,7 +27,7 @@ interface ProjectDraft {
   updated_at: string;
 }
 
-const STORAGE_KEY = 'estimate_local_projects';
+const STORAGE_KEY = 'chiffreo_local_projects';
 
 function readStoredProjects(): ProjectDraft[] {
   if (typeof window === 'undefined') return [];

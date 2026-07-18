@@ -1,11 +1,13 @@
+name: chiffreo
+
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: estimate-db
+    container_name: chiffreo-db
     environment:
-      POSTGRES_DB: estimate
-      POSTGRES_USER: estimate
-      POSTGRES_PASSWORD: estimate_dev
+      POSTGRES_DB: chiffreo
+      POSTGRES_USER: chiffreo
+      POSTGRES_PASSWORD: chiffreo_dev
     ports:
       - '5432:5432'
     volumes:
@@ -15,7 +17,7 @@ services:
     build:
       context: ./apps/cv-service
       dockerfile: Dockerfile
-    container_name: estimate-cv
+    container_name: chiffreo-cv
     ports:
       - '8000:8000'
     volumes:

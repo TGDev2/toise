@@ -13,10 +13,10 @@ import {
 export const metadata: Metadata = {
   title: 'Tarifs',
   description:
-    'Comparez les offres EstiMate : Gratuit, Pro à 9,99 €/mois avec 7 jours d’essai, et Contractor dès 50 €/mois pour les artisans.',
+    'Comparez les offres Chiffréo : Gratuit, Pro à 9,99 €/mois avec 7 jours d’essai, et Contractor dès 50 €/mois pour les artisans.',
   alternates: { canonical: '/pricing' },
   openGraph: {
-    title: 'Tarifs EstiMate',
+    title: 'Tarifs Chiffréo',
     description:
       'Gratuit, Pro à 9,99 €/mois avec essai de 7 jours, Contractor dès 50 €/mois pour les artisans.',
     url: '/pricing',
@@ -28,7 +28,7 @@ const ALL_PLANS = [FREE_PLAN, ...ALL_PAID_PLANS];
 const JSON_LD = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
-  name: 'EstiMate',
+  name: 'Chiffréo',
   applicationCategory: 'BusinessApplication',
   operatingSystem: 'Web',
   offers: {
@@ -113,7 +113,7 @@ export default function PricingPage() {
       <div className="mx-auto w-full max-w-6xl">
         <header className="flex items-center justify-between py-6">
           <Link href="/">
-            <Logo height={30} priority />
+            <Logo height={30} />
           </Link>
           <nav className="flex items-center gap-3">
             <Link
@@ -293,7 +293,7 @@ export default function PricingPage() {
         </section>
 
         <footer className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-stone-300/60 pt-8 text-sm text-stone-600 sm:flex-row">
-          <p>© {new Date().getFullYear()} EstiMate</p>
+          <p>© {new Date().getFullYear()} Chiffréo</p>
           <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2">
             <Link href="/" className="hover:text-stone-950">
               Accueil

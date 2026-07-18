@@ -6,19 +6,21 @@
 #   - api  (port 3001)  → https://api.votre-domaine.fr (ou /api sur le même domaine)
 # Voir docs/DEPLOY.md.
 
+name: chiffreo
+
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: estimate-db
+    container_name: chiffreo-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${DB_NAME:-estimate}
-      POSTGRES_USER: ${DB_USERNAME:-estimate}
+      POSTGRES_DB: ${DB_NAME:-chiffreo}
+      POSTGRES_USER: ${DB_USERNAME:-chiffreo}
       POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD requis}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME:-estimate} -d ${DB_NAME:-estimate}']
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME:-chiffreo} -d ${DB_NAME:-chiffreo}']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -27,7 +29,7 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    container_name: estimate-api
+    container_name: chiffreo-api
     restart: unless-stopped
     depends_on:
       postgres:
@@ -39,9 +41,9 @@ services:
       PORT: 3001
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_USERNAME: ${DB_USERNAME:-estimate}
+      DB_USERNAME: ${DB_USERNAME:-chiffreo}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD requis}
-      DB_NAME: ${DB_NAME:-estimate}
+      DB_NAME: ${DB_NAME:-chiffreo}
       CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN requis}
       PUBLIC_URL: ${PUBLIC_URL:?PUBLIC_URL requis}
       FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:?}
@@ -55,7 +57,7 @@ services:
       STRIPE_CONTRACTOR_PREMIUM_PRICE_ID: ${STRIPE_CONTRACTOR_PREMIUM_PRICE_ID:-}
       BREVO_API_KEY: ${BREVO_API_KEY:?}
       BREVO_SENDER_EMAIL: ${BREVO_SENDER_EMAIL:?}
-      BREVO_SENDER_NAME: ${BREVO_SENDER_NAME:-EstiMate}
+      BREVO_SENDER_NAME: ${BREVO_SENDER_NAME:-Chiffréo}
       CV_SERVICE_URL: http://cv-service:8000
       CV_SERVICE_TIMEOUT_MS: ${CV_SERVICE_TIMEOUT_MS:-120000}
       STORAGE_PROVIDER: local
@@ -83,7 +85,7 @@ services:
         NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN:?}
         NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${NEXT_PUBLIC_FIREBASE_PROJECT_ID:?}
         NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID:?}
-    container_name: estimate-web
+    container_name: chiffreo-web
     restart: unless-stopped
     depends_on:
       api:
@@ -101,7 +103,7 @@ services:
     build:
       context: ./apps/cv-service
       dockerfile: Dockerfile
-    container_name: estimate-cv
+    container_name: chiffreo-cv
     restart: unless-stopped
     volumes:
       # Le CV service ne fait que lire les images uploadées ; montage en

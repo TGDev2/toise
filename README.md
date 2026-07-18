@@ -1,4 +1,4 @@
-# EstiMate
+# Chiffréo
 
 Application d'estimation de matériaux pour projets de rénovation. Scannez votre pièce ou saisissez ses dimensions, sélectionnez vos travaux, et obtenez une liste d'achat précise tenant compte des pertes, découpes et de votre niveau de compétence.
 
@@ -47,7 +47,7 @@ Application d'estimation de matériaux pour projets de rénovation. Scannez votr
 
 ```bash
 git clone <repository-url>
-cd Estimate
+cd Chiffreo
 pnpm install
 ```
 
@@ -104,7 +104,7 @@ pnpm dev:cv     # CV service sur http://localhost:8000
 ## Structure du projet
 
 ```
-Estimate/
+Chiffreo/
 ├── apps/
 │   ├── api/                # Backend NestJS (16 modules, 27 migrations)
 │   ├── web/                # Frontend Next.js (App Router)
@@ -128,9 +128,9 @@ Copier `.env.example` vers `.env` et renseigner les valeurs :
 |----------|-------------|--------|
 | `DB_HOST` | Hôte PostgreSQL | `localhost` |
 | `DB_PORT` | Port PostgreSQL | `5432` |
-| `DB_USERNAME` | Utilisateur DB | `estimate` |
-| `DB_PASSWORD` | Mot de passe DB | `estimate_dev` |
-| `DB_NAME` | Nom de la base | `estimate` |
+| `DB_USERNAME` | Utilisateur DB | `chiffreo` |
+| `DB_PASSWORD` | Mot de passe DB | `chiffreo_dev` |
+| `DB_NAME` | Nom de la base | `chiffreo` |
 | `PORT` | Port de l'API | `3001` |
 | `CORS_ORIGIN` | Origine autorisée | `http://localhost:3000` |
 | `FIREBASE_PROJECT_ID` | ID du projet Firebase | — |

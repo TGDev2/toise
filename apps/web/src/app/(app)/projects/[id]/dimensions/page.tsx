@@ -15,7 +15,7 @@ import { Alert, Skeleton } from '@/components/ui';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
-const STORAGE_KEY = 'estimate_local_projects';
+const STORAGE_KEY = 'chiffreo_local_projects';
 
 interface DimensionsData {
   length_cm: number;

@@ -1,4 +1,4 @@
-# EstiMate — Backlog produit priorisé
+# Chiffréo — Backlog produit priorisé
 
 > **Statut** : document de travail — juillet 2026
 > **Stratégie associée** : [PRODUCT_STRATEGY.md](PRODUCT_STRATEGY.md)
@@ -21,7 +21,7 @@
 | ID | Item | Description / valeur | Effort | Dépend de |
 |---|---|---|---|---|
 | GTM-1 | Identité visuelle minimale | Logo, favicon, image OG (listés « reste à faire » dans [tasks/todo.md](../tasks/todo.md)). Condition de crédibilité de tout le reste. | S | — |
-| GTM-2 | Landing page vendeuse | Remplacer la landing « EstiMate MVP » ([apps/web/src/app/page.tsx](../apps/web/src/app/page.tsx)) par une page qui vend : promesse chiffrée (15-25 % d'économie), démo visuelle du parcours photo→liste, preuve (précision mesurée quand disponible), CTA « essayer sans compte » exploitant le mode invité existant. | M | GTM-1 |
+| GTM-2 | Landing page vendeuse | Remplacer la landing « Chiffréo MVP » ([apps/web/src/app/page.tsx](../apps/web/src/app/page.tsx)) par une page qui vend : promesse chiffrée (15-25 % d'économie), démo visuelle du parcours photo→liste, preuve (précision mesurée quand disponible), CTA « essayer sans compte » exploitant le mode invité existant. | M | GTM-1 |
 | GTM-3 | Page /pricing publique | Les tarifs n'existent qu'en modales in-app ([components/paywall/](../apps/web/src/components/paywall/)). Page publique comparant Free/Pro/Contractor, indexable, liée au checkout. | M | GTM-1 |
 | GTM-4 | Lead magnet : calculateurs publics sans compte | 3-5 pages `/calculateurs/[type]` (peinture, carrelage, sol) : formulaire dimensions → estimation immédiate via le moteur existant, sans inscription. CTA « sauvegarder mon projet » → conversion invité→compte (flux déjà construit). Étage 0 de la value ladder + actif SEO. | L | — |
 | GTM-5 | Capture e-mail sur le lead magnet | Envoi du résultat par e-mail (constitution de la liste, objectif affiché du lead magnet). Nécessite un provider d'e-mail transactionnel (Brevo/Resend). | M | GTM-4 |
@@ -31,7 +31,7 @@
 
 | ID | Item | Description / valeur | Effort | Dépend de |
 |---|---|---|---|---|
-| OPS-1 | Provisionner le VPS + DNS + Caddy | Suivre [DEPLOY.md](DEPLOY.md) (Hetzner/OVH/Scaleway, 8 Go reco). Domaines `estimate.fr` / `api.estimate.fr`. | M | — |
+| OPS-1 | Provisionner le VPS + DNS + Caddy | Suivre [DEPLOY.md](DEPLOY.md) (Hetzner/OVH/Scaleway, 8 Go reco). Domaines `chiffreo.fr` / `api.chiffreo.fr`. | M | — |
 | OPS-2 | Produits Stripe réels + webhook | Créer les 4 prix (Pro, Contractor ×3) en mode live, renseigner les `STRIPE_*_PRICE_ID`, configurer l'endpoint webhook. Tester un cycle complet abonnement/annulation. | S | OPS-1 |
 | OPS-3 | Sauvegardes testées | Le cron pg_dump est documenté ; l'exécuter réellement + **tester une restauration** + sauvegarder le volume `uploads`. | S | OPS-1 |
 | OPS-4 | CD automatisé | La CI existe sans déploiement. Job GitHub Actions : build images → registry → deploy VPS sur tag. Réduit le coût de chaque itération post-lancement. | M | OPS-1 |
@@ -131,7 +131,7 @@
 | PLAT-4 | Organisations, membres, rôles | Modèle `organizations`/`memberships` ; propriété des projets/clients/devis transférée à l'org. Prérequis de Contractor Premium multi-employés ET de l'enterprise. Migration structurante — à concevoir soigneusement. | XL | PRO-1 |
 | PLAT-5 | API publique + clés | Endpoints d'estimation documentés, clés API, quotas par tier. Ouvre le widget embarquable (stratégie §7.3) et l'enterprise. | L | PLAT-4 |
 | PLAT-6 | Offre Enterprise (10 k€+/an) | SSO (SAML/OIDC), facturation annuelle sur devis, SLA, environnement dédié éventuel. Uniquement sur demande entrante avérée. | XL | PLAT-4, PLAT-5 |
-| PLAT-7 | Widget d'estimation marque blanche | Calculateur embarquable chez des médias bricolage / marchands, brandé « powered by EstiMate ». Canal B2B2C (stratégie §7.6). | L | PLAT-5 |
+| PLAT-7 | Widget d'estimation marque blanche | Calculateur embarquable chez des médias bricolage / marchands, brandé « powered by Chiffréo ». Canal B2B2C (stratégie §7.6). | L | PLAT-5 |
 
 ### Epic MOB-A : Mobile
 

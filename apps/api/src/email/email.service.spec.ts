@@ -64,7 +64,7 @@ describe('EmailService.sendCalculatorResultEmail', () => {
     expect(brevoClientMock.sendTransactionalEmail).toHaveBeenCalledWith(
       expect.objectContaining({
         to: 'visiteur@example.fr',
-        subject: 'Votre estimation EstiMate — Peinture murale',
+        subject: 'Votre estimation Chiffréo — Peinture murale',
       }),
     );
   });

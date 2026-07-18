@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     description: config.metaDescription,
     alternates: { canonical: `/calculateurs/${config.slug}` },
     openGraph: {
-      title: `${config.title} | EstiMate`,
+      title: `${config.title} | Chiffréo`,
       description: config.metaDescription,
       url: `/calculateurs/${config.slug}`,
     },
@@ -46,7 +46,7 @@ const HOW_IT_WORKS = [
   {
     title: '3. Sauvegardez votre projet',
     description:
-      'En un clic, transformez votre calcul en projet EstiMate : liste de courses complète et suivi de chantier.',
+      'En un clic, transformez votre calcul en projet Chiffréo : liste de courses complète et suivi de chantier.',
   },
 ];
 
@@ -74,7 +74,7 @@ export default async function CalculatorPage({ params }: PageProps) {
       <div className="mx-auto w-full max-w-6xl">
         <header className="flex items-center justify-between py-6">
           <Link href="/">
-            <Logo height={30} priority />
+            <Logo height={30} />
           </Link>
           <nav className="flex items-center gap-3">
             <Link
@@ -148,7 +148,7 @@ export default async function CalculatorPage({ params }: PageProps) {
         </section>
 
         <footer className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-stone-300/60 pt-8 text-sm text-stone-600 sm:flex-row">
-          <p>© {new Date().getFullYear()} EstiMate</p>
+          <p>© {new Date().getFullYear()} Chiffréo</p>
           <nav className="flex gap-6">
             <Link href="/" className="hover:text-stone-950">
               Accueil

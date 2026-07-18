@@ -240,7 +240,7 @@ export class QuotePdfService {
       .fontSize(8)
       .fillColor('#999999')
       .text(
-        `SIRET : ${companyProfile.siret} — Genere par EstiMate — ${dateStr}`,
+        `SIRET : ${companyProfile.siret} — Genere par Chiffréo — ${dateStr}`,
         { align: 'center' },
       );
 

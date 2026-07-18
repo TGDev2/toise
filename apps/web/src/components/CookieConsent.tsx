@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { useSyncExternalStore } from 'react';
 
-const CONSENT_KEY = 'estimate_cookie_consent';
-const CONSENT_EVENT = 'estimate-cookie-consent-change';
+const CONSENT_KEY = 'chiffreo_cookie_consent';
+const CONSENT_EVENT = 'chiffreo-cookie-consent-change';
 
 function subscribe(onStoreChange: () => void) {
   if (typeof window === 'undefined') {

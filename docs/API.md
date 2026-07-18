@@ -1,4 +1,4 @@
-# Référence API REST — EstiMate
+# Référence API REST — Chiffréo
 
 **Base URL :** `http://localhost:3001/api/v1`
 

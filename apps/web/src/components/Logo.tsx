@@ -1,22 +1,21 @@
-import Image from 'next/image';
-
 interface LogoProps {
   className?: string;
   height?: number;
-  priority?: boolean;
 }
 
-const ASPECT_RATIO = 1067 / 282;
-
-export function Logo({ className, height = 32, priority }: LogoProps) {
+export function Logo({ className, height = 32 }: LogoProps) {
   return (
-    <Image
-      src="/brand/logo-wordmark.png"
-      alt="EstiMate"
-      width={Math.round(height * ASPECT_RATIO)}
-      height={height}
-      priority={priority}
+    <span
       className={className}
-    />
+      style={{
+        fontSize: Math.round(height * 0.72),
+        lineHeight: `${height}px`,
+        fontWeight: 700,
+        letterSpacing: '-0.02em',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      Chiffr<span style={{ color: 'var(--accent)' }}>éo</span>
+    </span>
   );
 }

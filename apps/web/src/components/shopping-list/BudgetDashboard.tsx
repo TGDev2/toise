@@ -81,7 +81,7 @@ export function BudgetDashboard({
             </h2>
             <p className="mt-1 text-sm text-stone-500">
               Saisissez vos prix reels et decouvrez combien vous economisez grace
-              a EstiMate.
+              a Chiffréo.
             </p>
           </div>
           <button

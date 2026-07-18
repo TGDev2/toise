@@ -33,7 +33,7 @@ interface SavedDimensions {
   openings: Opening[];
 }
 
-const LOCAL_PROJECTS_KEY = 'estimate_local_projects';
+const LOCAL_PROJECTS_KEY = 'chiffreo_local_projects';
 
 function defaultParamValues(variant: CalculatorVariant): Record<string, string> {
   const values: Record<string, string> = {};
@@ -363,7 +363,7 @@ export function PublicCalculator({ config }: PublicCalculatorProps) {
                 />
                 <span className="text-sm text-stone-600">
                   J&apos;accepte de recevoir cette estimation par e-mail et,
-                  occasionnellement, des actualités EstiMate. Voir notre{' '}
+                  occasionnellement, des actualités Chiffréo. Voir notre{' '}
                   <Link href="/privacy" className="underline">
                     politique de confidentialité
                   </Link>

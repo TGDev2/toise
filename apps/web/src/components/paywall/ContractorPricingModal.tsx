@@ -130,7 +130,7 @@ export function ContractorPricingModal({
         </div>
 
         <h2 className="mb-2 text-center text-xl font-bold text-stone-900">
-          EstiMate Contractor
+          Chiffréo Contractor
         </h2>
         <p className="mb-6 text-center text-sm text-stone-500">
           Des outils professionnels pour les artisans

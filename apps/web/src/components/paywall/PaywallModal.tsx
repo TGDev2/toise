@@ -151,7 +151,7 @@ function ProPaywallContent({
 
         {/* Title */}
         <h2 className="mb-2 text-center text-xl font-bold text-stone-900">
-          Passez à EstiMate Pro
+          Passez à Chiffréo Pro
         </h2>
 
         {/* Subtitle */}
