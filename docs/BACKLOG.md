@@ -49,7 +49,7 @@
 | ID | Item | Description / valeur | Effort | Dépend de |
 |---|---|---|---|---|
 | CV-1 | Poids YOLO portes/fenêtres | **Scripts + versionnement livrés (19/07/2026), entraînement à exécuter.** Décision : fine-tuning YOLOv8n sur datasets publics CC BY 4.0 (pas de pré-entraîné viable). Toolkit [apps/cv-service/training/](../apps/cv-service/training/) (runbook + critères d'acceptation dans son README), poids versionnés en GitHub Release `cv-model-vN` via `scripts/release-model.sh` / `fetch-model.sh` (pas dans git). Reste : lancer l'entraînement GPU, valider l'éval, publier `cv-model-v1`. | L | — |
-| CV-2 | Mesure de précision CV | Job qui calcule l'écart médian dimensions CV vs corrections utilisateur (`cv_correction_logs`). Prérequis de toute communication sur la précision et du flywheel. | M | — |
+| CV-2 | Mesure de précision CV | **Livré (19/07/2026).** Endpoint admin `GET /admin/cv-accuracy/report` ([apps/api/src/analysis/cv-accuracy.service.ts](../apps/api/src/analysis/cv-accuracy.service.ts)) : écart médian `\|cv - user\|` par groupe `entity_type`+`field` depuis `cv_correction_logs`, filtre `days`, export `format=json\|csv`. Garde-fou `sufficient_data` (< 5 échantillons) pour éviter une communication trompeuse tant que le volume de corrections est faible. | M | — |
 
 ---
 

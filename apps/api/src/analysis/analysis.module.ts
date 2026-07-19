@@ -11,6 +11,8 @@ import { AnalysisController } from './analysis.controller';
 import { AnalysisService } from './analysis.service';
 import { CvClientService } from './cv-client/cv-client.service';
 import { CvCorrectionService } from './cv-correction.service';
+import { CvAccuracyController } from './cv-accuracy.controller';
+import { CvAccuracyService } from './cv-accuracy.service';
 
 @Module({
   imports: [
@@ -21,8 +23,13 @@ import { CvCorrectionService } from './cv-correction.service';
     UsersModule,
     FeatureGatesModule,
   ],
-  controllers: [AnalysisController],
-  providers: [AnalysisService, CvClientService, CvCorrectionService],
+  controllers: [AnalysisController, CvAccuracyController],
+  providers: [
+    AnalysisService,
+    CvClientService,
+    CvCorrectionService,
+    CvAccuracyService,
+  ],
   exports: [CvCorrectionService],
 })
 export class AnalysisModule {}
