@@ -199,6 +199,9 @@ export class ProjectsService {
       dimensions.height_cm = dto.height_cm;
       dimensions.source = source;
       dimensions.confidence_score = confidence;
+      // Le formulaire renvoie l'état complet à chaque enregistrement : une
+      // sauvegarde rectangulaire (segments absents) efface une forme antérieure.
+      dimensions.segments_json = dto.segments ?? null;
       if (overrides?.raw_cv_output_json !== undefined) {
         dimensions.raw_cv_output_json = overrides.raw_cv_output_json;
       }
@@ -210,6 +213,7 @@ export class ProjectsService {
         height_cm: dto.height_cm,
         source,
         confidence_score: confidence,
+        segments_json: dto.segments ?? null,
         raw_cv_output_json: overrides?.raw_cv_output_json ?? null,
       });
     }

@@ -13,7 +13,7 @@ import { apiPost, apiPut } from '@/lib/api';
 import type { CalculatorConfig, CalculatorVariant } from '@/lib/calculators';
 import { getErrorMessage } from '@/lib/errors';
 import type { EstimationLineItem } from '@/lib/estimation-types';
-import type { Opening } from '@/lib/surface';
+import type { Opening, RectSegment } from '@/lib/surface';
 
 interface PublicCalculatorProps {
   config: CalculatorConfig;
@@ -32,6 +32,7 @@ interface SavedDimensions {
   widthCm: number;
   heightCm: number;
   openings: Opening[];
+  segments: RectSegment[];
 }
 
 const LOCAL_PROJECTS_KEY = 'chiffreo_local_projects';
@@ -74,6 +75,7 @@ function buildEstimateBasePayload(
       height_cm: o.height_cm,
       count: o.count,
     })),
+    segments: dims.segments.length > 0 ? dims.segments : undefined,
     work_type_code: variant.code,
     skill_level: skillLevel,
     custom_params: buildCustomParams(variant, paramValues),
@@ -122,6 +124,7 @@ export function PublicCalculator({ config }: PublicCalculatorProps) {
     widthCm: number,
     heightCm: number,
     openings: Opening[],
+    segments: RectSegment[],
   ) => {
     setError('');
     setIsComputing(true);
@@ -129,14 +132,14 @@ export function PublicCalculator({ config }: PublicCalculatorProps) {
       const response = await apiPost<PublicEstimateResponse>(
         '/public/calculators/estimate',
         buildEstimateBasePayload(
-          { lengthCm, widthCm, heightCm, openings },
+          { lengthCm, widthCm, heightCm, openings, segments },
           variant,
           skillLevel,
           paramValues,
         ),
       );
       setItems(response.items);
-      setSavedDims({ lengthCm, widthCm, heightCm, openings });
+      setSavedDims({ lengthCm, widthCm, heightCm, openings, segments });
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Impossible de calculer l’estimation'));
     } finally {
@@ -179,6 +182,8 @@ export function PublicCalculator({ config }: PublicCalculatorProps) {
           length_cm: savedDims.lengthCm,
           width_cm: savedDims.widthCm,
           height_cm: savedDims.heightCm,
+          segments:
+            savedDims.segments.length > 0 ? savedDims.segments : undefined,
         });
         for (const opening of savedDims.openings) {
           await apiPost(`/projects/${created.id}/openings`, {
@@ -204,6 +209,7 @@ export function PublicCalculator({ config }: PublicCalculatorProps) {
         width_m: savedDims.widthCm / 100,
         height_m: savedDims.heightCm / 100,
         openings: savedDims.openings,
+        segments: savedDims.segments.length > 0 ? savedDims.segments : undefined,
         updated_at: new Date().toISOString(),
       };
 

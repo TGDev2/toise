@@ -65,7 +65,53 @@ describe('DimensionsForm', () => {
     fireEvent.click(screen.getByRole('button', { name: /continuer/i }));
 
     await waitFor(() => {
-      expect(mockSave).toHaveBeenCalledWith(500, 400, 250, []);
+      // 5ᵉ argument : segments (vide tant qu'aucun décroché n'est ajouté)
+      expect(mockSave).toHaveBeenCalledWith(500, 400, 250, [], []);
+    });
+  });
+
+  it('adds a décroché section and calls onSave with composite segments', async () => {
+    render(
+      <DimensionsForm
+        initialLengthCm={400}
+        initialWidthCm={300}
+        initialHeightCm={250}
+        onSave={mockSave}
+      />,
+    );
+
+    // Ajoute un décroché à droite (offset 0, largeur 150, profondeur 200)
+    fireEvent.click(screen.getByRole('button', { name: /décroché/i }));
+    fireEvent.change(screen.getByLabelText(/depuis le coin/i), {
+      target: { value: '0' },
+    });
+    fireEvent.change(screen.getByLabelText(/largeur \(cm\)/i), {
+      target: { value: '150' },
+    });
+    fireEvent.change(screen.getByLabelText(/profondeur \(cm\)/i), {
+      target: { value: '200' },
+    });
+
+    // Aucune ouverture → premier clic affiche la suggestion, puis « Continuer »
+    fireEvent.click(screen.getByText(/enregistrer les dimensions/i));
+    await waitFor(() => {
+      expect(
+        screen.getByText(/vous n'avez pas ajoute de portes ou fenêtres/i),
+      ).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /continuer/i }));
+
+    await waitFor(() => {
+      expect(mockSave).toHaveBeenCalledWith(
+        400,
+        300,
+        250,
+        [],
+        [
+          { x_cm: 0, y_cm: 0, length_cm: 400, width_cm: 300 },
+          { x_cm: 400, y_cm: 0, length_cm: 200, width_cm: 150 },
+        ],
+      );
     });
   });
 

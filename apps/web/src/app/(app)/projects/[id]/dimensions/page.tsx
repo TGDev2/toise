@@ -5,7 +5,7 @@ import { useFeatureGate } from '@/hooks/useFeatureGate';
 import { ProBadge } from '@/components/paywall/ProBadge';
 import { apiGet, apiPost, apiPut, apiDelete } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
-import type { Opening } from '@/lib/surface';
+import type { Opening, RectSegment } from '@/lib/surface';
 import { DimensionsForm } from '@/components/dimensions/DimensionsForm';
 import { AnalyzeButton } from '@/components/analysis/AnalyzeButton';
 import { AnalysisResultPanel } from '@/components/analysis/AnalysisResultPanel';
@@ -21,6 +21,7 @@ interface DimensionsData {
   length_cm: number;
   width_cm: number;
   height_cm: number;
+  segments?: RectSegment[] | null;
 }
 
 interface OpeningData {
@@ -40,6 +41,7 @@ interface LocalProject {
   width_m?: number;
   height_m?: number;
   openings?: Opening[];
+  segments?: RectSegment[];
   updated_at: string;
 }
 
@@ -114,6 +116,7 @@ export default function DimensionsPage() {
                 length_cm: Math.round(project.length_m * 100),
                 width_cm: Math.round(project.width_m * 100),
                 height_cm: Math.round(project.height_m * 100),
+                segments: project.segments ?? null,
               });
             }
             if (project.openings?.length) {
@@ -173,7 +176,13 @@ export default function DimensionsPage() {
   }, [analysis]);
 
   const handleSave = useCallback(
-    async (lengthCm: number, widthCm: number, heightCm: number, openings: Opening[]) => {
+    async (
+      lengthCm: number,
+      widthCm: number,
+      heightCm: number,
+      openings: Opening[],
+      segments: RectSegment[],
+    ) => {
       setError('');
       setIsSaving(true);
       try {
@@ -183,6 +192,7 @@ export default function DimensionsPage() {
             length_cm: lengthCm,
             width_cm: widthCm,
             height_cm: heightCm,
+            segments: segments.length > 0 ? segments : undefined,
           });
 
           // Replace-all strategy: delete existing, then create new
@@ -211,6 +221,7 @@ export default function DimensionsPage() {
             projects[idx].width_m = widthCm / 100;
             projects[idx].height_m = heightCm / 100;
             projects[idx].openings = openings;
+            projects[idx].segments = segments.length > 0 ? segments : undefined;
             projects[idx].updated_at = new Date().toISOString();
             localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
           }
@@ -345,6 +356,7 @@ export default function DimensionsPage() {
             initialWidthCm={initialDims?.width_cm ?? 0}
             initialHeightCm={initialDims?.height_cm ?? 0}
             initialOpenings={initialOpenings}
+            initialSegments={initialDims?.segments ?? undefined}
             onSave={handleSave}
             isSaving={isSaving}
           />

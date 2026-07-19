@@ -3,11 +3,22 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { UnitSystem } from '@/lib/units';
 import { metersToCm, cmToMeters, feetInchesToCm, cmToFeetInches } from '@/lib/units';
-import type { Opening } from '@/lib/surface';
-import { wallArea, totalOpeningsArea, netWallArea, totalSurfaceArea } from '@/lib/surface';
+import type { Opening, RectSegment, ShapeSection } from '@/lib/surface';
+import {
+  wallArea,
+  totalOpeningsArea,
+  netWallArea,
+  totalSurfaceArea,
+  compositeFloorArea,
+  compositeWallArea,
+  compositeNetWallArea,
+  sectionsToSegments,
+  segmentsToSections,
+} from '@/lib/surface';
 import { getDimensionWarnings, getMissingFields } from '@/lib/dimension-validation';
 import { RoomPreview } from './RoomPreview';
 import { OpeningsSection } from './OpeningsSection';
+import { ShapeSections } from './ShapeSections';
 
 interface MetricValues {
   length: string;
@@ -29,7 +40,14 @@ interface DimensionsFormProps {
   initialWidthCm?: number;
   initialHeightCm?: number;
   initialOpenings?: Opening[];
-  onSave: (lengthCm: number, widthCm: number, heightCm: number, openings: Opening[]) => Promise<void>;
+  initialSegments?: RectSegment[];
+  onSave: (
+    lengthCm: number,
+    widthCm: number,
+    heightCm: number,
+    openings: Opening[],
+    segments: RectSegment[],
+  ) => Promise<void>;
   isSaving?: boolean;
   submitLabel?: string;
   savingLabel?: string;
@@ -65,6 +83,7 @@ export function DimensionsForm({
   initialWidthCm = 0,
   initialHeightCm = 0,
   initialOpenings = [],
+  initialSegments,
   onSave,
   isSaving = false,
   submitLabel = 'Enregistrer les dimensions',
@@ -79,6 +98,11 @@ export function DimensionsForm({
   );
   const [touched, setTouched] = useState(false);
   const [openings, setOpenings] = useState<Opening[]>(initialOpenings);
+  const [sections, setSections] = useState<ShapeSection[]>(() =>
+    initialSegments && initialSegments.length > 1
+      ? segmentsToSections(initialLengthCm, initialWidthCm, initialSegments)
+      : [],
+  );
   const [showZeroOpeningsSuggestion, setShowZeroOpeningsSuggestion] = useState(false);
 
   const getCm = useCallback((): { lengthCm: number; widthCm: number; heightCm: number } => {
@@ -124,25 +148,51 @@ export function DimensionsForm({
   );
 
   const hasDimensions = lengthCm > 0 && widthCm > 0 && heightCm > 0;
+  const isComposite = sections.length > 0;
 
-  const surfaceCm2 = useMemo(() => {
-    if (hasDimensions) {
-      return totalSurfaceArea(lengthCm, widthCm, heightCm);
-    }
-    return 0;
-  }, [hasDimensions, lengthCm, widthCm, heightCm]);
+  const segments = useMemo<RectSegment[]>(
+    () =>
+      hasDimensions && isComposite
+        ? sectionsToSegments(lengthCm, widthCm, sections)
+        : [],
+    [hasDimensions, isComposite, lengthCm, widthCm, sections],
+  );
+
+  const floorCm2 = useMemo(() => {
+    if (!hasDimensions) return 0;
+    return isComposite ? compositeFloorArea(segments) : lengthCm * widthCm;
+  }, [hasDimensions, isComposite, segments, lengthCm, widthCm]);
 
   const grossWallCm2 = useMemo(() => {
-    if (hasDimensions) return wallArea(lengthCm, widthCm, heightCm);
-    return 0;
-  }, [hasDimensions, lengthCm, widthCm, heightCm]);
+    if (!hasDimensions) return 0;
+    return isComposite
+      ? compositeWallArea(segments, heightCm)
+      : wallArea(lengthCm, widthCm, heightCm);
+  }, [hasDimensions, isComposite, segments, lengthCm, widthCm, heightCm]);
 
   const openingsAreaCm2 = useMemo(() => totalOpeningsArea(openings), [openings]);
 
   const netWallCm2 = useMemo(() => {
-    if (hasDimensions) return netWallArea(lengthCm, widthCm, heightCm, openings);
-    return 0;
-  }, [hasDimensions, lengthCm, widthCm, heightCm, openings]);
+    if (!hasDimensions) return 0;
+    return isComposite
+      ? compositeNetWallArea(segments, heightCm, openings)
+      : netWallArea(lengthCm, widthCm, heightCm, openings);
+  }, [hasDimensions, isComposite, segments, lengthCm, widthCm, heightCm, openings]);
+
+  const surfaceCm2 = useMemo(() => {
+    if (!hasDimensions) return 0;
+    return isComposite
+      ? 2 * floorCm2 + grossWallCm2
+      : totalSurfaceArea(lengthCm, widthCm, heightCm);
+  }, [
+    hasDimensions,
+    isComposite,
+    floorCm2,
+    grossWallCm2,
+    lengthCm,
+    widthCm,
+    heightCm,
+  ]);
 
   const surfaceM2 = surfaceCm2 / 10_000;
   const isValid = missingFields.length === 0;
@@ -167,7 +217,7 @@ export function DimensionsForm({
       return;
     }
     setShowZeroOpeningsSuggestion(false);
-    await onSave(lengthCm, widthCm, heightCm, openings);
+    await onSave(lengthCm, widthCm, heightCm, openings, segments);
   };
 
   const handleAddOpening = useCallback((opening: Opening) => {
@@ -181,6 +231,21 @@ export function DimensionsForm({
 
   const handleRemoveOpening = useCallback((index: number) => {
     setOpenings((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const handleAddSection = useCallback((section: ShapeSection) => {
+    setSections((prev) => [...prev, section]);
+  }, []);
+
+  const handleUpdateSection = useCallback(
+    (index: number, section: ShapeSection) => {
+      setSections((prev) => prev.map((s, i) => (i === index ? section : s)));
+    },
+    [],
+  );
+
+  const handleRemoveSection = useCallback((index: number) => {
+    setSections((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
   const warningForField = (field: 'length' | 'width' | 'height') =>
@@ -291,6 +356,14 @@ export function DimensionsForm({
           grossWallAreaCm2={grossWallCm2}
         />
 
+        {/* Non-rectangular room sections (décroché) */}
+        <ShapeSections
+          sections={sections}
+          onAdd={handleAddSection}
+          onUpdate={handleUpdateSection}
+          onRemove={handleRemoveSection}
+        />
+
         {showZeroOpeningsSuggestion && (
           <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
             <p className="text-sm text-blue-800">
@@ -331,6 +404,7 @@ export function DimensionsForm({
             widthCm={widthCm}
             unitSystem={unitSystem}
             openings={openings}
+            segments={segments}
             className="w-full"
           />
         </div>

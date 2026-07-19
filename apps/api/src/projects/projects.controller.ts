@@ -104,6 +104,7 @@ export class ProjectsController {
               length_cm: p.dimensions.length_cm,
               width_cm: p.dimensions.width_cm,
               height_cm: p.dimensions.height_cm,
+              segments: p.dimensions.segments_json ?? null,
             }
           : null,
         openings:
@@ -160,6 +161,7 @@ export class ProjectsController {
             length_cm: project.dimensions.length_cm,
             width_cm: project.dimensions.width_cm,
             height_cm: project.dimensions.height_cm,
+            segments: project.dimensions.segments_json ?? null,
           }
         : null,
       openings:
@@ -221,6 +223,7 @@ export class ProjectsController {
       length_cm: dimensions.length_cm,
       width_cm: dimensions.width_cm,
       height_cm: dimensions.height_cm,
+      segments: dimensions.segments_json ?? null,
       source: dimensions.source,
       confidence_score: dimensions.confidence_score,
     };
@@ -240,6 +243,7 @@ export class ProjectsController {
       length_cm: dimensions.length_cm,
       width_cm: dimensions.width_cm,
       height_cm: dimensions.height_cm,
+      segments: dimensions.segments_json ?? null,
       source: dimensions.source,
       confidence_score: dimensions.confidence_score,
     };

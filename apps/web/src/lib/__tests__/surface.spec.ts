@@ -1,5 +1,17 @@
-import { floorArea, wallArea, totalSurfaceArea, totalOpeningsArea, netWallArea } from '../surface';
-import type { Opening } from '../surface';
+import {
+  floorArea,
+  wallArea,
+  totalSurfaceArea,
+  totalOpeningsArea,
+  netWallArea,
+  compositeFloorArea,
+  compositePerimeter,
+  compositeWallArea,
+  compositeNetWallArea,
+  sectionsToSegments,
+  segmentsToSections,
+} from '../surface';
+import type { Opening, ShapeSection } from '../surface';
 
 describe('surface', () => {
   describe('floorArea', () => {
@@ -82,6 +94,91 @@ describe('surface', () => {
       const gross = wallArea(500, 400, 250);
       const deductions = 90 * 204 * 2 + 120 * 100 * 3;
       expect(netWallArea(500, 400, 250, openings)).toBe(gross - deductions);
+    });
+  });
+
+  // Pièce en L : 400×300 prolongée d'une extension 200×150 alignée en bas.
+  const lSegments = [
+    { x_cm: 0, y_cm: 0, length_cm: 400, width_cm: 300 },
+    { x_cm: 400, y_cm: 0, length_cm: 200, width_cm: 150 },
+  ];
+
+  describe('compositeFloorArea', () => {
+    it('sums the union of rectangles', () => {
+      // 400*300 + 200*150 = 150000
+      expect(compositeFloorArea(lSegments)).toBe(150_000);
+    });
+
+    it('returns 0 for an empty composition', () => {
+      expect(compositeFloorArea([])).toBe(0);
+    });
+  });
+
+  describe('compositePerimeter', () => {
+    it('computes the union outline perimeter (not the sum of perimeters)', () => {
+      expect(compositePerimeter(lSegments)).toBe(1_800);
+    });
+  });
+
+  describe('compositeWallArea / compositeNetWallArea', () => {
+    it('multiplies the outline perimeter by height', () => {
+      // 1800 * 250 = 450000
+      expect(compositeWallArea(lSegments, 250)).toBe(450_000);
+    });
+
+    it('deducts openings from the composite wall area', () => {
+      const openings: Opening[] = [
+        { type: 'door', width_cm: 90, height_cm: 204, count: 1 },
+      ];
+      // 450000 - 18360 = 431640
+      expect(compositeNetWallArea(lSegments, 250, openings)).toBe(431_640);
+    });
+
+    it('never goes negative', () => {
+      const openings: Opening[] = [
+        { type: 'door', width_cm: 9000, height_cm: 9000, count: 5 },
+      ];
+      expect(compositeNetWallArea(lSegments, 250, openings)).toBe(0);
+    });
+  });
+
+  describe('sectionsToSegments', () => {
+    it('builds the main rectangle plus a right décroché', () => {
+      const sections: ShapeSection[] = [
+        { side: 'right', offset_cm: 0, along_cm: 150, depth_cm: 200 },
+      ];
+      expect(sectionsToSegments(400, 300, sections)).toEqual([
+        { x_cm: 0, y_cm: 0, length_cm: 400, width_cm: 300 },
+        { x_cm: 400, y_cm: 0, length_cm: 200, width_cm: 150 },
+      ]);
+    });
+
+    it('skips degenerate sections (zero size)', () => {
+      const sections: ShapeSection[] = [
+        { side: 'top', offset_cm: 10, along_cm: 0, depth_cm: 50 },
+      ];
+      // Seul le rectangle principal subsiste
+      expect(sectionsToSegments(400, 300, sections)).toEqual([
+        { x_cm: 0, y_cm: 0, length_cm: 400, width_cm: 300 },
+      ]);
+    });
+  });
+
+  describe('segmentsToSections (round-trip)', () => {
+    it('reconstructs sections on all four sides', () => {
+      const sections: ShapeSection[] = [
+        { side: 'right', offset_cm: 0, along_cm: 150, depth_cm: 200 },
+        { side: 'top', offset_cm: 50, along_cm: 100, depth_cm: 80 },
+        { side: 'left', offset_cm: 20, along_cm: 60, depth_cm: 40 },
+        { side: 'bottom', offset_cm: 10, along_cm: 70, depth_cm: 30 },
+      ];
+      const segments = sectionsToSegments(400, 300, sections);
+      expect(segmentsToSections(400, 300, segments)).toEqual(sections);
+    });
+
+    it('returns no sections for a plain rectangle', () => {
+      const segments = sectionsToSegments(400, 300, []);
+      expect(segmentsToSections(400, 300, segments)).toEqual([]);
     });
   });
 });

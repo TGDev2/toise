@@ -37,6 +37,32 @@ export class PublicOpeningDto {
   count!: number;
 }
 
+/**
+ * Rectangle composant une pièce non rectangulaire (L, T, U…). Repère vu de
+ * dessus : (x_cm, y_cm) = coin minimal, length_cm sur X, width_cm sur Y.
+ */
+export class RectSegmentDto {
+  @IsInt()
+  @Min(0)
+  @Max(10000)
+  x_cm!: number;
+
+  @IsInt()
+  @Min(0)
+  @Max(10000)
+  y_cm!: number;
+
+  @IsInt()
+  @Min(1)
+  @Max(10000)
+  length_cm!: number;
+
+  @IsInt()
+  @Min(1)
+  @Max(10000)
+  width_cm!: number;
+}
+
 export class PublicCustomParamsDto {
   @IsOptional()
   @IsInt()
@@ -75,6 +101,17 @@ export class PublicEstimateRequestDto {
   @ValidateNested({ each: true })
   @Type(() => PublicOpeningDto)
   openings?: PublicOpeningDto[];
+
+  /**
+   * Décomposition d'une pièce non rectangulaire en rectangles. Absent → la
+   * pièce est le simple rectangle length_cm × width_cm.
+   */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @ValidateNested({ each: true })
+  @Type(() => RectSegmentDto)
+  segments?: RectSegmentDto[];
 
   @IsIn(PUBLIC_WORK_TYPE_CODES)
   work_type_code!: string;

@@ -596,4 +596,101 @@ describe('EstimationEngine', () => {
       expect(items[0].waste_factor_source).toBe('catalog');
     });
   });
+
+  // =========================================================================
+  // Pièces non rectangulaires — composition de rectangles (ENG-1)
+  // =========================================================================
+  describe('composite (non-rectangular) rooms', () => {
+    // Pièce en L : 400×300 prolongée d'une extension 200×150 alignée en bas.
+    const lShapeSegments = [
+      { x_cm: 0, y_cm: 0, length_cm: 400, width_cm: 300 },
+      { x_cm: 400, y_cm: 0, length_cm: 200, width_cm: 150 },
+    ];
+    const makeLRoom = (overrides?: Partial<RoomData>): RoomData => ({
+      length_cm: 600, // boîte englobante — ignorée quand segments est fourni
+      width_cm: 300,
+      height_cm: 250,
+      openings: [],
+      segments: lShapeSegments,
+      ...overrides,
+    });
+
+    it('should compute floor area as the union of the rectangles', () => {
+      // 120000 + 30000 = 150000 cm² = 15 m²
+      expect(engine.computeSurface(makeLRoom(), 'floor')).toBe(15);
+    });
+
+    it('should compute ceiling area equal to the floor', () => {
+      expect(engine.computeSurface(makeLRoom(), 'ceiling')).toBe(15);
+    });
+
+    it('should compute wall area from the union outline perimeter', () => {
+      // Contour = 1800 cm ; 1800 * 250 = 450000 cm² = 45 m².
+      // Sommer les périmètres (2100 cm) donnerait 52.5 m² — faux : l'arête
+      // interne partagée entre les deux rectangles n'est pas un mur.
+      expect(engine.computeSurface(makeLRoom(), 'wall')).toBe(45);
+      expect(engine.computeGrossSurface(makeLRoom(), 'wall')).toBe(45);
+    });
+
+    it('should deduct openings from the composite wall area', () => {
+      const room = makeLRoom({
+        openings: [{ width_cm: 90, height_cm: 204, count: 1 }],
+      });
+      // 45 - (90*204)/10000 = 45 - 1.836 = 43.164
+      expect(engine.computeSurface(room, 'wall')).toBeCloseTo(43.164, 3);
+      // La surface brute ignore les ouvertures
+      expect(engine.computeGrossSurface(room, 'wall')).toBe(45);
+    });
+
+    it('should fall back to a single rectangle when segments is empty', () => {
+      const withEmpty = makeRoom({ segments: [] });
+      const withoutField = makeRoom();
+      for (const target of ['floor', 'ceiling', 'wall'] as const) {
+        expect(engine.computeSurface(withEmpty, target)).toBe(
+          engine.computeSurface(withoutField, target),
+        );
+      }
+    });
+
+    it('should run a full estimation on an L-shaped room (walls + floor)', () => {
+      const room = makeLRoom({
+        openings: [{ width_cm: 90, height_cm: 204, count: 1 }],
+      });
+      const workItems: WorkItemInput[] = [
+        {
+          id: 'wi-paint',
+          work_type_code: 'wall_painting',
+          work_type_label: 'Peinture murale',
+          category: 'painting',
+          surface_target: 'wall',
+          skill_level: 'beginner',
+          custom_params: { number_of_coats: 2 },
+          materials: [makePaintMaterial()],
+        },
+        {
+          id: 'wi-tile',
+          work_type_code: 'floor_tiling',
+          work_type_label: 'Carrelage sol',
+          category: 'tiling',
+          surface_target: 'floor',
+          skill_level: 'beginner',
+          custom_params: { laying_pattern: 'straight' },
+          materials: [makeTileMaterial()],
+        },
+      ];
+
+      const items = engine.computeEstimation(room, workItems);
+      expect(items).toHaveLength(2);
+
+      const wall = items[0];
+      expect(wall.gross_surface_m2).toBe(45);
+      expect(wall.surface_m2).toBeCloseTo(43.164, 3);
+
+      const floor = items[1];
+      expect(floor.gross_surface_m2).toBe(15);
+      expect(floor.surface_m2).toBe(15);
+      // Carrelage : 15 m² × 1.15 (débutant, pose droite) = 17.25 m²
+      expect(floor.adjusted_qty).toBeCloseTo(17.25, 2);
+    });
+  });
 });

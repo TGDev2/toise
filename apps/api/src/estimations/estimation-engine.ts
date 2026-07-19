@@ -1,11 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { EstimationLineItem } from './entities/estimation-result.entity';
+import { RectSegment, unionAreaCm2, unionPerimeterCm } from './room-geometry';
 
 export interface RoomData {
   length_cm: number;
   width_cm: number;
   height_cm: number;
   openings: { width_cm: number; height_cm: number; count: number }[];
+  /**
+   * Décomposition en rectangles d'une pièce non rectangulaire (L, T, U…).
+   * Absent ou vide → la pièce est un simple rectangle `length_cm × width_cm`.
+   */
+  segments?: RectSegment[];
 }
 
 export interface PackagingInput {
@@ -57,21 +63,43 @@ const DEFAULT_COATS = 2;
 
 @Injectable()
 export class EstimationEngine {
+  /**
+   * Rectangles composant la pièce. Une pièce sans `segments` est traitée comme
+   * un unique rectangle `length_cm × width_cm` : l'aire vaut alors L×l et le
+   * périmètre 2(L+l), strictement identique à l'ancien calcul rectangulaire.
+   */
+  private resolveSegments(room: RoomData): RectSegment[] {
+    if (room.segments && room.segments.length > 0) {
+      return room.segments;
+    }
+    return [
+      {
+        x_cm: 0,
+        y_cm: 0,
+        length_cm: room.length_cm,
+        width_cm: room.width_cm,
+      },
+    ];
+  }
+
+  private openingsAreaCm2(room: RoomData): number {
+    return room.openings.reduce(
+      (sum, o) => sum + o.width_cm * o.height_cm * o.count,
+      0,
+    );
+  }
+
   computeSurface(room: RoomData, surfaceTarget: string): number {
+    const segments = this.resolveSegments(room);
     switch (surfaceTarget) {
       case 'wall': {
-        const grossWall = 2 * (room.length_cm + room.width_cm) * room.height_cm;
-        const openingsArea = room.openings.reduce(
-          (sum, o) => sum + o.width_cm * o.height_cm * o.count,
-          0,
-        );
-        return Math.max(0, grossWall - openingsArea) / CM2_TO_M2;
+        const grossWall = unionPerimeterCm(segments) * room.height_cm;
+        return Math.max(0, grossWall - this.openingsAreaCm2(room)) / CM2_TO_M2;
       }
       case 'floor':
       case 'ceiling':
-        return (room.length_cm * room.width_cm) / CM2_TO_M2;
       default:
-        return (room.length_cm * room.width_cm) / CM2_TO_M2;
+        return unionAreaCm2(segments) / CM2_TO_M2;
     }
   }
 
@@ -155,15 +183,14 @@ export class EstimationEngine {
   }
 
   computeGrossSurface(room: RoomData, surfaceTarget: string): number {
+    const segments = this.resolveSegments(room);
     switch (surfaceTarget) {
       case 'wall':
-        return (
-          (2 * (room.length_cm + room.width_cm) * room.height_cm) / CM2_TO_M2
-        );
+        return (unionPerimeterCm(segments) * room.height_cm) / CM2_TO_M2;
       case 'floor':
       case 'ceiling':
       default:
-        return (room.length_cm * room.width_cm) / CM2_TO_M2;
+        return unionAreaCm2(segments) / CM2_TO_M2;
     }
   }
 

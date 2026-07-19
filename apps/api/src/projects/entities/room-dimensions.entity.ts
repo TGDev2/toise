@@ -22,6 +22,18 @@ export enum DimensionSource {
   CV = 'cv',
 }
 
+/**
+ * Rectangle composant une pièce non rectangulaire (L, T, U…), vue de dessus.
+ * Miroir de `RectSegment` du moteur d'estimation, gardé local à ce module pour
+ * ne pas coupler l'entité au module estimations.
+ */
+export interface RoomSegment {
+  x_cm: number;
+  y_cm: number;
+  length_cm: number;
+  width_cm: number;
+}
+
 @Entity('room_dimensions')
 export class RoomDimensions {
   @PrimaryGeneratedColumn('uuid')
@@ -47,6 +59,13 @@ export class RoomDimensions {
 
   @Column({ type: 'jsonb', nullable: true, default: null })
   raw_cv_output_json!: Record<string, unknown> | null;
+
+  /**
+   * Décomposition en rectangles d'une pièce non rectangulaire (ENG-1).
+   * `null` → pièce rectangulaire simple `length_cm × width_cm`.
+   */
+  @Column({ type: 'jsonb', nullable: true, default: null })
+  segments_json!: RoomSegment[] | null;
 
   @CreateDateColumn({ type: 'timestamptz' })
   created_at!: Date;

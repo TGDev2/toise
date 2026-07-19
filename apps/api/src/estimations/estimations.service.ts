@@ -119,6 +119,7 @@ export class EstimationsService {
         height_cm: o.height_cm,
         count: o.count,
       })),
+      segments: project.dimensions.segments_json ?? undefined,
     };
 
     // Build work item inputs with their materials
@@ -181,6 +182,12 @@ export class EstimationsService {
         width_cm: o.width_cm,
         height_cm: o.height_cm,
         count: o.count,
+      })),
+      segments: dto.segments?.map((s) => ({
+        x_cm: s.x_cm,
+        y_cm: s.y_cm,
+        length_cm: s.length_cm,
+        width_cm: s.width_cm,
       })),
     };
 

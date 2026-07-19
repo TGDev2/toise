@@ -1,7 +1,7 @@
 'use client';
 
 import type { UnitSystem } from '@/lib/units';
-import type { Opening } from '@/lib/surface';
+import type { Opening, RectSegment } from '@/lib/surface';
 import { cmToMeters, cmToFeetInches } from '@/lib/units';
 
 interface RoomPreviewProps {
@@ -9,8 +9,14 @@ interface RoomPreviewProps {
   widthCm: number;
   unitSystem: UnitSystem;
   openings?: Opening[];
+  /** Rectangles d'une pièce non rectangulaire ; > 1 rectangle → rendu composé. */
+  segments?: RectSegment[];
   className?: string;
 }
+
+const VIEW_BOX_W = 400;
+const VIEW_BOX_H = 300;
+const PADDING = 50;
 
 function formatDimension(cm: number, unitSystem: UnitSystem): string {
   if (unitSystem === 'imperial') {
@@ -25,13 +31,18 @@ export function RoomPreview({
   widthCm,
   unitSystem,
   openings = [],
+  segments,
   className = '',
 }: RoomPreviewProps) {
+  if (segments && segments.length > 1) {
+    return <CompositeRoomPreview segments={segments} className={className} />;
+  }
+
   const isValid = lengthCm > 0 && widthCm > 0;
 
-  const viewBoxW = 400;
-  const viewBoxH = 300;
-  const padding = 50;
+  const viewBoxW = VIEW_BOX_W;
+  const viewBoxH = VIEW_BOX_H;
+  const padding = PADDING;
 
   const maxW = viewBoxW - padding * 2;
   const maxH = viewBoxH - padding * 2;
@@ -254,6 +265,63 @@ export function RoomPreview({
           </text>
         </>
       )}
+    </svg>
+  );
+}
+
+interface CompositeRoomPreviewProps {
+  segments: RectSegment[];
+  className?: string;
+}
+
+/**
+ * Aperçu d'une pièce non rectangulaire : chaque rectangle est dessiné dans un
+ * repère commun (vue de dessus, y inversé pour que « haut » soit en haut),
+ * mis à l'échelle pour tenir dans le cadre.
+ */
+function CompositeRoomPreview({
+  segments,
+  className = '',
+}: CompositeRoomPreviewProps) {
+  const valid = segments.filter((s) => s.length_cm > 0 && s.width_cm > 0);
+
+  const minX = Math.min(...valid.map((s) => s.x_cm));
+  const minY = Math.min(...valid.map((s) => s.y_cm));
+  const maxX = Math.max(...valid.map((s) => s.x_cm + s.length_cm));
+  const maxY = Math.max(...valid.map((s) => s.y_cm + s.width_cm));
+
+  const bboxW = maxX - minX;
+  const bboxH = maxY - minY;
+
+  const maxW = VIEW_BOX_W - PADDING * 2;
+  const maxH = VIEW_BOX_H - PADDING * 2;
+  const scale = Math.min(maxW / bboxW, maxH / bboxH);
+
+  const drawW = bboxW * scale;
+  const drawH = bboxH * scale;
+  const originX = (VIEW_BOX_W - drawW) / 2;
+  const originY = (VIEW_BOX_H - drawH) / 2;
+
+  return (
+    <svg
+      viewBox={`0 0 ${VIEW_BOX_W} ${VIEW_BOX_H}`}
+      role="img"
+      aria-label="Vue de dessus de la pièce (forme composée)"
+      className={className}
+    >
+      {valid.map((s, i) => (
+        <rect
+          key={i}
+          x={originX + (s.x_cm - minX) * scale}
+          // Inversion de l'axe Y : le haut du plan (y max) est en haut du SVG.
+          y={originY + (maxY - (s.y_cm + s.width_cm)) * scale}
+          width={s.length_cm * scale}
+          height={s.width_cm * scale}
+          fill="#fafaf9"
+          stroke="#a8a29e"
+          strokeWidth="2"
+        />
+      ))}
     </svg>
   );
 }
