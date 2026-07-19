@@ -15,6 +15,7 @@ import { PhotosModule } from './photos/photos.module';
 import { AnalysisModule } from './analysis/analysis.module';
 import { FeatureGatesModule } from './feature-gates/feature-gates.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { AdminAnalyticsModule } from './admin-analytics/admin-analytics.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { PriceComparisonModule } from './price-comparison/price-comparison.module';
 import { CompanyProfilesModule } from './company-profiles/company-profiles.module';
@@ -58,6 +59,7 @@ import { validate } from './config/env.validation';
     AnalysisModule,
     FeatureGatesModule,
     AnalyticsModule,
+    AdminAnalyticsModule,
     SubscriptionsModule,
     PriceComparisonModule,
     CompanyProfilesModule,

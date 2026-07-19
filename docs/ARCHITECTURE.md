@@ -63,7 +63,7 @@ Chiffréo est un **monorepo pnpm** composé de 3 applications communicant via RE
 
 ## Modules backend (NestJS)
 
-L'API est organisée en **16 modules NestJS** indépendants :
+L'API est organisée en **17 modules NestJS** indépendants :
 
 ```
 AppModule
@@ -77,6 +77,7 @@ AppModule
 ├── AnalysisModule          # Pipeline CV (jobs asynchrones)
 ├── AnalyticsModule         # Tracking d'événements (funnel DATA-1, événements typés)
 │                           #   POST /analytics/events (auth requise) + POST /public/analytics/events (auth optionnelle, anonyme)
+├── AdminAnalyticsModule    # Tableau de bord North Star (funnel, MRR, listes/semaine) — DATA-2
 ├── FeatureGatesModule      # Feature flags par tier d'abonnement
 ├── SubscriptionsModule     # Intégration Stripe (checkout, webhooks, portail)
 ├── PriceComparisonModule   # Comparaison de prix fournisseurs (mock/réel)

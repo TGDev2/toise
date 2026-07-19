@@ -847,6 +847,73 @@ Enregistrer un événement analytics anonyme (ex. visite d'un calculateur public
 
 ---
 
+## Admin Analytics
+
+### `GET /admin/analytics/dashboard`
+
+Tableau de bord North Star (DATA-2) : listes générées par semaine, conversion
+par marche du funnel DATA-1, MRR par tier. Lecture seule, agrège
+`analytics_events`, `subscriptions` et `users` — aucune écriture.
+
+**Auth :** Requise (admin) | **Guard :** `AdminGuard`
+
+**Query params :**
+
+| Param | Type | Défaut | Description |
+|-------|------|--------|-------------|
+| `weeks` | number | `8` | Nombre de semaines glissantes pour le graphique de listes générées (1-52) |
+| `days` | number | `30` | Fenêtre glissante du funnel (1-365) |
+
+**Réponse :** `200 OK`
+```json
+{
+  "generated_at": "2026-07-19T14:32:00.000Z",
+  "weekly_shopping_lists": {
+    "weeks": 8,
+    "series": [{ "week_start": "2026-06-01", "count": 2 }]
+  },
+  "funnel": {
+    "since": "2026-06-19T00:00:00.000Z",
+    "days": 30,
+    "steps": [
+      {
+        "event_name": "calculator_viewed",
+        "count": 420,
+        "conversion_from_previous": null,
+        "conversion_from_start": 100
+      },
+      {
+        "event_name": "checkout_started",
+        "count": 12,
+        "conversion_from_previous": 26.67,
+        "conversion_from_start": 2.86
+      }
+    ]
+  },
+  "mrr": {
+    "statuses_included": ["active", "past_due"],
+    "currency": "EUR",
+    "total_mrr": 849.7,
+    "by_tier": [
+      { "tier": "pro", "subscriber_count": 30, "mrr": 299.7 },
+      { "tier": "contractor", "subscriber_count": 5, "mrr": 550 }
+    ],
+    "free_users_count": 512,
+    "trialing_count": 8
+  }
+}
+```
+
+`funnel.steps` liste les 5 marches du funnel DATA-1 dans l'ordre
+(`calculator_viewed` → `account_created` → `estimate_created` →
+`shopping_list_generated` → `checkout_started`) : la 1ʳᵉ marche compte les
+événements bruts (visite anonyme possible), les 4 suivantes comptent les
+utilisateurs distincts ayant déclenché l'événement pendant la fenêtre.
+`mrr` ne compte que les abonnements `active`/`past_due` (revenu facturé) —
+`trialing` est exposé à part via `trialing_count`, hors du montant.
+
+---
+
 ## Price Comparison
 
 ### `POST /projects/:id/shopping-list/compare-prices`

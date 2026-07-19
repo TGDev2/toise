@@ -27,6 +27,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </h1>
         <nav className="space-y-2">
           <Link
+            href="/admin/analytics"
+            className="block rounded-lg px-4 py-2 text-sm font-medium text-[var(--foreground)] hover:bg-[var(--accent)]/10"
+          >
+            Tableau de bord
+          </Link>
+          <Link
             href="/admin/materials"
             className="block rounded-lg px-4 py-2 text-sm font-medium text-[var(--foreground)] hover:bg-[var(--accent)]/10"
           >
