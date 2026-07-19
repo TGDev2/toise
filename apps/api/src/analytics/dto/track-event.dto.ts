@@ -1,9 +1,9 @@
-import { IsString, IsOptional, IsObject, MaxLength } from 'class-validator';
+import { IsEnum, IsOptional, IsObject } from 'class-validator';
+import { AnalyticsEventName } from '../analytics-event-name.enum';
 
 export class TrackEventDto {
-  @IsString()
-  @MaxLength(50)
-  event_name!: string;
+  @IsEnum(AnalyticsEventName)
+  event_name!: AnalyticsEventName;
 
   @IsOptional()
   @IsObject()

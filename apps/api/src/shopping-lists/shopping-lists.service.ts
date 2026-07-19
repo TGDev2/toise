@@ -19,6 +19,7 @@ import { WorkType } from '../projects/entities/work-type.entity';
 import { EstimationsService } from '../estimations/estimations.service';
 import { ProjectsService } from '../projects/projects.service';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 import { UpdateShoppingListDto } from './dto/update-shopping-list.dto';
 import { DEFAULT_WASTE_PERCENT } from '../estimations/estimation-engine';
 import { ProjectStatus } from '../projects/entities/project.entity';
@@ -154,7 +155,20 @@ export class ShoppingListsService {
       items_json: data,
     });
 
-    return this.shoppingListRepo.save(entity);
+    const saved = await this.shoppingListRepo.save(entity);
+
+    // Se déclenche aussi depuis regenerate() (régénération manuelle) : c'est
+    // volontaire, le funnel agrège en aval sur la première occurrence par projet.
+    this.analyticsService.track(
+      AnalyticsEventName.SHOPPING_LIST_GENERATED,
+      userId,
+      {
+        project_id: projectId,
+        total_items: materialItems.length,
+      },
+    );
+
+    return saved;
   }
 
   async update(
@@ -335,7 +349,7 @@ export class ShoppingListsService {
 
     await this.projectsService.updateStatus(projectId, ProjectStatus.COMPLETED);
 
-    this.analyticsService.track('budget_tracked', userId, {
+    this.analyticsService.track(AnalyticsEventName.BUDGET_TRACKED, userId, {
       project_id: projectId,
       savings_amount: summary.savings_amount,
       savings_percent: summary.savings_percent,

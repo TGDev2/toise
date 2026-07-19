@@ -16,6 +16,7 @@ import { StripeEvent } from './entities/stripe-event.entity';
 import { UsersService } from '../users/users.service';
 import { SubscriptionTier } from '../users/entities/user.entity';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 
 @Injectable()
 export class SubscriptionsService {
@@ -117,6 +118,11 @@ export class SubscriptionsService {
       success_url: `${this.publicUrl}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${this.publicUrl}/subscription/cancel`,
       metadata: { user_id: user.id },
+    });
+
+    this.analyticsService.track(AnalyticsEventName.CHECKOUT_STARTED, user.id, {
+      plan: this.resolvePlanName(selectedPriceId),
+      price_id: selectedPriceId,
     });
 
     return { url: session.url! };
@@ -269,10 +275,14 @@ export class SubscriptionsService {
     await this.syncSubscriptionTier(userId, stripeSub.status, priceId);
 
     const planName = this.resolvePlanName(priceId);
-    this.analyticsService.track('subscription_started', userId, {
-      plan: planName,
-      trial: stripeSub.status === 'trialing',
-    });
+    this.analyticsService.track(
+      AnalyticsEventName.SUBSCRIPTION_STARTED,
+      userId,
+      {
+        plan: planName,
+        trial: stripeSub.status === 'trialing',
+      },
+    );
   }
 
   private async handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
@@ -318,9 +328,13 @@ export class SubscriptionsService {
     await this.subscriptionsRepo.save(subscription);
 
     const planName = this.resolvePlanName(subscription.stripe_price_id);
-    this.analyticsService.track('payment_failed', subscription.user_id, {
-      plan: planName,
-    });
+    this.analyticsService.track(
+      AnalyticsEventName.PAYMENT_FAILED,
+      subscription.user_id,
+      {
+        plan: planName,
+      },
+    );
   }
 
   private async handleSubscriptionUpdated(
@@ -365,9 +379,13 @@ export class SubscriptionsService {
     await this.syncSubscriptionTier(subscription.user_id, 'canceled');
 
     const planName = this.resolvePlanName(subscription.stripe_price_id);
-    this.analyticsService.track('subscription_canceled', subscription.user_id, {
-      plan: planName,
-    });
+    this.analyticsService.track(
+      AnalyticsEventName.SUBSCRIPTION_CANCELED,
+      subscription.user_id,
+      {
+        plan: planName,
+      },
+    );
   }
 
   private async syncSubscriptionTier(

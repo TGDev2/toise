@@ -75,7 +75,8 @@ AppModule
 ├── ShoppingListsModule     # Listes d'achat, export PDF, partage par token
 ├── PhotosModule            # Upload photos, thumbnails, stockage local
 ├── AnalysisModule          # Pipeline CV (jobs asynchrones)
-├── AnalyticsModule         # Tracking d'événements
+├── AnalyticsModule         # Tracking d'événements (funnel DATA-1, événements typés)
+│                           #   POST /analytics/events (auth requise) + POST /public/analytics/events (auth optionnelle, anonyme)
 ├── FeatureGatesModule      # Feature flags par tier d'abonnement
 ├── SubscriptionsModule     # Intégration Stripe (checkout, webhooks, portail)
 ├── PriceComparisonModule   # Comparaison de prix fournisseurs (mock/réel)

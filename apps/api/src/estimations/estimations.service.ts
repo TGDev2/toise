@@ -26,6 +26,7 @@ import { PublicEstimateRequestDto } from './dto/public-estimate-request.dto';
 import { PublicEstimateEmailDto } from './dto/public-estimate-email.dto';
 import { EmailService } from '../email/email.service';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 
 export interface PublicEstimateResponse {
   work_type_code: string;
@@ -153,6 +154,11 @@ export class EstimationsService {
 
     await this.projectsService.updateStatus(projectId, ProjectStatus.ESTIMATED);
 
+    this.analyticsService.track(AnalyticsEventName.ESTIMATE_CREATED, userId, {
+      project_id: projectId,
+      total_items: items.length,
+    });
+
     return saved;
   }
 
@@ -242,7 +248,7 @@ export class EstimationsService {
       );
     }
 
-    this.analyticsService.track('email_capture', null, {
+    this.analyticsService.track(AnalyticsEventName.EMAIL_CAPTURE, null, {
       work_type_code: result.work_type_code,
       skill_level: result.skill_level,
       sent,

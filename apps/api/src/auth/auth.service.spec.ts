@@ -5,6 +5,8 @@ import { AuthService } from './auth.service';
 import { FirebaseConfig } from '../config/firebase.config';
 import { UsersService } from '../users/users.service';
 import { CompanyProfilesService } from '../company-profiles/company-profiles.service';
+import { AnalyticsService } from '../analytics/analytics.service';
+import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 import {
   AuthProvider,
   SubscriptionTier,
@@ -38,6 +40,10 @@ describe('AuthService', () => {
     create: jest.fn(),
     findByUserId: jest.fn(),
     update: jest.fn(),
+  };
+
+  const analyticsServiceMock = {
+    track: jest.fn(),
   };
 
   let usersService: typeof usersServiceMock;
@@ -102,6 +108,10 @@ describe('AuthService', () => {
           provide: CompanyProfilesService,
           useValue: companyProfilesServiceMock,
         },
+        {
+          provide: AnalyticsService,
+          useValue: analyticsServiceMock,
+        },
       ],
     }).compile();
 
@@ -113,7 +123,10 @@ describe('AuthService', () => {
     it('should create a new user and return it', async () => {
       usersService.findByEmail.mockResolvedValue(null);
       mockFirebaseAuth.createUser.mockResolvedValue({ uid: 'new-uid' });
-      usersService.upsertFromFirebase.mockResolvedValue(mockUser);
+      usersService.upsertFromFirebase.mockResolvedValue({
+        user: mockUser,
+        isNewAccount: true,
+      });
 
       const result = await service.register({
         email: 'test@example.com',
@@ -128,6 +141,26 @@ describe('AuthService', () => {
         displayName: undefined,
         emailVerified: false,
       });
+    });
+
+    it('should track account_created for a newly registered user', async () => {
+      usersService.findByEmail.mockResolvedValue(null);
+      mockFirebaseAuth.createUser.mockResolvedValue({ uid: 'new-uid' });
+      usersService.upsertFromFirebase.mockResolvedValue({
+        user: mockUser,
+        isNewAccount: true,
+      });
+
+      await service.register({
+        email: 'test@example.com',
+        password: 'securepass123',
+      });
+
+      expect(analyticsServiceMock.track).toHaveBeenCalledWith(
+        AnalyticsEventName.ACCOUNT_CREATED,
+        mockUser.id,
+        { auth_provider: mockUser.auth_provider },
+      );
     });
 
     it('should roll back the Firebase user if database sync fails', async () => {
@@ -160,7 +193,10 @@ describe('AuthService', () => {
 
   describe('syncUser', () => {
     it('should upsert user from Firebase token', async () => {
-      usersService.upsertFromFirebase.mockResolvedValue(mockUser);
+      usersService.upsertFromFirebase.mockResolvedValue({
+        user: mockUser,
+        isNewAccount: false,
+      });
 
       const decodedToken = createDecodedToken({
         uid: 'firebase-uid-123',
@@ -180,7 +216,10 @@ describe('AuthService', () => {
     });
 
     it('should resolve Google provider correctly', async () => {
-      usersService.upsertFromFirebase.mockResolvedValue(mockUser);
+      usersService.upsertFromFirebase.mockResolvedValue({
+        user: mockUser,
+        isNewAccount: false,
+      });
 
       const decodedToken = createDecodedToken({
         uid: 'firebase-uid-123',
@@ -199,7 +238,10 @@ describe('AuthService', () => {
     });
 
     it('should resolve anonymous provider correctly', async () => {
-      usersService.upsertFromFirebase.mockResolvedValue(mockUser);
+      usersService.upsertFromFirebase.mockResolvedValue({
+        user: mockUser,
+        isNewAccount: false,
+      });
 
       const decodedToken = createDecodedToken({
         uid: 'anon-uid',
@@ -215,6 +257,46 @@ describe('AuthService', () => {
         AuthProvider.ANONYMOUS,
         false,
       );
+    });
+
+    it('should track account_created when a new account is created (social signup or guest conversion)', async () => {
+      usersService.upsertFromFirebase.mockResolvedValue({
+        user: mockUser,
+        isNewAccount: true,
+      });
+
+      const decodedToken = createDecodedToken({
+        uid: 'firebase-uid-123',
+        email: 'test@gmail.com',
+        email_verified: true,
+        firebase: { sign_in_provider: 'google.com' },
+      });
+
+      await service.syncUser(decodedToken);
+
+      expect(analyticsServiceMock.track).toHaveBeenCalledWith(
+        AnalyticsEventName.ACCOUNT_CREATED,
+        mockUser.id,
+        { auth_provider: mockUser.auth_provider },
+      );
+    });
+
+    it('should not track account_created on an ordinary re-login/token refresh', async () => {
+      usersService.upsertFromFirebase.mockResolvedValue({
+        user: mockUser,
+        isNewAccount: false,
+      });
+
+      const decodedToken = createDecodedToken({
+        uid: 'firebase-uid-123',
+        email: 'test@example.com',
+        email_verified: true,
+        firebase: { sign_in_provider: 'password' },
+      });
+
+      await service.syncUser(decodedToken);
+
+      expect(analyticsServiceMock.track).not.toHaveBeenCalled();
     });
   });
 

@@ -807,19 +807,38 @@ Supprimer une feature gate.
 
 ## Analytics
 
+Noms d'événements typés (`AnalyticsEventName`, [apps/api/src/analytics/analytics-event-name.enum.ts](../apps/api/src/analytics/analytics-event-name.enum.ts)) — funnel DATA-1 : `calculator_viewed` → `account_created` → `estimate_created` → `shopping_list_generated` → `checkout_started` (puis `subscription_started`). Autres événements : `email_capture`, `payment_failed`, `subscription_canceled`, `budget_tracked`, `paywall_shown`, `paywall_clicked`, `pricing_cta_clicked`, `contractor_plan_clicked`.
+
 ### `POST /analytics/events`
 
-Enregistrer un événement analytics.
+Enregistrer un événement analytics authentifié.
 
 **Auth :** Requise
 
 **Body :**
 ```json
 {
-  "event_name": "project_created",
+  "event_name": "pricing_cta_clicked",
   "properties": {
-    "project_id": "uuid",
-    "source": "logged_in"
+    "plan": "pro"
+  }
+}
+```
+
+**Réponses :** `201 Created`
+
+### `POST /public/analytics/events`
+
+Enregistrer un événement analytics anonyme (ex. visite d'un calculateur public, avant toute création de compte). Auth optionnelle : si un Bearer token valide est fourni (session invitée ou compte existant), l'événement est attribué au `user_id` correspondant ; sinon `user_id` est `null`. Restreint à une allow-list volontairement étroite (aujourd'hui : `calculator_viewed` uniquement) — jamais le plein enum, pour qu'un appelant anonyme ne puisse pas injecter un événement réservé aux call sites internes.
+
+**Auth :** Optionnelle
+
+**Body :**
+```json
+{
+  "event_name": "calculator_viewed",
+  "properties": {
+    "slug": "peinture"
   }
 }
 ```

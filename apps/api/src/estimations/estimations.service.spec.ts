@@ -13,7 +13,9 @@ import { WorkType } from '../projects/entities/work-type.entity';
 import { ProjectsService } from '../projects/projects.service';
 import { EmailService } from '../email/email.service';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 import { SkillLevel } from '../projects/entities/project-work-item.entity';
+import { ProjectStatus } from '../projects/entities/project.entity';
 import { PublicEstimateRequestDto } from './dto/public-estimate-request.dto';
 import { PublicEstimateEmailDto } from './dto/public-estimate-email.dto';
 
@@ -294,6 +296,101 @@ describe('EstimationsService.emailEstimate', () => {
       'email_capture',
       null,
       expect.objectContaining({ work_type_code: 'wall_painting', sent: true }),
+    );
+  });
+});
+
+describe('EstimationsService.estimate', () => {
+  let service: EstimationsService;
+
+  const mockWorkItem = {
+    id: 'wi-1',
+    work_type: mockWorkType,
+    skill_level: SkillLevel.INTERMEDIATE,
+    custom_params: {},
+  };
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    materialsRepoMock.find.mockResolvedValue([mockMaterial]);
+    projectsServiceMock.findOneByUser.mockResolvedValue({
+      id: 'project-1',
+      dimensions: { length_cm: 400, width_cm: 300, height_cm: 250 },
+      openings: [{ width_cm: 90, height_cm: 210, count: 1 }],
+    });
+    projectsServiceMock.getWorkItems.mockResolvedValue([mockWorkItem]);
+    projectsServiceMock.updateStatus.mockResolvedValue(undefined);
+    estimationRepoMock.create.mockImplementation(
+      (data: Record<string, unknown>) => data,
+    );
+    estimationRepoMock.save.mockImplementation(
+      (entity: Record<string, unknown>) =>
+        Promise.resolve({ id: 'estimation-1', ...entity }),
+    );
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        EstimationsService,
+        EstimationEngine,
+        {
+          provide: getRepositoryToken(EstimationResult),
+          useValue: estimationRepoMock,
+        },
+        {
+          provide: getRepositoryToken(MaterialCatalog),
+          useValue: materialsRepoMock,
+        },
+        { provide: getRepositoryToken(WorkType), useValue: workTypesRepoMock },
+        {
+          provide: getRepositoryToken(EmailCapture),
+          useValue: emailCaptureRepoMock,
+        },
+        { provide: ProjectsService, useValue: projectsServiceMock },
+        { provide: EmailService, useValue: emailServiceMock },
+        { provide: AnalyticsService, useValue: analyticsServiceMock },
+      ],
+    }).compile();
+
+    service = module.get(EstimationsService);
+  });
+
+  it('throws BadRequestException when the project has no dimensions', async () => {
+    projectsServiceMock.findOneByUser.mockResolvedValue({
+      id: 'project-1',
+      dimensions: null,
+    });
+
+    await expect(service.estimate('project-1', 'user-1')).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(projectsServiceMock.getWorkItems).not.toHaveBeenCalled();
+  });
+
+  it('throws BadRequestException when the project has no work items', async () => {
+    projectsServiceMock.getWorkItems.mockResolvedValue([]);
+
+    await expect(service.estimate('project-1', 'user-1')).rejects.toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('persists the estimation and marks the project as ESTIMATED', async () => {
+    const result = await service.estimate('project-1', 'user-1');
+
+    expect(result.project_id).toBe('project-1');
+    expect(projectsServiceMock.updateStatus).toHaveBeenCalledWith(
+      'project-1',
+      ProjectStatus.ESTIMATED,
+    );
+  });
+
+  it('tracks an estimate_created analytics event', async () => {
+    const result = await service.estimate('project-1', 'user-1');
+
+    expect(analyticsServiceMock.track).toHaveBeenCalledWith(
+      AnalyticsEventName.ESTIMATE_CREATED,
+      'user-1',
+      { project_id: 'project-1', total_items: result.total_items },
     );
   });
 });

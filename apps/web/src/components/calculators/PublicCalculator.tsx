@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { DimensionsForm } from '@/components/dimensions/DimensionsForm';
@@ -8,6 +8,7 @@ import { EstimationResults } from '@/components/estimation/EstimationResults';
 import { SkillLevelSelector } from '@/components/estimation/SkillLevelSelector';
 import { Alert, Input, useToast } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePublicAnalytics } from '@/hooks/useAnalytics';
 import { apiPost, apiPut } from '@/lib/api';
 import type { CalculatorConfig, CalculatorVariant } from '@/lib/calculators';
 import { getErrorMessage } from '@/lib/errors';
@@ -83,6 +84,11 @@ export function PublicCalculator({ config }: PublicCalculatorProps) {
   const { appUser, isGuest, startGuestSession } = useAuth();
   const router = useRouter();
   const toast = useToast();
+  const { track } = usePublicAnalytics();
+
+  useEffect(() => {
+    track('calculator_viewed', { slug: config.slug });
+  }, [track, config.slug]);
 
   const [variantCode, setVariantCode] = useState(config.variants[0].code);
   const [skillLevel, setSkillLevel] = useState('intermediate');

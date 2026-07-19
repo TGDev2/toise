@@ -10,6 +10,8 @@ import { UsersService } from '../users/users.service';
 import { CompanyProfilesService } from '../company-profiles/company-profiles.service';
 import { AuthProvider, User } from '../users/entities/user.entity';
 import { RegisterDto } from './dto/register.dto';
+import { AnalyticsService } from '../analytics/analytics.service';
+import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 
 @Injectable()
 export class AuthService {
@@ -19,6 +21,7 @@ export class AuthService {
     private readonly firebase: FirebaseConfig,
     private readonly usersService: UsersService,
     private readonly companyProfilesService: CompanyProfilesService,
+    private readonly analyticsService: AnalyticsService,
   ) {}
 
   async register(dto: RegisterDto): Promise<{ user: User; message: string }> {
@@ -38,7 +41,7 @@ export class AuthService {
         emailVerified: false,
       });
 
-      const user = await this.usersService.upsertFromFirebase(
+      const { user, isNewAccount } = await this.usersService.upsertFromFirebase(
         firebaseUser.uid,
         dto.email,
         AuthProvider.EMAIL,
@@ -47,6 +50,16 @@ export class AuthService {
 
       if (dto.company_profile) {
         await this.companyProfilesService.create(user.id, dto.company_profile);
+      }
+
+      if (isNewAccount) {
+        this.analyticsService.track(
+          AnalyticsEventName.ACCOUNT_CREATED,
+          user.id,
+          {
+            auth_provider: user.auth_provider,
+          },
+        );
       }
 
       return { user, message: 'Verification email sent' };
@@ -65,12 +78,20 @@ export class AuthService {
 
   async syncUser(decodedToken: DecodedIdToken): Promise<User> {
     const provider = this.resolveProvider(decodedToken);
-    return this.usersService.upsertFromFirebase(
+    const { user, isNewAccount } = await this.usersService.upsertFromFirebase(
       decodedToken.uid,
       decodedToken.email ?? null,
       provider,
       decodedToken.email_verified ?? false,
     );
+
+    if (isNewAccount) {
+      this.analyticsService.track(AnalyticsEventName.ACCOUNT_CREATED, user.id, {
+        auth_provider: user.auth_provider,
+      });
+    }
+
+    return user;
   }
 
   async forgotPassword(email: string): Promise<void> {

@@ -30,17 +30,19 @@ export class UsersService {
     email: string | null,
     provider: AuthProvider,
     emailVerified: boolean,
-  ): Promise<User> {
+  ): Promise<{ user: User; isNewAccount: boolean }> {
     let user = await this.findByFirebaseUid(firebaseUid);
 
     if (user) {
+      const wasAnonymous = user.auth_provider === AuthProvider.ANONYMOUS;
       user.email = email ?? user.email;
-      user.auth_provider =
-        user.auth_provider === AuthProvider.ANONYMOUS
-          ? provider
-          : user.auth_provider;
+      user.auth_provider = wasAnonymous ? provider : user.auth_provider;
       user.email_verified = emailVerified || user.email_verified;
-      return this.usersRepo.save(user);
+      const saved = await this.usersRepo.save(user);
+      return {
+        user: saved,
+        isNewAccount: wasAnonymous && provider !== AuthProvider.ANONYMOUS,
+      };
     }
 
     user = this.usersRepo.create({
@@ -49,7 +51,8 @@ export class UsersService {
       auth_provider: provider,
       email_verified: emailVerified,
     });
-    return this.usersRepo.save(user);
+    const saved = await this.usersRepo.save(user);
+    return { user: saved, isNewAccount: provider !== AuthProvider.ANONYMOUS };
   }
 
   async transferProjects(fromUserId: string, toUserId: string): Promise<void> {

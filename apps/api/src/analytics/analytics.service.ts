@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AnalyticsEvent } from './entities/analytics-event.entity';
+import { AnalyticsEventName } from './analytics-event-name.enum';
 
 @Injectable()
 export class AnalyticsService {
@@ -11,7 +12,7 @@ export class AnalyticsService {
   ) {}
 
   track(
-    eventName: string,
+    eventName: AnalyticsEventName,
     userId: string | null,
     properties: Record<string, unknown> = {},
   ): void {
