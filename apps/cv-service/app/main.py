@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from app.api.routes import router as analyze_router
 from app.api.health import router as health_router
+from app.config import settings
 from app.services.depth_estimator import DepthEstimator
 from app.services.opening_detector import OpeningDetector
 
@@ -19,7 +20,7 @@ async def lifespan(app: FastAPI):
     app.state.depth_estimator = depth_estimator
 
     opening_detector = OpeningDetector()
-    opening_detector.load_model()
+    opening_detector.load_model(settings.opening_model_path)
     app.state.opening_detector = opening_detector
     yield
     del depth_estimator

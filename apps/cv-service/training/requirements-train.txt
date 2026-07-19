@@ -1,0 +1,11 @@
+# Dépendances d'entraînement/évaluation du modèle portes/fenêtres.
+# ultralytics DOIT rester à la même version que ../requirements.txt : un skew
+# train/serve peut changer silencieusement le format de checkpoint ou le
+# post-processing.
+ultralytics==8.4.101
+roboflow>=1.1.0
+PyYAML>=6.0
+
+# Optionnel — uniquement pour `prepare_dataset.py --include-open-images`
+# (sous-ensemble Open Images V7, dernier recours de l'échelle d'itération) :
+# fiftyone>=1.0

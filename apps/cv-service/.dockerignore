@@ -1,0 +1,9 @@
+# Le contexte de build est ./apps/cv-service : le .dockerignore racine ne
+# s'applique pas ici. Sans ces exclusions, le build VPS embarquerait les
+# datasets d'entraînement (plusieurs Go) et le venv local.
+.venv/
+datasets/
+runs/
+training/
+__pycache__/
+*.pyc

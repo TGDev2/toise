@@ -8,4 +8,6 @@ torch==2.5.1+cpu
 transformers==4.47.1
 Pillow==11.1.0
 httpx==0.28.1
-ultralytics>=8.0.0
+# Épinglé : même version que training/requirements-train.txt (un skew train/serve
+# peut changer silencieusement le format de checkpoint ou le post-processing).
+ultralytics==8.4.101

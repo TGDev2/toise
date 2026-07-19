@@ -48,7 +48,7 @@
 
 | ID | Item | Description / valeur | Effort | Dépend de |
 |---|---|---|---|---|
-| CV-1 | Poids YOLO portes/fenêtres | Le fichier `models/door-window-yolov8n.pt` est absent → fallback heuristique silencieux. Sourcer un modèle pré-entraîné (datasets portes/fenêtres publics) ou fine-tuner YOLOv8n, versionner via artefact (pas dans git). | L | — |
+| CV-1 | Poids YOLO portes/fenêtres | **Scripts + versionnement livrés (19/07/2026), entraînement à exécuter.** Décision : fine-tuning YOLOv8n sur datasets publics CC BY 4.0 (pas de pré-entraîné viable). Toolkit [apps/cv-service/training/](../apps/cv-service/training/) (runbook + critères d'acceptation dans son README), poids versionnés en GitHub Release `cv-model-vN` via `scripts/release-model.sh` / `fetch-model.sh` (pas dans git). Reste : lancer l'entraînement GPU, valider l'éval, publier `cv-model-v1`. | L | — |
 | CV-2 | Mesure de précision CV | Job qui calcule l'écart médian dimensions CV vs corrections utilisateur (`cv_correction_logs`). Prérequis de toute communication sur la précision et du flywheel. | M | — |
 
 ---

@@ -55,7 +55,7 @@ Chiffréo est un **monorepo pnpm** composé de 3 applications communicant via RE
 | PDF | PDFKit | 0.18.0 |
 | CV - Framework | FastAPI | 0.115.6 |
 | CV - Depth | Depth Anything V2 Small | HuggingFace Transformers |
-| CV - Détection | YOLOv8n | Ultralytics |
+| CV - Détection | YOLOv8n (poids = artefact GitHub Release `cv-model-vN`, hors git ; repli heuristique OpenCV si absents) | Ultralytics |
 | Charts | Recharts | 3.8.1 |
 | Package manager | pnpm | 9+ |
 | Tests | Jest | — |

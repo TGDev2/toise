@@ -177,6 +177,31 @@ IMAGE_TAG=v1.0.0 docker compose -f docker-compose.prod.yml up -d api web
   le plus haut en semver — la CD elle-même ne s'appuie jamais dessus, elle
   épingle toujours `IMAGE_TAG` explicitement.
 
+### Mise à jour de `cv-service` (hors CD) : poids du modèle portes/fenêtres
+
+`cv-service` reste construit depuis les sources sur le VPS. Les poids YOLO
+portes/fenêtres (`models/door-window-yolov8n.pt`) ne sont **pas dans git** :
+ils sont des artefacts de GitHub Release (tags `cv-model-vN`, publiés par
+`apps/cv-service/scripts/release-model.sh` — cycle complet dans
+[`apps/cv-service/training/README.md`](../apps/cv-service/training/README.md)).
+Le Dockerfile fait `COPY models/`, donc le fetch doit précéder le build :
+
+```bash
+# Sur le VPS, dans /opt/chiffreo :
+./apps/cv-service/scripts/fetch-model.sh            # ou un tag précis : cv-model-v1
+docker compose -f docker-compose.prod.yml build cv-service
+docker compose -f docker-compose.prod.yml up -d cv-service
+# Contrôle : le health du service doit exposer "yolo": true
+docker compose -f docker-compose.prod.yml exec cv-service \
+  python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8000/health').read().decode())"
+```
+
+Le script préfère `gh` (`apt install gh` puis `gh auth login`, une fois) ; à
+défaut, repli `curl` avec `GITHUB_REPOSITORY=owner/repo` et, si le dépôt est
+privé, `GITHUB_TOKEN`. Il vérifie le SHA-256 des assets et est idempotent (ne
+retélécharge pas des poids déjà à jour). Sans poids, le service fonctionne en
+mode heuristique (`"yolo": false`) — pas d'interruption, précision moindre.
+
 ## 7. Déploiement manuel (secours / premier déploiement)
 
 ```bash

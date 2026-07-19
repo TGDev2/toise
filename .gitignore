@@ -37,6 +37,18 @@ apps/api/uploads/
 # Misc
 *.log
 
+# CV : poids du modèle (artefact GitHub Release cv-model-vN, jamais dans git),
+# datasets et sorties d'entraînement. models/* + négation (et non models/)
+# pour garder le README committé.
+apps/cv-service/models/*
+!apps/cv-service/models/README.md
+apps/cv-service/datasets/
+apps/cv-service/runs/
+apps/cv-service/training/reports/
+apps/cv-service/.venv/
+# Checkpoint COCO de base, téléchargé par ultralytics au lancement de train.py
+apps/cv-service/yolov8n.pt
+
 docs/CONTEXT.md
 CLAUDE.md
 AGENTS.md

@@ -15,7 +15,9 @@ Microservice de vision par ordinateur construit avec **Python FastAPI**. Analyse
 
 - Python >= 3.11
 - pip ou uv
-- Le modèle YOLOv8n entraîné dans `models/door-window-yolov8n.pt`
+- Optionnel : les poids YOLOv8n dans `models/door-window-yolov8n.pt` (voir
+  [Modèle portes/fenêtres](#modèle-portesfenêtres) — sans eux, repli sur
+  l'heuristique OpenCV)
 
 ### Installation
 
@@ -73,9 +75,16 @@ Health check.
 ```json
 {
   "status": "ok",
-  "service": "cv-service"
+  "service": "cv-service",
+  "models": {
+    "depth": true,
+    "yolo": true
+  }
 }
 ```
+
+`models.yolo` vaut `false` quand les poids portes/fenêtres sont absents (repli
+heuristique actif) — c'est le signal à contrôler après un déploiement.
 
 ### `POST /analyze`
 
@@ -186,6 +195,25 @@ Fusion multi-images :
 └─────────────────────────────────────────────────────────┘
 ```
 
+## Modèle portes/fenêtres
+
+Les poids `models/door-window-yolov8n.pt` (YOLOv8n fine-tuné, classes
+`{0: door, 1: window}`) ne sont **jamais committés** : ils sont versionnés en
+artefacts de GitHub Release, tags `cv-model-vN`.
+
+```bash
+# Récupérer la dernière version (dev comme VPS, AVANT docker build)
+./scripts/fetch-model.sh            # ou ./scripts/fetch-model.sh cv-model-v1
+```
+
+- **Absents** : le service démarre quand même, `OpeningDetector` bascule sur
+  l'heuristique OpenCV (moins précise) et `GET /health` expose `"yolo": false`.
+- **Chemin configurable** : `OPENING_MODEL_PATH` (défaut
+  `models/door-window-yolov8n.pt`).
+- **Produire/publier une nouvelle version** (datasets, entraînement,
+  évaluation, critères d'acceptation) : [training/README.md](training/README.md),
+  puis `./scripts/release-model.sh`.
+
 ## Sécurité
 
 ### Protection contre le path traversal
@@ -213,6 +241,15 @@ app/
     ├── reference_detector.py        # Détection d'objet de référence
     ├── opening_detector.py          # YOLOv8n (portes/fenêtres)
     └── dimension_calculator.py      # Orchestration du pipeline complet
+models/                              # Poids YOLO (artefact de release, hors git)
+scripts/
+├── release-model.sh                 # Publie les poids (GitHub Release cv-model-vN)
+└── fetch-model.sh                   # Récupère + vérifie les poids (SHA-256)
+training/
+├── prepare_dataset.py               # Assemble le dataset portes/fenêtres (CC BY 4.0)
+├── train.py                         # Fine-tuning YOLOv8n
+├── evaluate.py                      # mAP/PR + verdict vs critères + MODEL_CARD
+└── smoke_test.py                    # Valide le chemin runtime réel (CI/dev)
 ```
 
 ## Dépendances principales
