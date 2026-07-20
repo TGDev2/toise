@@ -14,6 +14,7 @@ import {
   RoomDimensions,
   ConfidenceScore,
   DimensionSource,
+  ExclusionType,
 } from './entities/room-dimensions.entity';
 import { Opening, OpeningType, OpeningSource } from './entities/opening.entity';
 import { WorkType as WorkTypeEntity } from './entities/work-type.entity';
@@ -77,6 +78,7 @@ const mockDimensions: RoomDimensions = {
   source: DimensionSource.MANUAL,
   raw_cv_output_json: null,
   segments_json: null,
+  exclusions_json: null,
   created_at: new Date('2026-03-27T00:00:00.000Z'),
   updated_at: new Date('2026-03-27T00:00:00.000Z'),
   room: null as never,
@@ -488,6 +490,7 @@ describe('ProjectsService', () => {
         source: DimensionSource.MANUAL,
         confidence_score: ConfidenceScore.HIGH,
         segments_json: null,
+        exclusions_json: null,
         raw_cv_output_json: null,
       });
       expect(dimensionsRepoMock.save).toHaveBeenCalled();
@@ -508,6 +511,51 @@ describe('ProjectsService', () => {
           width_cm: 500,
           height_cm: 300,
         }),
+      );
+    });
+
+    // ENG-3: surfaces à exclure (déduction manuelle simple)
+    it('persists exclusions_json when exclusions are provided', async () => {
+      dimensionsRepoMock.findOne.mockResolvedValueOnce(null);
+
+      await service.updateDimensions('project-uuid', 'user-uuid', {
+        length_cm: 500,
+        width_cm: 400,
+        height_cm: 250,
+        exclusions: [
+          { surface_target: 'wall', type: ExclusionType.CREDENCE, area_m2: 2 },
+        ],
+      });
+
+      expect(dimensionsRepoMock.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          exclusions_json: [
+            {
+              surface_target: 'wall',
+              type: ExclusionType.CREDENCE,
+              area_m2: 2,
+            },
+          ],
+        }),
+      );
+    });
+
+    it('clears exclusions_json when exclusions are absent from the payload', async () => {
+      dimensionsRepoMock.findOne.mockResolvedValueOnce({
+        ...mockDimensions,
+        exclusions_json: [
+          { surface_target: 'wall', type: ExclusionType.CREDENCE, area_m2: 2 },
+        ],
+      });
+
+      await service.updateDimensions('project-uuid', 'user-uuid', {
+        length_cm: 600,
+        width_cm: 500,
+        height_cm: 300,
+      });
+
+      expect(dimensionsRepoMock.save).toHaveBeenCalledWith(
+        expect.objectContaining({ exclusions_json: null }),
       );
     });
   });

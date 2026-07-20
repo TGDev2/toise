@@ -16,6 +16,7 @@ export interface EstimationLineItem {
   units_needed: number;
   pose_type: string;
   number_of_coats?: number;
+  excluded_surface_m2?: number;
 }
 
 export interface EstimationResponse {

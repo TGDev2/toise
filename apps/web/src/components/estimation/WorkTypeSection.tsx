@@ -8,6 +8,7 @@ interface WorkTypeSectionProps {
   label: string;
   grossSurface: number;
   netSurface: number;
+  excludedSurface?: number;
   itemCount: number;
   isOpen: boolean;
   onToggle: () => void;
@@ -19,6 +20,7 @@ export function WorkTypeSection({
   label,
   grossSurface,
   netSurface,
+  excludedSurface = 0,
   itemCount,
   isOpen,
   onToggle,
@@ -52,6 +54,7 @@ export function WorkTypeSection({
             ) : (
               <>Surface : {netSurface} m²</>
             )}
+            {excludedSurface > 0 && <> (dont {excludedSurface} m² exclus)</>}
           </p>
         </div>
 

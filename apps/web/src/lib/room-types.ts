@@ -1,4 +1,4 @@
-import type { RectSegment } from './surface';
+import type { RectSegment, SurfaceExclusion } from './surface';
 import type { SavedWorkItem } from './work-types';
 
 export interface RoomOpening {
@@ -14,6 +14,7 @@ export interface RoomDimensions {
   width_cm: number;
   height_cm: number;
   segments?: RectSegment[] | null;
+  exclusions?: SurfaceExclusion[] | null;
 }
 
 /** Pièce d'un projet (ENG-2). Renvoyée par GET /projects/:id/rooms. */

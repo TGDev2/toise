@@ -5,7 +5,7 @@ import { useFeatureGate } from '@/hooks/useFeatureGate';
 import { ProBadge } from '@/components/paywall/ProBadge';
 import { apiGet, apiPost, apiPut, apiDelete, apiPatch } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
-import type { Opening, RectSegment } from '@/lib/surface';
+import type { Opening, RectSegment, SurfaceExclusion } from '@/lib/surface';
 import type { Room } from '@/lib/room-types';
 import { DimensionsForm } from '@/components/dimensions/DimensionsForm';
 import { RoomSwitcher } from '@/components/rooms/RoomSwitcher';
@@ -24,6 +24,7 @@ interface DimensionsData {
   width_cm: number;
   height_cm: number;
   segments?: RectSegment[] | null;
+  exclusions?: SurfaceExclusion[] | null;
 }
 
 interface LocalProject {
@@ -36,6 +37,7 @@ interface LocalProject {
   height_m?: number;
   openings?: Opening[];
   segments?: RectSegment[];
+  exclusions?: SurfaceExclusion[];
   updated_at: string;
 }
 
@@ -49,6 +51,7 @@ export default function DimensionsPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [initialDims, setInitialDims] = useState<DimensionsData | null>(null);
   const [initialOpenings, setInitialOpenings] = useState<Opening[]>([]);
+  const [initialExclusions, setInitialExclusions] = useState<SurfaceExclusion[]>([]);
   const [existingOpeningIds, setExistingOpeningIds] = useState<string[]>([]);
   const [projectName, setProjectName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -77,10 +80,12 @@ export default function DimensionsPage() {
         width_cm: room.dimensions.width_cm,
         height_cm: room.dimensions.height_cm,
         segments: room.dimensions.segments ?? null,
+        exclusions: room.dimensions.exclusions ?? null,
       });
     } else {
       setInitialDims(null);
     }
+    setInitialExclusions(room?.dimensions?.exclusions ?? []);
     const ops = room?.openings ?? [];
     setInitialOpenings(
       ops.map((o) => ({
@@ -132,10 +137,14 @@ export default function DimensionsPage() {
                 width_cm: Math.round(project.width_m * 100),
                 height_cm: Math.round(project.height_m * 100),
                 segments: project.segments ?? null,
+                exclusions: project.exclusions ?? null,
               });
             }
             if (project.openings?.length) {
               setInitialOpenings(project.openings);
+            }
+            if (project.exclusions?.length) {
+              setInitialExclusions(project.exclusions);
             }
           }
         }
@@ -285,6 +294,7 @@ export default function DimensionsPage() {
       heightCm: number,
       openings: Opening[],
       segments: RectSegment[],
+      exclusions: SurfaceExclusion[],
     ) => {
       setError('');
       setIsSaving(true);
@@ -297,6 +307,7 @@ export default function DimensionsPage() {
             width_cm: widthCm,
             height_cm: heightCm,
             segments: segments.length > 0 ? segments : undefined,
+            exclusions: exclusions.length > 0 ? exclusions : undefined,
           });
 
           // Replace-all strategy: delete existing, then create new
@@ -326,6 +337,7 @@ export default function DimensionsPage() {
             projects[idx].height_m = heightCm / 100;
             projects[idx].openings = openings;
             projects[idx].segments = segments.length > 0 ? segments : undefined;
+            projects[idx].exclusions = exclusions.length > 0 ? exclusions : undefined;
             projects[idx].updated_at = new Date().toISOString();
             localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
           }
@@ -477,6 +489,7 @@ export default function DimensionsPage() {
             initialHeightCm={initialDims?.height_cm ?? 0}
             initialOpenings={initialOpenings}
             initialSegments={initialDims?.segments ?? undefined}
+            initialExclusions={initialExclusions}
             onSave={handleSave}
             isSaving={isSaving}
           />

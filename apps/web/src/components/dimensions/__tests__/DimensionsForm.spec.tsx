@@ -65,8 +65,8 @@ describe('DimensionsForm', () => {
     fireEvent.click(screen.getByRole('button', { name: /continuer/i }));
 
     await waitFor(() => {
-      // 5ᵉ argument : segments (vide tant qu'aucun décroché n'est ajouté)
-      expect(mockSave).toHaveBeenCalledWith(500, 400, 250, [], []);
+      // 5ᵉ argument : segments, 6ᵉ : exclusions (vides tant qu'aucun ajout)
+      expect(mockSave).toHaveBeenCalledWith(500, 400, 250, [], [], []);
     });
   });
 
@@ -111,7 +111,39 @@ describe('DimensionsForm', () => {
           { x_cm: 0, y_cm: 0, length_cm: 400, width_cm: 300 },
           { x_cm: 400, y_cm: 0, length_cm: 200, width_cm: 150 },
         ],
+        [],
       );
+    });
+  });
+
+  it('adds a wall exclusion, reflects it in the net wall breakdown and calls onSave with it', async () => {
+    render(
+      <DimensionsForm
+        initialLengthCm={500}
+        initialWidthCm={400}
+        initialHeightCm={250}
+        onSave={mockSave}
+      />,
+    );
+
+    fireEvent.click(screen.getByText(/\+ crédence/i));
+
+    await waitFor(() => {
+      expect(screen.getByText(/zones exclues/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText(/enregistrer les dimensions/i));
+    await waitFor(() => {
+      expect(
+        screen.getByText(/vous n'avez pas ajoute de portes ou fenêtres/i),
+      ).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /continuer/i }));
+
+    await waitFor(() => {
+      expect(mockSave).toHaveBeenCalledWith(500, 400, 250, [], [], [
+        { surface_target: 'wall', type: 'credence', area_m2: 2 },
+      ]);
     });
   });
 

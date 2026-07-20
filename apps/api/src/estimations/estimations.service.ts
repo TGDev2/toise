@@ -139,6 +139,10 @@ export class EstimationsService {
           count: o.count,
         })),
         segments: dimensions.segments_json ?? undefined,
+        exclusions: (dimensions.exclusions_json ?? []).map((e) => ({
+          surface_target: e.surface_target,
+          area_m2: e.area_m2,
+        })),
       };
 
       const workItemInputs: WorkItemInput[] = [];

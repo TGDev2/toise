@@ -3,12 +3,13 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { UnitSystem } from '@/lib/units';
 import { metersToCm, cmToMeters, feetInchesToCm, cmToFeetInches } from '@/lib/units';
-import type { Opening, RectSegment, ShapeSection } from '@/lib/surface';
+import type { Opening, RectSegment, ShapeSection, SurfaceExclusion } from '@/lib/surface';
 import {
   wallArea,
   totalOpeningsArea,
   netWallArea,
   totalSurfaceArea,
+  totalExclusionsArea,
   compositeFloorArea,
   compositeWallArea,
   compositeNetWallArea,
@@ -18,6 +19,7 @@ import {
 import { getDimensionWarnings, getMissingFields } from '@/lib/dimension-validation';
 import { RoomPreview } from './RoomPreview';
 import { OpeningsSection } from './OpeningsSection';
+import { ExclusionsSection } from './ExclusionsSection';
 import { ShapeSections } from './ShapeSections';
 
 interface MetricValues {
@@ -41,12 +43,14 @@ interface DimensionsFormProps {
   initialHeightCm?: number;
   initialOpenings?: Opening[];
   initialSegments?: RectSegment[];
+  initialExclusions?: SurfaceExclusion[];
   onSave: (
     lengthCm: number,
     widthCm: number,
     heightCm: number,
     openings: Opening[],
     segments: RectSegment[],
+    exclusions: SurfaceExclusion[],
   ) => Promise<void>;
   isSaving?: boolean;
   submitLabel?: string;
@@ -84,6 +88,7 @@ export function DimensionsForm({
   initialHeightCm = 0,
   initialOpenings = [],
   initialSegments,
+  initialExclusions = [],
   onSave,
   isSaving = false,
   submitLabel = 'Enregistrer les dimensions',
@@ -98,6 +103,7 @@ export function DimensionsForm({
   );
   const [touched, setTouched] = useState(false);
   const [openings, setOpenings] = useState<Opening[]>(initialOpenings);
+  const [exclusions, setExclusions] = useState<SurfaceExclusion[]>(initialExclusions);
   const [sections, setSections] = useState<ShapeSection[]>(() =>
     initialSegments && initialSegments.length > 1
       ? segmentsToSections(initialLengthCm, initialWidthCm, initialSegments)
@@ -172,12 +178,28 @@ export function DimensionsForm({
 
   const openingsAreaCm2 = useMemo(() => totalOpeningsArea(openings), [openings]);
 
+  const exclusionsAreaCm2 = useMemo(
+    () => totalExclusionsArea(exclusions, 'wall'),
+    [exclusions],
+  );
+
+  const netWallAfterOpeningsCm2 = Math.max(0, grossWallCm2 - openingsAreaCm2);
+
   const netWallCm2 = useMemo(() => {
     if (!hasDimensions) return 0;
     return isComposite
-      ? compositeNetWallArea(segments, heightCm, openings)
-      : netWallArea(lengthCm, widthCm, heightCm, openings);
-  }, [hasDimensions, isComposite, segments, lengthCm, widthCm, heightCm, openings]);
+      ? compositeNetWallArea(segments, heightCm, openings, exclusionsAreaCm2)
+      : netWallArea(lengthCm, widthCm, heightCm, openings, exclusionsAreaCm2);
+  }, [
+    hasDimensions,
+    isComposite,
+    segments,
+    lengthCm,
+    widthCm,
+    heightCm,
+    openings,
+    exclusionsAreaCm2,
+  ]);
 
   const surfaceCm2 = useMemo(() => {
     if (!hasDimensions) return 0;
@@ -217,7 +239,7 @@ export function DimensionsForm({
       return;
     }
     setShowZeroOpeningsSuggestion(false);
-    await onSave(lengthCm, widthCm, heightCm, openings, segments);
+    await onSave(lengthCm, widthCm, heightCm, openings, segments, exclusions);
   };
 
   const handleAddOpening = useCallback((opening: Opening) => {
@@ -231,6 +253,21 @@ export function DimensionsForm({
 
   const handleRemoveOpening = useCallback((index: number) => {
     setOpenings((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const handleAddExclusion = useCallback((exclusion: SurfaceExclusion) => {
+    setExclusions((prev) => [...prev, exclusion]);
+  }, []);
+
+  const handleUpdateExclusion = useCallback(
+    (index: number, exclusion: SurfaceExclusion) => {
+      setExclusions((prev) => prev.map((e, i) => (i === index ? exclusion : e)));
+    },
+    [],
+  );
+
+  const handleRemoveExclusion = useCallback((index: number) => {
+    setExclusions((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
   const handleAddSection = useCallback((section: ShapeSection) => {
@@ -356,6 +393,15 @@ export function DimensionsForm({
           grossWallAreaCm2={grossWallCm2}
         />
 
+        {/* Surfaces à exclure (crédence, demi-mur, plinthes…) */}
+        <ExclusionsSection
+          exclusions={exclusions}
+          onAdd={handleAddExclusion}
+          onUpdate={handleUpdateExclusion}
+          onRemove={handleRemoveExclusion}
+          netWallAreaCm2={netWallAfterOpeningsCm2}
+        />
+
         {/* Non-rectangular room sections (décroché) */}
         <ShapeSections
           sections={sections}
@@ -431,6 +477,12 @@ export function DimensionsForm({
                   <div className="flex justify-between text-xs text-stone-500">
                     <span>Ouvertures</span>
                     <span>- {(openingsAreaCm2 / 10_000).toFixed(1)} m&sup2;</span>
+                  </div>
+                )}
+                {exclusionsAreaCm2 > 0 && (
+                  <div className="flex justify-between text-xs text-stone-500">
+                    <span>Zones exclues</span>
+                    <span>- {(exclusionsAreaCm2 / 10_000).toFixed(1)} m&sup2;</span>
                   </div>
                 )}
                 <div className="flex justify-between text-sm font-semibold text-stone-900">

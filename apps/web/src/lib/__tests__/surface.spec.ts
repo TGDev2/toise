@@ -4,6 +4,7 @@ import {
   totalSurfaceArea,
   totalOpeningsArea,
   netWallArea,
+  totalExclusionsArea,
   compositeFloorArea,
   compositePerimeter,
   compositeWallArea,
@@ -11,7 +12,7 @@ import {
   sectionsToSegments,
   segmentsToSections,
 } from '../surface';
-import type { Opening, ShapeSection } from '../surface';
+import type { Opening, ShapeSection, SurfaceExclusion } from '../surface';
 
 describe('surface', () => {
   describe('floorArea', () => {
@@ -97,6 +98,50 @@ describe('surface', () => {
     });
   });
 
+  describe('totalExclusionsArea', () => {
+    it('sums area_m2 (converted to cm²) for the matching surface_target', () => {
+      const exclusions: SurfaceExclusion[] = [
+        { surface_target: 'wall', type: 'credence', area_m2: 2 },
+        { surface_target: 'wall', type: 'baseboard', area_m2: 1.5 },
+        { surface_target: 'floor', type: 'other', area_m2: 3 },
+      ];
+      // (2 + 1.5) * 10_000 = 35_000
+      expect(totalExclusionsArea(exclusions, 'wall')).toBe(35_000);
+    });
+
+    it('returns 0 when no exclusion matches the surface', () => {
+      const exclusions: SurfaceExclusion[] = [
+        { surface_target: 'floor', type: 'other', area_m2: 3 },
+      ];
+      expect(totalExclusionsArea(exclusions, 'wall')).toBe(0);
+    });
+
+    it('returns 0 for an empty array', () => {
+      expect(totalExclusionsArea([], 'wall')).toBe(0);
+    });
+  });
+
+  describe('netWallArea / compositeNetWallArea with exclusions', () => {
+    it('deducts exclusions on top of openings (rectangular room)', () => {
+      const openings: Opening[] = [
+        { type: 'door', width_cm: 90, height_cm: 204, count: 1 },
+      ];
+      const gross = wallArea(500, 400, 250);
+      const exclusionsCm2 = 20_000; // 2 m²
+      expect(netWallArea(500, 400, 250, openings, exclusionsCm2)).toBe(
+        gross - 18360 - exclusionsCm2,
+      );
+    });
+
+    it('never goes negative when exclusions exceed the net wall area', () => {
+      expect(netWallArea(500, 400, 250, [], 10_000_000)).toBe(0);
+    });
+
+    it('defaults to no exclusion deduction when omitted', () => {
+      expect(netWallArea(500, 400, 250, [])).toBe(wallArea(500, 400, 250));
+    });
+  });
+
   // Pièce en L : 400×300 prolongée d'une extension 200×150 alignée en bas.
   const lSegments = [
     { x_cm: 0, y_cm: 0, length_cm: 400, width_cm: 300 },
@@ -139,6 +184,17 @@ describe('surface', () => {
         { type: 'door', width_cm: 9000, height_cm: 9000, count: 5 },
       ];
       expect(compositeNetWallArea(lSegments, 250, openings)).toBe(0);
+    });
+
+    it('deducts exclusions on top of openings', () => {
+      const openings: Opening[] = [
+        { type: 'door', width_cm: 90, height_cm: 204, count: 1 },
+      ];
+      const exclusionsCm2 = 20_000; // 2 m²
+      // 450000 - 18360 - 20000 = 411640
+      expect(
+        compositeNetWallArea(lSegments, 250, openings, exclusionsCm2),
+      ).toBe(411_640);
     });
   });
 

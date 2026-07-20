@@ -34,10 +34,39 @@ export function netWallArea(
   widthCm: number,
   heightCm: number,
   openings: Opening[],
+  exclusionsCm2 = 0,
 ): number {
   const gross = wallArea(lengthCm, widthCm, heightCm);
   const deductions = totalOpeningsArea(openings);
-  return Math.max(0, gross - deductions);
+  return Math.max(0, gross - deductions - exclusionsCm2);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Surfaces à exclure — déduction manuelle simple (ENG-3)                     */
+/* -------------------------------------------------------------------------- */
+
+export type ExclusionType = 'credence' | 'half_wall' | 'baseboard' | 'other';
+
+/**
+ * Zone non traitée à déduire d'une surface : crédence, demi-mur, plinthes…
+ * Miroir de `SurfaceExclusion` du moteur d'estimation API. Déduction manuelle
+ * d'une aire (m²), sans géométrie — contrairement aux `Opening` (largeur ×
+ * hauteur) ou aux `RectSegment` (décrochés).
+ */
+export interface SurfaceExclusion {
+  surface_target: 'wall' | 'floor' | 'ceiling';
+  type: ExclusionType;
+  label?: string;
+  area_m2: number;
+}
+
+export function totalExclusionsArea(
+  exclusions: SurfaceExclusion[],
+  surfaceTarget: 'wall' | 'floor' | 'ceiling',
+): number {
+  return exclusions
+    .filter((e) => e.surface_target === surfaceTarget)
+    .reduce((sum, e) => sum + e.area_m2 * 10_000, 0);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -159,9 +188,10 @@ export function compositeNetWallArea(
   segments: RectSegment[],
   heightCm: number,
   openings: Opening[],
+  exclusionsCm2 = 0,
 ): number {
   const gross = compositeWallArea(segments, heightCm);
-  return Math.max(0, gross - totalOpeningsArea(openings));
+  return Math.max(0, gross - totalOpeningsArea(openings) - exclusionsCm2);
 }
 
 /**

@@ -356,6 +356,7 @@ export class ProjectsService {
       // Le formulaire renvoie l'état complet à chaque enregistrement : une
       // sauvegarde rectangulaire (segments absents) efface une forme antérieure.
       dimensions.segments_json = dto.segments ?? null;
+      dimensions.exclusions_json = dto.exclusions ?? null;
       if (overrides?.raw_cv_output_json !== undefined) {
         dimensions.raw_cv_output_json = overrides.raw_cv_output_json;
       }
@@ -368,6 +369,7 @@ export class ProjectsService {
         source,
         confidence_score: confidence,
         segments_json: dto.segments ?? null,
+        exclusions_json: dto.exclusions ?? null,
         raw_cv_output_json: overrides?.raw_cv_output_json ?? null,
       });
     }

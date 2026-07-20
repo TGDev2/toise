@@ -18,6 +18,7 @@ interface WorkTypeGroup {
   code: string;
   grossSurface: number;
   netSurface: number;
+  excludedSurface: number;
   items: EstimationLineItem[];
 }
 
@@ -34,6 +35,7 @@ export function EstimationResults({ items }: EstimationResultsProps) {
           code: item.work_type_code,
           grossSurface: item.gross_surface_m2 ?? item.surface_m2,
           netSurface: item.surface_m2,
+          excludedSurface: item.excluded_surface_m2 ?? 0,
           items: [item],
         });
       }
@@ -74,6 +76,7 @@ export function EstimationResults({ items }: EstimationResultsProps) {
           label={group.label}
           grossSurface={group.grossSurface}
           netSurface={group.netSurface}
+          excludedSurface={group.excludedSurface}
           itemCount={group.items.length}
           isOpen={openSections.has(group.code)}
           onToggle={() => toggleSection(group.code)}

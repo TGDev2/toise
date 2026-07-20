@@ -109,6 +109,7 @@ export class ProjectsController {
               width_cm: p.dimensions.width_cm,
               height_cm: p.dimensions.height_cm,
               segments: p.dimensions.segments_json ?? null,
+              exclusions: p.dimensions.exclusions_json ?? [],
             }
           : null,
         openings:
@@ -166,6 +167,7 @@ export class ProjectsController {
             width_cm: project.dimensions.width_cm,
             height_cm: project.dimensions.height_cm,
             segments: project.dimensions.segments_json ?? null,
+            exclusions: project.dimensions.exclusions_json ?? [],
           }
         : null,
       openings:
@@ -235,6 +237,7 @@ export class ProjectsController {
       width_cm: dimensions.width_cm,
       height_cm: dimensions.height_cm,
       segments: dimensions.segments_json ?? null,
+      exclusions: dimensions.exclusions_json ?? [],
       source: dimensions.source,
       confidence_score: dimensions.confidence_score,
     };
@@ -260,6 +263,7 @@ export class ProjectsController {
       width_cm: dimensions.width_cm,
       height_cm: dimensions.height_cm,
       segments: dimensions.segments_json ?? null,
+      exclusions: dimensions.exclusions_json ?? [],
       source: dimensions.source,
       confidence_score: dimensions.confidence_score,
     };
@@ -495,6 +499,7 @@ export class ProjectsController {
             width_cm: room.dimensions.width_cm,
             height_cm: room.dimensions.height_cm,
             segments: room.dimensions.segments_json ?? null,
+            exclusions: room.dimensions.exclusions_json ?? [],
           }
         : null,
       openings: (room.openings ?? []).map((o) => ({

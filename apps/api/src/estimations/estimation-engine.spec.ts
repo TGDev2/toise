@@ -131,6 +131,47 @@ describe('EstimationEngine', () => {
       const room = makeRoom();
       expect(engine.computeSurface(room, 'ceiling')).toBe(12);
     });
+
+    // ENG-3: surfaces à exclure (déduction manuelle simple)
+    it('should deduct a wall exclusion from the net wall surface', () => {
+      const room = makeRoom({
+        exclusions: [{ surface_target: 'wall', area_m2: 2 }],
+      });
+      // 35 - 2 = 33
+      expect(engine.computeSurface(room, 'wall')).toBe(33);
+    });
+
+    it('should cumulate opening and exclusion deductions on wall surface', () => {
+      const room = makeRoom({
+        openings: [{ width_cm: 90, height_cm: 204, count: 1 }],
+        exclusions: [{ surface_target: 'wall', area_m2: 2 }],
+      });
+      // 35 - 1.836 - 2 = 31.164
+      expect(engine.computeSurface(room, 'wall')).toBeCloseTo(31.164, 3);
+    });
+
+    it('should not go negative when exclusions exceed the net wall surface', () => {
+      const room = makeRoom({
+        exclusions: [{ surface_target: 'wall', area_m2: 1000 }],
+      });
+      expect(engine.computeSurface(room, 'wall')).toBe(0);
+    });
+
+    it('should ignore exclusions targeting a different surface', () => {
+      const room = makeRoom({
+        exclusions: [{ surface_target: 'floor', area_m2: 2 }],
+      });
+      expect(engine.computeSurface(room, 'wall')).toBe(35);
+      expect(engine.computeSurface(room, 'floor')).toBe(10);
+    });
+
+    it('should deduct a floor exclusion from floor surface', () => {
+      const room = makeRoom({
+        exclusions: [{ surface_target: 'floor', area_m2: 2 }],
+      });
+      // 12 - 2 = 10
+      expect(engine.computeSurface(room, 'floor')).toBe(10);
+    });
   });
 
   // =========================================================================
@@ -358,6 +399,36 @@ describe('EstimationEngine', () => {
       expect(item.adjusted_qty).toBeCloseTo(6.684, 2);
       expect(item.number_of_coats).toBe(2);
       expect(item.units_needed).toBeGreaterThan(0);
+      // Aucune exclusion déclarée sur cette pièce.
+      expect(item.excluded_surface_m2).toBeUndefined();
+    });
+
+    // ENG-3: une exclusion murale réduit surface_m2 et apparaît sur la ligne
+    it('should report excluded_surface_m2 and reduce quantities when a wall exclusion is declared', () => {
+      const room = makeRoom();
+      const withExclusion = makeRoom({
+        exclusions: [{ surface_target: 'wall', area_m2: 2 }],
+      });
+
+      const workItems: WorkItemInput[] = [
+        {
+          id: 'wi-1',
+          work_type_code: 'wall_painting',
+          work_type_label: 'Peinture murale',
+          category: 'painting',
+          surface_target: 'wall',
+          skill_level: 'beginner',
+          custom_params: { number_of_coats: 2 },
+          materials: [makePaintMaterial()],
+        },
+      ];
+
+      const baseline = engine.computeEstimation(room, workItems)[0];
+      const excluded = engine.computeEstimation(withExclusion, workItems)[0];
+
+      expect(excluded.excluded_surface_m2).toBe(2);
+      expect(excluded.surface_m2).toBe(baseline.surface_m2 - 2);
+      expect(excluded.adjusted_qty).toBeLessThan(baseline.adjusted_qty);
     });
 
     // AC2: Floor tiling 4×3m, 30×30, straight, beginner

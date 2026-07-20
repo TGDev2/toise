@@ -6,6 +6,11 @@ import {
 } from './entities/estimation-result.entity';
 import { RectSegment, unionAreaCm2, unionPerimeterCm } from './room-geometry';
 
+export interface SurfaceExclusionInput {
+  surface_target: string;
+  area_m2: number;
+}
+
 export interface RoomData {
   length_cm: number;
   width_cm: number;
@@ -16,6 +21,11 @@ export interface RoomData {
    * Absent ou vide → la pièce est un simple rectangle `length_cm × width_cm`.
    */
   segments?: RectSegment[];
+  /**
+   * Zones non traitées à déduire d'une surface (ENG-3 : crédence, demi-mur,
+   * plinthes…). Déduction manuelle d'une aire, filtrée par `surface_target`.
+   */
+  exclusions?: SurfaceExclusionInput[];
 }
 
 export interface PackagingInput {
@@ -93,17 +103,25 @@ export class EstimationEngine {
     );
   }
 
+  private excludedAreaCm2(room: RoomData, surfaceTarget: string): number {
+    return (room.exclusions ?? [])
+      .filter((e) => e.surface_target === surfaceTarget)
+      .reduce((sum, e) => sum + e.area_m2 * CM2_TO_M2, 0);
+  }
+
   computeSurface(room: RoomData, surfaceTarget: string): number {
     const segments = this.resolveSegments(room);
+    const excludedCm2 = this.excludedAreaCm2(room, surfaceTarget);
     switch (surfaceTarget) {
       case 'wall': {
         const grossWall = unionPerimeterCm(segments) * room.height_cm;
-        return Math.max(0, grossWall - this.openingsAreaCm2(room)) / CM2_TO_M2;
+        const netWall = grossWall - this.openingsAreaCm2(room);
+        return Math.max(0, netWall - excludedCm2) / CM2_TO_M2;
       }
       case 'floor':
       case 'ceiling':
       default:
-        return unionAreaCm2(segments) / CM2_TO_M2;
+        return Math.max(0, unionAreaCm2(segments) - excludedCm2) / CM2_TO_M2;
     }
   }
 
@@ -207,6 +225,8 @@ export class EstimationEngine {
     for (const wi of workItems) {
       const surfaceM2 = this.computeSurface(room, wi.surface_target);
       const grossSurfaceM2 = this.computeGrossSurface(room, wi.surface_target);
+      const excludedSurfaceM2 =
+        this.excludedAreaCm2(room, wi.surface_target) / CM2_TO_M2;
       const poseType =
         (wi.custom_params.laying_pattern as string) || 'standard';
 
@@ -246,6 +266,12 @@ export class EstimationEngine {
           units_needed: packaging.units_needed,
           pose_type: poseType,
           ...(coats !== undefined ? { number_of_coats: coats } : {}),
+          ...(excludedSurfaceM2 > 0
+            ? {
+                excluded_surface_m2:
+                  Math.round(excludedSurfaceM2 * 1000) / 1000,
+              }
+            : {}),
         });
       }
     }

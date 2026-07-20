@@ -26,6 +26,8 @@ export interface EstimationLineItem {
   units_needed: number;
   pose_type: string;
   number_of_coats?: number;
+  /** Aire déduite via les exclusions manuelles (ENG-3). Absent/0 → aucune. */
+  excluded_surface_m2?: number;
   /** Pièce d'origine (ENG-2). Absent → estimation mono-pièce (legacy/public). */
   room_id?: string;
   room_name?: string;

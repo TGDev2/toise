@@ -54,6 +54,26 @@ describe('EstimationResults', () => {
     expect(screen.queryByText(/Surface brute/)).not.toBeInTheDocument();
   });
 
+  it('should mention the excluded surface when a wall exclusion was applied', () => {
+    const items = [
+      makeLineItem({
+        gross_surface_m2: 35,
+        surface_m2: 29.964,
+        excluded_surface_m2: 2,
+      }),
+    ];
+    render(<EstimationResults items={items} />);
+
+    expect(
+      screen.getByText(/\(dont 2 m² exclus\)/),
+    ).toBeInTheDocument();
+  });
+
+  it('should not mention excluded surface when none was applied', () => {
+    render(<EstimationResults items={[makeLineItem()]} />);
+    expect(screen.queryByText(/exclus/)).not.toBeInTheDocument();
+  });
+
   it('should display material detail: theoretical, waste, adjusted', () => {
     render(<EstimationResults items={[makeLineItem()]} />);
 

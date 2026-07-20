@@ -419,4 +419,34 @@ describe('EstimationsService.estimate', () => {
       { project_id: 'project-1', total_items: result.total_items },
     );
   });
+
+  // ENG-3: surfaces à exclure (déduction manuelle simple)
+  it('deducts room exclusions from the net surface', async () => {
+    const baseline = await service.estimate('project-1', 'user-1');
+
+    projectsServiceMock.getRooms.mockResolvedValue([
+      {
+        id: 'room-1',
+        name: 'Salon',
+        dimensions: {
+          length_cm: 400,
+          width_cm: 300,
+          height_cm: 250,
+          segments_json: null,
+          exclusions_json: [
+            { surface_target: 'wall', type: 'credence', area_m2: 2 },
+          ],
+        },
+        openings: [{ width_cm: 90, height_cm: 210, count: 1 }],
+        workItems: [mockWorkItem],
+      },
+    ]);
+
+    const withExclusion = await service.estimate('project-1', 'user-1');
+
+    expect(withExclusion.items_json[0].surface_m2).toBeLessThan(
+      baseline.items_json[0].surface_m2,
+    );
+    expect(withExclusion.items_json[0].excluded_surface_m2).toBe(2);
+  });
 });

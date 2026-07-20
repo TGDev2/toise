@@ -34,6 +34,25 @@ export interface RoomSegment {
   width_cm: number;
 }
 
+export enum ExclusionType {
+  CREDENCE = 'credence',
+  HALF_WALL = 'half_wall',
+  BASEBOARD = 'baseboard',
+  OTHER = 'other',
+}
+
+/**
+ * Zone non traitée à déduire d'une surface (ENG-3) : crédence, demi-mur,
+ * plinthes… Déduction manuelle simple (une aire), pas une géométrie comme
+ * `RoomSegment` — l'utilisateur déclare directement les m² à exclure.
+ */
+export interface SurfaceExclusion {
+  surface_target: 'wall' | 'floor' | 'ceiling';
+  type: ExclusionType;
+  label?: string;
+  area_m2: number;
+}
+
 @Entity('room_dimensions')
 export class RoomDimensions {
   @PrimaryGeneratedColumn('uuid')
@@ -66,6 +85,10 @@ export class RoomDimensions {
    */
   @Column({ type: 'jsonb', nullable: true, default: null })
   segments_json!: RoomSegment[] | null;
+
+  /** Zones à exclure des surfaces calculées (ENG-3). `null` → aucune. */
+  @Column({ type: 'jsonb', nullable: true, default: null })
+  exclusions_json!: SurfaceExclusion[] | null;
 
   @CreateDateColumn({ type: 'timestamptz' })
   created_at!: Date;
