@@ -21,6 +21,7 @@ jobs:
       - run: pnpm --filter @chiffreo/api lint
       - run: pnpm --filter @chiffreo/api build
       - run: pnpm --filter @chiffreo/api test
+      - run: pnpm --filter @chiffreo/api test:e2e
 
   web:
     name: Web (lint, build, tests)

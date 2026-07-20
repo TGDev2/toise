@@ -63,6 +63,22 @@ const mockRoom = {
   workItems: [],
 };
 
+const mockWorkTypeId = '423e4567-e89b-12d3-a456-426614174000';
+const mockWorkItemId = '523e4567-e89b-12d3-a456-426614174000';
+const mockWorkItem = {
+  id: mockWorkItemId,
+  work_type: {
+    id: mockWorkTypeId,
+    code: 'painting_walls',
+    label_fr: 'Peinture murs',
+    category: 'painting',
+    surface_target: 'wall',
+    contextual_questions: [],
+  },
+  skill_level: 'intermediate',
+  custom_params: {},
+};
+
 const projectsServiceMock = {
   createProject: jest.fn().mockResolvedValue(mockProject),
   findByUser: jest.fn().mockResolvedValue({
@@ -76,6 +92,7 @@ const projectsServiceMock = {
   updateDimensions: jest.fn().mockResolvedValue(mockDimensions),
   getDimensions: jest.fn().mockResolvedValue(mockDimensions),
   softDeleteProject: jest.fn().mockResolvedValue(undefined),
+  saveWorkItems: jest.fn().mockResolvedValue([mockWorkItem]),
   getRooms: jest.fn().mockResolvedValue([mockRoom]),
   createRoom: jest.fn().mockResolvedValue(mockRoom),
   renameRoom: jest.fn().mockResolvedValue({ ...mockRoom, name: 'Cuisine' }),
@@ -256,6 +273,59 @@ describe('ProjectsController (e2e)', () => {
     await request(app.getHttpServer())
       .get(`/projects/${mockProjectId}/dimensions`)
       .expect(200);
+  });
+
+  it('POST /projects/:id/work-items saves work items', async () => {
+    await request(app.getHttpServer())
+      .post(`/projects/${mockProjectId}/work-items`)
+      .send({
+        items: [{ work_type_id: mockWorkTypeId, skill_level: 'intermediate' }],
+      })
+      .expect(201)
+      .expect((res: request.Response) => {
+        const body = res.body as Array<{ id: string; skill_level: string }>;
+        expect(body[0].id).toBe(mockWorkItemId);
+        expect(body[0].skill_level).toBe('intermediate');
+      });
+
+    expect(projectsServiceMock.saveWorkItems).toHaveBeenCalledWith(
+      mockProjectId,
+      mockUserId,
+      expect.objectContaining({
+        items: [
+          expect.objectContaining({
+            work_type_id: mockWorkTypeId,
+            skill_level: 'intermediate',
+          }),
+        ],
+      }),
+      undefined,
+    );
+  });
+
+  it('POST /projects/:id/work-items rejects an empty items array', async () => {
+    await request(app.getHttpServer())
+      .post(`/projects/${mockProjectId}/work-items`)
+      .send({ items: [] })
+      .expect(400);
+  });
+
+  it('POST /projects/:id/work-items rejects a non-UUID work_type_id', async () => {
+    await request(app.getHttpServer())
+      .post(`/projects/${mockProjectId}/work-items`)
+      .send({
+        items: [{ work_type_id: 'not-a-uuid', skill_level: 'intermediate' }],
+      })
+      .expect(400);
+  });
+
+  it('POST /projects/:id/work-items rejects an invalid skill_level', async () => {
+    await request(app.getHttpServer())
+      .post(`/projects/${mockProjectId}/work-items`)
+      .send({
+        items: [{ work_type_id: mockWorkTypeId, skill_level: 'wizard' }],
+      })
+      .expect(400);
   });
 
   it('GET /projects/:id/rooms lists the project rooms', async () => {
