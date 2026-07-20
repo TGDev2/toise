@@ -8,9 +8,11 @@ import type {
   WorkItemSelection,
   SavedWorkItem,
 } from '@/lib/work-types';
+import type { Room } from '@/lib/room-types';
 import { WorkSelectionForm } from '@/components/work-selection/WorkSelectionForm';
-import { useParams, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { RoomSwitcher } from '@/components/rooms/RoomSwitcher';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const STORAGE_KEY = 'chiffreo_local_projects';
 
@@ -26,9 +28,11 @@ interface LocalProject {
 export default function WorkSelectionPage() {
   const { appUser, isGuest, isLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const params = useParams<{ id: string }>();
   const projectId = params.id;
 
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [workTypes, setWorkTypes] = useState<WorkTypeRef[]>([]);
   const [initialSelections, setInitialSelections] = useState<SavedWorkItem[]>(
     [],
@@ -37,6 +41,13 @@ export default function WorkSelectionPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
+
+  const roomParam = searchParams.get('room');
+  const activeRoomId = useMemo(() => {
+    if (rooms.length === 0) return null;
+    if (roomParam && rooms.some((r) => r.id === roomParam)) return roomParam;
+    return rooms[0].id;
+  }, [rooms, roomParam]);
 
   useEffect(() => {
     if (isLoading) return;
@@ -48,31 +59,25 @@ export default function WorkSelectionPage() {
     async function load() {
       try {
         if (appUser) {
-          const [types, project, items] = await Promise.all([
+          const [types, project, roomList] = await Promise.all([
             apiGet<WorkTypeRef[]>('/projects/work-types'),
             apiGet<{ name: string }>(`/projects/${projectId}`),
-            apiGet<SavedWorkItem[]>(`/projects/${projectId}/work-items`),
+            apiGet<Room[]>(`/projects/${projectId}/rooms`),
           ]);
           setWorkTypes(types);
           setProjectName(project.name);
-          setInitialSelections(items);
+          setRooms(roomList);
         } else {
-          // Guest mode: use hardcoded work types from local référence
-          // In guest mode we don't have the API, so we use a minimal set
           const raw = localStorage.getItem(STORAGE_KEY);
           const projects: LocalProject[] = raw ? JSON.parse(raw) : [];
           const project = projects.find((p) => p.id === projectId);
           if (project) {
             setProjectName(project.name);
           }
-          // For guest mode, we still need work types from the API
-          // but since guest users have an anonymous Firebase account,
-          // the API should work
           try {
             const types = await apiGet<WorkTypeRef[]>('/projects/work-types');
             setWorkTypes(types);
           } catch {
-            // Fallback: can't load work types in guest mode without API
             setError(
               'Impossible de charger les types de travaux. Veuillez vous connecter.',
             );
@@ -88,15 +93,33 @@ export default function WorkSelectionPage() {
     load();
   }, [appUser, isGuest, isLoading, projectId, router]);
 
+  // Seed the selection from the active room's work items (once per room).
+  const seededRoomIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!appUser || !activeRoomId) return;
+    if (seededRoomIdRef.current === activeRoomId) return;
+    const room = rooms.find((r) => r.id === activeRoomId);
+    if (!room) return;
+    seededRoomIdRef.current = activeRoomId;
+    setInitialSelections(room.work_items ?? []);
+  }, [appUser, activeRoomId, rooms]);
+
+  const goToRoom = useCallback(
+    (roomId: string) => {
+      router.replace(`/projects/${projectId}/work-selection?room=${roomId}`);
+    },
+    [projectId, router],
+  );
+
   const handleSave = useCallback(
     async (items: WorkItemSelection[]) => {
       setError('');
       setIsSaving(true);
       try {
         if (appUser) {
-          await apiPost(`/projects/${projectId}/work-items`, { items });
+          const roomQ = activeRoomId ? `?room=${activeRoomId}` : '';
+          await apiPost(`/projects/${projectId}/work-items${roomQ}`, { items });
         } else {
-          // Guest mode: save to localStorage
           const raw = localStorage.getItem(STORAGE_KEY);
           const projects: LocalProject[] = raw ? JSON.parse(raw) : [];
           const idx = projects.findIndex((p) => p.id === projectId);
@@ -115,7 +138,7 @@ export default function WorkSelectionPage() {
         setIsSaving(false);
       }
     },
-    [appUser, projectId, router],
+    [appUser, projectId, router, activeRoomId],
   );
 
   if (isLoading || !loaded) {
@@ -126,12 +149,16 @@ export default function WorkSelectionPage() {
     );
   }
 
+  const backHref = activeRoomId
+    ? `/projects/${projectId}/dimensions?room=${activeRoomId}`
+    : `/projects/${projectId}/dimensions`;
+
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
       <div className="mb-6">
         <button
           type="button"
-          onClick={() => router.push(`/projects/${projectId}/dimensions`)}
+          onClick={() => router.push(backHref)}
           className="text-sm text-stone-500 hover:text-stone-700"
         >
           &larr; Retour aux dimensions
@@ -144,6 +171,16 @@ export default function WorkSelectionPage() {
         )}
       </div>
 
+      {/* Sélecteur de pièces (sélection seule ; ajout/suppression à l'étape dimensions) */}
+      {appUser && rooms.length > 0 && activeRoomId && (
+        <RoomSwitcher
+          rooms={rooms}
+          activeRoomId={activeRoomId}
+          onSelect={goToRoom}
+          busy={isSaving}
+        />
+      )}
+
       {error && (
         <div className="mb-6 rounded-3xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
           {error}
@@ -153,6 +190,7 @@ export default function WorkSelectionPage() {
       {workTypes.length > 0 && (
         <section className="rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
           <WorkSelectionForm
+            key={activeRoomId ?? 'guest'}
             workTypes={workTypes}
             initialSelections={initialSelections}
             onSave={handleSave}

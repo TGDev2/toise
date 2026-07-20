@@ -50,7 +50,7 @@ export class CommunityService {
 
     const project = await this.projectRepo.findOne({
       where: { id: dto.project_id },
-      relations: ['dimensions'],
+      relations: ['rooms', 'rooms.dimensions'],
     });
     if (!project) {
       throw new NotFoundException('Projet non trouve');

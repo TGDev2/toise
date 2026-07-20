@@ -8,7 +8,7 @@ import {
   JoinColumn,
   Unique,
 } from 'typeorm';
-import { Project } from './project.entity';
+import { Room } from './room.entity';
 import { WorkType } from './work-type.entity';
 
 export enum SkillLevel {
@@ -17,14 +17,19 @@ export enum SkillLevel {
   EXPERT = 'expert',
 }
 
+/**
+ * Travaux d'une pièce (ENG-2 : rattachés à `room_id`, plus au projet). Table et
+ * classe conservées sous le nom historique `project_work_items` pour limiter le
+ * churn ; l'unicité est désormais (room_id, work_type_id).
+ */
 @Entity('project_work_items')
-@Unique(['project_id', 'work_type_id'])
+@Unique(['room_id', 'work_type_id'])
 export class ProjectWorkItem {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
   @Column({ type: 'uuid' })
-  project_id!: string;
+  room_id!: string;
 
   @Column({ type: 'uuid' })
   work_type_id!: string;
@@ -41,9 +46,9 @@ export class ProjectWorkItem {
   @UpdateDateColumn({ type: 'timestamptz' })
   updated_at!: Date;
 
-  @ManyToOne(() => Project, (p) => p.workItems, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'project_id' })
-  project!: Project;
+  @ManyToOne(() => Room, (r) => r.workItems, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'room_id' })
+  room!: Room;
 
   @ManyToOne(() => WorkType, { eager: true, onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'work_type_id' })

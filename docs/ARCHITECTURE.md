@@ -69,7 +69,7 @@ L'API est organisée en **17 modules NestJS** indépendants :
 AppModule
 ├── AuthModule              # Inscription, connexion, Firebase sync, guest merge
 ├── UsersModule             # Gestion des utilisateurs
-├── ProjectsModule          # CRUD projets, dimensions, ouvertures, work items
+├── ProjectsModule          # CRUD projets, pièces (rooms), dimensions, ouvertures, work items
 ├── MaterialsModule         # Catalogue matériaux (admin), waste factors, packaging
 ├── EstimationsModule       # Moteur de calcul des quantités
 ├── ShoppingListsModule     # Listes d'achat, export PDF, partage par token
@@ -247,9 +247,9 @@ users ─────────────────┬──────�
   ▼                    ▼                  ▼                   ▼
 projects          subscription      company_profile       clients
   │                                                         │
-  ├── 1:1 room_dimensions                                   │
-  ├── 1:N openings                                          │
-  ├── 1:N project_work_items ──▶ work_types                 │
+  ├── 1:N rooms ──┬── 1:1 room_dimensions                   │
+  │               ├── 1:N openings                          │
+  │               └── 1:N project_work_items ──▶ work_types │
   ├── 1:N project_photos                                    │
   ├── 1:N estimation_results                                │
   ├── 1:1 shopping_list                                     │

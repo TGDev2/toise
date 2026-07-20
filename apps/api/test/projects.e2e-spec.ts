@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   CanActivate,
   ExecutionContext,
   INestApplication,
@@ -52,6 +53,16 @@ const mockDimensions = {
   updated_at: new Date('2026-03-27T00:00:00.000Z'),
 };
 
+const mockRoomId = '323e4567-e89b-12d3-a456-426614174000';
+const mockRoom = {
+  id: mockRoomId,
+  name: 'Salon',
+  sort_order: 0,
+  dimensions: null,
+  openings: [],
+  workItems: [],
+};
+
 const projectsServiceMock = {
   createProject: jest.fn().mockResolvedValue(mockProject),
   findByUser: jest.fn().mockResolvedValue({
@@ -65,6 +76,10 @@ const projectsServiceMock = {
   updateDimensions: jest.fn().mockResolvedValue(mockDimensions),
   getDimensions: jest.fn().mockResolvedValue(mockDimensions),
   softDeleteProject: jest.fn().mockResolvedValue(undefined),
+  getRooms: jest.fn().mockResolvedValue([mockRoom]),
+  createRoom: jest.fn().mockResolvedValue(mockRoom),
+  renameRoom: jest.fn().mockResolvedValue({ ...mockRoom, name: 'Cuisine' }),
+  deleteRoom: jest.fn().mockResolvedValue(undefined),
 };
 
 const usersServiceMock = {
@@ -241,5 +256,59 @@ describe('ProjectsController (e2e)', () => {
     await request(app.getHttpServer())
       .get(`/projects/${mockProjectId}/dimensions`)
       .expect(200);
+  });
+
+  it('GET /projects/:id/rooms lists the project rooms', async () => {
+    await request(app.getHttpServer())
+      .get(`/projects/${mockProjectId}/rooms`)
+      .expect(200)
+      .expect((res: request.Response) => {
+        const body = res.body as Array<{ id: string; name: string }>;
+        expect(Array.isArray(body)).toBe(true);
+        expect(body[0].id).toBe(mockRoomId);
+        expect(body[0].name).toBe('Salon');
+      });
+  });
+
+  it('POST /projects/:id/rooms creates a room', async () => {
+    await request(app.getHttpServer())
+      .post(`/projects/${mockProjectId}/rooms`)
+      .send({ name: 'Chambre' })
+      .expect(201)
+      .expect((res: request.Response) => {
+        expect((res.body as { id: string }).id).toBe(mockRoomId);
+      });
+
+    expect(projectsServiceMock.createRoom).toHaveBeenCalledWith(
+      mockProjectId,
+      mockUserId,
+      expect.objectContaining({ name: 'Chambre' }),
+    );
+  });
+
+  it('PATCH /projects/:id/rooms/:roomId renames a room', async () => {
+    await request(app.getHttpServer())
+      .patch(`/projects/${mockProjectId}/rooms/${mockRoom.id}`)
+      .send({ name: 'Cuisine' })
+      .expect(200)
+      .expect((res: request.Response) => {
+        expect((res.body as { name: string }).name).toBe('Cuisine');
+      });
+  });
+
+  it('DELETE /projects/:id/rooms/:roomId removes a room', async () => {
+    await request(app.getHttpServer())
+      .delete(`/projects/${mockProjectId}/rooms/${mockRoom.id}`)
+      .expect(204);
+  });
+
+  it('DELETE /projects/:id/rooms/:roomId returns 400 for the last room', async () => {
+    projectsServiceMock.deleteRoom.mockRejectedValueOnce(
+      new BadRequestException('Un projet doit conserver au moins une pièce.'),
+    );
+
+    await request(app.getHttpServer())
+      .delete(`/projects/${mockProjectId}/rooms/${mockRoom.id}`)
+      .expect(400);
   });
 });

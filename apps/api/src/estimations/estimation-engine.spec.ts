@@ -6,6 +6,7 @@ import {
   PackagingInput,
   WasteFactorInput,
 } from './estimation-engine';
+import { EstimationLineItem } from './entities/estimation-result.entity';
 
 describe('EstimationEngine', () => {
   let engine: EstimationEngine;
@@ -691,6 +692,167 @@ describe('EstimationEngine', () => {
       expect(floor.surface_m2).toBe(15);
       // Carrelage : 15 m² × 1.15 (débutant, pose droite) = 17.25 m²
       expect(floor.adjusted_qty).toBeCloseTo(17.25, 2);
+    });
+  });
+
+  // =========================================================================
+  // aggregatePurchases (mutualisation ENG-2 — cœur de la promesse)
+  // =========================================================================
+  describe('aggregatePurchases', () => {
+    const makeLine = (
+      overrides: Partial<EstimationLineItem> = {},
+    ): EstimationLineItem => ({
+      work_item_id: 'wi-1',
+      work_type_code: 'wall_painting',
+      work_type_label: 'Peinture murale',
+      material_id: 'paint-uuid',
+      material_name: 'Peinture acrylique mate',
+      material_unit: 'L',
+      gross_surface_m2: 35,
+      surface_m2: 35,
+      theoretical_qty: 3,
+      waste_factor_percent: 10,
+      waste_factor_source: 'catalog',
+      adjusted_qty: 4,
+      packaging_label: 'Pot 10 L',
+      packaging_qty_per_unit: 10,
+      units_needed: 1,
+      pose_type: 'standard',
+      ...overrides,
+    });
+
+    const singlePkg = (): Map<string, PackagingInput[]> =>
+      new Map([
+        [
+          'paint-uuid',
+          [{ label: 'Pot 10 L', quantity_per_unit: 10, unit: 'L' }],
+        ],
+      ]);
+
+    it('mutualise un matériau entre deux pièces et économise un conditionnement', () => {
+      const lines = [
+        makeLine({ room_id: 'r1', room_name: 'Salon', adjusted_qty: 4 }),
+        makeLine({ room_id: 'r2', room_name: 'Chambre', adjusted_qty: 4 }),
+      ];
+
+      const agg = engine.aggregatePurchases(lines, singlePkg());
+
+      expect(agg).toHaveLength(1);
+      expect(agg[0].material_id).toBe('paint-uuid');
+      expect(agg[0].total_adjusted_qty).toBe(8);
+      // Mutualisé : ceil(8 / 10) = 1 pot.
+      // Séparément : ceil(4/10) + ceil(4/10) = 2 pots. Économie d'un pot.
+      expect(agg[0].units_needed).toBe(1);
+      expect(agg[0].room_count).toBe(2);
+      expect(agg[0].contributions).toHaveLength(2);
+    });
+
+    it('ne fusionne jamais des matériaux distincts', () => {
+      const pkg = new Map<string, PackagingInput[]>([
+        [
+          'paint-uuid',
+          [{ label: 'Pot 10 L', quantity_per_unit: 10, unit: 'L' }],
+        ],
+        [
+          'glue-uuid',
+          [{ label: 'Sac 25 kg', quantity_per_unit: 25, unit: 'kg' }],
+        ],
+      ]);
+      const lines = [
+        makeLine({ material_id: 'paint-uuid', adjusted_qty: 4 }),
+        makeLine({
+          material_id: 'glue-uuid',
+          material_unit: 'kg',
+          adjusted_qty: 30,
+          packaging_label: 'Sac 25 kg',
+          packaging_qty_per_unit: 25,
+        }),
+      ];
+
+      const agg = engine.aggregatePurchases(lines, pkg);
+
+      expect(agg).toHaveLength(2);
+      const paint = agg.find((a) => a.material_id === 'paint-uuid')!;
+      const glue = agg.find((a) => a.material_id === 'glue-uuid')!;
+      expect(paint.units_needed).toBe(1); // ceil(4/10)
+      expect(glue.units_needed).toBe(2); // ceil(30/25)
+    });
+
+    it('re-sélectionne le conditionnement sur la quantité totale (bascule de format)', () => {
+      const pkg = new Map<string, PackagingInput[]>([
+        [
+          'paint-uuid',
+          [
+            { label: 'Pot 0.5 L', quantity_per_unit: 0.5, unit: 'L' },
+            { label: 'Pot 2.5 L', quantity_per_unit: 2.5, unit: 'L' },
+            { label: 'Pot 5 L', quantity_per_unit: 5, unit: 'L' },
+            { label: 'Pot 10 L', quantity_per_unit: 10, unit: 'L' },
+          ],
+        ],
+      ]);
+      const lines = [
+        makeLine({
+          room_id: 'r1',
+          adjusted_qty: 1.2,
+          packaging_label: 'Pot 0.5 L',
+          packaging_qty_per_unit: 0.5,
+          units_needed: 3,
+        }),
+        makeLine({
+          room_id: 'r2',
+          adjusted_qty: 1.2,
+          packaging_label: 'Pot 0.5 L',
+          packaging_qty_per_unit: 0.5,
+          units_needed: 3,
+        }),
+      ];
+
+      const agg = engine.aggregatePurchases(lines, pkg);
+
+      // Total 2.4 L → 1 pot de 2.5 L (vs 3 + 3 = 6 pots de 0.5 L séparément).
+      expect(agg[0].total_adjusted_qty).toBe(2.4);
+      expect(agg[0].packaging_label).toBe('Pot 2.5 L');
+      expect(agg[0].units_needed).toBe(1);
+    });
+
+    it('compte une seule pièce pour une estimation mono-pièce (sans room_id)', () => {
+      const agg = engine.aggregatePurchases(
+        [makeLine({ adjusted_qty: 4 })],
+        singlePkg(),
+      );
+      expect(agg[0].room_count).toBe(1);
+    });
+
+    it('retombe sur le conditionnement de la ligne si le catalogue est absent', () => {
+      const agg = engine.aggregatePurchases(
+        [makeLine({ adjusted_qty: 12, packaging_qty_per_unit: 10 })],
+        new Map(),
+      );
+      // Sans catalogue, utilise le conditionnement porté par la ligne (10 L).
+      expect(agg[0].packaging_label).toBe('Pot 10 L');
+      expect(agg[0].units_needed).toBe(2); // ceil(12/10)
+    });
+
+    it('préserve la traçabilité par pièce dans contributions', () => {
+      const agg = engine.aggregatePurchases(
+        [
+          makeLine({
+            room_id: 'r1',
+            room_name: 'Salon',
+            work_item_id: 'wi-salon',
+            surface_m2: 35,
+            adjusted_qty: 4,
+          }),
+        ],
+        singlePkg(),
+      );
+      expect(agg[0].contributions[0]).toMatchObject({
+        room_id: 'r1',
+        room_name: 'Salon',
+        work_item_id: 'wi-salon',
+        surface_m2: 35,
+        adjusted_qty: 4,
+      });
     });
   });
 });

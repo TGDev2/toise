@@ -2,7 +2,9 @@ import type { SupplierPriceResult } from '../adapters/supplier-adapter.interface
 
 export interface ItemPriceComparison {
   material_id: string;
-  work_item_id: string;
+  // ENG-2 : optionnel (lignes mutualisées par matériau) ; le matching prix se
+  // fait sur material_id.
+  work_item_id?: string;
   material_name: string;
   material_unit: string;
   units_needed: number;

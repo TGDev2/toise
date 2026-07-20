@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { EstimationLineItem } from './entities/estimation-result.entity';
+import {
+  EstimationLineItem,
+  AggregatedMaterialLine,
+  PurchaseContribution,
+} from './entities/estimation-result.entity';
 import { RectSegment, unionAreaCm2, unionPerimeterCm } from './room-geometry';
 
 export interface RoomData {
@@ -247,5 +251,78 @@ export class EstimationEngine {
     }
 
     return items;
+  }
+
+  /**
+   * Mutualise les lignes granulaires par `material_id` : somme les quantités
+   * continues (`adjusted_qty`) à travers toutes les pièces et tous les work
+   * items, puis sélectionne le conditionnement **une seule fois** sur le total.
+   * Cœur de la promesse ENG-2 (`ceil(Σ) ≤ Σ ceil`). Fonction pure.
+   */
+  aggregatePurchases(
+    lines: EstimationLineItem[],
+    packagingByMaterialId: Map<string, PackagingInput[]>,
+  ): AggregatedMaterialLine[] {
+    const groups = new Map<string, EstimationLineItem[]>();
+    for (const line of lines) {
+      const group = groups.get(line.material_id);
+      if (group) {
+        group.push(line);
+      } else {
+        groups.set(line.material_id, [line]);
+      }
+    }
+
+    const result: AggregatedMaterialLine[] = [];
+    for (const [materialId, group] of groups) {
+      const first = group[0];
+
+      const totalAdjustedQty =
+        Math.round(group.reduce((sum, l) => sum + l.adjusted_qty, 0) * 1000) /
+        1000;
+
+      const contributions: PurchaseContribution[] = group.map((l) => ({
+        room_id: l.room_id,
+        room_name: l.room_name,
+        work_item_id: l.work_item_id,
+        work_type_code: l.work_type_code,
+        surface_m2: l.surface_m2,
+        adjusted_qty: l.adjusted_qty,
+      }));
+
+      // Conditionnements du catalogue ; repli sur celui déjà sélectionné par la
+      // ligne si le catalogue n'est pas fourni (estimation legacy).
+      const packagings = packagingByMaterialId.get(materialId) ?? [
+        {
+          label: first.packaging_label,
+          quantity_per_unit: first.packaging_qty_per_unit,
+          unit: first.material_unit,
+        },
+      ];
+
+      const packaging = this.selectBestPackaging(totalAdjustedQty, packagings);
+
+      const distinctRooms = new Set(
+        contributions
+          .map((c) => c.room_id)
+          .filter((id): id is string => id !== undefined),
+      );
+
+      result.push({
+        material_id: materialId,
+        material_name: first.material_name,
+        material_unit: first.material_unit,
+        work_type_code: first.work_type_code,
+        work_type_label: first.work_type_label,
+        total_adjusted_qty: totalAdjustedQty,
+        packaging_label: packaging.label,
+        packaging_qty_per_unit: packaging.qty_per_unit,
+        units_needed: packaging.units_needed,
+        room_count: distinctRooms.size || 1,
+        contributions,
+      });
+    }
+
+    return result;
   }
 }

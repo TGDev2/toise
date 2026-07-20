@@ -1,6 +1,5 @@
 export interface ShoppingListMaterialItem {
   material_id: string;
-  work_item_id: string;
   work_type_code: string;
   work_type_label: string;
   material_name: string;
@@ -12,6 +11,10 @@ export interface ShoppingListMaterialItem {
   original_units_needed: number;
   units_needed: number;
   is_manually_adjusted: boolean;
+  // ENG-2 : nombre de pièces mutualisées sur cette ligne (≥ 2 → « N pièces »).
+  room_count?: number;
+  // Legacy : présent sur les listes générées avant la mutualisation ENG-2.
+  work_item_id?: string;
   real_unit_price?: number | null;
   store_name?: string | null;
 }

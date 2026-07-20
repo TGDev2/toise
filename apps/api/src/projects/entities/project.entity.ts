@@ -6,16 +6,15 @@ import {
   UpdateDateColumn,
   DeleteDateColumn,
   ManyToOne,
-  OneToOne,
   OneToMany,
   JoinColumn,
   Index,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
-import { RoomDimensions } from './room-dimensions.entity';
-import { Opening } from './opening.entity';
-import { ProjectWorkItem } from './project-work-item.entity';
+import { Room } from './room.entity';
 import { ProjectPhoto } from '../../photos/entities/project-photo.entity';
+import type { RoomDimensions } from './room-dimensions.entity';
+import type { Opening } from './opening.entity';
 
 export enum WorkType {
   PAINTING = 'painting',
@@ -65,15 +64,36 @@ export class Project {
   @JoinColumn({ name: 'user_id' })
   user!: User;
 
-  @OneToOne(() => RoomDimensions, (rd) => rd.project, { eager: true })
-  dimensions!: RoomDimensions | null;
-
-  @OneToMany(() => Opening, (o) => o.project, { eager: true })
-  openings!: Opening[];
-
-  @OneToMany(() => ProjectWorkItem, (wi) => wi.project)
-  workItems!: ProjectWorkItem[];
+  @OneToMany(() => Room, (r) => r.project, { eager: true })
+  rooms!: Room[];
 
   @OneToMany(() => ProjectPhoto, (photo) => photo.project)
   photos!: ProjectPhoto[];
+
+  /**
+   * Pièce par défaut = 1re pièce par `sort_order` (puis ancienneté). Racine de
+   * la compatibilité « 1 projet = 1 pièce » : dimensions/ouvertures projet la
+   * ciblent. Requiert `rooms` chargé (eager sur toute lecture `find`/`findOne`).
+   */
+  private get defaultRoom(): Room | undefined {
+    if (!this.rooms || this.rooms.length === 0) return undefined;
+    return [...this.rooms].sort(
+      (a, b) =>
+        a.sort_order - b.sort_order ||
+        a.created_at.getTime() - b.created_at.getTime(),
+    )[0];
+  }
+
+  /**
+   * Dimensions de la pièce par défaut. Accès de compatibilité conservé pour les
+   * consommateurs historiques (contrôleur projet, PDF, communauté, partage).
+   */
+  get dimensions(): RoomDimensions | null {
+    return this.defaultRoom?.dimensions ?? null;
+  }
+
+  /** Ouvertures de la pièce par défaut (accès de compatibilité). */
+  get openings(): Opening[] {
+    return this.defaultRoom?.openings ?? [];
+  }
 }

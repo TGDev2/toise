@@ -3,17 +3,19 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeatureGate } from '@/hooks/useFeatureGate';
 import { ProBadge } from '@/components/paywall/ProBadge';
-import { apiGet, apiPost, apiPut, apiDelete } from '@/lib/api';
+import { apiGet, apiPost, apiPut, apiDelete, apiPatch } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import type { Opening, RectSegment } from '@/lib/surface';
+import type { Room } from '@/lib/room-types';
 import { DimensionsForm } from '@/components/dimensions/DimensionsForm';
+import { RoomSwitcher } from '@/components/rooms/RoomSwitcher';
 import { AnalyzeButton } from '@/components/analysis/AnalyzeButton';
 import { AnalysisResultPanel } from '@/components/analysis/AnalysisResultPanel';
 import { ReferenceObjectPrompt } from '@/components/analysis/ReferenceObjectPrompt';
 import { useAnalysis } from '@/hooks/useAnalysis';
 import { Alert, Skeleton } from '@/components/ui';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const STORAGE_KEY = 'chiffreo_local_projects';
 
@@ -22,14 +24,6 @@ interface DimensionsData {
   width_cm: number;
   height_cm: number;
   segments?: RectSegment[] | null;
-}
-
-interface OpeningData {
-  id: string;
-  type: 'door' | 'window';
-  width_cm: number;
-  height_cm: number;
-  count: number;
 }
 
 interface LocalProject {
@@ -52,11 +46,13 @@ export default function DimensionsPage() {
   const params = useParams<{ id: string }>();
   const projectId = params.id;
 
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [initialDims, setInitialDims] = useState<DimensionsData | null>(null);
   const [initialOpenings, setInitialOpenings] = useState<Opening[]>([]);
   const [existingOpeningIds, setExistingOpeningIds] = useState<string[]>([]);
   const [projectName, setProjectName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [roomBusy, setRoomBusy] = useState(false);
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
   const [hasPhotos, setHasPhotos] = useState(false);
@@ -64,6 +60,39 @@ export default function DimensionsPage() {
 
   const analysis = useAnalysis(projectId);
   const cvGate = useFeatureGate('cv_analysis');
+
+  const roomParam = searchParams.get('room');
+  const activeRoomId = useMemo(() => {
+    if (rooms.length === 0) return null;
+    if (roomParam && rooms.some((r) => r.id === roomParam)) return roomParam;
+    return rooms[0].id;
+  }, [rooms, roomParam]);
+  const isDefaultRoom = rooms.length > 0 && activeRoomId === rooms[0].id;
+  const isReadOnly = false;
+
+  const seedFromRoom = useCallback((room: Room | undefined) => {
+    if (room?.dimensions) {
+      setInitialDims({
+        length_cm: room.dimensions.length_cm,
+        width_cm: room.dimensions.width_cm,
+        height_cm: room.dimensions.height_cm,
+        segments: room.dimensions.segments ?? null,
+      });
+    } else {
+      setInitialDims(null);
+    }
+    const ops = room?.openings ?? [];
+    setInitialOpenings(
+      ops.map((o) => ({
+        type: o.type,
+        width_cm: o.width_cm,
+        height_cm: o.height_cm,
+        count: o.count,
+      })),
+    );
+    setExistingOpeningIds(ops.map((o) => o.id));
+    setShowManualForm(false);
+  }, []);
 
   useEffect(() => {
     if (isLoading) return;
@@ -75,26 +104,12 @@ export default function DimensionsPage() {
     async function load() {
       try {
         if (appUser) {
-          const project = await apiGet<{
-            name: string;
-            dimensions: DimensionsData | null;
-            openings: OpeningData[];
-          }>(`/projects/${projectId}`);
+          const [project, roomList] = await Promise.all([
+            apiGet<{ name: string }>(`/projects/${projectId}`),
+            apiGet<Room[]>(`/projects/${projectId}/rooms`),
+          ]);
           setProjectName(project.name);
-          if (project.dimensions) {
-            setInitialDims(project.dimensions);
-          }
-          if (project.openings?.length) {
-            setInitialOpenings(
-              project.openings.map((o) => ({
-                type: o.type,
-                width_cm: o.width_cm,
-                height_cm: o.height_cm,
-                count: o.count,
-              })),
-            );
-            setExistingOpeningIds(project.openings.map((o) => o.id));
-          }
+          setRooms(roomList);
 
           // Check if project has photos
           try {
@@ -134,7 +149,19 @@ export default function DimensionsPage() {
     load();
   }, [appUser, isGuest, isLoading, projectId, router]);
 
-  // Auto-trigger analysis from ?analyze=true query param (only if CV allowed)
+  // Seed the form once per selected room (logged-in). Guarded so that renaming a
+  // room (which changes `rooms` but not the active id) never resets an edit.
+  const seededRoomIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!appUser || !activeRoomId) return;
+    if (seededRoomIdRef.current === activeRoomId) return;
+    const room = rooms.find((r) => r.id === activeRoomId);
+    if (!room) return;
+    seededRoomIdRef.current = activeRoomId;
+    seedFromRoom(room);
+  }, [appUser, activeRoomId, rooms, seedFromRoom]);
+
+  // Auto-trigger analysis from ?analyze=true query param (default room only)
   useEffect(() => {
     if (
       loaded &&
@@ -142,11 +169,20 @@ export default function DimensionsPage() {
       cvGate.allowed &&
       searchParams.get('analyze') === 'true' &&
       analysis.status === 'idle' &&
-      !initialDims
+      !initialDims &&
+      isDefaultRoom
     ) {
       analysis.startAnalysis();
     }
-  }, [loaded, hasPhotos, cvGate.allowed, searchParams, analysis, initialDims]);
+  }, [
+    loaded,
+    hasPhotos,
+    cvGate.allowed,
+    searchParams,
+    analysis,
+    initialDims,
+    isDefaultRoom,
+  ]);
 
   const handleAcceptCvDimensions = useCallback(() => {
     if (analysis.dimensions) {
@@ -175,6 +211,73 @@ export default function DimensionsPage() {
     await analysis.startAnalysis();
   }, [analysis]);
 
+  const goToRoom = useCallback(
+    (roomId: string) => {
+      router.replace(`/projects/${projectId}/dimensions?room=${roomId}`);
+    },
+    [projectId, router],
+  );
+
+  const handleAddRoom = useCallback(async () => {
+    setRoomBusy(true);
+    setError('');
+    try {
+      const room = await apiPost<Room>(`/projects/${projectId}/rooms`, {});
+      setRooms((prev) => [...prev, room]);
+      goToRoom(room.id);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Impossible d’ajouter la pièce'));
+    } finally {
+      setRoomBusy(false);
+    }
+  }, [projectId, goToRoom]);
+
+  const handleRenameRoom = useCallback(
+    async (roomId: string, name: string) => {
+      setRoomBusy(true);
+      setError('');
+      try {
+        const updated = await apiPatch<Room>(
+          `/projects/${projectId}/rooms/${roomId}`,
+          { name },
+        );
+        // Preserve geometry (rename response carries no relations).
+        setRooms((prev) =>
+          prev.map((r) =>
+            r.id === roomId
+              ? { ...r, name: updated.name, sort_order: updated.sort_order }
+              : r,
+          ),
+        );
+      } catch (err: unknown) {
+        setError(getErrorMessage(err, 'Impossible de renommer la pièce'));
+      } finally {
+        setRoomBusy(false);
+      }
+    },
+    [projectId],
+  );
+
+  const handleDeleteRoom = useCallback(
+    async (roomId: string) => {
+      setRoomBusy(true);
+      setError('');
+      try {
+        await apiDelete(`/projects/${projectId}/rooms/${roomId}`);
+        const remaining = rooms.filter((r) => r.id !== roomId);
+        setRooms(remaining);
+        if (activeRoomId === roomId && remaining.length > 0) {
+          goToRoom(remaining[0].id);
+        }
+      } catch (err: unknown) {
+        setError(getErrorMessage(err, 'Impossible de supprimer la pièce'));
+      } finally {
+        setRoomBusy(false);
+      }
+    },
+    [projectId, rooms, activeRoomId, goToRoom],
+  );
+
   const handleSave = useCallback(
     async (
       lengthCm: number,
@@ -187,8 +290,9 @@ export default function DimensionsPage() {
       setIsSaving(true);
       try {
         if (appUser) {
+          const roomQ = activeRoomId ? `?room=${activeRoomId}` : '';
           // Save dimensions
-          await apiPut(`/projects/${projectId}/dimensions`, {
+          await apiPut(`/projects/${projectId}/dimensions${roomQ}`, {
             length_cm: lengthCm,
             width_cm: widthCm,
             height_cm: heightCm,
@@ -204,7 +308,7 @@ export default function DimensionsPage() {
 
           await Promise.all(
             openings.map((o) =>
-              apiPost(`/projects/${projectId}/openings`, {
+              apiPost(`/projects/${projectId}/openings${roomQ}`, {
                 type: o.type,
                 width_cm: o.width_cm,
                 height_cm: o.height_cm,
@@ -226,14 +330,15 @@ export default function DimensionsPage() {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
           }
         }
-        router.push(`/projects/${projectId}/work-selection`);
+        const nextQ = activeRoomId ? `?room=${activeRoomId}` : '';
+        router.push(`/projects/${projectId}/work-selection${nextQ}`);
       } catch (err: unknown) {
         setError(getErrorMessage(err, 'Impossible de sauvegarder les dimensions'));
       } finally {
         setIsSaving(false);
       }
     },
-    [appUser, projectId, router, existingOpeningIds],
+    [appUser, projectId, router, existingOpeningIds, activeRoomId],
   );
 
   if (isLoading || !loaded) {
@@ -245,10 +350,10 @@ export default function DimensionsPage() {
     );
   }
 
-  // Determine if we should show the analysis section
+  // Determine if we should show the analysis section (default room only)
   const canUseCv = cvGate.allowed;
   const showAnalysis =
-    appUser && hasPhotos && !showManualForm && !initialDims;
+    appUser && hasPhotos && !showManualForm && !initialDims && isDefaultRoom;
   const showResult =
     analysis.status === 'completed' && analysis.dimensions && !showManualForm;
 
@@ -269,6 +374,20 @@ export default function DimensionsPage() {
           <p className="mt-1 text-sm text-stone-500">{projectName}</p>
         )}
       </div>
+
+      {/* Sélecteur de pièces (connecté uniquement — l'invité reste mono-pièce) */}
+      {appUser && rooms.length > 0 && activeRoomId && (
+        <RoomSwitcher
+          rooms={rooms}
+          activeRoomId={activeRoomId}
+          onSelect={goToRoom}
+          onAdd={handleAddRoom}
+          onRename={handleRenameRoom}
+          onDelete={handleDeleteRoom}
+          busy={roomBusy || isSaving}
+          disabled={isReadOnly}
+        />
+      )}
 
       {error && (
         <Alert variant="error" className="mb-6">
@@ -352,6 +471,7 @@ export default function DimensionsPage() {
       {(showManualForm || initialDims || !showAnalysis) && (
         <section className="rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
           <DimensionsForm
+            key={activeRoomId ?? 'guest'}
             initialLengthCm={initialDims?.length_cm ?? 0}
             initialWidthCm={initialDims?.width_cm ?? 0}
             initialHeightCm={initialDims?.height_cm ?? 0}

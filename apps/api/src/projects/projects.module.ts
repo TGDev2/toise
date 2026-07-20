@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from '../users/users.module';
 import { FeatureGatesModule } from '../feature-gates/feature-gates.module';
 import { Project } from './entities/project.entity';
+import { Room } from './entities/room.entity';
 import { RoomDimensions } from './entities/room-dimensions.entity';
 import { Opening } from './entities/opening.entity';
 import { WorkType } from './entities/work-type.entity';
@@ -17,6 +18,7 @@ import { CvCorrectionService } from '../analysis/cv-correction.service';
   imports: [
     TypeOrmModule.forFeature([
       Project,
+      Room,
       RoomDimensions,
       Opening,
       WorkType,

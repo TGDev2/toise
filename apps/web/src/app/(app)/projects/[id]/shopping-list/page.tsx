@@ -41,7 +41,7 @@ export default function ShoppingListPage() {
 
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingUpdatesRef = useRef<{
-    material_items?: { material_id: string; work_item_id: string; units_needed: number; real_unit_price?: number; store_name?: string }[];
+    material_items?: { material_id: string; units_needed: number; real_unit_price?: number; store_name?: string }[];
     complementary_items?: { complementary_material_id: string; quantity?: number; is_removed?: boolean; real_unit_price?: number; store_name?: string }[];
   }>({});
 
@@ -125,14 +125,14 @@ export default function ShoppingListPage() {
   }, [data, budgetAllowed, loadBudgetSummary]);
 
   const handleUpdateMaterialQty = useCallback(
-    (materialId: string, workItemId: string, units: number) => {
+    (materialId: string, units: number) => {
       // Update local state optimistically
       setData((prev) => {
         if (!prev) return prev;
         return {
           ...prev,
           material_items: prev.material_items.map((item) =>
-            item.material_id === materialId && item.work_item_id === workItemId
+            item.material_id === materialId
               ? {
                   ...item,
                   units_needed: units,
@@ -143,15 +143,13 @@ export default function ShoppingListPage() {
         };
       });
 
-      // Queue update
+      // Queue update (mutualisé : clé material_id)
       const existing = pendingUpdatesRef.current.material_items || [];
-      const idx = existing.findIndex(
-        (u) => u.material_id === materialId && u.work_item_id === workItemId,
-      );
+      const idx = existing.findIndex((u) => u.material_id === materialId);
       if (idx >= 0) {
         existing[idx].units_needed = units;
       } else {
-        existing.push({ material_id: materialId, work_item_id: workItemId, units_needed: units });
+        existing.push({ material_id: materialId, units_needed: units });
       }
       pendingUpdatesRef.current.material_items = existing;
       scheduleSave();
@@ -160,26 +158,24 @@ export default function ShoppingListPage() {
   );
 
   const handleResetMaterialQty = useCallback(
-    (materialId: string, workItemId: string) => {
-      const item = data?.material_items.find(
-        (m) => m.material_id === materialId && m.work_item_id === workItemId,
-      );
+    (materialId: string) => {
+      const item = data?.material_items.find((m) => m.material_id === materialId);
       if (item) {
-        handleUpdateMaterialQty(materialId, workItemId, item.original_units_needed);
+        handleUpdateMaterialQty(materialId, item.original_units_needed);
       }
     },
     [data, handleUpdateMaterialQty],
   );
 
   const handleUpdateMaterialPrice = useCallback(
-    (materialId: string, workItemId: string, price: number, storeName: string) => {
+    (materialId: string, price: number, storeName: string) => {
       // Update local state optimistically
       setData((prev) => {
         if (!prev) return prev;
         return {
           ...prev,
           material_items: prev.material_items.map((item) =>
-            item.material_id === materialId && item.work_item_id === workItemId
+            item.material_id === materialId
               ? { ...item, real_unit_price: price, store_name: storeName }
               : item,
           ),
@@ -188,20 +184,17 @@ export default function ShoppingListPage() {
 
       // Queue update — merge with existing pending update for this item
       const existing = pendingUpdatesRef.current.material_items || [];
-      const idx = existing.findIndex(
-        (u) => u.material_id === materialId && u.work_item_id === workItemId,
-      );
+      const idx = existing.findIndex((u) => u.material_id === materialId);
       if (idx >= 0) {
         existing[idx].real_unit_price = price;
         existing[idx].store_name = storeName;
       } else {
         // Need to include units_needed for the DTO
         const currentItem = data?.material_items.find(
-          (m) => m.material_id === materialId && m.work_item_id === workItemId,
+          (m) => m.material_id === materialId,
         );
         existing.push({
           material_id: materialId,
-          work_item_id: workItemId,
           units_needed: currentItem?.units_needed ?? 0,
           real_unit_price: price,
           store_name: storeName,

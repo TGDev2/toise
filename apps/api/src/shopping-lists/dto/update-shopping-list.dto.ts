@@ -16,8 +16,12 @@ export class MaterialItemUpdateDto {
   @IsUUID()
   material_id!: string;
 
+  // ENG-2 : les lignes d'achat sont mutualisées par matériau ; le matching se
+  // fait sur `material_id` seul. `work_item_id` reste toléré (clients anciens)
+  // mais n'est plus utilisé.
+  @IsOptional()
   @IsString()
-  work_item_id!: string;
+  work_item_id?: string;
 
   @IsInt()
   @Min(0)

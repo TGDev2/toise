@@ -7,7 +7,7 @@ import {
   OneToOne,
   JoinColumn,
 } from 'typeorm';
-import { Project } from './project.entity';
+import { Room } from './room.entity';
 
 export enum ConfidenceScore {
   HIGH = 'high',
@@ -40,7 +40,7 @@ export class RoomDimensions {
   id!: string;
 
   @Column({ type: 'uuid', unique: true })
-  project_id!: string;
+  room_id!: string;
 
   @Column({ type: 'int' })
   length_cm!: number;
@@ -73,7 +73,7 @@ export class RoomDimensions {
   @UpdateDateColumn({ type: 'timestamptz' })
   updated_at!: Date;
 
-  @OneToOne(() => Project, (p) => p.dimensions, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'project_id' })
-  project!: Project;
+  @OneToOne(() => Room, (r) => r.dimensions, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'room_id' })
+  room!: Room;
 }

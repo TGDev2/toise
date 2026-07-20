@@ -66,6 +66,7 @@ const workTypesRepoMock = {
 
 const projectsServiceMock = {
   findOneByUser: jest.fn(),
+  getRooms: jest.fn(),
   getWorkItems: jest.fn(),
   updateStatus: jest.fn(),
 };
@@ -313,12 +314,20 @@ describe('EstimationsService.estimate', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     materialsRepoMock.find.mockResolvedValue([mockMaterial]);
-    projectsServiceMock.findOneByUser.mockResolvedValue({
-      id: 'project-1',
-      dimensions: { length_cm: 400, width_cm: 300, height_cm: 250 },
-      openings: [{ width_cm: 90, height_cm: 210, count: 1 }],
-    });
-    projectsServiceMock.getWorkItems.mockResolvedValue([mockWorkItem]);
+    projectsServiceMock.getRooms.mockResolvedValue([
+      {
+        id: 'room-1',
+        name: 'Salon',
+        dimensions: {
+          length_cm: 400,
+          width_cm: 300,
+          height_cm: 250,
+          segments_json: null,
+        },
+        openings: [{ width_cm: 90, height_cm: 210, count: 1 }],
+        workItems: [mockWorkItem],
+      },
+    ]);
     projectsServiceMock.updateStatus.mockResolvedValue(undefined);
     estimationRepoMock.create.mockImplementation(
       (data: Record<string, unknown>) => data,
@@ -354,20 +363,37 @@ describe('EstimationsService.estimate', () => {
     service = module.get(EstimationsService);
   });
 
-  it('throws BadRequestException when the project has no dimensions', async () => {
-    projectsServiceMock.findOneByUser.mockResolvedValue({
-      id: 'project-1',
-      dimensions: null,
-    });
+  it('throws BadRequestException when no room has dimensions', async () => {
+    projectsServiceMock.getRooms.mockResolvedValue([
+      {
+        id: 'room-1',
+        name: 'Salon',
+        dimensions: null,
+        openings: [],
+        workItems: [],
+      },
+    ]);
 
     await expect(service.estimate('project-1', 'user-1')).rejects.toThrow(
       BadRequestException,
     );
-    expect(projectsServiceMock.getWorkItems).not.toHaveBeenCalled();
   });
 
-  it('throws BadRequestException when the project has no work items', async () => {
-    projectsServiceMock.getWorkItems.mockResolvedValue([]);
+  it('throws BadRequestException when no estimable room has work items', async () => {
+    projectsServiceMock.getRooms.mockResolvedValue([
+      {
+        id: 'room-1',
+        name: 'Salon',
+        dimensions: {
+          length_cm: 400,
+          width_cm: 300,
+          height_cm: 250,
+          segments_json: null,
+        },
+        openings: [],
+        workItems: [],
+      },
+    ]);
 
     await expect(service.estimate('project-1', 'user-1')).rejects.toThrow(
       BadRequestException,

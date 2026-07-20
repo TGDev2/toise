@@ -7,6 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, In, IsNull, Repository } from 'typeorm';
 import { Project, ProjectStatus } from './entities/project.entity';
+import { Room } from './entities/room.entity';
 import {
   ConfidenceScore,
   DimensionSource,
@@ -18,6 +19,8 @@ import { ProjectWorkItem } from './entities/project-work-item.entity';
 import { SubscriptionTier } from '../users/entities/user.entity';
 import { FeatureGatesService } from '../feature-gates/feature-gates.service';
 import { CreateProjectDto } from './dto/create-project.dto';
+import { CreateRoomDto } from './dto/create-room.dto';
+import { UpdateRoomDto } from './dto/update-room.dto';
 import { UpdateDimensionsDto } from './dto/update-dimensions.dto';
 import { CreateOpeningDto } from './dto/create-opening.dto';
 import { UpdateOpeningDto } from './dto/update-opening.dto';
@@ -31,6 +34,8 @@ export class ProjectsService {
   constructor(
     @InjectRepository(Project)
     private readonly projectsRepo: Repository<Project>,
+    @InjectRepository(Room)
+    private readonly roomsRepo: Repository<Room>,
     @InjectRepository(RoomDimensions)
     private readonly dimensionsRepo: Repository<RoomDimensions>,
     @InjectRepository(Opening)
@@ -70,7 +75,19 @@ export class ProjectsService {
       room_name: dto.room_name ?? '',
       work_type: dto.work_type,
     });
-    return this.projectsRepo.save(project);
+    const saved = await this.projectsRepo.save(project);
+
+    // Tout projet possède ≥ 1 pièce dès sa création : invariant qui rend la
+    // « pièce par défaut » toujours disponible pour les endpoints historiques.
+    await this.roomsRepo.save(
+      this.roomsRepo.create({
+        project_id: saved.id,
+        name: saved.room_name || 'Pièce 1',
+        sort_order: 0,
+      }),
+    );
+
+    return saved;
   }
 
   async countActiveProjects(userId: string): Promise<number> {
@@ -174,6 +191,141 @@ export class ProjectsService {
     return project;
   }
 
+  // ---------------------------------------------------------------------------
+  // Pièces (ENG-2)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Pièce par défaut (1re par `sort_order` puis ancienneté) sans effet de bord.
+   * Chemins de LECTURE uniquement.
+   */
+  private async findDefaultRoom(projectId: string): Promise<Room | null> {
+    return this.roomsRepo.findOne({
+      where: { project_id: projectId },
+      order: { sort_order: 'ASC', created_at: 'ASC' },
+    });
+  }
+
+  /**
+   * Pièce par défaut, créée à la volée si le projet n'en a aucune (projets
+   * antérieurs à ENG-2 non backfillés, robustesse). Chemins d'ÉCRITURE.
+   */
+  private async getOrCreateDefaultRoom(projectId: string): Promise<Room> {
+    const existing = await this.findDefaultRoom(projectId);
+    if (existing) return existing;
+    return this.roomsRepo.save(
+      this.roomsRepo.create({
+        project_id: projectId,
+        name: 'Pièce 1',
+        sort_order: 0,
+      }),
+    );
+  }
+
+  /**
+   * Toutes les pièces d'un projet avec géométrie et travaux chargés, ordonnées.
+   * Source de vérité de l'estimation multi-pièces.
+   */
+  async getRooms(projectId: string, userId: string): Promise<Room[]> {
+    await this.findOneByUser(projectId, userId);
+    return this.roomsRepo.find({
+      where: { project_id: projectId },
+      relations: ['dimensions', 'openings', 'workItems', 'workItems.work_type'],
+      order: { sort_order: 'ASC', created_at: 'ASC' },
+    });
+  }
+
+  /**
+   * Pièce cible d'une ÉCRITURE : `roomId` explicite (validé appartenance) ou
+   * pièce par défaut (créée au besoin). Cœur de la compat mono-pièce + du
+   * ciblage multi-pièces (Phase 2).
+   */
+  private async resolveRoomForWrite(
+    projectId: string,
+    roomId?: string,
+  ): Promise<Room> {
+    if (roomId) {
+      const room = await this.roomsRepo.findOne({
+        where: { id: roomId, project_id: projectId },
+      });
+      if (!room) throw new NotFoundException('Room not found');
+      return room;
+    }
+    return this.getOrCreateDefaultRoom(projectId);
+  }
+
+  /** Pièce cible d'une LECTURE : `roomId` validé, ou pièce par défaut (peut être null). */
+  private async resolveRoomForRead(
+    projectId: string,
+    roomId?: string,
+  ): Promise<Room | null> {
+    if (roomId) {
+      const room = await this.roomsRepo.findOne({
+        where: { id: roomId, project_id: projectId },
+      });
+      if (!room) throw new NotFoundException('Room not found');
+      return room;
+    }
+    return this.findDefaultRoom(projectId);
+  }
+
+  async createRoom(
+    projectId: string,
+    userId: string,
+    dto: CreateRoomDto,
+  ): Promise<Room> {
+    await this.findOneByUser(projectId, userId);
+    const count = await this.roomsRepo.count({
+      where: { project_id: projectId },
+    });
+    return this.roomsRepo.save(
+      this.roomsRepo.create({
+        project_id: projectId,
+        name: dto.name?.trim() || `Pièce ${count + 1}`,
+        sort_order: count,
+      }),
+    );
+  }
+
+  async renameRoom(
+    projectId: string,
+    userId: string,
+    roomId: string,
+    dto: UpdateRoomDto,
+  ): Promise<Room> {
+    await this.findOneByUser(projectId, userId);
+    const room = await this.roomsRepo.findOne({
+      where: { id: roomId, project_id: projectId },
+    });
+    if (!room) throw new NotFoundException('Room not found');
+    if (dto.name !== undefined) room.name = dto.name.trim();
+    if (dto.sort_order !== undefined) room.sort_order = dto.sort_order;
+    return this.roomsRepo.save(room);
+  }
+
+  async deleteRoom(
+    projectId: string,
+    userId: string,
+    roomId: string,
+  ): Promise<void> {
+    await this.findOneByUser(projectId, userId);
+    // Garde-fou : un projet conserve toujours ≥ 1 pièce.
+    const count = await this.roomsRepo.count({
+      where: { project_id: projectId },
+    });
+    if (count <= 1) {
+      throw new BadRequestException(
+        'Un projet doit conserver au moins une pièce.',
+      );
+    }
+    const room = await this.roomsRepo.findOne({
+      where: { id: roomId, project_id: projectId },
+    });
+    if (!room) throw new NotFoundException('Room not found');
+    // La suppression cascade sur dimensions / ouvertures / work items (FK).
+    await this.roomsRepo.remove(room);
+  }
+
   async updateDimensions(
     projectId: string,
     userId: string,
@@ -183,14 +335,16 @@ export class ProjectsService {
       confidence_score?: ConfidenceScore;
       raw_cv_output_json?: Record<string, unknown> | null;
     },
+    roomId?: string,
   ): Promise<RoomDimensions> {
     await this.findOneByUser(projectId, userId);
+    const room = await this.resolveRoomForWrite(projectId, roomId);
 
     const source = overrides?.source ?? DimensionSource.MANUAL;
     const confidence = overrides?.confidence_score ?? ConfidenceScore.HIGH;
 
     let dimensions = await this.dimensionsRepo.findOne({
-      where: { project_id: projectId },
+      where: { room_id: room.id },
     });
 
     if (dimensions) {
@@ -207,7 +361,7 @@ export class ProjectsService {
       }
     } else {
       dimensions = this.dimensionsRepo.create({
-        project_id: projectId,
+        room_id: room.id,
         length_cm: dto.length_cm,
         width_cm: dto.width_cm,
         height_cm: dto.height_cm,
@@ -224,11 +378,15 @@ export class ProjectsService {
   async getDimensions(
     projectId: string,
     userId: string,
+    roomId?: string,
   ): Promise<RoomDimensions | null> {
     await this.findOneByUser(projectId, userId);
 
+    const room = await this.resolveRoomForRead(projectId, roomId);
+    if (!room) return null;
+
     return this.dimensionsRepo.findOne({
-      where: { project_id: projectId },
+      where: { room_id: room.id },
     });
   }
 
@@ -237,11 +395,13 @@ export class ProjectsService {
     userId: string,
     dto: CreateOpeningDto,
     overrides?: { source?: OpeningSource; cv_confidence?: number },
+    roomId?: string,
   ): Promise<Opening> {
     await this.findOneByUser(projectId, userId);
+    const room = await this.resolveRoomForWrite(projectId, roomId);
 
     const opening = this.openingsRepo.create({
-      project_id: projectId,
+      room_id: room.id,
       type: dto.type,
       width_cm: dto.width_cm,
       height_cm: dto.height_cm,
@@ -254,8 +414,14 @@ export class ProjectsService {
   }
 
   async removeCvOpenings(projectId: string): Promise<void> {
+    const rooms = await this.roomsRepo.find({
+      where: { project_id: projectId },
+      select: ['id'],
+    });
+    if (rooms.length === 0) return;
+
     await this.openingsRepo.delete({
-      project_id: projectId,
+      room_id: In(rooms.map((r) => r.id)),
       source: OpeningSource.CV,
     });
   }
@@ -269,10 +435,11 @@ export class ProjectsService {
     await this.findOneByUser(projectId, userId);
 
     const opening = await this.openingsRepo.findOne({
-      where: { id: openingId, project_id: projectId },
+      where: { id: openingId },
+      relations: ['room'],
     });
 
-    if (!opening) {
+    if (!opening || opening.room.project_id !== projectId) {
       throw new NotFoundException('Opening not found');
     }
 
@@ -292,21 +459,29 @@ export class ProjectsService {
     await this.findOneByUser(projectId, userId);
 
     const opening = await this.openingsRepo.findOne({
-      where: { id: openingId, project_id: projectId },
+      where: { id: openingId },
+      relations: ['room'],
     });
 
-    if (!opening) {
+    if (!opening || opening.room.project_id !== projectId) {
       throw new NotFoundException('Opening not found');
     }
 
     await this.openingsRepo.remove(opening);
   }
 
-  async getOpenings(projectId: string, userId: string): Promise<Opening[]> {
+  async getOpenings(
+    projectId: string,
+    userId: string,
+    roomId?: string,
+  ): Promise<Opening[]> {
     await this.findOneByUser(projectId, userId);
 
+    const room = await this.resolveRoomForRead(projectId, roomId);
+    if (!room) return [];
+
     return this.openingsRepo.find({
-      where: { project_id: projectId },
+      where: { room_id: room.id },
       order: { created_at: 'ASC' },
     });
   }
@@ -321,8 +496,10 @@ export class ProjectsService {
     projectId: string,
     userId: string,
     dto: SaveWorkItemsDto,
+    roomId?: string,
   ): Promise<ProjectWorkItem[]> {
     await this.findOneByUser(projectId, userId);
+    const room = await this.resolveRoomForWrite(projectId, roomId);
 
     // Validate all work_type_ids exist
     const workTypeIds = dto.items.map((item) => item.work_type_id);
@@ -354,13 +531,13 @@ export class ProjectsService {
       }
     }
 
-    // Delete existing work items for this project
-    await this.workItemsRepo.delete({ project_id: projectId });
+    // Delete existing work items for this room
+    await this.workItemsRepo.delete({ room_id: room.id });
 
     // Insert new items
     const entities = dto.items.map((item) =>
       this.workItemsRepo.create({
-        project_id: projectId,
+        room_id: room.id,
         work_type_id: item.work_type_id,
         skill_level: item.skill_level,
         custom_params: item.custom_params ?? {},
@@ -371,7 +548,7 @@ export class ProjectsService {
 
     // Return with work_type relation loaded
     return this.workItemsRepo.find({
-      where: { project_id: projectId },
+      where: { room_id: room.id },
       relations: ['work_type'],
       order: { work_type: { display_order: 'ASC' } },
     });
@@ -380,11 +557,15 @@ export class ProjectsService {
   async getWorkItems(
     projectId: string,
     userId: string,
+    roomId?: string,
   ): Promise<ProjectWorkItem[]> {
     await this.findOneByUser(projectId, userId);
 
+    const room = await this.resolveRoomForRead(projectId, roomId);
+    if (!room) return [];
+
     return this.workItemsRepo.find({
-      where: { project_id: projectId },
+      where: { room_id: room.id },
       relations: ['work_type'],
       order: { work_type: { display_order: 'ASC' } },
     });

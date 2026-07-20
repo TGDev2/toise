@@ -18,6 +18,7 @@ import {
   RoomData,
   WorkItemInput,
   MaterialInput,
+  PackagingInput,
 } from './estimation-engine';
 import { SkillLevel } from '../projects/entities/project-work-item.entity';
 import { ProjectStatus } from '../projects/entities/project.entity';
@@ -91,64 +92,103 @@ export class EstimationsService {
     userId: string,
     skillLevelOverride?: SkillLevel,
   ): Promise<EstimationResult> {
-    const project = await this.projectsService.findOneByUser(projectId, userId);
+    const rooms = await this.projectsService.getRooms(projectId, userId);
 
-    if (!project.dimensions) {
+    // Une pièce est estimable si elle a des dimensions ET ≥ 1 work item.
+    const estimableRooms = rooms.filter(
+      (r) => r.dimensions && r.workItems && r.workItems.length > 0,
+    );
+
+    if (rooms.every((r) => !r.dimensions)) {
       throw new BadRequestException(
         'Project must have room dimensions before estimation',
       );
     }
-
-    const workItems = await this.projectsService.getWorkItems(
-      projectId,
-      userId,
-    );
-
-    if (workItems.length === 0) {
+    if (estimableRooms.length === 0) {
       throw new BadRequestException(
         'Project must have at least one work item before estimation',
       );
     }
 
-    const room: RoomData = {
-      length_cm: project.dimensions.length_cm,
-      width_cm: project.dimensions.width_cm,
-      height_cm: project.dimensions.height_cm,
-      openings: (project.openings || []).map((o) => ({
-        width_cm: o.width_cm,
-        height_cm: o.height_cm,
-        count: o.count,
-      })),
-      segments: project.dimensions.segments_json ?? undefined,
+    // Catalogue matériaux mis en cache par catégorie : une seule requête par
+    // catégorie pour tout le projet, quel que soit le nombre de pièces.
+    const materialsByCategory = new Map<string, MaterialInput[]>();
+    const loadMaterials = async (
+      category: string,
+    ): Promise<MaterialInput[]> => {
+      const cached = materialsByCategory.get(category);
+      if (cached) return cached;
+      const loaded = await this.loadMaterialInputs(category);
+      materialsByCategory.set(category, loaded);
+      return loaded;
     };
 
-    // Build work item inputs with their materials
-    const workItemInputs: WorkItemInput[] = [];
-    const effectiveSkillLevel = skillLevelOverride;
+    const granularLines: EstimationLineItem[] = [];
+    const packagingByMaterialId = new Map<string, PackagingInput[]>();
+    let firstSkillLevel: SkillLevel | undefined;
 
-    for (const wi of workItems) {
-      const wt = wi.work_type;
-      const materialInputs = await this.loadMaterialInputs(wt.category);
+    for (const room of estimableRooms) {
+      const dimensions = room.dimensions!;
+      const roomData: RoomData = {
+        length_cm: dimensions.length_cm,
+        width_cm: dimensions.width_cm,
+        height_cm: dimensions.height_cm,
+        openings: (room.openings || []).map((o) => ({
+          width_cm: o.width_cm,
+          height_cm: o.height_cm,
+          count: o.count,
+        })),
+        segments: dimensions.segments_json ?? undefined,
+      };
 
-      workItemInputs.push({
-        id: wi.id,
-        work_type_code: wt.code,
-        work_type_label: wt.label_fr,
-        category: wt.category,
-        surface_target: wt.surface_target,
-        skill_level: effectiveSkillLevel || wi.skill_level,
-        custom_params: wi.custom_params,
-        materials: materialInputs,
-      });
+      const workItemInputs: WorkItemInput[] = [];
+      for (const wi of room.workItems) {
+        const wt = wi.work_type;
+        const materialInputs = await loadMaterials(wt.category);
+
+        // Mémorise les conditionnements par matériau pour l'agrégation.
+        for (const mat of materialInputs) {
+          if (!packagingByMaterialId.has(mat.id)) {
+            packagingByMaterialId.set(mat.id, mat.packagings);
+          }
+        }
+
+        if (firstSkillLevel === undefined) firstSkillLevel = wi.skill_level;
+
+        workItemInputs.push({
+          id: wi.id,
+          work_type_code: wt.code,
+          work_type_label: wt.label_fr,
+          category: wt.category,
+          surface_target: wt.surface_target,
+          skill_level: skillLevelOverride || wi.skill_level,
+          custom_params: wi.custom_params,
+          materials: materialInputs,
+        });
+      }
+
+      const lines = this.engine.computeEstimation(roomData, workItemInputs);
+      for (const line of lines) {
+        granularLines.push({
+          ...line,
+          room_id: room.id,
+          room_name: room.name,
+        });
+      }
     }
 
-    const items = this.engine.computeEstimation(room, workItemInputs);
+    const aggregated = this.engine.aggregatePurchases(
+      granularLines,
+      packagingByMaterialId,
+    );
 
     const result = this.estimationRepo.create({
       project_id: projectId,
-      skill_level: effectiveSkillLevel || workItems[0].skill_level,
-      items_json: items,
-      total_items: items.length,
+      skill_level:
+        skillLevelOverride || firstSkillLevel || SkillLevel.INTERMEDIATE,
+      items_json: granularLines,
+      aggregated_json: aggregated,
+      total_items: granularLines.length,
     });
 
     const saved = await this.estimationRepo.save(result);
@@ -157,7 +197,7 @@ export class EstimationsService {
 
     this.analyticsService.track(AnalyticsEventName.ESTIMATE_CREATED, userId, {
       project_id: projectId,
-      total_items: items.length,
+      total_items: granularLines.length,
     });
 
     return saved;

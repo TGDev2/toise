@@ -52,6 +52,7 @@ const estimationsServiceMock = {
 const projectsServiceMock = {
   findOneByUser: jest.fn(),
   getWorkItems: jest.fn(),
+  getRooms: jest.fn().mockResolvedValue([]),
 };
 
 const analyticsServiceMock = {
@@ -124,5 +125,42 @@ describe('ShoppingListsService.generate', () => {
       'user-1',
       { project_id: 'project-1', total_items: 1 },
     );
+  });
+
+  it('builds mutualised material items from aggregated_json when present (ENG-2)', async () => {
+    // 2 pièces (items granulaires) mais 1 seule ligne d'achat mutualisée.
+    estimationsServiceMock.getLatest.mockResolvedValue({
+      id: 'estimation-1',
+      items_json: [
+        mockEstimationItem,
+        { ...mockEstimationItem, work_item_id: 'wi-2', room_id: 'r2' },
+      ],
+      aggregated_json: [
+        {
+          material_id: 'mat-paint',
+          material_name: 'Peinture acrylique mate',
+          material_unit: 'L',
+          work_type_code: 'wall_painting',
+          work_type_label: 'Peinture murale',
+          total_adjusted_qty: 2.1,
+          packaging_label: 'Pot 10 L',
+          packaging_qty_per_unit: 10,
+          units_needed: 1,
+          room_count: 2,
+          contributions: [],
+        },
+      ],
+    });
+
+    const result = await service.generate('project-1', 'user-1');
+
+    // Une seule ligne malgré deux pièces contributrices.
+    expect(result.items_json.material_items).toHaveLength(1);
+    expect(result.items_json.material_items[0]).toMatchObject({
+      material_id: 'mat-paint',
+      material_category: 'painting',
+      units_needed: 1,
+      room_count: 2,
+    });
   });
 });

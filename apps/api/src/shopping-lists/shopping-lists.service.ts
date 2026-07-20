@@ -77,24 +77,40 @@ export class ShoppingListsService {
       workTypes.map((wt) => [wt.code, wt.category]),
     );
 
-    // Transform estimation items into shopping list material items
-    const materialItems: ShoppingListMaterialItem[] = latest.items_json.map(
-      (item) => ({
-        material_id: item.material_id,
-        work_item_id: item.work_item_id,
-        work_type_code: item.work_type_code,
-        work_type_label: item.work_type_label,
-        material_name: item.material_name,
-        material_category: categoryByCode.get(item.work_type_code) || 'other',
-        material_unit: item.material_unit,
-        packaging_label: item.packaging_label,
-        packaging_qty_per_unit: item.packaging_qty_per_unit,
-        adjusted_qty: item.adjusted_qty,
-        original_units_needed: item.units_needed,
-        units_needed: item.units_needed,
-        is_manually_adjusted: false,
-      }),
-    );
+    // Lignes d'achat mutualisées (ENG-2) : 1 ligne par matériau, sommée sur
+    // toutes les pièces, conditionnement choisi une seule fois (aggregated_json).
+    // Repli sur le mapping 1:1 pour les estimations antérieures (null).
+    const materialItems: ShoppingListMaterialItem[] = latest.aggregated_json
+      ? latest.aggregated_json.map((agg) => ({
+          material_id: agg.material_id,
+          work_type_code: agg.work_type_code,
+          work_type_label: agg.work_type_label,
+          material_name: agg.material_name,
+          material_category: categoryByCode.get(agg.work_type_code) || 'other',
+          material_unit: agg.material_unit,
+          packaging_label: agg.packaging_label,
+          packaging_qty_per_unit: agg.packaging_qty_per_unit,
+          adjusted_qty: agg.total_adjusted_qty,
+          original_units_needed: agg.units_needed,
+          units_needed: agg.units_needed,
+          is_manually_adjusted: false,
+          room_count: agg.room_count,
+        }))
+      : latest.items_json.map((item) => ({
+          material_id: item.material_id,
+          work_item_id: item.work_item_id,
+          work_type_code: item.work_type_code,
+          work_type_label: item.work_type_label,
+          material_name: item.material_name,
+          material_category: categoryByCode.get(item.work_type_code) || 'other',
+          material_unit: item.material_unit,
+          packaging_label: item.packaging_label,
+          packaging_qty_per_unit: item.packaging_qty_per_unit,
+          adjusted_qty: item.adjusted_qty,
+          original_units_needed: item.units_needed,
+          units_needed: item.units_needed,
+          is_manually_adjusted: false,
+        }));
 
     // Fetch complementary materials for relevant categories
     const categories = [...new Set(categoryByCode.values())];
@@ -190,13 +206,11 @@ export class ShoppingListsService {
 
     const data = shoppingList.items_json;
 
-    // Merge material item updates
+    // Merge material item updates (mutualisé : matching par material_id seul)
     if (dto.material_items) {
       for (const update of dto.material_items) {
         const item = data.material_items.find(
-          (m) =>
-            m.material_id === update.material_id &&
-            m.work_item_id === update.work_item_id,
+          (m) => m.material_id === update.material_id,
         );
         if (item) {
           item.units_needed = update.units_needed;
@@ -261,7 +275,7 @@ export class ShoppingListsService {
     if (existing) {
       for (const item of existing.items_json.material_items) {
         if (item.real_unit_price != null || item.store_name != null) {
-          priceMap.set(`${item.material_id}:${item.work_item_id}`, {
+          priceMap.set(item.material_id, {
             real_unit_price: item.real_unit_price,
             store_name: item.store_name,
           });
@@ -275,7 +289,7 @@ export class ShoppingListsService {
     if (priceMap.size > 0) {
       let changed = false;
       for (const item of shoppingList.items_json.material_items) {
-        const saved = priceMap.get(`${item.material_id}:${item.work_item_id}`);
+        const saved = priceMap.get(item.material_id);
         if (saved) {
           item.real_unit_price = saved.real_unit_price;
           item.store_name = saved.store_name;
@@ -362,7 +376,6 @@ export class ShoppingListsService {
     shoppingList: ShoppingList,
     estimationItems: {
       material_id: string;
-      work_item_id: string;
       theoretical_qty: number;
       packaging_qty_per_unit: number;
     }[],
@@ -375,16 +388,21 @@ export class ShoppingListsService {
       wall_covering: 'Revêtement mural',
     };
 
-    // Build lookup from estimation items for brute quantity computation
-    const estimationMap = new Map<
-      string,
-      { theoretical_qty: number; packaging_qty_per_unit: number }
-    >();
+    // Coût « brut » = acheteur naïf : 10 % de perte forfaitaire, arrondi au
+    // conditionnement PAR pièce (donc SANS mutualisation). L'écart réel↔brut
+    // capture ainsi le gain des facteurs de perte ET de la mutualisation ENG-2.
+    // Somme des unités naïves par matériau sur toutes les lignes granulaires.
+    const bruteUnitsByMaterial = new Map<string, number>();
     for (const item of estimationItems) {
-      estimationMap.set(`${item.material_id}:${item.work_item_id}`, {
-        theoretical_qty: item.theoretical_qty,
-        packaging_qty_per_unit: item.packaging_qty_per_unit,
-      });
+      const bruteAdjustedQty =
+        item.theoretical_qty * (1 + DEFAULT_WASTE_PERCENT / 100);
+      const bruteUnits = Math.ceil(
+        bruteAdjustedQty / item.packaging_qty_per_unit,
+      );
+      bruteUnitsByMaterial.set(
+        item.material_id,
+        (bruteUnitsByMaterial.get(item.material_id) ?? 0) + bruteUnits,
+      );
     }
 
     const categoryTotals = new Map<
@@ -406,17 +424,10 @@ export class ShoppingListsService {
       const realCost = item.real_unit_price * item.units_needed;
       totalRealCost += realCost;
 
-      // Compute brute cost: what user would have paid with flat 10% waste
-      const est = estimationMap.get(`${item.material_id}:${item.work_item_id}`);
-      let bruteCost = realCost;
-      if (est) {
-        const bruteAdjustedQty =
-          est.theoretical_qty * (1 + DEFAULT_WASTE_PERCENT / 100);
-        const bruteUnitsNeeded = Math.ceil(
-          bruteAdjustedQty / est.packaging_qty_per_unit,
-        );
-        bruteCost = item.real_unit_price * bruteUnitsNeeded;
-      }
+      // Coût brut : unités naïves cumulées de ce matériau × prix réel.
+      const bruteUnits = bruteUnitsByMaterial.get(item.material_id);
+      const bruteCost =
+        bruteUnits !== undefined ? item.real_unit_price * bruteUnits : realCost;
       totalBruteCost += bruteCost;
 
       const cat = item.material_category;
@@ -516,7 +527,7 @@ export class ShoppingListsService {
   async findByShareToken(token: string): Promise<ShoppingList> {
     const shoppingList = await this.shoppingListRepo.findOne({
       where: { share_token: token },
-      relations: ['project'],
+      relations: ['project', 'project.rooms', 'project.rooms.dimensions'],
     });
 
     if (!shoppingList) {
@@ -545,15 +556,13 @@ export class ShoppingListsService {
 
     if (tilingSurfaceM2 <= 0) return null;
 
-    // Get tile format from project work items
-    const workItems = await this.projectsService.getWorkItems(
-      projectId,
-      userId,
-    );
-
-    const tilingWorkItem = workItems.find(
-      (wi) => wi.work_type.category === 'tiling',
-    );
+    // Format de carreau : 1er work item carrelage trouvé, toutes pièces
+    // confondues (hypothèse mono-format documentée — multi-format = passe
+    // ultérieure).
+    const rooms = await this.projectsService.getRooms(projectId, userId);
+    const tilingWorkItem = rooms
+      .flatMap((r) => r.workItems || [])
+      .find((wi) => wi.work_type.category === 'tiling');
 
     const tileFormatStr =
       (tilingWorkItem?.custom_params?.tile_format as string) || '30x30';

@@ -15,15 +15,10 @@ interface ShoppingListMaterialsProps {
   items: ShoppingListMaterialItem[];
   readOnly?: boolean;
   budgetAllowed?: boolean;
-  onUpdateQuantity?: (
-    materialId: string,
-    workItemId: string,
-    units: number,
-  ) => void;
-  onResetQuantity?: (materialId: string, workItemId: string) => void;
+  onUpdateQuantity?: (materialId: string, units: number) => void;
+  onResetQuantity?: (materialId: string) => void;
   onUpdatePrice?: (
     materialId: string,
-    workItemId: string,
     price: number,
     storeName: string,
   ) => void;
@@ -113,6 +108,11 @@ function MaterialRow({
           </div>
           <p className="mt-0.5 text-sm text-stone-500">
             {item.work_type_label} · {item.packaging_label}
+            {item.room_count && item.room_count > 1 ? (
+              <span className="ml-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                mutualisé · {item.room_count} pièces
+              </span>
+            ) : null}
           </p>
         </div>
 
@@ -178,12 +178,12 @@ function MaterialRow({
         <div className="border-t border-stone-100 px-5 py-3">
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-1.5">
-              <label htmlFor={`price-${item.material_id}-${item.work_item_id}`} className="text-xs text-stone-500">
+              <label htmlFor={`price-${item.material_id}`} className="text-xs text-stone-500">
                 Prix unitaire
               </label>
               <div className="relative">
                 <input
-                  id={`price-${item.material_id}-${item.work_item_id}`}
+                  id={`price-${item.material_id}`}
                   type="number"
                   min={0}
                   step={0.01}
@@ -201,11 +201,11 @@ function MaterialRow({
               </div>
             </div>
             <div className="flex items-center gap-1.5">
-              <label htmlFor={`store-${item.material_id}-${item.work_item_id}`} className="text-xs text-stone-500">
+              <label htmlFor={`store-${item.material_id}`} className="text-xs text-stone-500">
                 Magasin
               </label>
               <input
-                id={`store-${item.material_id}-${item.work_item_id}`}
+                id={`store-${item.material_id}`}
                 type="text"
                 value={localStore}
                 onChange={(e) => setLocalStore(e.target.value)}
@@ -318,18 +318,18 @@ export function ShoppingListMaterials({
               <div className="space-y-3 pt-3">
                 {categoryItems.map((item) => (
                   <MaterialRow
-                    key={`${item.material_id}-${item.work_item_id}`}
+                    key={item.material_id}
                     item={item}
                     readOnly={readOnly}
                     budgetAllowed={budgetAllowed}
                     onUpdateQuantity={onUpdateQuantity ? (units) =>
-                      onUpdateQuantity(item.material_id, item.work_item_id, units)
+                      onUpdateQuantity(item.material_id, units)
                     : undefined}
                     onResetQuantity={onResetQuantity ? () =>
-                      onResetQuantity(item.material_id, item.work_item_id)
+                      onResetQuantity(item.material_id)
                     : undefined}
                     onUpdatePrice={onUpdatePrice ? (price, storeName) =>
-                      onUpdatePrice(item.material_id, item.work_item_id, price, storeName)
+                      onUpdatePrice(item.material_id, price, storeName)
                     : undefined}
                     onShowPaywall={onShowPaywall}
                   />

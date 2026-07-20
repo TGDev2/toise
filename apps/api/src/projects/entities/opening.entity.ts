@@ -7,7 +7,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { Project } from './project.entity';
+import { Room } from './room.entity';
 
 export enum OpeningType {
   DOOR = 'door',
@@ -25,7 +25,7 @@ export class Opening {
   id!: string;
 
   @Column({ type: 'uuid' })
-  project_id!: string;
+  room_id!: string;
 
   @Column({ type: 'varchar', length: 10 })
   type!: OpeningType;
@@ -51,7 +51,7 @@ export class Opening {
   @UpdateDateColumn({ type: 'timestamptz' })
   updated_at!: Date;
 
-  @ManyToOne(() => Project, (p) => p.openings, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'project_id' })
-  project!: Project;
+  @ManyToOne(() => Room, (r) => r.openings, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'room_id' })
+  room!: Room;
 }
