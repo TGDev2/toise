@@ -23,6 +23,10 @@ export class PhotosService {
   private readonly logger = new Logger(PhotosService.name);
   private readonly allowedMimeTypes: string[];
   private readonly thumbnailWidth: number;
+  private readonly minDimensionPx: number;
+  private readonly minBrightness: number;
+  private readonly maxBrightness: number;
+  private readonly minSharpness: number;
 
   constructor(
     @InjectRepository(ProjectPhoto)
@@ -40,6 +44,22 @@ export class PhotosService {
     this.thumbnailWidth = this.configService.get<number>(
       'storage.thumbnailWidth',
       400,
+    );
+    this.minDimensionPx = this.configService.get<number>(
+      'storage.minPhotoDimensionPx',
+      480,
+    );
+    this.minBrightness = this.configService.get<number>(
+      'storage.minPhotoBrightness',
+      40,
+    );
+    this.maxBrightness = this.configService.get<number>(
+      'storage.maxPhotoBrightness',
+      235,
+    );
+    this.minSharpness = this.configService.get<number>(
+      'storage.minPhotoSharpness',
+      0.15,
     );
   }
 
@@ -59,12 +79,15 @@ export class PhotosService {
       );
     }
 
-    const detectedMime = await this.validateImageContent(file.buffer);
+    const metadata = await this.readImageMetadata(file.buffer);
+    const detectedMime = this.resolveMimeType(metadata.format);
     if (!this.allowedMimeTypes.includes(detectedMime)) {
       throw new BadRequestException(
         'Format non supporte. Formats acceptes : JPEG, PNG, HEIC',
       );
     }
+
+    await this.assessImageQuality(file.buffer, metadata);
 
     const fileId = randomUUID();
     const ext = this.resolveExtension(detectedMime);
@@ -168,18 +191,63 @@ export class PhotosService {
     }
   }
 
-  private async validateImageContent(buffer: Buffer): Promise<string> {
+  private async readImageMetadata(buffer: Buffer): Promise<sharp.Metadata> {
     try {
-      const metadata = await sharp(buffer).metadata();
-      const formatMap: Record<string, string> = {
-        jpeg: 'image/jpeg',
-        png: 'image/png',
-        heif: 'image/heic',
-      };
-      return formatMap[metadata.format ?? ''] ?? `image/${metadata.format}`;
+      return await sharp(buffer).metadata();
     } catch {
       throw new BadRequestException(
         'Fichier image invalide. Formats acceptes : JPEG, PNG, HEIC',
+      );
+    }
+  }
+
+  private resolveMimeType(format?: string): string {
+    const formatMap: Record<string, string> = {
+      jpeg: 'image/jpeg',
+      png: 'image/png',
+      heif: 'image/heic',
+    };
+    return formatMap[format ?? ''] ?? `image/${format}`;
+  }
+
+  private async assessImageQuality(
+    buffer: Buffer,
+    metadata: sharp.Metadata,
+  ): Promise<void> {
+    const { width = 0, height = 0 } = metadata;
+    if (Math.min(width, height) < this.minDimensionPx) {
+      throw new BadRequestException(
+        'Photo trop petite ou trop eloignee. Rapprochez-vous ou reprenez la photo en pleine resolution.',
+      );
+    }
+
+    let stats: sharp.Stats;
+    try {
+      stats = await sharp(buffer).greyscale().stats();
+    } catch (err) {
+      this.logger.warn(
+        `Analyse qualite photo impossible, upload autorise par defaut: ${(err as Error).message}`,
+      );
+      return;
+    }
+
+    const brightness = stats.channels[0].mean;
+    if (brightness < this.minBrightness) {
+      throw new BadRequestException(
+        'Photo trop sombre. Ajoutez de la lumiere ou evitez le contre-jour.',
+      );
+    }
+    if (brightness > this.maxBrightness) {
+      throw new BadRequestException(
+        'Photo surexposee. Evitez le flash direct et la lumiere trop forte.',
+      );
+    }
+
+    // stats.sharpness = metrique de nettete de libvips (Laplacien), documentee comme
+    // "experimentale" par sharp -- reetalonner le seuil en cas de montee de version.
+    if (stats.sharpness < this.minSharpness) {
+      throw new BadRequestException(
+        "Photo trop floue. Stabilisez l'appareil et verifiez la mise au point avant de reprendre la photo.",
       );
     }
   }

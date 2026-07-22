@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { PhotoUploadPanel } from '../PhotoUploadPanel';
 import type { PhotoEntry } from '@/hooks/usePhotoUpload';
 
@@ -150,5 +150,47 @@ describe('PhotoUploadPanel', () => {
     expect(
       screen.queryByText('Prendre ou ajouter des photos'),
     ).not.toBeInTheDocument();
+  });
+
+  it('gates the dropzone behind the capture guidance screen when there are no photos yet (BACKLOG CV-4)', () => {
+    render(
+      <PhotoUploadPanel
+        photos={[]}
+        canAddMore={true}
+        readyCount={0}
+        maxPhotos={5}
+        onFiles={noop}
+        onRemove={noop}
+        onRetry={noop}
+      />,
+    );
+
+    expect(screen.getByText('Avant de commencer')).toBeInTheDocument();
+    expect(
+      screen.queryByText('Prendre ou ajouter des photos'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('reveals the dropzone after the capture guidance is acknowledged', () => {
+    render(
+      <PhotoUploadPanel
+        photos={[]}
+        canAddMore={true}
+        readyCount={0}
+        maxPhotos={5}
+        onFiles={noop}
+        onRemove={noop}
+        onRetry={noop}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /Compris, commencer/i }),
+    );
+
+    expect(screen.queryByText('Avant de commencer')).not.toBeInTheDocument();
+    expect(
+      screen.getByText('Prendre ou ajouter des photos'),
+    ).toBeInTheDocument();
   });
 });

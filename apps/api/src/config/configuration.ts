@@ -60,5 +60,11 @@ export default () => ({
     maxFileSizeMb: 20,
     allowedMimeTypes: ['image/jpeg', 'image/png', 'image/heic', 'image/heif'],
     thumbnailWidth: 400,
+    // Seuils de rejet qualite (BACKLOG CV-4) : calibres empiriquement contre sharp@0.34.5,
+    // cf. tasks/todo.md (mur uni net ~0.6-3.0 de sharpness vs flou net < 0.3).
+    minPhotoDimensionPx: 480,
+    minPhotoBrightness: 40,
+    maxPhotoBrightness: 235,
+    minPhotoSharpness: 0.15,
   },
 });

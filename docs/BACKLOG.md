@@ -72,7 +72,7 @@
 | ID | Item | Description / valeur | Effort | Dépend de |
 |---|---|---|---|---|
 | CV-3 | Calibration par objet étalon universel | La calibration dépend d'une porte détectée (~204 cm). Ajouter un étalon utilisateur : feuille A4 ou carte bancaire posée au mur, guidée par l'UI. Débloque les photos sans porte visible. | L | — |
-| CV-4 | Guidage de prise de vue | Écran de conseils avant capture (angles, recul, lumière, porte visible) + rejet des photos inexploitables avec explication. Améliore la précision sans toucher au modèle. | M | — |
+| CV-4 | Guidage de prise de vue | **Livré (22/07/2026).** Écran de conseils avant capture (angles, recul, lumière, porte visible) + rejet des photos inexploitables avec explication. Améliore la précision sans toucher au modèle. | M | — |
 | CV-5 | Intervalles de confiance visibles | Afficher « 4,2 m ± 15 cm » plutôt qu'une valeur sèche, avec répercussion sur les quantités (fourchette basse/haute). Honnêteté = confiance = conversion. | M | CV-2 |
 | CV-6 | Boucle de ré-entraînement | Pipeline périodique : corrections (`cv_correction_logs`) + photos associées → dataset → fine-tuning → éval → déploiement des poids. Première brique réelle du « learns from real projects ». | XL | CV-1, CV-2 |
 | CV-7 | Tests de non-régression CV | Jeu d'images de référence avec dimensions connues ; assertion d'écart max dans la CI du cv-service (aucun test aujourd'hui). | M | — |

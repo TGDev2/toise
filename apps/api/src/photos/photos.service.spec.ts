@@ -14,6 +14,7 @@ import {
   WorkType,
 } from '../projects/entities/project.entity';
 import { STORAGE_PROVIDER } from './storage/storage.interface';
+import sharp from 'sharp';
 
 jest.mock('sharp', () => {
   const mockInstance = {
@@ -23,11 +24,21 @@ jest.mock('sharp', () => {
     resize: jest.fn().mockReturnThis(),
     jpeg: jest.fn().mockReturnThis(),
     toBuffer: jest.fn().mockResolvedValue(Buffer.from('thumb')),
+    greyscale: jest.fn().mockReturnThis(),
+    stats: jest.fn().mockResolvedValue({
+      channels: [{ mean: 130 }],
+      sharpness: 2.5,
+    }),
   };
   const mockSharp = jest.fn(() => mockInstance);
   Object.assign(mockSharp, { default: mockSharp });
   return { __esModule: true, default: mockSharp };
 });
+
+const mockSharpInstance = (sharp as unknown as jest.Mock)() as {
+  metadata: jest.Mock;
+  stats: jest.Mock;
+};
 
 const mockProject: Project = {
   id: 'project-uuid',
@@ -172,6 +183,64 @@ describe('PhotosService', () => {
       await expect(
         service.uploadPhoto('project-uuid', 'user-uuid', mockFile),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should reject a photo that is too small/too far (low resolution)', async () => {
+      mockSharpInstance.metadata.mockResolvedValueOnce({
+        format: 'jpeg',
+        width: 300,
+        height: 200,
+      });
+
+      await expect(
+        service.uploadPhoto('project-uuid', 'user-uuid', mockFile),
+      ).rejects.toThrow(/trop petite ou trop eloignee/);
+    });
+
+    it('should reject a photo that is too dark', async () => {
+      mockSharpInstance.stats.mockResolvedValueOnce({
+        channels: [{ mean: 10 }],
+        sharpness: 2.5,
+      });
+
+      await expect(
+        service.uploadPhoto('project-uuid', 'user-uuid', mockFile),
+      ).rejects.toThrow(/trop sombre/);
+    });
+
+    it('should reject an overexposed photo', async () => {
+      mockSharpInstance.stats.mockResolvedValueOnce({
+        channels: [{ mean: 250 }],
+        sharpness: 2.5,
+      });
+
+      await expect(
+        service.uploadPhoto('project-uuid', 'user-uuid', mockFile),
+      ).rejects.toThrow(/surexposee/);
+    });
+
+    it('should reject a blurry photo', async () => {
+      mockSharpInstance.stats.mockResolvedValueOnce({
+        channels: [{ mean: 130 }],
+        sharpness: 0.05,
+      });
+
+      await expect(
+        service.uploadPhoto('project-uuid', 'user-uuid', mockFile),
+      ).rejects.toThrow(/trop floue/);
+    });
+
+    it('should fail open (allow upload) when quality analysis throws unexpectedly', async () => {
+      mockSharpInstance.stats.mockRejectedValueOnce(new Error('decode error'));
+
+      const result = await service.uploadPhoto(
+        'project-uuid',
+        'user-uuid',
+        mockFile,
+      );
+
+      expect(result).toBeDefined();
+      expect(storageMock.save).toHaveBeenCalled();
     });
   });
 

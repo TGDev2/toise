@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
-import { apiDelete, apiUpload } from '@/lib/api';
+import { ApiError, apiDelete, apiUpload } from '@/lib/api';
+import { errorHasCode } from '@/lib/errors';
 
 const MAX_PHOTOS = 5;
 const MAX_SIZE_BYTES = 20 * 1024 * 1024;
@@ -31,6 +32,15 @@ export interface ServerPhoto {
   url: string;
   thumbnail_url: string | null;
   created_at: string;
+}
+
+// Une rejection serveur deterministe (ex. format/qualite invalide, BACKLOG CV-4) ne doit
+// pas etre reessayee -- seuls les incidents reseau/transitoires (ou une 5xx) le justifient.
+function isRetryableUploadError(err: unknown): boolean {
+  if (!(err instanceof ApiError)) return true;
+  if (errorHasCode(err, 'NETWORK_ERROR')) return true;
+  const status = err.details.statusCode;
+  return typeof status === 'number' && status >= 500;
 }
 
 async function compressFile(file: File): Promise<File> {
@@ -90,10 +100,12 @@ export function usePhotoUpload(projectId: string) {
           });
           return;
         } catch (err) {
-          retryCount += 1;
-          if (retryCount < MAX_RETRIES) {
-            updatePhoto(entry.localId, { retryCount });
-            continue;
+          if (isRetryableUploadError(err)) {
+            retryCount += 1;
+            if (retryCount < MAX_RETRIES) {
+              updatePhoto(entry.localId, { retryCount });
+              continue;
+            }
           }
           updatePhoto(entry.localId, {
             status: 'error',
