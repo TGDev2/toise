@@ -163,4 +163,65 @@ describe('ShoppingListsService.generate', () => {
       room_count: 2,
     });
   });
+
+  // CV-5 : la fourchette basse/haute est un simple passthrough depuis le
+  // moteur d'estimation, sur les deux chemins de génération.
+  it('propagates units_needed_low/high from aggregated_json (ENG-2 path)', async () => {
+    estimationsServiceMock.getLatest.mockResolvedValue({
+      id: 'estimation-1',
+      items_json: [mockEstimationItem],
+      aggregated_json: [
+        {
+          material_id: 'mat-paint',
+          material_name: 'Peinture acrylique mate',
+          material_unit: 'L',
+          work_type_code: 'wall_painting',
+          work_type_label: 'Peinture murale',
+          total_adjusted_qty: 1.05,
+          packaging_label: 'Pot 10 L',
+          packaging_qty_per_unit: 10,
+          units_needed: 1,
+          units_needed_low: 1,
+          units_needed_high: 2,
+          room_count: 1,
+          contributions: [],
+        },
+      ],
+    });
+
+    const result = await service.generate('project-1', 'user-1');
+
+    expect(result.items_json.material_items[0]).toMatchObject({
+      units_needed_low: 1,
+      units_needed_high: 2,
+    });
+  });
+
+  it('propagates units_needed_low/high from items_json (legacy pre-ENG-2 path)', async () => {
+    estimationsServiceMock.getLatest.mockResolvedValue({
+      id: 'estimation-1',
+      items_json: [
+        { ...mockEstimationItem, units_needed_low: 1, units_needed_high: 2 },
+      ],
+      aggregated_json: null,
+    });
+
+    const result = await service.generate('project-1', 'user-1');
+
+    expect(result.items_json.material_items[0]).toMatchObject({
+      units_needed_low: 1,
+      units_needed_high: 2,
+    });
+  });
+
+  it('leaves units_needed_low/high undefined when the estimation carries no range', async () => {
+    const result = await service.generate('project-1', 'user-1');
+
+    expect(
+      result.items_json.material_items[0].units_needed_low,
+    ).toBeUndefined();
+    expect(
+      result.items_json.material_items[0].units_needed_high,
+    ).toBeUndefined();
+  });
 });

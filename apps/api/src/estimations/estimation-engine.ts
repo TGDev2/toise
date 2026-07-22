@@ -26,6 +26,19 @@ export interface RoomData {
    * plinthes…). Déduction manuelle d'une aire, filtrée par `surface_target`.
    */
   exclusions?: SurfaceExclusionInput[];
+  /**
+   * Incertitude de mesure (cm) par dimension (CV-5), absente/0 pour une
+   * pièce sans incertitude connue (saisie manuelle, ou legacy). Pilote la
+   * fourchette basse/haute des surfaces et quantités — cf. `computeSurfaceBounds`.
+   */
+  length_cm_uncertainty?: number;
+  width_cm_uncertainty?: number;
+  height_cm_uncertainty?: number;
+}
+
+export interface SurfaceBounds {
+  low: number;
+  high: number;
 }
 
 export interface PackagingInput {
@@ -123,6 +136,51 @@ export class EstimationEngine {
       default:
         return Math.max(0, unionAreaCm2(segments) - excludedCm2) / CM2_TO_M2;
     }
+  }
+
+  /**
+   * Fourchette basse/haute de `computeSurface` (CV-5) : bornes pire-cas
+   * obtenues en évaluant `computeSurface` sur la pièce dont les dimensions
+   * sont respectivement `-Δ` et `+Δ` (Δ = incertitude par champ, clampée à
+   * ≥ 0). Exact et pas seulement approché, car toutes les formules de
+   * surface (aire/périmètre union, mur = périmètre × hauteur) sont monotones
+   * croissantes en chaque dimension. Ouvertures/exclusions restent fixes
+   * (aucune donnée d'incertitude sur ces champs). `null` si la pièce n'a
+   * aucune incertitude connue — pas de fourchette à afficher.
+   *
+   * Limite assumée : pour une pièce composite (`segments` ENG-1),
+   * `length_cm`/`width_cm` ne pilotent plus `computeSurface` (les segments
+   * priment) → fourchette nulle en sol/plafond ; seule la hauteur continue
+   * de produire une fourchette murale.
+   */
+  computeSurfaceBounds(
+    room: RoomData,
+    surfaceTarget: string,
+  ): SurfaceBounds | null {
+    const dl = room.length_cm_uncertainty ?? 0;
+    const dw = room.width_cm_uncertainty ?? 0;
+    const dh = room.height_cm_uncertainty ?? 0;
+    if (dl <= 0 && dw <= 0 && dh <= 0) {
+      return null;
+    }
+
+    const lowRoom: RoomData = {
+      ...room,
+      length_cm: Math.max(0, room.length_cm - dl),
+      width_cm: Math.max(0, room.width_cm - dw),
+      height_cm: Math.max(0, room.height_cm - dh),
+    };
+    const highRoom: RoomData = {
+      ...room,
+      length_cm: room.length_cm + dl,
+      width_cm: room.width_cm + dw,
+      height_cm: room.height_cm + dh,
+    };
+
+    return {
+      low: this.computeSurface(lowRoom, surfaceTarget),
+      high: this.computeSurface(highRoom, surfaceTarget),
+    };
   }
 
   resolveWasteFactor(
@@ -227,6 +285,7 @@ export class EstimationEngine {
       const grossSurfaceM2 = this.computeGrossSurface(room, wi.surface_target);
       const excludedSurfaceM2 =
         this.excludedAreaCm2(room, wi.surface_target) / CM2_TO_M2;
+      const surfaceBounds = this.computeSurfaceBounds(room, wi.surface_target);
       const poseType =
         (wi.custom_params.laying_pattern as string) || 'standard';
 
@@ -247,6 +306,46 @@ export class EstimationEngine {
         const adjustedQty = theoreticalQty * (1 + wasteFactor.percent / 100);
 
         const packaging = this.selectBestPackaging(adjustedQty, mat.packagings);
+
+        // CV-5 : mêmes calculs aux bornes basse/haute de la surface, quand
+        // la pièce porte une incertitude de mesure connue.
+        let rangeFields: Partial<EstimationLineItem> = {};
+        if (surfaceBounds) {
+          const adjustedQtyLow =
+            this.computeTheoreticalQty(
+              surfaceBounds.low,
+              mat.yield_per_unit,
+              wi.custom_params,
+              wi.category,
+            ).qty *
+            (1 + wasteFactor.percent / 100);
+          const adjustedQtyHigh =
+            this.computeTheoreticalQty(
+              surfaceBounds.high,
+              mat.yield_per_unit,
+              wi.custom_params,
+              wi.category,
+            ).qty *
+            (1 + wasteFactor.percent / 100);
+
+          const packagingLow = this.selectBestPackaging(
+            adjustedQtyLow,
+            mat.packagings,
+          );
+          const packagingHigh = this.selectBestPackaging(
+            adjustedQtyHigh,
+            mat.packagings,
+          );
+
+          rangeFields = {
+            surface_m2_low: Math.round(surfaceBounds.low * 1000) / 1000,
+            surface_m2_high: Math.round(surfaceBounds.high * 1000) / 1000,
+            adjusted_qty_low: Math.round(adjustedQtyLow * 1000) / 1000,
+            adjusted_qty_high: Math.round(adjustedQtyHigh * 1000) / 1000,
+            units_needed_low: packagingLow.units_needed,
+            units_needed_high: packagingHigh.units_needed,
+          };
+        }
 
         items.push({
           work_item_id: wi.id,
@@ -272,6 +371,7 @@ export class EstimationEngine {
                   Math.round(excludedSurfaceM2 * 1000) / 1000,
               }
             : {}),
+          ...rangeFields,
         });
       }
     }
@@ -334,6 +434,28 @@ export class EstimationEngine {
           .filter((id): id is string => id !== undefined),
       );
 
+      // CV-5 : fourchette basse/haute, seulement si au moins une ligne du
+      // groupe en porte une (sinon low/high seraient égaux à adjusted_qty
+      // sur toute la ligne, une fourchette de largeur nulle sans intérêt).
+      let rangeFields: Partial<AggregatedMaterialLine> = {};
+      const hasRange = group.some((l) => l.adjusted_qty_low !== undefined);
+      if (hasRange) {
+        const totalLow = group.reduce(
+          (sum, l) => sum + (l.adjusted_qty_low ?? l.adjusted_qty),
+          0,
+        );
+        const totalHigh = group.reduce(
+          (sum, l) => sum + (l.adjusted_qty_high ?? l.adjusted_qty),
+          0,
+        );
+        rangeFields = {
+          units_needed_low: this.selectBestPackaging(totalLow, packagings)
+            .units_needed,
+          units_needed_high: this.selectBestPackaging(totalHigh, packagings)
+            .units_needed,
+        };
+      }
+
       result.push({
         material_id: materialId,
         material_name: first.material_name,
@@ -346,6 +468,7 @@ export class EstimationEngine {
         units_needed: packaging.units_needed,
         room_count: distinctRooms.size || 1,
         contributions,
+        ...rangeFields,
       });
     }
 

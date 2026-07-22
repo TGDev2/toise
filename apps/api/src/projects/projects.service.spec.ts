@@ -77,6 +77,9 @@ const mockDimensions: RoomDimensions = {
   confidence_score: ConfidenceScore.HIGH,
   source: DimensionSource.MANUAL,
   raw_cv_output_json: null,
+  length_cm_uncertainty: null,
+  width_cm_uncertainty: null,
+  height_cm_uncertainty: null,
   segments_json: null,
   exclusions_json: null,
   created_at: new Date('2026-03-27T00:00:00.000Z'),
@@ -489,11 +492,67 @@ describe('ProjectsService', () => {
         height_cm: 250,
         source: DimensionSource.MANUAL,
         confidence_score: ConfidenceScore.HIGH,
+        length_cm_uncertainty: null,
+        width_cm_uncertainty: null,
+        height_cm_uncertainty: null,
         segments_json: null,
         exclusions_json: null,
         raw_cv_output_json: null,
       });
       expect(dimensionsRepoMock.save).toHaveBeenCalled();
+    });
+
+    // CV-5 : incertitude par champ, persistée quand fournie par l'appelant
+    // (flux CV) et remise à null en son absence (sauvegarde manuelle).
+    it('persists the CV uncertainty overrides when provided', async () => {
+      dimensionsRepoMock.findOne.mockResolvedValueOnce(null);
+
+      await service.updateDimensions(
+        'project-uuid',
+        'user-uuid',
+        { length_cm: 420, width_cm: 310, height_cm: 250 },
+        {
+          source: DimensionSource.CV,
+          confidence_score: ConfidenceScore.MEDIUM,
+          uncertainty: { length_cm: 8, width_cm: 8, height_cm: 8 },
+        },
+      );
+
+      expect(dimensionsRepoMock.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          source: DimensionSource.CV,
+          length_cm_uncertainty: 8,
+          width_cm_uncertainty: 8,
+          height_cm_uncertainty: 8,
+        }),
+      );
+    });
+
+    it('clears a previous CV uncertainty when the user saves manually', async () => {
+      dimensionsRepoMock.findOne.mockResolvedValueOnce({
+        ...mockDimensions,
+        source: DimensionSource.CV,
+        length_cm_uncertainty: 8,
+        width_cm_uncertainty: 8,
+        height_cm_uncertainty: 8,
+      });
+
+      // Appel manuel : aucun override d'incertitude, comme le fait le
+      // contrôleur sur PUT /:id/dimensions.
+      await service.updateDimensions('project-uuid', 'user-uuid', {
+        length_cm: 421,
+        width_cm: 311,
+        height_cm: 250,
+      });
+
+      expect(dimensionsRepoMock.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          source: DimensionSource.MANUAL,
+          length_cm_uncertainty: null,
+          width_cm_uncertainty: null,
+          height_cm_uncertainty: null,
+        }),
+      );
     });
 
     it('updates existing dimensions', async () => {

@@ -26,6 +26,10 @@ interface DimensionsData {
   height_cm: number;
   segments?: RectSegment[] | null;
   exclusions?: SurfaceExclusion[] | null;
+  source?: 'manual' | 'scan' | 'import' | 'cv';
+  length_cm_uncertainty?: number | null;
+  width_cm_uncertainty?: number | null;
+  height_cm_uncertainty?: number | null;
 }
 
 interface LocalProject {
@@ -82,6 +86,10 @@ export default function DimensionsPage() {
         height_cm: room.dimensions.height_cm,
         segments: room.dimensions.segments ?? null,
         exclusions: room.dimensions.exclusions ?? null,
+        source: room.dimensions.source,
+        length_cm_uncertainty: room.dimensions.length_cm_uncertainty,
+        width_cm_uncertainty: room.dimensions.width_cm_uncertainty,
+        height_cm_uncertainty: room.dimensions.height_cm_uncertainty,
       });
     } else {
       setInitialDims(null);
@@ -196,7 +204,7 @@ export default function DimensionsPage() {
 
   const handleAcceptCvDimensions = useCallback(() => {
     if (analysis.dimensions) {
-      setInitialDims(analysis.dimensions);
+      setInitialDims({ ...analysis.dimensions, source: 'cv' });
       if (analysis.detectedOpenings.length > 0) {
         setInitialOpenings(
           analysis.detectedOpenings.map((o) => ({
@@ -482,6 +490,9 @@ export default function DimensionsPage() {
             widthCm={analysis.dimensions.width_cm}
             heightCm={analysis.dimensions.height_cm}
             confidence={analysis.confidence}
+            lengthUncertaintyCm={analysis.dimensions.length_cm_uncertainty}
+            widthUncertaintyCm={analysis.dimensions.width_cm_uncertainty}
+            heightUncertaintyCm={analysis.dimensions.height_cm_uncertainty}
             openings={analysis.detectedOpenings}
             onAccept={handleAcceptCvDimensions}
             onEdit={handleManualFallback}
@@ -500,6 +511,10 @@ export default function DimensionsPage() {
             initialOpenings={initialOpenings}
             initialSegments={initialDims?.segments ?? undefined}
             initialExclusions={initialExclusions}
+            sourceIsCv={initialDims?.source === 'cv'}
+            lengthUncertaintyCm={initialDims?.length_cm_uncertainty}
+            widthUncertaintyCm={initialDims?.width_cm_uncertainty}
+            heightUncertaintyCm={initialDims?.height_cm_uncertainty}
             onSave={handleSave}
             isSaving={isSaving}
           />

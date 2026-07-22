@@ -17,6 +17,13 @@ export interface EstimationLineItem {
   pose_type: string;
   number_of_coats?: number;
   excluded_surface_m2?: number;
+  /** Fourchette basse/haute (CV-5), absente si la pièce n'a pas d'incertitude connue. */
+  surface_m2_low?: number;
+  surface_m2_high?: number;
+  adjusted_qty_low?: number;
+  adjusted_qty_high?: number;
+  units_needed_low?: number;
+  units_needed_high?: number;
 }
 
 export interface EstimationResponse {

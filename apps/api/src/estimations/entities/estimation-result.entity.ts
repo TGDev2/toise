@@ -31,6 +31,17 @@ export interface EstimationLineItem {
   /** Pièce d'origine (ENG-2). Absent → estimation mono-pièce (legacy/public). */
   room_id?: string;
   room_name?: string;
+  /**
+   * Fourchette basse/haute (CV-5), présente uniquement si la pièce porte une
+   * incertitude de mesure connue (dimensions `source='cv'`). Absente pour une
+   * pièce en saisie manuelle ou une ligne antérieure à cette fonctionnalité.
+   */
+  surface_m2_low?: number;
+  surface_m2_high?: number;
+  adjusted_qty_low?: number;
+  adjusted_qty_high?: number;
+  units_needed_low?: number;
+  units_needed_high?: number;
 }
 
 /**
@@ -64,6 +75,14 @@ export interface AggregatedMaterialLine {
   units_needed: number;
   room_count: number;
   contributions: PurchaseContribution[];
+  /**
+   * Fourchette basse/haute (CV-5) : conditionnement sélectionné indépendamment
+   * sur la somme basse et la somme haute des contributions (même logique que
+   * `units_needed`, recalculée sur le total plutôt que sommée ligne à ligne).
+   * Présente seulement si au moins une contribution porte une fourchette.
+   */
+  units_needed_low?: number;
+  units_needed_high?: number;
 }
 
 @Entity('estimation_results')

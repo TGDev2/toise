@@ -28,6 +28,13 @@ export interface ShoppingListMaterialItem {
   work_item_id?: string;
   real_unit_price?: number | null;
   store_name?: string | null;
+  /**
+   * Fourchette basse/haute (CV-5), propagée depuis l'incertitude de mesure
+   * CV. Absente pour un matériau sans pièce CV en amont, ou une correction
+   * manuelle antérieure à cette fonctionnalité.
+   */
+  units_needed_low?: number;
+  units_needed_high?: number;
 }
 
 export interface ShoppingListComplementaryItem {

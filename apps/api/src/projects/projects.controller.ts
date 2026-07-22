@@ -240,6 +240,9 @@ export class ProjectsController {
       exclusions: dimensions.exclusions_json ?? [],
       source: dimensions.source,
       confidence_score: dimensions.confidence_score,
+      length_cm_uncertainty: dimensions.length_cm_uncertainty,
+      width_cm_uncertainty: dimensions.width_cm_uncertainty,
+      height_cm_uncertainty: dimensions.height_cm_uncertainty,
     };
   }
 
@@ -266,6 +269,9 @@ export class ProjectsController {
       exclusions: dimensions.exclusions_json ?? [],
       source: dimensions.source,
       confidence_score: dimensions.confidence_score,
+      length_cm_uncertainty: dimensions.length_cm_uncertainty,
+      width_cm_uncertainty: dimensions.width_cm_uncertainty,
+      height_cm_uncertainty: dimensions.height_cm_uncertainty,
     };
   }
 
@@ -500,6 +506,11 @@ export class ProjectsController {
             height_cm: room.dimensions.height_cm,
             segments: room.dimensions.segments_json ?? null,
             exclusions: room.dimensions.exclusions_json ?? [],
+            source: room.dimensions.source,
+            confidence_score: room.dimensions.confidence_score,
+            length_cm_uncertainty: room.dimensions.length_cm_uncertainty,
+            width_cm_uncertainty: room.dimensions.width_cm_uncertainty,
+            height_cm_uncertainty: room.dimensions.height_cm_uncertainty,
           }
         : null,
       openings: (room.openings ?? []).map((o) => ({

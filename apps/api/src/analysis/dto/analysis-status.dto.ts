@@ -11,6 +11,10 @@ export class AnalysisStatusDto {
     length_cm: number;
     width_cm: number;
     height_cm: number;
+    /** Incertitude de mesure (cm), CV-5. Absent tant que non persisté. */
+    length_cm_uncertainty?: number | null;
+    width_cm_uncertainty?: number | null;
+    height_cm_uncertainty?: number | null;
   } | null;
   confidence?: string | null;
   confidence_score?: number | null;

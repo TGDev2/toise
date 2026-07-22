@@ -44,6 +44,11 @@ interface DimensionsFormProps {
   initialOpenings?: Opening[];
   initialSegments?: RectSegment[];
   initialExclusions?: SurfaceExclusion[];
+  /** CV-5 : dimensions mesurées par CV, badge d'incertitude affiché (mode métrique uniquement). */
+  sourceIsCv?: boolean;
+  lengthUncertaintyCm?: number | null;
+  widthUncertaintyCm?: number | null;
+  heightUncertaintyCm?: number | null;
   onSave: (
     lengthCm: number,
     widthCm: number,
@@ -59,6 +64,12 @@ interface DimensionsFormProps {
 
 const inputClass =
   'w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm text-stone-900 focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]';
+
+function uncertaintyHint(uncertaintyCm?: number | null): string | undefined {
+  return uncertaintyCm && uncertaintyCm > 0
+    ? `± ${Math.round(uncertaintyCm)} cm`
+    : undefined;
+}
 
 function cmToMetricValues(lengthCm: number, widthCm: number, heightCm: number): MetricValues {
   return {
@@ -89,6 +100,10 @@ export function DimensionsForm({
   initialOpenings = [],
   initialSegments,
   initialExclusions = [],
+  sourceIsCv = false,
+  lengthUncertaintyCm,
+  widthUncertaintyCm,
+  heightUncertaintyCm,
   onSave,
   isSaving = false,
   submitLabel = 'Enregistrer les dimensions',
@@ -331,6 +346,7 @@ export function DimensionsForm({
               onChange={(v) => setMetric((p) => ({ ...p, length: v }))}
               warning={warningForField('length')}
               showError={touched && missingFields.includes('Longueur')}
+              hint={sourceIsCv ? uncertaintyHint(lengthUncertaintyCm) : undefined}
             />
             <MetricField
               label="Largeur (m)"
@@ -339,6 +355,7 @@ export function DimensionsForm({
               onChange={(v) => setMetric((p) => ({ ...p, width: v }))}
               warning={warningForField('width')}
               showError={touched && missingFields.includes('Largeur')}
+              hint={sourceIsCv ? uncertaintyHint(widthUncertaintyCm) : undefined}
             />
             <MetricField
               label="Hauteur (m)"
@@ -347,6 +364,7 @@ export function DimensionsForm({
               onChange={(v) => setMetric((p) => ({ ...p, height: v }))}
               warning={warningForField('height')}
               showError={touched && missingFields.includes('Hauteur')}
+              hint={sourceIsCv ? uncertaintyHint(heightUncertaintyCm) : undefined}
             />
           </div>
         ) : (
@@ -507,9 +525,11 @@ interface MetricFieldProps {
   onChange: (value: string) => void;
   warning?: { message: string };
   showError: boolean;
+  /** Incertitude de mesure CV-5, ex. « ± 8 cm ». */
+  hint?: string;
 }
 
-function MetricField({ label, id, value, onChange, warning, showError }: MetricFieldProps) {
+function MetricField({ label, id, value, onChange, warning, showError, hint }: MetricFieldProps) {
   const errorId = `${id}-error`;
   const warningId = `${id}-warning`;
 
@@ -517,6 +537,7 @@ function MetricField({ label, id, value, onChange, warning, showError }: MetricF
     <div className="space-y-2">
       <label htmlFor={id} className="text-sm font-medium text-stone-700">
         {label}
+        {hint && <span className="ml-1.5 font-normal text-stone-400">{hint}</span>}
       </label>
       <input
         id={id}

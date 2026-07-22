@@ -143,6 +143,9 @@ export class EstimationsService {
           surface_target: e.surface_target,
           area_m2: e.area_m2,
         })),
+        length_cm_uncertainty: dimensions.length_cm_uncertainty ?? undefined,
+        width_cm_uncertainty: dimensions.width_cm_uncertainty ?? undefined,
+        height_cm_uncertainty: dimensions.height_cm_uncertainty ?? undefined,
       };
 
       const workItemInputs: WorkItemInput[] = [];

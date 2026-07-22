@@ -80,6 +80,21 @@ export class RoomDimensions {
   raw_cv_output_json!: Record<string, unknown> | null;
 
   /**
+   * Incertitude de mesure (cm) par champ, source = écart médian empirique
+   * `cv-accuracy` (CV-2) si assez d'échantillons, sinon bande heuristique par
+   * `confidence_score` (CV-5). `null` pour toute dimension `source !== 'cv'`
+   * (aucun modèle d'erreur pour la saisie manuelle).
+   */
+  @Column({ type: 'int', nullable: true, default: null })
+  length_cm_uncertainty!: number | null;
+
+  @Column({ type: 'int', nullable: true, default: null })
+  width_cm_uncertainty!: number | null;
+
+  @Column({ type: 'int', nullable: true, default: null })
+  height_cm_uncertainty!: number | null;
+
+  /**
    * Décomposition en rectangles d'une pièce non rectangulaire (ENG-1).
    * `null` → pièce rectangulaire simple `length_cm × width_cm`.
    */

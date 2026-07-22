@@ -334,6 +334,17 @@ export class ProjectsService {
       source?: DimensionSource;
       confidence_score?: ConfidenceScore;
       raw_cv_output_json?: Record<string, unknown> | null;
+      /**
+       * Incertitude de mesure (cm) par champ (CV-5). Toujours réécrite en
+       * entier comme `source`/`confidence_score` : absente → `null` sur les
+       * 3 colonnes, donc une sauvegarde manuelle efface une incertitude CV
+       * antérieure (pas de modèle d'erreur pour la saisie manuelle).
+       */
+      uncertainty?: {
+        length_cm?: number;
+        width_cm?: number;
+        height_cm?: number;
+      };
     },
     roomId?: string,
   ): Promise<RoomDimensions> {
@@ -342,6 +353,9 @@ export class ProjectsService {
 
     const source = overrides?.source ?? DimensionSource.MANUAL;
     const confidence = overrides?.confidence_score ?? ConfidenceScore.HIGH;
+    const lengthUncertainty = overrides?.uncertainty?.length_cm ?? null;
+    const widthUncertainty = overrides?.uncertainty?.width_cm ?? null;
+    const heightUncertainty = overrides?.uncertainty?.height_cm ?? null;
 
     let dimensions = await this.dimensionsRepo.findOne({
       where: { room_id: room.id },
@@ -353,6 +367,9 @@ export class ProjectsService {
       dimensions.height_cm = dto.height_cm;
       dimensions.source = source;
       dimensions.confidence_score = confidence;
+      dimensions.length_cm_uncertainty = lengthUncertainty;
+      dimensions.width_cm_uncertainty = widthUncertainty;
+      dimensions.height_cm_uncertainty = heightUncertainty;
       // Le formulaire renvoie l'état complet à chaque enregistrement : une
       // sauvegarde rectangulaire (segments absents) efface une forme antérieure.
       dimensions.segments_json = dto.segments ?? null;
@@ -368,6 +385,9 @@ export class ProjectsService {
         height_cm: dto.height_cm,
         source,
         confidence_score: confidence,
+        length_cm_uncertainty: lengthUncertainty,
+        width_cm_uncertainty: widthUncertainty,
+        height_cm_uncertainty: heightUncertainty,
         segments_json: dto.segments ?? null,
         exclusions_json: dto.exclusions ?? null,
         raw_cv_output_json: overrides?.raw_cv_output_json ?? null,

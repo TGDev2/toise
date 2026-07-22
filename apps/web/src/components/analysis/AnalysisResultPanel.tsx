@@ -2,12 +2,17 @@
 
 import { RoomPreview } from '@/components/dimensions/RoomPreview';
 import type { DetectedOpening } from '@/hooks/useAnalysis';
+import { formatDimensionWithUncertainty } from '@/lib/format-dimension';
 
 interface AnalysisResultPanelProps {
   lengthCm: number;
   widthCm: number;
   heightCm: number;
   confidence: string | null;
+  /** Incertitude de mesure (cm), CV-5. */
+  lengthUncertaintyCm?: number | null;
+  widthUncertaintyCm?: number | null;
+  heightUncertaintyCm?: number | null;
   openings?: DetectedOpening[];
   onAccept: () => void;
   onEdit: () => void;
@@ -24,6 +29,9 @@ export function AnalysisResultPanel({
   widthCm,
   heightCm,
   confidence,
+  lengthUncertaintyCm,
+  widthUncertaintyCm,
+  heightUncertaintyCm,
   openings = [],
   onAccept,
   onEdit,
@@ -68,19 +76,19 @@ export function AnalysisResultPanel({
         <div className="rounded-xl bg-white px-3 py-2 text-center">
           <p className="text-xs text-stone-500">Longueur</p>
           <p className="text-lg font-semibold text-stone-950">
-            {(lengthCm / 100).toFixed(2)} m
+            {formatDimensionWithUncertainty(lengthCm, lengthUncertaintyCm)}
           </p>
         </div>
         <div className="rounded-xl bg-white px-3 py-2 text-center">
           <p className="text-xs text-stone-500">Largeur</p>
           <p className="text-lg font-semibold text-stone-950">
-            {(widthCm / 100).toFixed(2)} m
+            {formatDimensionWithUncertainty(widthCm, widthUncertaintyCm)}
           </p>
         </div>
         <div className="rounded-xl bg-white px-3 py-2 text-center">
           <p className="text-xs text-stone-500">Hauteur</p>
           <p className="text-lg font-semibold text-stone-950">
-            {(heightCm / 100).toFixed(2)} m
+            {formatDimensionWithUncertainty(heightCm, heightUncertaintyCm)}
           </p>
         </div>
       </div>

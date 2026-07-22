@@ -15,6 +15,12 @@ export interface RoomDimensions {
   height_cm: number;
   segments?: RectSegment[] | null;
   exclusions?: SurfaceExclusion[] | null;
+  source?: 'manual' | 'scan' | 'import' | 'cv';
+  confidence_score?: 'high' | 'medium' | 'low';
+  /** Incertitude de mesure (cm), CV-5. Non nulle uniquement si source='cv'. */
+  length_cm_uncertainty?: number | null;
+  width_cm_uncertainty?: number | null;
+  height_cm_uncertainty?: number | null;
 }
 
 /** Pièce d'un projet (ENG-2). Renvoyée par GET /projects/:id/rooms. */

@@ -26,6 +26,8 @@ import {
 } from '../projects/entities/opening.entity';
 import type { UpdateDimensionsDto } from '../projects/dto/update-dimensions.dto';
 import type { AnalysisStatusDto } from './dto/analysis-status.dto';
+import { CvAccuracyService } from './cv-accuracy.service';
+import { resolveUncertaintyCm } from './dimension-uncertainty';
 
 @Injectable()
 export class AnalysisService {
@@ -37,6 +39,7 @@ export class AnalysisService {
     private readonly cvClient: CvClientService,
     private readonly projectsService: ProjectsService,
     private readonly photosService: PhotosService,
+    private readonly cvAccuracyService: CvAccuracyService,
   ) {}
 
   async startAnalysis(
@@ -122,6 +125,25 @@ export class AnalysisService {
       result.confidence_score = data.confidence_score ?? null;
       result.reference_detected = data.reference_detected;
       result.openings = data.openings ?? null;
+
+      // L'incertitude par dimension (CV-5) est calculée une seule fois à
+      // l'écriture (cf. processAnalysis) et persistée sur room_dimensions —
+      // on la relit ici plutôt que de la recalculer, room_dimensions restant
+      // la source de vérité (une correction manuelle ultérieure l'efface).
+      if (result.dimensions) {
+        const persisted = await this.projectsService.getDimensions(
+          projectId,
+          userId,
+        );
+        if (persisted?.source === DimensionSource.CV) {
+          result.dimensions = {
+            ...result.dimensions,
+            length_cm_uncertainty: persisted.length_cm_uncertainty,
+            width_cm_uncertainty: persisted.width_cm_uncertainty,
+            height_cm_uncertainty: persisted.height_cm_uncertainty,
+          };
+        }
+      }
     }
 
     if (job.status === AnalysisJobStatus.FAILED) {
@@ -190,11 +212,35 @@ export class AnalysisService {
           height_cm: cvResponse.dimensions.height_cm,
         } as UpdateDimensionsDto;
 
+        const confidenceScore =
+          confidenceMap[cvResponse.confidence] ?? ConfidenceScore.MEDIUM;
+
+        // CV-5 : incertitude par champ, calculée une seule fois ici puis
+        // persistée sur room_dimensions (cf. dimension-uncertainty.ts).
+        const accuracyReport = await this.cvAccuracyService.getReport();
+        const uncertainty = {
+          length_cm: resolveUncertaintyCm(
+            'length_cm',
+            confidenceScore,
+            accuracyReport,
+          ),
+          width_cm: resolveUncertaintyCm(
+            'width_cm',
+            confidenceScore,
+            accuracyReport,
+          ),
+          height_cm: resolveUncertaintyCm(
+            'height_cm',
+            confidenceScore,
+            accuracyReport,
+          ),
+        };
+
         await this.projectsService.updateDimensions(projectId, userId, dto, {
           source: DimensionSource.CV,
-          confidence_score:
-            confidenceMap[cvResponse.confidence] ?? ConfidenceScore.MEDIUM,
+          confidence_score: confidenceScore,
           raw_cv_output_json: cvResponse.raw_output,
+          uncertainty,
         });
       }
 

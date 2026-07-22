@@ -92,6 +92,15 @@ function MaterialRow({
 
   const hasPriceSet = item.real_unit_price != null;
 
+  // CV-5 : fourchette basse/haute, masquée dès qu'une correction manuelle a
+  // été appliquée (l'utilisateur a fixé une valeur exacte) ou quand elle est
+  // de largeur nulle (rien à ajouter au chiffre affiché).
+  const hasRange =
+    !item.is_manually_adjusted &&
+    item.units_needed_low != null &&
+    item.units_needed_high != null &&
+    item.units_needed_low !== item.units_needed_high;
+
   return (
     <div className="rounded-2xl border border-stone-200 bg-white">
       <div className="flex items-center gap-4 px-5 py-4">
@@ -114,6 +123,12 @@ function MaterialRow({
               </span>
             ) : null}
           </p>
+          {hasRange && (
+            <p className="mt-0.5 text-xs text-stone-400">
+              Fourchette selon la mesure : {item.units_needed_low}–
+              {item.units_needed_high} {item.packaging_label}
+            </p>
+          )}
         </div>
 
         <div className="flex shrink-0 items-center gap-2">

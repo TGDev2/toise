@@ -357,6 +357,70 @@ describe('EstimationEngine', () => {
   });
 
   // =========================================================================
+  // computeSurfaceBounds (CV-5)
+  // =========================================================================
+  describe('computeSurfaceBounds', () => {
+    it('returns null when the room has no known uncertainty', () => {
+      const room = makeRoom();
+      expect(engine.computeSurfaceBounds(room, 'wall')).toBeNull();
+      expect(engine.computeSurfaceBounds(room, 'floor')).toBeNull();
+    });
+
+    it('bounds the floor surface using length/width uncertainty in both directions', () => {
+      const room = makeRoom({
+        length_cm_uncertainty: 10,
+        width_cm_uncertainty: 5,
+      });
+      const bounds = engine.computeSurfaceBounds(room, 'floor')!;
+      // low: (400-10)*(300-5)/10000 = 390*295/10000 = 11.505
+      expect(bounds.low).toBeCloseTo(11.505, 3);
+      // high: (400+10)*(300+5)/10000 = 410*305/10000 = 12.505
+      expect(bounds.high).toBeCloseTo(12.505, 3);
+      // Sanity: point estimate lands strictly inside the bounds.
+      const point = engine.computeSurface(room, 'floor');
+      expect(bounds.low).toBeLessThan(point);
+      expect(bounds.high).toBeGreaterThan(point);
+    });
+
+    it('also factors height uncertainty into the wall surface bounds', () => {
+      const room = makeRoom({
+        length_cm_uncertainty: 10,
+        width_cm_uncertainty: 5,
+        height_cm_uncertainty: 20,
+      });
+      const bounds = engine.computeSurfaceBounds(room, 'wall')!;
+      // low: perimeter(390,295)*230 = 2*(390+295)*230 = 315100 cm² = 31.51 m²
+      expect(bounds.low).toBeCloseTo(31.51, 2);
+      // high: perimeter(410,305)*270 = 2*(410+305)*270 = 386100 cm² = 38.61 m²
+      expect(bounds.high).toBeCloseTo(38.61, 2);
+    });
+
+    it('clamps the low bound to 0 instead of going negative', () => {
+      const room = makeRoom({
+        length_cm: 5,
+        width_cm: 5,
+        length_cm_uncertainty: 50,
+        width_cm_uncertainty: 50,
+      });
+      const bounds = engine.computeSurfaceBounds(room, 'floor')!;
+      expect(bounds.low).toBe(0);
+    });
+
+    it('is null-safe when only one of the three fields has uncertainty', () => {
+      const room = makeRoom({ height_cm_uncertainty: 15 });
+      // Le sol ne dépend pas de la hauteur : fourchette non nulle mais de
+      // largeur nulle (low === high), pas d'absence de fourchette.
+      const floorBounds = engine.computeSurfaceBounds(room, 'floor')!;
+      expect(floorBounds.low).toBe(floorBounds.high);
+      const wallBounds = engine.computeSurfaceBounds(room, 'wall')!;
+      expect(wallBounds.low).toBeLessThan(engine.computeSurface(room, 'wall'));
+      expect(wallBounds.high).toBeGreaterThan(
+        engine.computeSurface(room, 'wall'),
+      );
+    });
+  });
+
+  // =========================================================================
   // computeEstimation — Full integration scenarios
   // =========================================================================
   describe('computeEstimation', () => {
@@ -401,6 +465,49 @@ describe('EstimationEngine', () => {
       expect(item.units_needed).toBeGreaterThan(0);
       // Aucune exclusion déclarée sur cette pièce.
       expect(item.excluded_surface_m2).toBeUndefined();
+      // Aucune incertitude connue sur cette pièce (CV-5) : pas de fourchette.
+      expect(item.surface_m2_low).toBeUndefined();
+      expect(item.adjusted_qty_low).toBeUndefined();
+      expect(item.units_needed_low).toBeUndefined();
+    });
+
+    // CV-5 : une pièce mesurée par CV porte une fourchette basse/haute
+    // propagée jusqu'à units_needed, cohérente avec le point estimate.
+    it('propagates dimension uncertainty into a surface/quantity/units range', () => {
+      const room = makeRoom({
+        length_cm_uncertainty: 10,
+        width_cm_uncertainty: 5,
+      });
+
+      const workItems: WorkItemInput[] = [
+        {
+          id: 'wi-1',
+          work_type_code: 'floor_tiling',
+          work_type_label: 'Carrelage sol',
+          category: 'tiling',
+          surface_target: 'floor',
+          skill_level: 'beginner',
+          custom_params: { laying_pattern: 'straight' },
+          materials: [makeTileMaterial()],
+        },
+      ];
+
+      const item = engine.computeEstimation(room, workItems)[0];
+
+      // Bornes de surface identiques à computeSurfaceBounds (floor : 11.505 / 12.505 m²).
+      expect(item.surface_m2_low).toBeCloseTo(11.505, 3);
+      expect(item.surface_m2_high).toBeCloseTo(12.505, 3);
+      // La fourchette encadre le point estimate.
+      expect(item.surface_m2_low!).toBeLessThan(item.surface_m2);
+      expect(item.surface_m2_high!).toBeGreaterThan(item.surface_m2);
+      expect(item.adjusted_qty_low!).toBeLessThan(item.adjusted_qty);
+      expect(item.adjusted_qty_high!).toBeGreaterThan(item.adjusted_qty);
+      // Pas de comparaison low vs high ici : selectBestPackaging minimise le
+      // surplus indépendamment à chaque borne, donc une bascule de format
+      // peut faire consommer moins d'unités à la borne haute (cf. le test
+      // dédié de aggregatePurchases sur la bascule de conditionnement).
+      expect(item.units_needed_low).toBeGreaterThan(0);
+      expect(item.units_needed_high).toBeGreaterThan(0);
     });
 
     // ENG-3: une exclusion murale réduit surface_m2 et apparaît sur la ligne
@@ -764,6 +871,33 @@ describe('EstimationEngine', () => {
       // Carrelage : 15 m² × 1.15 (débutant, pose droite) = 17.25 m²
       expect(floor.adjusted_qty).toBeCloseTo(17.25, 2);
     });
+
+    // CV-5 : les segments priment sur length_cm/width_cm dans computeSurface,
+    // donc leur incertitude ne produit qu'une fourchette de largeur nulle
+    // (low === high) sur une pièce composite — limite assumée et documentée
+    // sur computeSurfaceBounds.
+    it('produces a zero-width range on every target when only length/width have uncertainty', () => {
+      const room = makeLRoom({
+        length_cm_uncertainty: 10,
+        width_cm_uncertainty: 10,
+      });
+      for (const target of ['floor', 'ceiling', 'wall'] as const) {
+        const bounds = engine.computeSurfaceBounds(room, target)!;
+        expect(bounds.low).toBe(bounds.high);
+      }
+    });
+
+    // La hauteur, elle, continue de piloter le mur (perimeter × height ne
+    // dépend pas des segments pour ce facteur) — seul le sol/plafond reste
+    // insensible, la hauteur n'entrant pas dans leur formule.
+    it('still lets height uncertainty produce a wall range on a composite room', () => {
+      const room = makeLRoom({ height_cm_uncertainty: 20 });
+      const wallBounds = engine.computeSurfaceBounds(room, 'wall')!;
+      expect(wallBounds.low).toBeLessThan(wallBounds.high);
+
+      const floorBounds = engine.computeSurfaceBounds(room, 'floor')!;
+      expect(floorBounds.low).toBe(floorBounds.high);
+    });
   });
 
   // =========================================================================
@@ -924,6 +1058,60 @@ describe('EstimationEngine', () => {
         surface_m2: 35,
         adjusted_qty: 4,
       });
+    });
+
+    // CV-5 : la fourchette basse/haute est absente quand aucune ligne du
+    // groupe n'en porte (comportement identique à avant CV-5).
+    it('omits units_needed_low/high when no contributing line has a range', () => {
+      const agg = engine.aggregatePurchases(
+        [makeLine({ adjusted_qty: 4 })],
+        singlePkg(),
+      );
+      expect(agg[0].units_needed_low).toBeUndefined();
+      expect(agg[0].units_needed_high).toBeUndefined();
+    });
+
+    // CV-5 : deux pièces CV se mutualisent, le conditionnement est
+    // re-sélectionné indépendamment sur la somme basse et la somme haute.
+    it('sums adjusted_qty_low/high across rooms and re-selects packaging on each total', () => {
+      const lines = [
+        makeLine({
+          room_id: 'r1',
+          adjusted_qty: 4,
+          adjusted_qty_low: 3,
+          adjusted_qty_high: 5,
+        }),
+        makeLine({
+          room_id: 'r2',
+          adjusted_qty: 4,
+          adjusted_qty_low: 3,
+          adjusted_qty_high: 5,
+        }),
+      ];
+
+      const agg = engine.aggregatePurchases(lines, singlePkg());
+
+      // low total = 6 → ceil(6/10) = 1 ; high total = 10 → ceil(10/10) = 1.
+      expect(agg[0].units_needed_low).toBe(1);
+      expect(agg[0].units_needed_high).toBe(1);
+    });
+
+    it('falls back to adjusted_qty for a contributing line without its own range', () => {
+      const lines = [
+        makeLine({
+          room_id: 'r1',
+          adjusted_qty: 4,
+          adjusted_qty_low: 3,
+          adjusted_qty_high: 5,
+        }),
+        makeLine({ room_id: 'r2', adjusted_qty: 8 }), // pas de fourchette propre
+      ];
+
+      const agg = engine.aggregatePurchases(lines, singlePkg());
+
+      // low total = 3 + 8 = 11 → ceil(11/10) = 2 ; high total = 5 + 8 = 13 → ceil(13/10) = 2.
+      expect(agg[0].units_needed_low).toBe(2);
+      expect(agg[0].units_needed_high).toBe(2);
     });
   });
 });

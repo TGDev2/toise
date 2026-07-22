@@ -15,6 +15,10 @@ interface AnalysisDimensions {
   length_cm: number;
   width_cm: number;
   height_cm: number;
+  /** Incertitude de mesure (cm), CV-5. Absente tant que non persistée. */
+  length_cm_uncertainty?: number | null;
+  width_cm_uncertainty?: number | null;
+  height_cm_uncertainty?: number | null;
 }
 
 export interface DetectedOpening {

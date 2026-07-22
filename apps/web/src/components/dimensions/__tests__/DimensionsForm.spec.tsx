@@ -176,4 +176,51 @@ describe('DimensionsForm', () => {
     render(<DimensionsForm onSave={mockSave} isSaving />);
     expect(screen.getByText(/enregistrement/i)).toBeInTheDocument();
   });
+
+  // CV-5 : badge d'incertitude affiché uniquement pour une pièce mesurée par CV.
+  describe('CV-5 uncertainty badges', () => {
+    it('shows no badge by default (manual entry)', () => {
+      render(
+        <DimensionsForm
+          initialLengthCm={420}
+          initialWidthCm={310}
+          initialHeightCm={250}
+          onSave={mockSave}
+        />,
+      );
+      expect(screen.queryByText(/±/)).not.toBeInTheDocument();
+    });
+
+    it('shows a per-field badge when sourceIsCv is true', () => {
+      render(
+        <DimensionsForm
+          initialLengthCm={420}
+          initialWidthCm={310}
+          initialHeightCm={250}
+          sourceIsCv
+          lengthUncertaintyCm={15}
+          widthUncertaintyCm={8}
+          heightUncertaintyCm={null}
+          onSave={mockSave}
+        />,
+      );
+      expect(screen.getByText('± 15 cm')).toBeInTheDocument();
+      expect(screen.getByText('± 8 cm')).toBeInTheDocument();
+      // Pas d'incertitude connue pour la hauteur → pas de badge sur ce champ.
+      expect(screen.getAllByText(/±/)).toHaveLength(2);
+    });
+
+    it('hides the badge when sourceIsCv is false even if an uncertainty value is passed', () => {
+      render(
+        <DimensionsForm
+          initialLengthCm={420}
+          initialWidthCm={310}
+          initialHeightCm={250}
+          lengthUncertaintyCm={15}
+          onSave={mockSave}
+        />,
+      );
+      expect(screen.queryByText(/±/)).not.toBeInTheDocument();
+    });
+  });
 });

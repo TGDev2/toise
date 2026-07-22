@@ -449,4 +449,34 @@ describe('EstimationsService.estimate', () => {
     );
     expect(withExclusion.items_json[0].excluded_surface_m2).toBe(2);
   });
+
+  // CV-5 : l'incertitude persistée sur room_dimensions traverse le service
+  // jusqu'à la ligne d'estimation.
+  it('forwards the room dimensions uncertainty into a surface/quantity range', async () => {
+    projectsServiceMock.getRooms.mockResolvedValue([
+      {
+        id: 'room-1',
+        name: 'Salon',
+        dimensions: {
+          length_cm: 400,
+          width_cm: 300,
+          height_cm: 250,
+          segments_json: null,
+          length_cm_uncertainty: 10,
+          width_cm_uncertainty: 5,
+          height_cm_uncertainty: null,
+        },
+        openings: [{ width_cm: 90, height_cm: 210, count: 1 }],
+        workItems: [mockWorkItem],
+      },
+    ]);
+
+    const result = await service.estimate('project-1', 'user-1');
+
+    expect(result.items_json[0].surface_m2_low).toBeDefined();
+    expect(result.items_json[0].surface_m2_high).toBeDefined();
+    expect(result.items_json[0].surface_m2_low!).toBeLessThan(
+      result.items_json[0].surface_m2,
+    );
+  });
 });

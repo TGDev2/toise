@@ -17,6 +17,9 @@ export interface ShoppingListMaterialItem {
   work_item_id?: string;
   real_unit_price?: number | null;
   store_name?: string | null;
+  // CV-5 : fourchette basse/haute propagée depuis l'incertitude de mesure CV.
+  units_needed_low?: number;
+  units_needed_high?: number;
 }
 
 export interface ShoppingListComplementaryItem {
