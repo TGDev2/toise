@@ -67,7 +67,7 @@ export function AnalyzeButton({
         <div className="mt-3 flex gap-3">
           <button
             type="button"
-            onClick={onStart}
+            onClick={() => onStart()}
             className="rounded-full border border-red-300 px-4 py-1.5 text-sm text-red-700 hover:-translate-y-0.5 hover:bg-red-100"
           >
             Réessayer
@@ -87,7 +87,7 @@ export function AnalyzeButton({
   return (
     <button
       type="button"
-      onClick={onStart}
+      onClick={() => onStart()}
       disabled={!hasPhotos}
       className="w-full rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-left transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
     >

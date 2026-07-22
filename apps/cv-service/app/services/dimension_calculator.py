@@ -51,6 +51,7 @@ class PerImageResult:
     image_path: str
     dimensions: Optional[Dimensions] = None
     reference_detected: bool = False
+    reference_type: Optional[str] = None
     reference_confidence: float = 0.0
     openings: list[DetectedOpening] = field(default_factory=list)
     wall_lines_count: int = 0
@@ -165,13 +166,20 @@ class DimensionCalculator:
 
         raw_output = self._build_multi_image_raw(per_image_results)
 
+        # Reference type is dynamic (door / a4 / card) — take it from the first
+        # image that actually anchored the scale.
+        reference_type = next(
+            (r.reference_type for r in results_with_ref if r.reference_type),
+            "door",
+        )
+
         return AnalyzeResponse(
             status="success",
             dimensions=dimensions,
             confidence=confidence,
             confidence_score=confidence_score,
             reference_detected=True,
-            reference_type="door",
+            reference_type=reference_type,
             openings=opening_schemas,
             num_images_processed=len(per_image_results),
             raw_output=raw_output,
@@ -205,31 +213,18 @@ class DimensionCalculator:
         # Step 2: Detect room contours
         contours = self.contour_detector.detect(cv_image, depth_map)
 
-        # Step 3: Detect reference object
-        ref_height_cm = None
-        ref_height_px = None
-        reference_detected = False
-        ref_confidence = 0.0
-
-        if reference_object:
-            ref_height_cm = reference_object.height_cm
-            detected = self.reference_detector.detect_door(cv_image, depth_map)
-            if detected:
-                ref_height_px = detected.height_px
-                reference_detected = True
-                ref_confidence = detected.confidence
-        else:
-            detected = self.reference_detector.detect_door(cv_image, depth_map)
-            if detected:
-                ref_height_px = detected.height_px
-                ref_height_cm = detected.height_cm
-                reference_detected = True
-                ref_confidence = detected.confidence
+        # Step 3: Detect reference object (door by default, or the user-provided
+        # planar marker — A4 / bank card — when a reference_object is supplied).
+        detected = self.reference_detector.detect(
+            cv_image, depth_map, reference_object
+        )
+        reference_detected = detected is not None
 
         result = PerImageResult(
             image_path=image_path,
             reference_detected=reference_detected,
-            reference_confidence=ref_confidence,
+            reference_type=detected.type if detected else None,
+            reference_confidence=detected.confidence if detected else 0.0,
             wall_lines_count=len(contours.wall_lines),
             floor_coverage=float(
                 np.sum(contours.floor_mask) / contours.floor_mask.size
@@ -238,17 +233,16 @@ class DimensionCalculator:
             contours=contours,
         )
 
-        if not reference_detected or ref_height_px is None or ref_height_cm is None:
+        if detected is None or detected.px_per_cm <= 0:
             return result
 
-        # Step 4: Calculate dimensions
-        px_per_cm = ref_height_px / ref_height_cm
+        # Step 4: Calculate dimensions from the reference-derived scale
+        px_per_cm = detected.px_per_cm
         result.px_per_cm = px_per_cm
         result.dimensions = self._calculate_dimensions(
             depth_map=depth_map,
             contours=contours,
-            ref_height_px=ref_height_px,
-            ref_height_cm=ref_height_cm,
+            px_per_cm=px_per_cm,
         )
 
         # Step 5: Detect openings
@@ -263,15 +257,13 @@ class DimensionCalculator:
         self,
         depth_map: np.ndarray,
         contours,
-        ref_height_px: int,
-        ref_height_cm: float,
+        px_per_cm: float,
     ) -> Dimensions:
         """
         Calculate room dimensions using depth map, detected contours,
-        and reference scale.
+        and the reference-derived scale (pixels per cm).
         """
         h, w = depth_map.shape
-        px_per_cm = ref_height_px / ref_height_cm
 
         # Estimate room width from horizontal extent of floor region
         floor_mask = contours.floor_mask
@@ -512,6 +504,7 @@ class DimensionCalculator:
             entry: dict = {
                 "image_path": r.image_path,
                 "reference_detected": r.reference_detected,
+                "reference_type": r.reference_type,
                 "reference_confidence": r.reference_confidence,
                 "wall_lines_count": r.wall_lines_count,
                 "floor_coverage": r.floor_coverage,

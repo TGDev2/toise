@@ -41,7 +41,7 @@ jobs:
           NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
 
   cv-service:
-    name: CV service (compile check)
+    name: CV service (compile check + tests)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -52,4 +52,10 @@ jobs:
         with:
           python-version: '3.11'
       - name: Vérifie la syntaxe Python
-        run: python -m compileall app training
+        run: python -m compileall app training tests
+      - name: Installe cv2/numpy + pytest
+        # Le détecteur de référence ne dépend que d'OpenCV/numpy (pas de torch),
+        # donc on n'installe pas tout requirements.txt (lourd) pour la CI.
+        run: pip install opencv-python-headless numpy pydantic "pytest>=8.0"
+      - name: Tests CV
+        run: pytest tests -q

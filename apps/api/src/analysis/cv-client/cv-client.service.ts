@@ -35,8 +35,11 @@ function assertSafeUploadPath(imagePath: string): void {
 export interface CvAnalysisRequest {
   image_paths: string[];
   reference_object?: {
+    // "door" | "a4" | "card"
     type: string;
-    height_cm: number;
+    // Only meaningful for doors; planar markers derive scale from fixed
+    // real dimensions keyed by type on the CV side.
+    height_cm?: number;
   } | null;
 }
 

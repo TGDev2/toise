@@ -25,6 +25,14 @@ export interface DetectedOpening {
   confidence: number;
 }
 
+/** Calibration reference: standard door, or a universal planar marker. */
+export type ReferenceType = 'door' | 'a4' | 'card';
+
+export interface ReferenceObjectInput {
+  type: ReferenceType;
+  height_cm?: number;
+}
+
 interface JobStatusResponse {
   job_id: string;
   status: string;
@@ -51,7 +59,7 @@ interface UseAnalysisReturn {
   detectedOpenings: DetectedOpening[];
   referenceDetected: boolean;
   error: string | null;
-  startAnalysis: () => Promise<void>;
+  startAnalysis: (referenceObject?: ReferenceObjectInput) => Promise<void>;
   reset: () => void;
 }
 
@@ -146,30 +154,34 @@ export function useAnalysis(projectId: string): UseAnalysisReturn {
     return () => stopPolling();
   }, [jobId, projectId, status, stopPolling]);
 
-  const startAnalysis = useCallback(async () => {
-    setStatus('starting');
-    setError(null);
-    setDimensions(null);
-    setConfidence(null);
-    setConfidenceScore(null);
-    setDetectedOpenings([]);
-    setProgressPct(0);
+  const startAnalysis = useCallback(
+    async (referenceObject?: ReferenceObjectInput) => {
+      setStatus('starting');
+      setError(null);
+      setDimensions(null);
+      setConfidence(null);
+      setConfidenceScore(null);
+      setDetectedOpenings([]);
+      setProgressPct(0);
 
-    try {
-      const data = await apiPost<StartAnalysisResponse>(
-        `/projects/${projectId}/analyze`,
-      );
-      setJobId(data.job_id);
-      setStatus('processing');
-    } catch (err: unknown) {
-      setStatus('failed');
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Impossible de demarrer l\'analyse',
-      );
-    }
-  }, [projectId]);
+      try {
+        const data = await apiPost<StartAnalysisResponse>(
+          `/projects/${projectId}/analyze`,
+          referenceObject ? { reference_object: referenceObject } : undefined,
+        );
+        setJobId(data.job_id);
+        setStatus('processing');
+      } catch (err: unknown) {
+        setStatus('failed');
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Impossible de demarrer l\'analyse',
+        );
+      }
+    },
+    [projectId],
+  );
 
   // Cleanup on unmount
   useEffect(() => {

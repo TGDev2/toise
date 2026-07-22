@@ -13,6 +13,7 @@ import { AnalyzeButton } from '@/components/analysis/AnalyzeButton';
 import { AnalysisResultPanel } from '@/components/analysis/AnalysisResultPanel';
 import { ReferenceObjectPrompt } from '@/components/analysis/ReferenceObjectPrompt';
 import { useAnalysis } from '@/hooks/useAnalysis';
+import type { ReferenceType } from '@/hooks/useAnalysis';
 import { Alert, Skeleton } from '@/components/ui';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -220,6 +221,14 @@ export default function DimensionsPage() {
     await analysis.startAnalysis();
   }, [analysis]);
 
+  const handleRetryWithReference = useCallback(
+    async (type: ReferenceType) => {
+      analysis.reset();
+      await analysis.startAnalysis({ type });
+    },
+    [analysis],
+  );
+
   const goToRoom = useCallback(
     (roomId: string) => {
       router.replace(`/projects/${projectId}/dimensions?room=${roomId}`);
@@ -413,6 +422,7 @@ export default function DimensionsPage() {
           {analysis.status === 'no_reference' ? (
             <ReferenceObjectPrompt
               onRetry={handleRetryAnalysis}
+              onRetryWithReference={handleRetryWithReference}
               onManualFallback={handleManualFallback}
             />
           ) : (

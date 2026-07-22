@@ -104,9 +104,23 @@ Analyser des photos pour extraire les dimensions d'une pièce.
 | Champ | Type | Requis | Description |
 |-------|------|--------|-------------|
 | `image_paths` | string[] | oui | Chemins relatifs des images (validés contre le path traversal) |
-| `reference_object` | object | non | Objet de référence pour la calibration |
-| `reference_object.type` | string | non | Type d'objet (`door`) |
-| `reference_object.height_cm` | float | non | Hauteur connue en cm (défaut: 204.0 pour une porte standard) |
+| `reference_object` | object | non | Objet de référence pour la calibration (absent → porte auto-détectée) |
+| `reference_object.type` | string | non | `door` (défaut) · `a4` · `card` |
+| `reference_object.height_cm` | float | non | Hauteur connue en cm (défaut 204.0). Utile pour `door` uniquement |
+
+**Objet étalon universel (CV-3).** Sans porte visible, l'utilisateur pose un
+**étalon** au mur et l'indique via `reference_object.type` :
+
+| Type | Objet | Dimensions réelles |
+|------|-------|--------------------|
+| `door` | Porte standard | 204 cm de haut (défaut) |
+| `a4` | Feuille A4 | 29,7 × 21,0 cm |
+| `card` | Carte bancaire (ISO/IEC 7810 ID-1) | 8,56 × 5,398 cm |
+
+Pour `a4`/`card`, l'échelle (`px_per_cm`) est dérivée des dimensions réelles fixes
+du marqueur (le `height_cm` fourni est ignoré). La géométrie de la pièce est
+inchangée : seule la **source de l'échelle** diffère. Si le marqueur demandé
+n'est pas trouvé, la réponse reste `status="no_reference"`.
 
 **Réponse (succès) :**
 ```json

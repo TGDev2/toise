@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Body,
   Param,
   ParseUUIDPipe,
   UseGuards,
@@ -14,6 +15,7 @@ import { RequireFeature } from '../feature-gates/decorators/require-feature.deco
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
 import { UsersService } from '../users/users.service';
 import { AnalysisService } from './analysis.service';
+import { StartAnalysisRequestDto } from './dto/start-analysis-request.dto';
 import type {
   StartAnalysisResponseDto,
   AnalysisStatusDto,
@@ -41,9 +43,14 @@ export class AnalysisController {
   async startAnalysis(
     @Param('id', ParseUUIDPipe) projectId: string,
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
+    @Body() body: StartAnalysisRequestDto = {},
   ): Promise<StartAnalysisResponseDto> {
     const userId = await this.resolveUserId(firebaseUser);
-    const job = await this.analysisService.startAnalysis(projectId, userId);
+    const job = await this.analysisService.startAnalysis(
+      projectId,
+      userId,
+      body.reference_object,
+    );
     return {
       job_id: job.id,
       status: job.status,

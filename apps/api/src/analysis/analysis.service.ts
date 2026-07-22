@@ -11,6 +11,7 @@ import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialE
 import { AnalysisJob, AnalysisJobStatus } from './entities/analysis-job.entity';
 import {
   CvClientService,
+  type CvAnalysisRequest,
   type CvAnalysisResponse,
 } from './cv-client/cv-client.service';
 import { ProjectsService } from '../projects/projects.service';
@@ -38,7 +39,11 @@ export class AnalysisService {
     private readonly photosService: PhotosService,
   ) {}
 
-  async startAnalysis(projectId: string, userId: string): Promise<AnalysisJob> {
+  async startAnalysis(
+    projectId: string,
+    userId: string,
+    referenceObject?: CvAnalysisRequest['reference_object'],
+  ): Promise<AnalysisJob> {
     // Verify project ownership
     await this.projectsService.findOneByUser(projectId, userId);
 
@@ -72,11 +77,16 @@ export class AnalysisService {
 
     // Fire-and-forget processing
     const imagePaths = photos.map((p) => p.storage_url);
-    this.processAnalysis(saved.id, projectId, userId, imagePaths).catch(
-      (err: Error) =>
-        this.logger.error(
-          `Analysis processing failed for job ${saved.id}: ${err.message}`,
-        ),
+    this.processAnalysis(
+      saved.id,
+      projectId,
+      userId,
+      imagePaths,
+      referenceObject,
+    ).catch((err: Error) =>
+      this.logger.error(
+        `Analysis processing failed for job ${saved.id}: ${err.message}`,
+      ),
     );
 
     return saved;
@@ -126,6 +136,7 @@ export class AnalysisService {
     projectId: string,
     userId: string,
     imagePaths: string[],
+    referenceObject?: CvAnalysisRequest['reference_object'],
   ): Promise<void> {
     // Update to processing
     await this.jobRepo.update(jobId, {
@@ -135,9 +146,11 @@ export class AnalysisService {
     });
 
     try {
-      // Call CV service
+      // Call CV service. A caller-provided reference_object (A4 / bank card
+      // marker) overrides the default door auto-detection.
       const cvResponse = await this.cvClient.analyze({
         image_paths: imagePaths,
+        ...(referenceObject ? { reference_object: referenceObject } : {}),
       });
 
       await this.jobRepo.update(jobId, { progress_pct: 80 });

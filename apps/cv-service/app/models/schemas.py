@@ -1,12 +1,26 @@
 from pathlib import PurePosixPath, PureWindowsPath
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, field_validator
 
+# Calibration reference types: a standard door, or a universal planar marker
+# (A4 sheet / bank card) the user lays on the wall when no door is visible.
+ReferenceType = Literal["door", "a4", "card"]
+
 
 class ReferenceObject(BaseModel):
-    type: str = "door"
+    type: ReferenceType = "door"
+    # Known real height in cm. Only meaningful for "door" (planar markers derive
+    # their scale from fixed real dimensions keyed by type). Defaults to a
+    # standard door height.
     height_cm: float = 204.0
+
+    @field_validator("height_cm")
+    @classmethod
+    def _check_height(cls, value: float) -> float:
+        if not 1.0 <= value <= 400.0:
+            raise ValueError("height_cm must be between 1 and 400 cm")
+        return value
 
 
 def _validate_relative_upload_path(value: str) -> str:
