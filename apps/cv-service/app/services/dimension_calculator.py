@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import cv2
 import numpy as np
@@ -15,7 +15,6 @@ from app.models.schemas import (
     ReferenceObject,
 )
 from app.services.contour_detector import ContourDetector
-from app.services.depth_estimator import DepthEstimator
 from app.services.opening_detector import DetectedOpening, OpeningDetector
 from app.services.opening_merge import (
     OpeningGroup,
@@ -24,6 +23,13 @@ from app.services.opening_merge import (
     serialize_group,
 )
 from app.services.reference_detector import ReferenceDetector
+
+if TYPE_CHECKING:
+    # Import-time only: DepthEstimator pulls in torch/transformers, which the
+    # cv-service CI job deliberately doesn't install (see ci.yml). Callers
+    # already import DepthEstimator directly to instantiate it (app/main.py);
+    # this module only needs it for the type hint below (duck-typed at runtime).
+    from app.services.depth_estimator import DepthEstimator
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +80,7 @@ class DimensionCalculator:
 
     def __init__(
         self,
-        depth_estimator: DepthEstimator,
+        depth_estimator: "DepthEstimator",
         opening_detector: Optional[OpeningDetector] = None,
     ):
         self.depth_estimator = depth_estimator

@@ -54,8 +54,9 @@ jobs:
       - name: Vérifie la syntaxe Python
         run: python -m compileall app training tests
       - name: Installe cv2/numpy + pytest
-        # Le détecteur de référence ne dépend que d'OpenCV/numpy (pas de torch),
+        # Le détecteur de référence et le pipeline de dimensions ne dépendent
+        # que d'OpenCV/numpy/pydantic/Pillow (pas de torch/transformers),
         # donc on n'installe pas tout requirements.txt (lourd) pour la CI.
-        run: pip install opencv-python-headless numpy pydantic "pytest>=8.0"
+        run: pip install opencv-python-headless numpy pydantic pydantic-settings pillow "pytest>=8.0"
       - name: Tests CV
         run: pytest tests -q

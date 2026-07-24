@@ -61,7 +61,9 @@ class ContourDetector:
         wall_lines = []
         if lines is not None:
             for line in lines:
-                x1, y1, x2, y2 = line[0]
+                # cv2.HoughLinesP returns (N, 1, 4) on OpenCV 4.x but (N, 4)
+                # on 5.x; reshape(-1) unpacks either shape the same way.
+                x1, y1, x2, y2 = line.reshape(-1)
                 # Filter: keep mostly horizontal or vertical lines
                 angle = abs(np.arctan2(y2 - y1, x2 - x1) * 180 / np.pi)
                 if angle < 15 or angle > 75:
