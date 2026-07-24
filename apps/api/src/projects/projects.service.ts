@@ -448,11 +448,10 @@ export class ProjectsService {
     });
   }
 
-  async updateOpening(
+  async findOpeningForUser(
     projectId: string,
     userId: string,
     openingId: string,
-    dto: UpdateOpeningDto,
   ): Promise<Opening> {
     await this.findOneByUser(projectId, userId);
 
@@ -464,6 +463,17 @@ export class ProjectsService {
     if (!opening || opening.room.project_id !== projectId) {
       throw new NotFoundException('Opening not found');
     }
+
+    return opening;
+  }
+
+  async updateOpening(
+    projectId: string,
+    userId: string,
+    openingId: string,
+    dto: UpdateOpeningDto,
+  ): Promise<Opening> {
+    const opening = await this.findOpeningForUser(projectId, userId, openingId);
 
     if (dto.type !== undefined) opening.type = dto.type;
     if (dto.width_cm !== undefined) opening.width_cm = dto.width_cm;
@@ -478,16 +488,7 @@ export class ProjectsService {
     userId: string,
     openingId: string,
   ): Promise<void> {
-    await this.findOneByUser(projectId, userId);
-
-    const opening = await this.openingsRepo.findOne({
-      where: { id: openingId },
-      relations: ['room'],
-    });
-
-    if (!opening || opening.room.project_id !== projectId) {
-      throw new NotFoundException('Opening not found');
-    }
+    const opening = await this.findOpeningForUser(projectId, userId, openingId);
 
     await this.openingsRepo.remove(opening);
   }

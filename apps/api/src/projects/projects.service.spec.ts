@@ -677,6 +677,43 @@ describe('ProjectsService', () => {
     });
   });
 
+  describe('findOpeningForUser', () => {
+    it('returns the opening with its room', async () => {
+      openingsRepoMock.findOne.mockResolvedValueOnce({ ...mockOpening });
+
+      const result = await service.findOpeningForUser(
+        'project-uuid',
+        'user-uuid',
+        'opening-uuid',
+      );
+
+      expect(result).toEqual(mockOpening);
+      expect(openingsRepoMock.findOne).toHaveBeenCalledWith({
+        where: { id: 'opening-uuid' },
+        relations: ['room'],
+      });
+    });
+
+    it('throws NotFoundException when the opening does not exist', async () => {
+      openingsRepoMock.findOne.mockResolvedValueOnce(null);
+
+      await expect(
+        service.findOpeningForUser('project-uuid', 'user-uuid', 'missing'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws NotFoundException when the opening belongs to another project', async () => {
+      openingsRepoMock.findOne.mockResolvedValueOnce({
+        ...mockOpening,
+        room: { ...mockRoom, project_id: 'other-project' },
+      });
+
+      await expect(
+        service.findOpeningForUser('project-uuid', 'user-uuid', 'opening-uuid'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
   describe('updateOpening', () => {
     it('updates and returns the opening', async () => {
       openingsRepoMock.findOne.mockResolvedValueOnce({ ...mockOpening });

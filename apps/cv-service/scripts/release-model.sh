@@ -6,18 +6,24 @@
 #
 # Usage :
 #   ./scripts/release-model.sh cv-model-v1 models/door-window-yolov8n.pt \
-#       training/reports/metrics.json training/reports/MODEL_CARD.md
+#       training/reports/metrics.json training/reports/MODEL_CARD.md \
+#       [asset-extra.json]
+#
+# Le 5e argument optionnel (ex. USER_DATASET_MANIFEST.json de la boucle CV-6)
+# est attaché à la release mais reste HORS de SHA256SUMS : fetch-model.sh ne
+# le télécharge pas et sa vérification d'intégrité doit continuer de passer
+# sur les releases qui ne l'ont pas.
 #
 # Prérequis : gh authentifié (gh auth login), evaluate.py en PASS.
 set -euo pipefail
 
 usage() {
-  grep '^#' "$0" | sed 's/^# \{0,1\}//' | sed -n '2,10p' >&2
+  grep '^#' "$0" | sed 's/^# \{0,1\}//' | sed -n '2,16p' >&2
   exit 1
 }
 
-[ $# -eq 4 ] || usage
-TAG="$1"; WEIGHTS="$2"; METRICS="$3"; CARD="$4"
+[ $# -ge 4 ] && [ $# -le 5 ] || usage
+TAG="$1"; WEIGHTS="$2"; METRICS="$3"; CARD="$4"; EXTRA="${5:-}"
 
 # Suffixe optionnel (-test…) toléré pour les répétitions de bout en bout.
 [[ "$TAG" =~ ^cv-model-v[0-9]+([.-][A-Za-z0-9.-]+)?$ ]] \
@@ -26,7 +32,7 @@ TAG="$1"; WEIGHTS="$2"; METRICS="$3"; CARD="$4"
 command -v gh >/dev/null 2>&1 \
   || { echo "ERREUR: 'gh' introuvable (https://cli.github.com)" >&2; exit 1; }
 
-for f in "$WEIGHTS" "$METRICS" "$CARD"; do
+for f in "$WEIGHTS" "$METRICS" "$CARD" ${EXTRA:+"$EXTRA"}; do
   [ -s "$f" ] || { echo "ERREUR: fichier absent ou vide : $f" >&2; exit 1; }
 done
 # Garde-fou : un checkpoint yolov8n pèse plusieurs Mo — un fichier minuscule
@@ -47,6 +53,11 @@ cp "$WEIGHTS" "$TMP/door-window-yolov8n.pt"
 cp "$METRICS" "$TMP/metrics.json"
 cp "$CARD"    "$TMP/MODEL_CARD.md"
 (cd "$TMP" && sha256sum door-window-yolov8n.pt metrics.json MODEL_CARD.md > SHA256SUMS)
+EXTRA_ASSET=()
+if [ -n "$EXTRA" ]; then
+  cp "$EXTRA" "$TMP/$(basename "$EXTRA")"
+  EXTRA_ASSET=("$TMP/$(basename "$EXTRA")")
+fi
 
 gh release create "$TAG" \
   --title "Modèle portes/fenêtres — $TAG" \
@@ -54,7 +65,8 @@ gh release create "$TAG" \
   "$TMP/door-window-yolov8n.pt" \
   "$TMP/metrics.json" \
   "$TMP/MODEL_CARD.md" \
-  "$TMP/SHA256SUMS"
+  "$TMP/SHA256SUMS" \
+  ${EXTRA_ASSET[@]+"${EXTRA_ASSET[@]}"}
 
 echo
 echo "Release '$TAG' publiée."

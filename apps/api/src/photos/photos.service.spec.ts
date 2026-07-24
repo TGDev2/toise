@@ -308,4 +308,22 @@ describe('PhotosService', () => {
       ).rejects.toThrow(NotFoundException);
     });
   });
+
+  describe('findByStorageUrl', () => {
+    it('looks the photo up by exact storage_url', async () => {
+      const result = await service.findByStorageUrl('project-uuid/abc.jpg');
+
+      expect(photoRepoMock.findOne).toHaveBeenCalledWith({
+        where: { storage_url: 'project-uuid/abc.jpg' },
+      });
+      expect(result).toBeDefined();
+    });
+
+    it('returns null when no photo matches', async () => {
+      photoRepoMock.findOne.mockResolvedValueOnce(null);
+
+      const result = await service.findByStorageUrl('nope/../etc/passwd');
+      expect(result).toBeNull();
+    });
+  });
 });

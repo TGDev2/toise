@@ -17,11 +17,15 @@ from app.models.schemas import (
 from app.services.contour_detector import ContourDetector
 from app.services.depth_estimator import DepthEstimator
 from app.services.opening_detector import DetectedOpening, OpeningDetector
+from app.services.opening_merge import (
+    OpeningGroup,
+    merge_and_group,
+    serialize_box,
+    serialize_group,
+)
 from app.services.reference_detector import ReferenceDetector
 
 logger = logging.getLogger(__name__)
-
-IOU_DEDUP_THRESHOLD = 0.4
 
 
 def _resolve_upload_path(image_path: str) -> Path:
@@ -135,11 +139,11 @@ class DimensionCalculator:
         # Fuse dimensions via median
         dimensions = self._fuse_dimensions(results_with_dims)
 
-        # Merge openings across images
-        all_openings: list[DetectedOpening] = []
-        for r in per_image_results:
-            all_openings.extend(r.openings)
-        merged_openings = self._merge_openings(all_openings)
+        # Merge openings across images, keeping per-image box provenance
+        # (consumed by the CV-6 retraining export via raw_output).
+        opening_groups = merge_and_group(
+            [(r.image_path, r.openings) for r in per_image_results]
+        )
 
         # Enhanced confidence scoring
         confidence_score = self._assess_confidence_v2(
@@ -149,22 +153,20 @@ class DimensionCalculator:
         )
         confidence = self._score_to_level(confidence_score)
 
-        # Convert openings to schema
         opening_schemas = [
             DetectedOpeningSchema(
-                type=o.type,
-                width_cm=o.width_cm,
-                height_cm=o.height_cm,
-                confidence=o.confidence,
-                count=1,
+                type=g.type,
+                width_cm=g.width_cm,
+                height_cm=g.height_cm,
+                confidence=g.confidence,
+                count=g.count,
             )
-            for o in merged_openings
+            for g in opening_groups
         ]
 
-        # Group identical openings (same type + similar dimensions)
-        opening_schemas = self._group_openings(opening_schemas)
-
-        raw_output = self._build_multi_image_raw(per_image_results)
+        raw_output = self._build_multi_image_raw(
+            per_image_results, opening_groups
+        )
 
         # Reference type is dynamic (door / a4 / card) — take it from the first
         # image that actually anchored the scale.
@@ -339,70 +341,6 @@ class DimensionCalculator:
             height_cm=int(np.median(heights)),
         )
 
-    def _merge_openings(
-        self, openings: list[DetectedOpening]
-    ) -> list[DetectedOpening]:
-        """Merge openings from multiple images using IoU deduplication."""
-        if len(openings) <= 1:
-            return openings
-
-        # Sort by confidence descending
-        openings.sort(key=lambda o: o.confidence, reverse=True)
-
-        merged: list[DetectedOpening] = []
-        for opening in openings:
-            is_duplicate = False
-            for m in merged:
-                if opening.type == m.type:
-                    # Compare dimensions instead of bbox (different images have
-                    # different coordinate spaces)
-                    w_ratio = min(opening.width_cm, m.width_cm) / max(
-                        opening.width_cm, m.width_cm, 1
-                    )
-                    h_ratio = min(opening.height_cm, m.height_cm) / max(
-                        opening.height_cm, m.height_cm, 1
-                    )
-                    if w_ratio > 0.7 and h_ratio > 0.7:
-                        is_duplicate = True
-                        break
-            if not is_duplicate:
-                merged.append(opening)
-
-        return merged
-
-    @staticmethod
-    def _group_openings(
-        openings: list[DetectedOpeningSchema],
-    ) -> list[DetectedOpeningSchema]:
-        """Group identical openings (same type, similar dimensions) by count."""
-        if not openings:
-            return openings
-
-        groups: list[DetectedOpeningSchema] = []
-        for o in openings:
-            matched = False
-            for g in groups:
-                if (
-                    g.type == o.type
-                    and abs(g.width_cm - o.width_cm) <= 10
-                    and abs(g.height_cm - o.height_cm) <= 10
-                ):
-                    g.count += o.count
-                    g.confidence = max(g.confidence, o.confidence)
-                    matched = True
-                    break
-            if not matched:
-                groups.append(
-                    DetectedOpeningSchema(
-                        type=o.type,
-                        width_cm=o.width_cm,
-                        height_cm=o.height_cm,
-                        confidence=o.confidence,
-                        count=o.count,
-                    )
-                )
-        return groups
-
     def _assess_confidence_v2(
         self,
         per_image_results: list[PerImageResult],
@@ -495,8 +433,20 @@ class DimensionCalculator:
         else:
             return "low"
 
+    def _opening_detector_mode(self) -> str:
+        """Which opening detector produced the boxes: yolo, heuristic or none.
+
+        The retraining dataset builder (CV-6) only trusts YOLO boxes as
+        labels; heuristic boxes are captured for the accuracy report only.
+        """
+        if self.opening_detector is None:
+            return "none"
+        return "yolo" if self.opening_detector.model is not None else "heuristic"
+
     def _build_multi_image_raw(
-        self, results: list[PerImageResult]
+        self,
+        results: list[PerImageResult],
+        opening_groups: Optional[list[OpeningGroup]] = None,
     ) -> dict:
         """Build raw output dict with per-image breakdown."""
         per_image = []
@@ -509,6 +459,9 @@ class DimensionCalculator:
                 "wall_lines_count": r.wall_lines_count,
                 "floor_coverage": r.floor_coverage,
                 "openings_count": len(r.openings),
+                "openings": [
+                    serialize_box(r.image_path, o) for o in r.openings
+                ],
             }
             if r.dimensions:
                 entry["dimensions"] = {
@@ -525,7 +478,13 @@ class DimensionCalculator:
                 }
             per_image.append(entry)
 
-        return {
+        raw: dict = {
             "num_images_processed": len(results),
+            "opening_detector": self._opening_detector_mode(),
             "per_image": per_image,
         }
+        if opening_groups is not None:
+            raw["openings_detail"] = [
+                serialize_group(g) for g in opening_groups
+            ]
+        return raw

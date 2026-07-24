@@ -5,6 +5,7 @@
 ultralytics==8.4.101
 roboflow>=1.1.0
 PyYAML>=6.0
+requests>=2.31  # export_client.py (boucle CV-6)
 
 # Optionnel — uniquement pour `prepare_dataset.py --include-open-images`
 # (sous-ensemble Open Images V7, dernier recours de l'échelle d'itération) :

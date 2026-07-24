@@ -79,6 +79,26 @@ const mockWorkItem = {
   custom_params: {},
 };
 
+const mockOpeningId = '623e4567-e89b-12d3-a456-426614174000';
+const mockCvOpening = {
+  id: mockOpeningId,
+  room_id: mockRoomId,
+  type: 'door',
+  width_cm: 90,
+  height_cm: 204,
+  count: 1,
+  source: 'cv',
+  cv_confidence: 0.8,
+};
+const cvOpeningSnapshot = {
+  opening_id: mockOpeningId,
+  type: 'door',
+  width_cm: 90,
+  height_cm: 204,
+  count: 1,
+  cv_confidence: 0.8,
+};
+
 const projectsServiceMock = {
   createProject: jest.fn().mockResolvedValue(mockProject),
   findByUser: jest.fn().mockResolvedValue({
@@ -97,6 +117,10 @@ const projectsServiceMock = {
   createRoom: jest.fn().mockResolvedValue(mockRoom),
   renameRoom: jest.fn().mockResolvedValue({ ...mockRoom, name: 'Cuisine' }),
   deleteRoom: jest.fn().mockResolvedValue(undefined),
+  addOpening: jest.fn().mockResolvedValue(mockCvOpening),
+  findOpeningForUser: jest.fn().mockResolvedValue(mockCvOpening),
+  updateOpening: jest.fn().mockResolvedValue(mockCvOpening),
+  removeOpening: jest.fn().mockResolvedValue(undefined),
 };
 
 const usersServiceMock = {
@@ -380,5 +404,104 @@ describe('ProjectsController (e2e)', () => {
     await request(app.getHttpServer())
       .delete(`/projects/${mockProjectId}/rooms/${mockRoom.id}`)
       .expect(400);
+  });
+
+  describe('corrections openings (CV-6)', () => {
+    it('PUT /openings/:id logs one correction per modified field on a cv opening', async () => {
+      projectsServiceMock.updateOpening.mockResolvedValueOnce({
+        ...mockCvOpening,
+        type: 'window',
+        width_cm: 120,
+      });
+
+      await request(app.getHttpServer())
+        .put(`/projects/${mockProjectId}/openings/${mockOpeningId}`)
+        .send({ type: 'window', width_cm: 120 })
+        .expect(200);
+
+      expect(cvCorrectionServiceMock.logCorrection).toHaveBeenCalledTimes(2);
+      expect(cvCorrectionServiceMock.logCorrection).toHaveBeenCalledWith(
+        mockProjectId,
+        'opening',
+        'type',
+        cvOpeningSnapshot,
+        expect.objectContaining({ type: 'window' }),
+      );
+      expect(cvCorrectionServiceMock.logCorrection).toHaveBeenCalledWith(
+        mockProjectId,
+        'opening',
+        'width_cm',
+        cvOpeningSnapshot,
+        expect.objectContaining({ width_cm: 120 }),
+      );
+    });
+
+    it('PUT /openings/:id logs nothing on a manual opening', async () => {
+      const manual = {
+        ...mockCvOpening,
+        source: 'manual',
+        cv_confidence: null,
+      };
+      projectsServiceMock.findOpeningForUser.mockResolvedValueOnce(manual);
+      projectsServiceMock.updateOpening.mockResolvedValueOnce({
+        ...manual,
+        width_cm: 120,
+      });
+
+      await request(app.getHttpServer())
+        .put(`/projects/${mockProjectId}/openings/${mockOpeningId}`)
+        .send({ width_cm: 120 })
+        .expect(200);
+
+      expect(cvCorrectionServiceMock.logCorrection).not.toHaveBeenCalled();
+    });
+
+    it('DELETE /openings/:id logs a removed correction on a cv opening', async () => {
+      await request(app.getHttpServer())
+        .delete(`/projects/${mockProjectId}/openings/${mockOpeningId}`)
+        .expect(204);
+
+      expect(cvCorrectionServiceMock.logCorrection).toHaveBeenCalledWith(
+        mockProjectId,
+        'opening',
+        'removed',
+        cvOpeningSnapshot,
+        { deleted: true },
+      );
+    });
+
+    it('POST /openings on the default room logs an added report', async () => {
+      await request(app.getHttpServer())
+        .post(`/projects/${mockProjectId}/openings`)
+        .send({ type: 'door', width_cm: 90, height_cm: 204 })
+        .expect(201);
+
+      expect(cvCorrectionServiceMock.logCorrection).toHaveBeenCalledWith(
+        mockProjectId,
+        'opening',
+        'added',
+        { missed: true },
+        cvOpeningSnapshot,
+      );
+    });
+
+    it('POST /openings targeting an explicit room logs nothing', async () => {
+      await request(app.getHttpServer())
+        .post(`/projects/${mockProjectId}/openings?room=${mockRoomId}`)
+        .send({ type: 'door', width_cm: 90, height_cm: 204 })
+        .expect(201);
+
+      expect(cvCorrectionServiceMock.logCorrection).not.toHaveBeenCalled();
+    });
+
+    it('a failing correction log never breaks the mutation', async () => {
+      cvCorrectionServiceMock.logCorrection.mockRejectedValueOnce(
+        new Error('db down'),
+      );
+
+      await request(app.getHttpServer())
+        .delete(`/projects/${mockProjectId}/openings/${mockOpeningId}`)
+        .expect(204);
+    });
   });
 });

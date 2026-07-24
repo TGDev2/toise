@@ -32,6 +32,21 @@ import { UpdateOpeningDto } from './dto/update-opening.dto';
 import { SaveWorkItemsDto } from './dto/save-work-items.dto';
 import { ListProjectsQueryDto } from './dto/list-projects-query.dto';
 import { DimensionSource } from './entities/room-dimensions.entity';
+import { Opening, OpeningSource } from './entities/opening.entity';
+
+// Snapshot jsonb d'une ouverture pour cv_correction_logs : l'opening_id
+// permet au builder de dataset CV-6 de dédoublonner les éditions successives,
+// le reste fait le lien avec les groupes de détections de raw_output.
+function openingSnapshot(o: Opening) {
+  return {
+    opening_id: o.id,
+    type: o.type,
+    width_cm: o.width_cm,
+    height_cm: o.height_cm,
+    count: o.count,
+    cv_confidence: o.cv_confidence,
+  };
+}
 
 @Controller('projects')
 @UseGuards(FirebaseAuthGuard)
@@ -295,6 +310,23 @@ export class ProjectsController {
       undefined,
       roomId,
     );
+
+    // Ajout manuel dans la room par défaut (la seule où le CV dépose ses
+    // détections) = détection potentiellement manquée. Report-only pour
+    // CV-6 : sans bbox, jamais utilisé comme label d'entraînement.
+    // logCorrection skippe silencieusement sans analyse complétée.
+    if (!roomId) {
+      this.cvCorrectionService
+        .logCorrection(
+          id,
+          'opening',
+          'added',
+          { missed: true },
+          openingSnapshot(opening),
+        )
+        .catch(() => {});
+    }
+
     return {
       id: opening.id,
       type: opening.type,
@@ -338,12 +370,37 @@ export class ProjectsController {
       user.id,
       user.subscription_tier,
     );
+    // État avant mutation, pour le log de correction (pattern dimensions)
+    const before = await this.projectsService.findOpeningForUser(
+      id,
+      user.id,
+      openingId,
+    );
+
     const opening = await this.projectsService.updateOpening(
       id,
       user.id,
       openingId,
       dto,
     );
+
+    if (before.source === OpeningSource.CV) {
+      const fields = ['type', 'width_cm', 'height_cm', 'count'] as const;
+      for (const field of fields) {
+        if (before[field] !== opening[field]) {
+          this.cvCorrectionService
+            .logCorrection(
+              id,
+              'opening',
+              field,
+              openingSnapshot(before),
+              openingSnapshot(opening),
+            )
+            .catch(() => {});
+        }
+      }
+    }
+
     return {
       id: opening.id,
       type: opening.type,
@@ -366,7 +423,24 @@ export class ProjectsController {
       user.id,
       user.subscription_tier,
     );
+    const before = await this.projectsService.findOpeningForUser(
+      id,
+      user.id,
+      openingId,
+    );
+
     await this.projectsService.removeOpening(id, user.id, openingId);
+
+    // Suppression d'une détection CV : signal pour le rapport de précision
+    // et le triage CV-6 (jamais converti en négatif d'entraînement).
+    // Colonnes jsonb NOT NULL → objet marqueur, pas de null.
+    if (before.source === OpeningSource.CV) {
+      this.cvCorrectionService
+        .logCorrection(id, 'opening', 'removed', openingSnapshot(before), {
+          deleted: true,
+        })
+        .catch(() => {});
+    }
   }
 
   @Post(':id/work-items')

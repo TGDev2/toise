@@ -98,6 +98,71 @@ python training/smoke_test.py --make-dummy   # sans dataset ni entraînement
 Les métriques d'un dry-run n'ont aucune valeur — il prouve seulement que le
 pipeline tourne de bout en bout.
 
+## Boucle de ré-entraînement (BACKLOG CV-6)
+
+`training/retrain.py` automatise le cycle sur les **données réelles** :
+corrections utilisateur (`cv_correction_logs`) + photos → dataset → fine-tuning
+→ éval → publication. Elle tourne sur la machine d'entraînement (jamais le
+VPS), typiquement en cron hebdomadaire.
+
+### Prérequis (en plus du venv ci-dessus)
+
+- `gh` authentifié (baseline + cutoff + release) ;
+- une release `cv-model-vN` existante (la boucle exige une baseline — publier
+  `cv-model-v1` via le cycle CV-1 d'abord) ;
+- le dataset public préparé (`prepare_dataset.py`) ;
+- un compte **admin dédié** à la boucle (rôle `admin` en base) et l'env :
+
+```bash
+export CHIFFREO_API_URL=https://api.chiffreo.fr/api/v1
+export FIREBASE_WEB_API_KEY=...          # clé Web du projet Firebase
+export CHIFFREO_ADMIN_EMAIL=cv-retrain@chiffreo.fr
+export CHIFFREO_ADMIN_PASSWORD=...
+```
+
+### Cycle
+
+```bash
+# Cron (ex. lundi 3h) — prépare, entraîne, évalue, puis S'ARRÊTE :
+# 0 3 * * 1 cd /opt/chiffreo/apps/cv-service && .venv/bin/python training/retrain.py --public-data datasets/door-window/data.yaml >> retrain.log 2>&1
+python training/retrain.py --public-data datasets/door-window/data.yaml
+
+# Revue humaine OBLIGATOIRE avant publication :
+#   training/retrain/user-dataset/preview.jpg   — labels corrects ?
+#   training/retrain/reports/comparison.json    — gains réels ?
+#   USER_DATASET_MANIFEST.json (triage)         — suppressions à arbitrer ?
+python training/retrain.py --public-data datasets/door-window/data.yaml --release
+```
+
+Déploiement ensuite : runbook docs/DEPLOY.md, inchangé.
+
+### Garde-fous (dans l'ordre)
+
+1. **Gate volume** : `< --min-new-images` (20) nouvelles images labellisées
+   depuis la dernière release → cycle sauté (exit 0).
+2. **Labels prudents** (`build_user_dataset.py`) : seuls les jobs
+   `opening_detector == "yolo"` fournissent des labels ; validation implicite
+   gated (job ≥ 7 jours, projet engagé, conf ≥ 0,5 pour les boîtes non
+   corrigées) ; correction de type → classe réécrite ; **suppression → jamais
+   un négatif** (images écartées + triage humain) ; appariement ambigu → job
+   écarté ; ajouts manuels = report-only.
+3. **Critères absolus** (`evaluate.py`, exit 2) sur le test public.
+4. **Non-régression** (`compare_models.py`, exit 2) : candidat ≥ baseline
+   − 0,02 mAP50 **par classe** + mAP50-95 global sur le test public ;
+   candidat ≥ baseline sur user-val (gate actif si ≥ 30 images).
+5. **Smoke test** runtime (`smoke_test.py`).
+6. **Release jamais automatique** : `--release` seulement après revue humaine
+   de `preview.jpg` (le cron tourne sans).
+
+### Données personnelles (RGPD)
+
+Le bundle (photos utilisateur) est transitoire : purgé par `retrain.py` en fin
+de cycle (`--keep-data` pour déboguer, purge manuelle ensuite). La release ne
+contient que poids + métriques + `USER_DATASET_MANIFEST.json` (ids de
+projets/jobs, **aucune photo**). Le dataset est reconstruit à chaque cycle
+depuis la base vivante : une suppression de projet (CASCADE) sort
+naturellement des cycles suivants.
+
 ## Reproductibilité
 
 - Versions Roboflow épinglées dans `prepare_dataset.py` (version **brute**, non

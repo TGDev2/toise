@@ -13,6 +13,8 @@ import { CvClientService } from './cv-client/cv-client.service';
 import { CvCorrectionService } from './cv-correction.service';
 import { CvAccuracyController } from './cv-accuracy.controller';
 import { CvAccuracyService } from './cv-accuracy.service';
+import { CvRetrainingController } from './cv-retraining.controller';
+import { CvRetrainingService } from './cv-retraining.service';
 
 @Module({
   imports: [
@@ -23,12 +25,17 @@ import { CvAccuracyService } from './cv-accuracy.service';
     UsersModule,
     FeatureGatesModule,
   ],
-  controllers: [AnalysisController, CvAccuracyController],
+  controllers: [
+    AnalysisController,
+    CvAccuracyController,
+    CvRetrainingController,
+  ],
   providers: [
     AnalysisService,
     CvClientService,
     CvCorrectionService,
     CvAccuracyService,
+    CvRetrainingService,
   ],
   exports: [CvCorrectionService],
 })

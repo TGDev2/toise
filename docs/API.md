@@ -914,6 +914,48 @@ utilisateurs distincts ayant déclenché l'événement pendant la fenêtre.
 
 ---
 
+## Admin CV Retraining
+
+> Endpoints de la boucle de ré-entraînement CV-6, consommés par
+> `apps/cv-service/training/export_client.py` depuis la machine
+> d'entraînement. Compte admin dédié recommandé.
+
+### `GET /admin/cv-retraining/export`
+
+Export des jobs d'analyse complétés dont le `raw_output` contient les
+détections par image (bbox), avec les corrections d'ouvertures
+(`cv_correction_logs`, `entity_type='opening'`) et les compteurs
+d'engagement du projet. Les jobs antérieurs à la capture des bbox sont
+exclus. Lecture seule.
+
+**Auth :** Requise (admin) | **Guard :** `AdminGuard`
+
+**Query params :**
+
+| Param | Type | Défaut | Description |
+|-------|------|--------|-------------|
+| `since` | ISO 8601 | — | Ne retourne que les jobs complétés après cette date |
+| `limit` | number | `100` | Taille de page (1-500) |
+
+**Réponse :** `200 OK` — `{ generated_at, since, next_since, job_count,
+jobs: [{ job_id, project_id, completed_at, opening_detector,
+openings_detail, per_image, corrections, project_correction_counts }] }`.
+`next_since` non nul = page suivante (curseur de pagination).
+
+---
+
+### `GET /admin/cv-retraining/photo?path=...`
+
+Stream d'une photo par `storage_url` exact (cross-projet, pour la
+constitution du dataset). Le chemin résolu vient toujours de la ligne
+`project_photos` retrouvée en base — jamais du paramètre brut.
+
+**Auth :** Requise (admin)
+
+**Réponses :** `200 OK` — stream image | `404 Not Found`
+
+---
+
 ## Price Comparison
 
 ### `POST /projects/:id/shopping-list/compare-prices`
