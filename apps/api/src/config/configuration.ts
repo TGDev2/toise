@@ -37,22 +37,19 @@ export default () => ({
     senderName: process.env.BREVO_SENDER_NAME ?? 'Chiffréo',
   },
   priceComparison: {
-    homeDepot: {
-      apiUrl: process.env.HOME_DEPOT_API_URL ?? '',
-      apiKey: process.env.HOME_DEPOT_API_KEY ?? '',
-      enabled: process.env.HOME_DEPOT_ENABLED === 'true',
-    },
-    lowes: {
-      apiUrl: process.env.LOWES_API_URL ?? '',
-      apiKey: process.env.LOWES_API_KEY ?? '',
-      enabled: process.env.LOWES_ENABLED === 'true',
+    manoMano: {
+      // URL du flux produits fournie par la plateforme d'affiliation (Awin,
+      // Effiliation…). Elle porte le jeton du programme : jamais en dur.
+      // Un chemin local ou une URL `file://` sont acceptés, ce qui permet de
+      // valider le rapprochement sur un extrait de flux sans credentials.
+      feedUrl: process.env.MANOMANO_FEED_URL ?? '',
+      enabled: process.env.MANOMANO_ENABLED === 'true',
+      timeoutMs: parseInt(process.env.MANOMANO_TIMEOUT_MS ?? '120000', 10),
+      // Fraîcheur de l'index de rapprochement : au-delà, la première lecture
+      // déclenche une resynchronisation en tâche de fond.
+      feedTtlHours: parseInt(process.env.MANOMANO_FEED_TTL_HOURS ?? '24', 10),
     },
     cacheTtlHours: parseInt(process.env.PRICE_CACHE_TTL_HOURS ?? '24', 10),
-    // Mock supplier adapters are strictly opt-in: set PRICE_MOCK_ENABLED=true
-    // only in dev/test. In production, no real adapter is wired yet, so the
-    // `price_comparison` feature gate is disabled in the DB — enabling the
-    // mock here would only serve fabricated CAD prices to paying users.
-    mockEnabled: process.env.PRICE_MOCK_ENABLED === 'true',
   },
   storage: {
     provider: process.env.STORAGE_PROVIDER ?? 'local',

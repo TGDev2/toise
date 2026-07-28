@@ -26,7 +26,7 @@ export function SupplierTotalsSummary({
             </p>
             <p className="mt-1 text-2xl font-bold text-emerald-700">
               {optimizedTotal.toFixed(2)}{' '}
-              <span className="text-sm font-medium text-emerald-500">CAD</span>
+              <span className="text-sm font-medium text-emerald-500">EUR</span>
             </p>
           </div>
           <button
@@ -47,11 +47,11 @@ export function SupplierTotalsSummary({
           </p>
           <p className="mt-1 text-2xl font-bold text-stone-900">
             {selectedTotal.toFixed(2)}{' '}
-            <span className="text-sm font-medium text-stone-500">CAD</span>
+            <span className="text-sm font-medium text-stone-500">EUR</span>
           </p>
           {selectedTotal > optimizedTotal && (
             <p className="mt-1 text-xs text-amber-600">
-              +{(selectedTotal - optimizedTotal).toFixed(2)} CAD vs prix optimal
+              +{(selectedTotal - optimizedTotal).toFixed(2)} EUR vs prix optimal
             </p>
           )}
         </div>
@@ -70,7 +70,7 @@ export function SupplierTotalsSummary({
                   {st.supplier_name}
                 </p>
                 <p className="mt-1 text-lg font-bold text-stone-900">
-                  {st.total_cost.toFixed(2)} $
+                  {st.total_cost.toFixed(2)} EUR
                 </p>
                 <p className="text-xs text-stone-400">
                   {st.items_available}/{st.items_total} articles

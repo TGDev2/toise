@@ -212,7 +212,8 @@ Toutes les variables d'environnement sont chargées via `ConfigModule` et centra
 | `FIREBASE_PRIVATE_KEY` | Clé privée Firebase | — |
 | `CV_SERVICE_URL` | URL du microservice CV | `http://localhost:8000` |
 | `CV_SERVICE_TIMEOUT_MS` | Timeout du CV service | `60000` |
-| `PRICE_MOCK_ENABLED` | Activer les fournisseurs mock | `false` |
+| `MANOMANO_ENABLED` | Activer l'adaptateur d'affiliation ManoMano | `false` |
+| `MANOMANO_FEED_URL` | Flux produits d'affiliation (URL ou chemin local) | — |
 
 ## Tests
 

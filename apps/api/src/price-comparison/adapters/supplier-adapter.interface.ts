@@ -16,6 +16,16 @@ export interface SupplierLookupItem {
   material_name: string;
   material_category: string;
   material_unit: string;
+  /**
+   * Conditionnement retenu par le devis (« Pot 2.5 L », « Sac 25 kg »).
+   *
+   * `units_needed` compte des colis à ce format, et le service multiplie
+   * `unit_price * units_needed` : un adaptateur doit donc pouvoir ramener le
+   * prix du marchand à ce conditionnement-là, sans quoi le total n'a pas de
+   * sens.
+   */
+  packaging_label: string;
+  packaging_qty_per_unit: number;
   units_needed: number;
 }
 

@@ -82,7 +82,7 @@ function PriceCell({
               isBest ? 'text-emerald-700' : 'text-stone-900'
             }`}
           >
-            {price.unit_price.toFixed(2)} $
+            {price.unit_price.toFixed(2)} EUR
           </span>
         </div>
         <AvailabilityBadge availability={price.availability} />

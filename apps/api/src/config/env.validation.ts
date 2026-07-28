@@ -16,7 +16,14 @@ const PRODUCTION_REQUIRED_VARS = [
   'BREVO_SENDER_EMAIL',
 ] as const;
 
-const INTEGER_VARS = ['PORT', 'DB_PORT', 'CV_SERVICE_TIMEOUT_MS'] as const;
+const INTEGER_VARS = [
+  'PORT',
+  'DB_PORT',
+  'CV_SERVICE_TIMEOUT_MS',
+  'PRICE_CACHE_TTL_HOURS',
+  'MANOMANO_TIMEOUT_MS',
+  'MANOMANO_FEED_TTL_HOURS',
+] as const;
 
 export function validate(
   config: Record<string, unknown>,

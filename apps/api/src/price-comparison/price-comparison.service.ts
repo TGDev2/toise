@@ -282,6 +282,8 @@ export class PriceComparisonService {
       material_name: item.material_name,
       material_category: item.material_category,
       material_unit: item.material_unit,
+      packaging_label: item.packaging_label,
+      packaging_qty_per_unit: item.packaging_qty_per_unit,
       units_needed: item.units_needed,
     }));
   }

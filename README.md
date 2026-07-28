@@ -140,7 +140,8 @@ Copier `.env.example` vers `.env` et renseigner les valeurs :
 | `CV_SERVICE_URL` | URL du CV service | `http://localhost:8000` |
 | `CV_SERVICE_TIMEOUT_MS` | Timeout du CV service | `60000` |
 | `NEXT_PUBLIC_API_URL` | URL de l'API pour le frontend | `http://localhost:3001/api/v1` |
-| `PRICE_MOCK_ENABLED` | Activer les fournisseurs mock | `false` |
+| `MANOMANO_ENABLED` | Activer l'adaptateur d'affiliation ManoMano | `false` |
+| `MANOMANO_FEED_URL` | Flux produits d'affiliation (URL ou chemin local) | — |
 
 ## Documentation
 

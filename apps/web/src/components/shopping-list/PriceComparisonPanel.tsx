@@ -181,7 +181,7 @@ export function PriceComparisonPanel({
       <div className="mt-6 flex items-center justify-between">
         <p className="text-xs text-stone-400">
           Prix mis en cache jusqu&apos;au{' '}
-          {new Date(data.cache_expires_at).toLocaleString('fr-CA')}
+          {new Date(data.cache_expires_at).toLocaleString('fr-FR')}
         </p>
         <button
           type="button"
