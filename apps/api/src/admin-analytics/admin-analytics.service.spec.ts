@@ -154,7 +154,7 @@ describe('AdminAnalyticsService', () => {
   });
 
   describe('mrr', () => {
-    it('resolves price_id to tier/amount, aggregates the 3 contractor plans into one tier, and ignores an unknown price_id without throwing', async () => {
+    it('resolves price_id to its own tier per contractor plan (BACKLOG PRO-1), and ignores an unknown price_id without throwing', async () => {
       subscriptionsQueryBuilderMock.getRawMany.mockResolvedValue([
         { price_id: 'price_pro', count: '3' },
         { price_id: 'price_contractor_essentiel', count: '2' },
@@ -172,7 +172,9 @@ describe('AdminAnalyticsService', () => {
         total_mrr: 229.97,
         by_tier: [
           { tier: 'pro', subscriber_count: 3, mrr: 29.97 },
-          { tier: 'contractor', subscriber_count: 3, mrr: 200 },
+          { tier: 'contractor_essentiel', subscriber_count: 2, mrr: 100 },
+          { tier: 'contractor_standard', subscriber_count: 1, mrr: 100 },
+          { tier: 'contractor_premium', subscriber_count: 0, mrr: 0 },
         ],
         free_users_count: 512,
         trialing_count: 8,

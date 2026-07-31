@@ -96,7 +96,7 @@
 
 | ID | Item | Description / valeur | Effort | Dépend de |
 |---|---|---|---|---|
-| PRO-1 | Différenciation des paliers 50/100/200 € | Les 3 paliers donnent aujourd'hui les mêmes features. Définir et gater : Essentiel = devis+clients ; Standard = + chantier + relances ; Premium = + multi-utilisateurs + API. Mécanique = feature gates existantes. | M | — |
+| PRO-1 | Différenciation des paliers 50/100/200 € | **Livré (01/08/2026).** Essentiel = devis+clients (gates existantes recalées) ; Standard/Premium = gates `site_tracking`/`quote_reminders`/`multi_user`/`public_api` seedées désactivées, prêtes pour PRO-2/PRO-3/PLAT-4/PLAT-5. Mécanique = feature gates existantes, étendues à 3 rangs Contractor. | M | — |
 | PRO-2 | Suivi de chantier + timeline | Statuts d'avancement par projet client, jalons, dates prévues/réelles. Répond au « project timelines » de la vision ; différenciateur Standard. | L | PRO-1 |
 | PRO-3 | Relances devis | Rappels automatiques sur devis « envoyé » sans réponse à J+7/J+14 (e-mail au client, notification à l'artisan). Augmente le taux d'acceptation = valeur mesurable de l'abonnement. | M | GTM-5 |
 | PRO-4 | Devis → facture | Conversion d'un devis accepté en facture (mentions légales françaises, numérotation). Ferme la boucle métier de l'artisan. Évaluer conformité e-invoicing 2026-2027 avant de construire. | L | — |

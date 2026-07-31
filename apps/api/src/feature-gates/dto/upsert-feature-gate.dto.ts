@@ -19,7 +19,13 @@ export class UpsertFeatureGateDto {
 
   @IsOptional()
   @IsString()
-  @IsIn(['free', 'pro', 'contractor'])
+  @IsIn([
+    'free',
+    'pro',
+    'contractor_essentiel',
+    'contractor_standard',
+    'contractor_premium',
+  ])
   min_tier?: string;
 
   @IsOptional()

@@ -8,7 +8,9 @@ import { UpsertFeatureGateDto } from './dto/upsert-feature-gate.dto';
 const TIER_RANK: Record<string, number> = {
   [SubscriptionTier.FREE]: 0,
   [SubscriptionTier.PRO]: 1,
-  [SubscriptionTier.CONTRACTOR]: 2,
+  [SubscriptionTier.CONTRACTOR_ESSENTIEL]: 2,
+  [SubscriptionTier.CONTRACTOR_STANDARD]: 3,
+  [SubscriptionTier.CONTRACTOR_PREMIUM]: 4,
 };
 
 const CACHE_TTL_MS = 60_000;

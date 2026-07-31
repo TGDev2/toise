@@ -23,6 +23,7 @@ export class SubscriptionsService {
   private readonly stripeClient: Stripe | null;
   private readonly webhookSecret: string;
   private readonly proPriceId: string;
+  private readonly priceIdToTier: Map<string, SubscriptionTier>;
   private readonly contractorPriceIds: Set<string>;
   private readonly allowedPriceIds: Set<string>;
   private readonly publicUrl: string;
@@ -52,13 +53,33 @@ export class SubscriptionsService {
     this.proPriceId = this.config.get<string>('stripe.proPriceId')!;
     this.publicUrl = this.config.get<string>('publicUrl')!;
 
-    this.contractorPriceIds = new Set(
-      [
-        this.config.get<string>('stripe.contractorEssentielPriceId'),
-        this.config.get<string>('stripe.contractorStandardPriceId'),
-        this.config.get<string>('stripe.contractorPremiumPriceId'),
-      ].filter(Boolean) as string[],
+    this.priceIdToTier = new Map<string, SubscriptionTier>();
+    const essentielPriceId = this.config.get<string>(
+      'stripe.contractorEssentielPriceId',
     );
+    const standardPriceId = this.config.get<string>(
+      'stripe.contractorStandardPriceId',
+    );
+    const premiumPriceId = this.config.get<string>(
+      'stripe.contractorPremiumPriceId',
+    );
+    if (essentielPriceId)
+      this.priceIdToTier.set(
+        essentielPriceId,
+        SubscriptionTier.CONTRACTOR_ESSENTIEL,
+      );
+    if (standardPriceId)
+      this.priceIdToTier.set(
+        standardPriceId,
+        SubscriptionTier.CONTRACTOR_STANDARD,
+      );
+    if (premiumPriceId)
+      this.priceIdToTier.set(
+        premiumPriceId,
+        SubscriptionTier.CONTRACTOR_PREMIUM,
+      );
+
+    this.contractorPriceIds = new Set(this.priceIdToTier.keys());
 
     this.allowedPriceIds = new Set<string>([
       this.proPriceId,
@@ -225,8 +246,7 @@ export class SubscriptionsService {
 
   private resolvePlanName(priceId: string | null): string {
     if (!priceId) return 'pro';
-    if (this.contractorPriceIds.has(priceId)) return 'contractor';
-    return 'pro';
+    return this.priceIdToTier.get(priceId) ?? 'pro';
   }
 
   private async handleCheckoutCompleted(
@@ -402,10 +422,9 @@ export class SubscriptionsService {
       return;
     }
 
-    const tier =
-      stripePriceId && this.contractorPriceIds.has(stripePriceId)
-        ? SubscriptionTier.CONTRACTOR
-        : SubscriptionTier.PRO;
+    const tier = stripePriceId
+      ? (this.priceIdToTier.get(stripePriceId) ?? SubscriptionTier.PRO)
+      : SubscriptionTier.PRO;
 
     await this.usersService.updateSubscriptionTier(userId, tier);
   }

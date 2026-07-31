@@ -212,7 +212,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (appUser?.subscription_tier === 'contractor') {
+  if (appUser?.subscription_tier?.startsWith('contractor')) {
     return <ContractorDashboard />;
   }
 
@@ -312,7 +312,7 @@ export default function DashboardPage() {
               );
             }
 
-            if (tier === 'contractor' && (status === 'active' || status === 'trialing')) {
+            if (tier?.startsWith('contractor') && (status === 'active' || status === 'trialing')) {
               return (
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>

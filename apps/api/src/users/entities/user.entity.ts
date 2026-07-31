@@ -17,7 +17,9 @@ export enum AuthProvider {
 export enum SubscriptionTier {
   FREE = 'free',
   PRO = 'pro',
-  CONTRACTOR = 'contractor',
+  CONTRACTOR_ESSENTIEL = 'contractor_essentiel',
+  CONTRACTOR_STANDARD = 'contractor_standard',
+  CONTRACTOR_PREMIUM = 'contractor_premium',
 }
 
 export enum UserRole {

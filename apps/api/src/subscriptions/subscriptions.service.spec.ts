@@ -131,4 +131,20 @@ describe('SubscriptionsService.createCheckoutSession', () => {
       { plan: 'pro', price_id: 'price_pro' },
     );
   });
+
+  it('resolves the precise Contractor sub-tier for analytics, not a generic "contractor" (BACKLOG PRO-1)', async () => {
+    subscriptionsRepoMock.findOne.mockResolvedValue(null);
+    mockStripeInstance.customers.create.mockResolvedValue({ id: 'cus_new' });
+    mockStripeInstance.checkout.sessions.create.mockResolvedValue({
+      url: 'https://checkout.stripe.com/session',
+    });
+
+    await service.createCheckoutSession(testUser, 'price_contractor_standard');
+
+    expect(analyticsServiceMock.track).toHaveBeenCalledWith(
+      AnalyticsEventName.CHECKOUT_STARTED,
+      testUser.id,
+      { plan: 'contractor_standard', price_id: 'price_contractor_standard' },
+    );
+  });
 });

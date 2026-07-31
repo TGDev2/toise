@@ -23,11 +23,13 @@ interface MrrChartProps {
   tiers: MrrTierDatum[];
 }
 
-// Paliers ordinaux (Pro < Contractor) : même rampe que le funnel — validée
-// avec le skill dataviz.
+// Paliers ordinaux (Pro < Essentiel < Standard < Premium) : rampe à teinte unique,
+// validée avec le skill dataviz (node scripts/validate_palette.js --ordinal).
 const COLORS: Record<string, string> = {
   pro: '#059669',
-  contractor: '#065f46',
+  contractor_essentiel: '#047857',
+  contractor_standard: '#065f46',
+  contractor_premium: '#022c22',
 };
 
 const currencyFormatter = new Intl.NumberFormat('fr-FR', {

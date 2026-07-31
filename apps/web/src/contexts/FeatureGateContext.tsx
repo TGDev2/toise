@@ -32,7 +32,9 @@ interface FeatureGateContextType {
 const TIER_RANK: Record<string, number> = {
   free: 0,
   pro: 1,
-  contractor: 2,
+  contractor_essentiel: 2,
+  contractor_standard: 3,
+  contractor_premium: 4,
 };
 
 const FeatureGateContext = createContext<FeatureGateContextType | null>(null);

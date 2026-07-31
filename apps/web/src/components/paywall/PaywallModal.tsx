@@ -48,7 +48,7 @@ export function PaywallModal() {
   const { track } = useAnalytics();
 
   const gate = paywallFeature ? getGateConfig(paywallFeature) : null;
-  const isContractorGate = gate?.min_tier === 'contractor';
+  const isContractorGate = gate?.min_tier?.startsWith('contractor') ?? false;
 
   useEffect(() => {
     if (paywallFeature && appUser) {
@@ -67,6 +67,7 @@ export function PaywallModal() {
       <ContractorPricingModal
         onClose={closePaywall}
         triggerFeature={paywallFeature}
+        requiredTier={gate?.min_tier}
       />
     );
   }

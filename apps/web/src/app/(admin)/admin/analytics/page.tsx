@@ -51,7 +51,9 @@ const FUNNEL_LABELS: Record<string, string> = {
 
 const TIER_LABELS: Record<string, string> = {
   pro: 'Pro',
-  contractor: 'Contractor',
+  contractor_essentiel: 'Contractor Essentiel',
+  contractor_standard: 'Contractor Standard',
+  contractor_premium: 'Contractor Premium',
 };
 
 const eurFormatter = new Intl.NumberFormat('fr-FR', {

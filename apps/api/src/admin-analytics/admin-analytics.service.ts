@@ -29,6 +29,15 @@ const FUNNEL_STEPS = [
 // rien payé (exposé à part via trialing_count, hors MRR).
 const MRR_STATUSES = [SubscriptionStatus.ACTIVE, SubscriptionStatus.PAST_DUE];
 
+// Correspondance entre la clé de plan (plans.constants.ts) et le tier utilisateur
+// qu'elle attribue (cf. subscriptions.service.ts syncSubscriptionTier).
+const PLAN_KEY_TO_TIER: Record<string, SubscriptionTier> = {
+  pro: SubscriptionTier.PRO,
+  contractor_essentiel: SubscriptionTier.CONTRACTOR_ESSENTIEL,
+  contractor_standard: SubscriptionTier.CONTRACTOR_STANDARD,
+  contractor_premium: SubscriptionTier.CONTRACTOR_PREMIUM,
+};
+
 function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }
@@ -191,8 +200,8 @@ export class AdminAnalyticsService {
         ? this.priceIdToPlan.get(row.price_id)
         : undefined;
       if (!plan) continue; // price_id inconnu/obsolète : ignoré, pas d'erreur
-      const tier =
-        plan.key === 'pro' ? SubscriptionTier.PRO : SubscriptionTier.CONTRACTOR;
+      const tier = PLAN_KEY_TO_TIER[plan.key];
+      if (!tier) continue; // clé de plan non mappée à un tier : ignorée
       const count = parseInt(row.count, 10);
       const entry = totalsByTier.get(tier) ?? { subscriber_count: 0, mrr: 0 };
       entry.subscriber_count += count;
@@ -200,16 +209,19 @@ export class AdminAnalyticsService {
       totalsByTier.set(tier, entry);
     }
 
-    const by_tier = [SubscriptionTier.PRO, SubscriptionTier.CONTRACTOR].map(
-      (tier) => {
-        const entry = totalsByTier.get(tier) ?? { subscriber_count: 0, mrr: 0 };
-        return {
-          tier,
-          subscriber_count: entry.subscriber_count,
-          mrr: round2(entry.mrr),
-        };
-      },
-    );
+    const by_tier = [
+      SubscriptionTier.PRO,
+      SubscriptionTier.CONTRACTOR_ESSENTIEL,
+      SubscriptionTier.CONTRACTOR_STANDARD,
+      SubscriptionTier.CONTRACTOR_PREMIUM,
+    ].map((tier) => {
+      const entry = totalsByTier.get(tier) ?? { subscriber_count: 0, mrr: 0 };
+      return {
+        tier,
+        subscriber_count: entry.subscriber_count,
+        mrr: round2(entry.mrr),
+      };
+    });
 
     return {
       statuses_included: MRR_STATUSES,

@@ -486,7 +486,7 @@ export default function ShoppingListPage() {
             </svg>
             Partager un lien
           </button>
-          {appUser?.subscription_tier === 'contractor' && (
+          {appUser?.subscription_tier?.startsWith('contractor') && (
             <button
               type="button"
               onClick={() => router.push(`/projects/${projectId}/quote/new`)}

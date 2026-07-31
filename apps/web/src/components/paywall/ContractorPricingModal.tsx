@@ -7,6 +7,8 @@ import { apiGet, apiPost } from '@/lib/api';
 interface ContractorPricingModalProps {
   onClose: () => void;
   triggerFeature?: string;
+  /** min_tier de la gate ayant déclenché la paywall (ex. "contractor_premium"). */
+  requiredTier?: string;
 }
 
 interface ApiPlan {
@@ -32,7 +34,6 @@ const CONTRACTOR_PLANS = [
     key: 'contractor_standard',
     label: 'Standard',
     fallbackPrice: 100,
-    popular: true,
     features: [
       'Tout Essentiel +',
       'Modèles de devis personnalisés',
@@ -53,10 +54,14 @@ const CONTRACTOR_PLANS = [
   },
 ];
 
+const DEFAULT_RECOMMENDED_PLAN = 'contractor_standard';
+
 export function ContractorPricingModal({
   onClose,
   triggerFeature,
+  requiredTier,
 }: ContractorPricingModalProps) {
+  const recommendedPlan = requiredTier ?? DEFAULT_RECOMMENDED_PLAN;
   const { track } = useAnalytics();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -143,18 +148,20 @@ export function ContractorPricingModal({
         )}
 
         <div className="grid gap-4 md:grid-cols-3">
-          {CONTRACTOR_PLANS.map((plan) => (
+          {CONTRACTOR_PLANS.map((plan) => {
+            const isRecommended = plan.key === recommendedPlan;
+            return (
             <div
               key={plan.key}
               className={`relative rounded-2xl border p-6 ${
-                plan.popular
+                isRecommended
                   ? 'border-[var(--accent)]/40 bg-[var(--accent)]/5 shadow-md'
                   : 'border-stone-200'
               }`}
             >
-              {plan.popular && (
+              {isRecommended && (
                 <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[var(--accent)] px-3 py-0.5 text-xs font-medium text-white">
-                  Populaire
+                  Recommandé
                 </span>
               )}
               <h3 className="text-lg font-semibold text-stone-900">
@@ -191,7 +198,7 @@ export function ContractorPricingModal({
                 onClick={() => handleSelect(plan.key)}
                 disabled={loadingPlan !== null}
                 className={`mt-6 w-full rounded-full px-4 py-2.5 text-sm font-semibold transition-all hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 ${
-                  plan.popular
+                  isRecommended
                     ? 'bg-[var(--accent)] text-white hover:bg-[var(--accent-strong)]'
                     : 'bg-stone-900 text-white hover:bg-stone-800'
                 }`}
@@ -199,7 +206,8 @@ export function ContractorPricingModal({
                 {loadingPlan === plan.key ? 'Redirection...' : 'Choisir'}
               </button>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         <p className="mt-4 text-center text-xs text-stone-400">
