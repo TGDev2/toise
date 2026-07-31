@@ -90,7 +90,7 @@
 | BUY-1 | Adaptateur affiliation ManoMano | Premier adaptateur réel dans le registre existant ([adapters/supplier-registry.ts](../apps/api/src/price-comparison/adapters/supplier-registry.ts)) via le flux produits du programme d'affiliation. Matching catalogue→produits marchands. Supprimer les mocks CAD. | L | — |
 | BUY-2 | Réactivation de la feature gate `price_comparison` | Une fois BUY-1 en place : réactiver la gate (désactivée en migration 027), QA du parcours comparaison→application à la liste. | S | BUY-1 |
 | BUY-3 | Liens d'achat commissionnés sur la liste | **Livré (01/08/2026).** Chaque ligne de la liste d'achats → lien affilié « acheter chez X » via `GET .../shopping-list/buy-links`, sans feature gate. Revenu secondaire sans friction, y compris sur le tier Free. | M | BUY-1 |
-| BUY-4 | Deuxième enseigne (Leroy Merlin ou Castorama) | La comparaison n'a de valeur qu'à ≥ 2 sources réelles. | L | BUY-1 |
+| BUY-4 | Deuxième enseigne (Leroy Merlin) | **Livré (01/08/2026).** Deuxième adaptateur réel dans le registre, même patron que ManoMano (BUY-1). La comparaison n'a de valeur qu'à ≥ 2 sources réelles. | L | BUY-1 |
 
 ### Epic PRO-A : Justifier les paliers Contractor
 

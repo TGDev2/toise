@@ -10,9 +10,15 @@
  * Écrit à la main plutôt qu'apporté en dépendance : le besoin tient en une
  * machine à états d'une cinquantaine de lignes, entièrement testable, là où
  * `apps/api` maintient volontairement un arbre de dépendances minimal.
+ *
+ * Partagé entre les feed clients d'enseignes (ManoMano, Leroy Merlin…) : ce
+ * parseur ne connaît aucune d'entre elles, seulement le format CSV.
  */
 
 const DELIMITER_CANDIDATES = [',', ';', '\t', '|'] as const;
+
+/** Marqueur d'ordre des octets UTF-8, parfois présent en tête du premier en-tête. */
+const BYTE_ORDER_MARK = String.fromCharCode(0xfeff);
 
 export class CsvRowParser {
   private buffer = '';
@@ -160,7 +166,8 @@ function detectDelimiter(headerLine: string): string {
 /** `"Search Price"` et `aw_product_id` deviennent `search_price` / `aw_product_id`. */
 function normalizeHeader(header: string): string {
   return header
-    .replace(/\uFEFF/g, '')
+    .split(BYTE_ORDER_MARK)
+    .join('')
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '_')

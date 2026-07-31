@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { SupplierAdapter } from './supplier-adapter.interface';
 import { ManoManoAdapter } from './manomano/manomano.adapter';
+import { LeroyMerlinAdapter } from './leroymerlin/leroymerlin.adapter';
 
 @Injectable()
 export class SupplierRegistry {
@@ -11,6 +12,7 @@ export class SupplierRegistry {
   constructor(
     private readonly configService: ConfigService,
     private readonly manoManoAdapter: ManoManoAdapter,
+    private readonly leroyMerlinAdapter: LeroyMerlinAdapter,
   ) {
     this.registerDefaults();
   }
@@ -20,6 +22,15 @@ export class SupplierRegistry {
       this.configService.get<boolean>('priceComparison.manoMano.enabled', false)
     ) {
       this.register(this.manoManoAdapter);
+    }
+
+    if (
+      this.configService.get<boolean>(
+        'priceComparison.leroyMerlin.enabled',
+        false,
+      )
+    ) {
+      this.register(this.leroyMerlinAdapter);
     }
 
     if (this.adapters.length === 0) {

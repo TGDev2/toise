@@ -11,7 +11,7 @@ import type {
   FeedAvailability,
   FeedProduct,
 } from '../../matching/material-product-matcher';
-import { CsvRowParser } from './csv-row-parser';
+import { CsvRowParser } from '../shared/csv-row-parser';
 
 /**
  * Alias de colonnes rencontrés sur les plateformes d'affiliation françaises

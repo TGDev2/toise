@@ -77,7 +77,7 @@ describe('CsvRowParser', () => {
   });
 
   it('strips a UTF-8 BOM from the first header', () => {
-    const rows = parse(['﻿id,name\n1,Peinture\n']);
+    const rows = parse([`${String.fromCharCode(0xfeff)}id,name\n1,Peinture\n`]);
     expect(rows[0]).toEqual({ id: '1', name: 'Peinture' });
   });
 

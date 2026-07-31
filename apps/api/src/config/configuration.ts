@@ -49,6 +49,16 @@ export default () => ({
       // déclenche une resynchronisation en tâche de fond.
       feedTtlHours: parseInt(process.env.MANOMANO_FEED_TTL_HOURS ?? '24', 10),
     },
+    leroyMerlin: {
+      // BACKLOG BUY-4 : deuxième enseigne, même schéma de config que ManoMano.
+      feedUrl: process.env.LEROY_MERLIN_FEED_URL ?? '',
+      enabled: process.env.LEROY_MERLIN_ENABLED === 'true',
+      timeoutMs: parseInt(process.env.LEROY_MERLIN_TIMEOUT_MS ?? '120000', 10),
+      feedTtlHours: parseInt(
+        process.env.LEROY_MERLIN_FEED_TTL_HOURS ?? '24',
+        10,
+      ),
+    },
     cacheTtlHours: parseInt(process.env.PRICE_CACHE_TTL_HOURS ?? '24', 10),
   },
   storage: {

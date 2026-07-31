@@ -10,6 +10,9 @@ import { SupplierRegistry } from './adapters/supplier-registry';
 import { ManoManoAdapter } from './adapters/manomano/manomano.adapter';
 import { ManoManoFeedClient } from './adapters/manomano/manomano-feed.client';
 import { ManoManoFeedSyncService } from './adapters/manomano/manomano-feed-sync.service';
+import { LeroyMerlinAdapter } from './adapters/leroymerlin/leroymerlin.adapter';
+import { LeroyMerlinFeedClient } from './adapters/leroymerlin/leroymerlin-feed.client';
+import { LeroyMerlinFeedSyncService } from './adapters/leroymerlin/leroymerlin-feed-sync.service';
 import { ShoppingListsModule } from '../shopping-lists/shopping-lists.module';
 import { UsersModule } from '../users/users.module';
 import { FeatureGatesModule } from '../feature-gates/feature-gates.module';
@@ -33,6 +36,9 @@ import { FeatureGatesModule } from '../feature-gates/feature-gates.module';
     ManoManoAdapter,
     ManoManoFeedClient,
     ManoManoFeedSyncService,
+    LeroyMerlinAdapter,
+    LeroyMerlinFeedClient,
+    LeroyMerlinFeedSyncService,
   ],
 })
 export class PriceComparisonModule {}
