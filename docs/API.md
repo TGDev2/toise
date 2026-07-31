@@ -962,7 +962,7 @@ constitution du dataset). Le chemin résolu vient toujours de la ligne
 > flux produits du programme d'affiliation (BACKLOG BUY-1). Il n'est enregistré que si
 > `MANOMANO_ENABLED=true` et `MANOMANO_FEED_URL` est renseigné ; sinon la comparaison ne
 > renvoie aucun prix. Les adaptateurs mock (prix fabriqués en CAD) ont été supprimés.
-> La feature gate `price_comparison` reste désactivée en base — sa réactivation est BUY-2.
+> La feature gate `price_comparison` est réactivée depuis BUY-2 (migration 036).
 >
 > Les prix sont en **EUR**. `unit_price` est le prix d'**un conditionnement du devis** :
 > quand le conditionnement marchand diffère (bidon de 10 L pour un devis en pots de 2,5 L),
@@ -998,10 +998,10 @@ Appliquer les sélections de prix fournisseurs à la liste d'achat.
 **Body :**
 ```json
 {
-  "selections": {
-    "material_id_1": "supplier_a",
-    "material_id_2": "supplier_b"
-  }
+  "selections": [
+    { "material_id": "material_id_1", "supplier_key": "manomano" },
+    { "material_id": "material_id_2", "supplier_key": "manomano" }
+  ]
 }
 ```
 

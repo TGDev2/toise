@@ -186,10 +186,10 @@ export class PriceComparisonService {
         continue;
       }
 
+      // ENG-2 : les lignes d'achat sont mutualisées par matériau ; le
+      // matching se fait sur `material_id` seul (cf. MaterialItemUpdateDto).
       const itemIdx = materialItems.findIndex(
-        (m) =>
-          m.material_id === sel.material_id &&
-          m.work_item_id === sel.work_item_id,
+        (m) => m.material_id === sel.material_id,
       );
       if (itemIdx >= 0) {
         materialItems[itemIdx] = {
