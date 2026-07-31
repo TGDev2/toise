@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import type { ShoppingListMaterialItem } from '@/lib/shopping-list-types';
+import type { BuyLinkItem } from '@/lib/price-comparison-types';
 
 const CATEGORY_LABELS: Record<string, string> = {
   painting: 'Peinture',
@@ -15,6 +16,8 @@ interface ShoppingListMaterialsProps {
   items: ShoppingListMaterialItem[];
   readOnly?: boolean;
   budgetAllowed?: boolean;
+  // BUY-3 : lien affilié par matériau, indépendant du tier (Free inclus).
+  buyLinks?: Map<string, BuyLinkItem>;
   onUpdateQuantity?: (materialId: string, units: number) => void;
   onResetQuantity?: (materialId: string) => void;
   onUpdatePrice?: (
@@ -29,6 +32,7 @@ function MaterialRow({
   item,
   readOnly,
   budgetAllowed,
+  buyLink,
   onUpdateQuantity,
   onResetQuantity,
   onUpdatePrice,
@@ -37,6 +41,7 @@ function MaterialRow({
   item: ShoppingListMaterialItem;
   readOnly?: boolean;
   budgetAllowed?: boolean;
+  buyLink?: BuyLinkItem;
   onUpdateQuantity?: (units: number) => void;
   onResetQuantity?: () => void;
   onUpdatePrice?: (price: number, storeName: string) => void;
@@ -128,6 +133,19 @@ function MaterialRow({
               Fourchette selon la mesure : {item.units_needed_low}–
               {item.units_needed_high} {item.packaging_label}
             </p>
+          )}
+          {buyLink && (
+            <a
+              href={buyLink.url}
+              target="_blank"
+              rel="noopener noreferrer sponsored"
+              className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-medium text-sky-700 hover:bg-sky-100"
+            >
+              Acheter chez {buyLink.supplier_name}
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3">
+                <path fillRule="evenodd" d="M4.25 5.5a.75.75 0 0 0-.75.75v4A.75.75 0 0 0 4.25 11h4a.75.75 0 0 0 .75-.75V8a.75.75 0 0 1 1.5 0v2.25A2.25 2.25 0 0 1 8.25 12.5h-4A2.25 2.25 0 0 1 2 10.25v-4A2.25 2.25 0 0 1 4.25 4H6.5a.75.75 0 0 1 0 1.5H4.25ZM8.75 3a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-1.5 0V4.81l-4.72 4.72a.75.75 0 1 1-1.06-1.06L10.69 3.75H9.5A.75.75 0 0 1 8.75 3Z" clipRule="evenodd" />
+              </svg>
+            </a>
           )}
         </div>
 
@@ -248,6 +266,7 @@ export function ShoppingListMaterials({
   items,
   readOnly,
   budgetAllowed,
+  buyLinks,
   onUpdateQuantity,
   onResetQuantity,
   onUpdatePrice,
@@ -337,6 +356,7 @@ export function ShoppingListMaterials({
                     item={item}
                     readOnly={readOnly}
                     budgetAllowed={budgetAllowed}
+                    buyLink={buyLinks?.get(item.material_id)}
                     onUpdateQuantity={onUpdateQuantity ? (units) =>
                       onUpdateQuantity(item.material_id, units)
                     : undefined}

@@ -969,6 +969,38 @@ constitution du dataset). Le chemin résolu vient toujours de la ligne
 > le prix réel est ramené au prorata, et le rapprochement est refusé au-delà d'un rapport
 > de 1 à 4. Sans rapprochement exploitable, l'article ressort en `availability: "not_found"`
 > — jamais avec un prix approché. `product_url` porte le lien affilié.
+>
+> **BUY-3.** `GET .../buy-links` expose ce même lien affilié, un par ligne de la liste
+> d'achats, **sans feature gate** (tier Free inclus) — contrairement aux deux endpoints
+> `compare-prices*` ci-dessous qui restent Pro+.
+
+### `GET /projects/:id/shopping-list/buy-links`
+
+Lien d'achat affilié par ligne de la liste d'achats (BACKLOG BUY-3). Un seul lien par
+matériau : le fournisseur disponible le moins cher (même critère que `best_supplier_key`
+de `compare-prices`), généré depuis le même adaptateur/cache que BUY-1/BUY-2.
+
+**Auth :** Requise (propriétaire uniquement) | **Feature gate :** aucune (disponible à
+tous les tiers, y compris Free)
+
+**Réponses :** `200 OK`
+```json
+{
+  "links": [
+    {
+      "material_id": "material_id_1",
+      "supplier_key": "manomano",
+      "supplier_name": "ManoMano",
+      "url": "https://www.manomano.fr/p/..."
+    }
+  ]
+}
+```
+
+Un matériau sans rapprochement marchand exploitable (`not_found`) n'apparaît pas dans
+`links` — pas de lien approché.
+
+---
 
 ### `POST /projects/:id/shopping-list/compare-prices`
 

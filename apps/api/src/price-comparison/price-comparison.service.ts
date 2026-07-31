@@ -15,6 +15,7 @@ import type {
   SupplierTotal,
 } from './dto/compare-prices-response.dto';
 import type { ItemSupplierSelectionDto } from './dto/apply-selections-request.dto';
+import type { BuyLinkItem } from './dto/buy-links-response.dto';
 import { ShoppingListsService } from '../shopping-lists/shopping-lists.service';
 import type { ShoppingListMaterialItem } from '../shopping-lists/entities/shopping-list.entity';
 
@@ -58,48 +59,17 @@ export class PriceComparisonService {
     }
 
     const lookupItems = this.toLookupItems(materialItems);
-    const adapters = this.supplierRegistry.getAllAdapters();
-
-    // Fetch prices from all adapters in parallel
-    const adapterResults = await Promise.allSettled(
-      adapters.map((adapter) =>
-        this.getCachedOrFetch(adapter, lookupItems, postalCode),
-      ),
+    const supplierPriceMaps = await this.fetchSupplierPriceMaps(
+      lookupItems,
+      postalCode,
     );
-
-    // Build per-supplier price maps
-    const supplierPriceMaps: {
-      adapter: SupplierAdapter;
-      prices: Map<string, SupplierPriceResult>;
-    }[] = [];
-    for (let i = 0; i < adapters.length; i++) {
-      const result = adapterResults[i];
-      if (result.status === 'fulfilled') {
-        supplierPriceMaps.push({ adapter: adapters[i], prices: result.value });
-      } else {
-        this.logger.warn(
-          `Adapter ${adapters[i].supplierKey} failed: ${result.reason}`,
-        );
-      }
-    }
 
     // Assemble per-item comparison
     const items: ItemPriceComparison[] = materialItems.map((item) => {
-      const prices: SupplierPriceResult[] = [];
-      for (const { prices: priceMap } of supplierPriceMaps) {
-        const price = priceMap.get(item.material_id);
-        if (price) {
-          prices.push(price);
-        }
-      }
-      prices.sort((a, b) => {
-        if (a.availability === 'not_found' && b.availability !== 'not_found')
-          return 1;
-        if (b.availability === 'not_found' && a.availability !== 'not_found')
-          return -1;
-        return a.unit_price - b.unit_price;
-      });
-
+      const prices = this.collectSortedPrices(
+        item.material_id,
+        supplierPriceMaps,
+      );
       const bestAvailable = prices.find((p) => p.availability !== 'not_found');
 
       return {
@@ -211,7 +181,107 @@ export class PriceComparisonService {
     }
   }
 
+  /**
+   * BACKLOG BUY-3 : un lien affilié « acheter chez X » par ligne, disponible
+   * sans feature gate (y compris tier Free) — contrairement à `comparePrices`
+   * /`applySelections`. Réutilise l'adaptateur BUY-1 (même cache
+   * `supplier_price_cache`) : rien n'est recalculé ni persisté en plus.
+   *
+   * Un seul lien par ligne, celui du fournisseur disponible le moins cher —
+   * même critère que `best_supplier_key` ci-dessus. Une ligne `not_found`
+   * (aucun rapprochement marchand exploitable) n'apparaît simplement pas.
+   */
+  async getBuyLinks(projectId: string, userId: string): Promise<BuyLinkItem[]> {
+    const { shoppingList } = await this.shoppingListsService.getOrGenerate(
+      projectId,
+      userId,
+    );
+
+    const materialItems = shoppingList.items_json.material_items;
+    if (materialItems.length === 0) {
+      return [];
+    }
+
+    const lookupItems = this.toLookupItems(materialItems);
+    const supplierPriceMaps = await this.fetchSupplierPriceMaps(lookupItems);
+
+    const links: BuyLinkItem[] = [];
+    for (const item of materialItems) {
+      const prices = this.collectSortedPrices(
+        item.material_id,
+        supplierPriceMaps,
+      );
+      const best = prices.find(
+        (p) => p.availability !== 'not_found' && p.product_url,
+      );
+      if (best && best.product_url) {
+        links.push({
+          material_id: item.material_id,
+          supplier_key: best.supplier_key,
+          supplier_name: best.supplier_name,
+          url: best.product_url,
+        });
+      }
+    }
+    return links;
+  }
+
   // ──────────────────────────────────────────────────────
+
+  private async fetchSupplierPriceMaps(
+    items: SupplierLookupItem[],
+    postalCode?: string,
+  ): Promise<
+    { adapter: SupplierAdapter; prices: Map<string, SupplierPriceResult> }[]
+  > {
+    const adapters = this.supplierRegistry.getAllAdapters();
+
+    const adapterResults = await Promise.allSettled(
+      adapters.map((adapter) =>
+        this.getCachedOrFetch(adapter, items, postalCode),
+      ),
+    );
+
+    const supplierPriceMaps: {
+      adapter: SupplierAdapter;
+      prices: Map<string, SupplierPriceResult>;
+    }[] = [];
+    for (let i = 0; i < adapters.length; i++) {
+      const result = adapterResults[i];
+      if (result.status === 'fulfilled') {
+        supplierPriceMaps.push({ adapter: adapters[i], prices: result.value });
+      } else {
+        this.logger.warn(
+          `Adapter ${adapters[i].supplierKey} failed: ${result.reason}`,
+        );
+      }
+    }
+    return supplierPriceMaps;
+  }
+
+  private collectSortedPrices(
+    materialId: string,
+    supplierPriceMaps: {
+      adapter: SupplierAdapter;
+      prices: Map<string, SupplierPriceResult>;
+    }[],
+  ): SupplierPriceResult[] {
+    const prices: SupplierPriceResult[] = [];
+    for (const { prices: priceMap } of supplierPriceMaps) {
+      const price = priceMap.get(materialId);
+      if (price) {
+        prices.push(price);
+      }
+    }
+    prices.sort((a, b) => {
+      if (a.availability === 'not_found' && b.availability !== 'not_found')
+        return 1;
+      if (b.availability === 'not_found' && a.availability !== 'not_found')
+        return -1;
+      return a.unit_price - b.unit_price;
+    });
+    return prices;
+  }
 
   private async getCachedOrFetch(
     adapter: SupplierAdapter,

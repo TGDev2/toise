@@ -213,6 +213,158 @@ describe('PriceComparisonService', () => {
     });
   });
 
+  describe('getBuyLinks', () => {
+    it('returns an empty array when the shopping list has no material items', async () => {
+      shoppingListsServiceMock.getOrGenerate.mockResolvedValue({
+        shoppingList: buildShoppingList([]),
+      });
+
+      const result = await service.getBuyLinks('project-1', 'user-1');
+
+      expect(result).toEqual([]);
+    });
+
+    it('returns a buy link for an available item with a product_url', async () => {
+      shoppingListsServiceMock.getOrGenerate.mockResolvedValue({
+        shoppingList: buildShoppingList([mutualizedItem]),
+      });
+
+      const adapter: SupplierAdapter = {
+        supplierKey: 'manomano',
+        supplierName: 'ManoMano',
+        lookupPrices: jest.fn().mockResolvedValue(
+          new Map([
+            [
+              'mat-paint',
+              {
+                supplier_key: 'manomano',
+                supplier_name: 'ManoMano',
+                product_name: 'Peinture acrylique mate 10L',
+                unit_price: 29.9,
+                currency: 'EUR',
+                availability: 'in_stock',
+                product_url: 'https://www.manomano.fr/p/peinture-123',
+                fetched_at: '2026-08-01T00:00:00.000Z',
+              },
+            ],
+          ]),
+        ),
+        healthCheck: jest.fn(),
+      };
+      supplierRegistryMock.getAllAdapters.mockReturnValue([adapter]);
+
+      const result = await service.getBuyLinks('project-1', 'user-1');
+
+      expect(result).toEqual([
+        {
+          material_id: 'mat-paint',
+          supplier_key: 'manomano',
+          supplier_name: 'ManoMano',
+          url: 'https://www.manomano.fr/p/peinture-123',
+        },
+      ]);
+    });
+
+    it('omits a line when no supplier has an exploitable match (not_found)', async () => {
+      shoppingListsServiceMock.getOrGenerate.mockResolvedValue({
+        shoppingList: buildShoppingList([mutualizedItem]),
+      });
+
+      const adapter: SupplierAdapter = {
+        supplierKey: 'manomano',
+        supplierName: 'ManoMano',
+        lookupPrices: jest.fn().mockResolvedValue(
+          new Map([
+            [
+              'mat-paint',
+              {
+                supplier_key: 'manomano',
+                supplier_name: 'ManoMano',
+                product_name: 'Peinture acrylique mate',
+                unit_price: 0,
+                currency: 'EUR',
+                availability: 'not_found',
+                fetched_at: '2026-08-01T00:00:00.000Z',
+              },
+            ],
+          ]),
+        ),
+        healthCheck: jest.fn(),
+      };
+      supplierRegistryMock.getAllAdapters.mockReturnValue([adapter]);
+
+      const result = await service.getBuyLinks('project-1', 'user-1');
+
+      expect(result).toEqual([]);
+    });
+
+    it('picks the cheapest available supplier when several match the same line', async () => {
+      shoppingListsServiceMock.getOrGenerate.mockResolvedValue({
+        shoppingList: buildShoppingList([mutualizedItem]),
+      });
+
+      const expensiveAdapter: SupplierAdapter = {
+        supplierKey: 'other',
+        supplierName: 'Autre enseigne',
+        lookupPrices: jest.fn().mockResolvedValue(
+          new Map([
+            [
+              'mat-paint',
+              {
+                supplier_key: 'other',
+                supplier_name: 'Autre enseigne',
+                product_name: 'Peinture acrylique mate 10L',
+                unit_price: 34.9,
+                currency: 'EUR',
+                availability: 'in_stock',
+                product_url: 'https://autre-enseigne.fr/p/peinture-456',
+                fetched_at: '2026-08-01T00:00:00.000Z',
+              },
+            ],
+          ]),
+        ),
+        healthCheck: jest.fn(),
+      };
+      const cheapAdapter: SupplierAdapter = {
+        supplierKey: 'manomano',
+        supplierName: 'ManoMano',
+        lookupPrices: jest.fn().mockResolvedValue(
+          new Map([
+            [
+              'mat-paint',
+              {
+                supplier_key: 'manomano',
+                supplier_name: 'ManoMano',
+                product_name: 'Peinture acrylique mate 10L',
+                unit_price: 29.9,
+                currency: 'EUR',
+                availability: 'in_stock',
+                product_url: 'https://www.manomano.fr/p/peinture-123',
+                fetched_at: '2026-08-01T00:00:00.000Z',
+              },
+            ],
+          ]),
+        ),
+        healthCheck: jest.fn(),
+      };
+      supplierRegistryMock.getAllAdapters.mockReturnValue([
+        expensiveAdapter,
+        cheapAdapter,
+      ]);
+
+      const result = await service.getBuyLinks('project-1', 'user-1');
+
+      expect(result).toEqual([
+        {
+          material_id: 'mat-paint',
+          supplier_key: 'manomano',
+          supplier_name: 'ManoMano',
+          url: 'https://www.manomano.fr/p/peinture-123',
+        },
+      ]);
+    });
+  });
+
   describe('applySelections', () => {
     it('applies a selection to a mutualized item matched on material_id alone (no work_item_id)', async () => {
       const materialItems: ShoppingListMaterialItem[] = [{ ...mutualizedItem }];

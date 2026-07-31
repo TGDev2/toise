@@ -5,7 +5,11 @@ import { useFeatureGates } from '@/contexts/FeatureGateContext';
 import { apiGet, apiPatch, apiPost, apiDownload } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import type { ShoppingListResponse, BudgetSummary } from '@/lib/shopping-list-types';
-import type { PriceComparisonResponse } from '@/lib/price-comparison-types';
+import type {
+  PriceComparisonResponse,
+  BuyLinkItem,
+  BuyLinksResponse,
+} from '@/lib/price-comparison-types';
 import { ShoppingListMaterials } from '@/components/shopping-list/ShoppingListMaterials';
 import { ShoppingListComplements } from '@/components/shopping-list/ShoppingListComplements';
 import { ShareLinkPanel } from '@/components/shopping-list/ShareLinkPanel';
@@ -36,6 +40,7 @@ export default function ShoppingListPage() {
   const [budgetSummary, setBudgetSummary] = useState<BudgetSummary | null>(null);
   const [comparing, setComparing] = useState(false);
   const [comparisonData, setComparisonData] = useState<PriceComparisonResponse | null>(null);
+  const [buyLinks, setBuyLinks] = useState<Map<string, BuyLinkItem>>(new Map());
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
   const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
 
@@ -101,12 +106,18 @@ export default function ShoppingListPage() {
 
     async function load() {
       try {
-        const [project, shoppingList] = await Promise.all([
+        const [project, shoppingList, buyLinksRes] = await Promise.all([
           apiGet<{ name: string }>(`/projects/${projectId}`),
           apiGet<ShoppingListResponse>(`/projects/${projectId}/shopping-list`),
+          // BUY-3 : disponible à tous les tiers ; un échec ne doit jamais
+          // bloquer l'affichage de la liste (fonctionnalité secondaire).
+          apiGet<BuyLinksResponse>(
+            `/projects/${projectId}/shopping-list/buy-links`,
+          ).catch(() => ({ links: [] })),
         ]);
         setProjectName(project.name);
         setData(shoppingList);
+        setBuyLinks(new Map(buyLinksRes.links.map((l) => [l.material_id, l])));
       } catch (err: unknown) {
         setError(getErrorMessage(err, 'Impossible de charger la liste'));
       } finally {
@@ -563,6 +574,7 @@ export default function ShoppingListPage() {
             <ShoppingListMaterials
               items={data.material_items}
               budgetAllowed={budgetAllowed}
+              buyLinks={buyLinks}
               onUpdateQuantity={handleUpdateMaterialQty}
               onResetQuantity={handleResetMaterialQty}
               onUpdatePrice={handleUpdateMaterialPrice}

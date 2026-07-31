@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   Param,
   ParseUUIDPipe,
   Post,
@@ -17,6 +18,7 @@ import { PriceComparisonService } from './price-comparison.service';
 import { ComparePricesRequestDto } from './dto/compare-prices-request.dto';
 import { ApplySelectionsRequestDto } from './dto/apply-selections-request.dto';
 import type { PriceComparisonResponseDto } from './dto/compare-prices-response.dto';
+import type { BuyLinksResponseDto } from './dto/buy-links-response.dto';
 
 @Controller('projects')
 @UseGuards(FirebaseAuthGuard)
@@ -32,6 +34,19 @@ export class PriceComparisonController {
       throw new UnauthorizedException('Utilisateur non authentifié.');
     }
     return user.id;
+  }
+
+  @Get(':id/shopping-list/buy-links')
+  async getBuyLinks(
+    @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
+    @Param('id', ParseUUIDPipe) projectId: string,
+  ): Promise<BuyLinksResponseDto> {
+    const userId = await this.resolveUserId(firebaseUser);
+    const links = await this.priceComparisonService.getBuyLinks(
+      projectId,
+      userId,
+    );
+    return { links };
   }
 
   @Post(':id/shopping-list/compare-prices')

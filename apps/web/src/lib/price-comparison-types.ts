@@ -44,3 +44,16 @@ export interface ItemSupplierSelection {
   work_item_id?: string;
   supplier_key: string;
 }
+
+// BUY-3 : lien affilié par ligne, disponible sans feature gate (tier Free
+// inclus) — cf. GET /projects/:id/shopping-list/buy-links.
+export interface BuyLinkItem {
+  material_id: string;
+  supplier_key: string;
+  supplier_name: string;
+  url: string;
+}
+
+export interface BuyLinksResponse {
+  links: BuyLinkItem[];
+}

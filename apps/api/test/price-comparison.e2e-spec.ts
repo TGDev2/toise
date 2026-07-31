@@ -54,9 +54,19 @@ const mockComparisonResponse = {
   cache_expires_at: '2026-08-02T00:00:00.000Z',
 };
 
+const mockBuyLinks = [
+  {
+    material_id: mockMaterialId,
+    supplier_key: 'manomano',
+    supplier_name: 'ManoMano',
+    url: 'https://www.manomano.fr/p/peinture-123',
+  },
+];
+
 const priceComparisonServiceMock = {
   comparePrices: jest.fn().mockResolvedValue(mockComparisonResponse),
   applySelections: jest.fn().mockResolvedValue(undefined),
+  getBuyLinks: jest.fn().mockResolvedValue(mockBuyLinks),
 };
 
 const usersServiceMock = {
@@ -83,6 +93,7 @@ describe('PriceComparisonController (e2e)', () => {
       mockComparisonResponse,
     );
     priceComparisonServiceMock.applySelections.mockResolvedValue(undefined);
+    priceComparisonServiceMock.getBuyLinks.mockResolvedValue(mockBuyLinks);
     usersServiceMock.findByFirebaseUid.mockResolvedValue({
       id: mockUserId,
       subscription_tier: SubscriptionTier.PRO,
@@ -130,6 +141,44 @@ describe('PriceComparisonController (e2e)', () => {
     if (app) {
       await app.close();
     }
+  });
+
+  describe('GET /projects/:id/shopping-list/buy-links', () => {
+    it('returns the affiliate buy links for the authenticated owner', async () => {
+      await request(app.getHttpServer())
+        .get(`/projects/${mockProjectId}/shopping-list/buy-links`)
+        .expect(200)
+        .expect((res: request.Response) => {
+          expect(res.body).toEqual({ links: mockBuyLinks });
+        });
+
+      expect(priceComparisonServiceMock.getBuyLinks).toHaveBeenCalledWith(
+        mockProjectId,
+        mockUserId,
+      );
+    });
+
+    // BUY-3 : contrairement à compare-prices, ce chemin doit rester
+    // disponible sur le tier Free — c'est tout le sens du backlog.
+    it('is not gated by price_comparison — works even when the feature gate refuses the tier', async () => {
+      featureGatesServiceMock.isFeatureAllowed.mockResolvedValue(false);
+      usersServiceMock.findByFirebaseUid.mockResolvedValue({
+        id: mockUserId,
+        subscription_tier: SubscriptionTier.FREE,
+      });
+
+      await request(app.getHttpServer())
+        .get(`/projects/${mockProjectId}/shopping-list/buy-links`)
+        .expect(200)
+        .expect((res: request.Response) => {
+          expect(res.body).toEqual({ links: mockBuyLinks });
+        });
+
+      expect(priceComparisonServiceMock.getBuyLinks).toHaveBeenCalledWith(
+        mockProjectId,
+        mockUserId,
+      );
+    });
   });
 
   describe('POST /projects/:id/shopping-list/compare-prices', () => {

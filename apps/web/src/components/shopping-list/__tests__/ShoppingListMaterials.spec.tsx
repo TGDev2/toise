@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { ShoppingListMaterials } from '../ShoppingListMaterials';
 import type { ShoppingListMaterialItem } from '@/lib/shopping-list-types';
+import type { BuyLinkItem } from '@/lib/price-comparison-types';
 
 function makeItem(
   overrides: Partial<ShoppingListMaterialItem> = {},
@@ -65,5 +66,48 @@ describe('ShoppingListMaterials', () => {
       />,
     );
     expect(screen.queryByText(/Fourchette/i)).not.toBeInTheDocument();
+  });
+
+  // BUY-3 : lien affilié « acheter chez X », disponible sans condition de tier.
+  describe('affiliate buy link (BUY-3)', () => {
+    const buyLink: BuyLinkItem = {
+      material_id: 'mat-paint',
+      supplier_key: 'manomano',
+      supplier_name: 'ManoMano',
+      url: 'https://www.manomano.fr/p/peinture-123',
+    };
+
+    it('renders the affiliate buy link when one is provided for the line', () => {
+      render(
+        <ShoppingListMaterials
+          items={[makeItem()]}
+          buyLinks={new Map([[buyLink.material_id, buyLink]])}
+          readOnly
+        />,
+      );
+      const link = screen.getByRole('link', { name: /Acheter chez ManoMano/i });
+      expect(link).toHaveAttribute('href', buyLink.url);
+      expect(link).toHaveAttribute('rel', expect.stringContaining('sponsored'));
+    });
+
+    it('renders no buy link when none is provided for the line', () => {
+      render(<ShoppingListMaterials items={[makeItem()]} readOnly />);
+      expect(
+        screen.queryByRole('link', { name: /Acheter chez/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('does not render a buy link for a material with no matching entry in the map', () => {
+      render(
+        <ShoppingListMaterials
+          items={[makeItem()]}
+          buyLinks={new Map([['some-other-material', buyLink]])}
+          readOnly
+        />,
+      );
+      expect(
+        screen.queryByRole('link', { name: /Acheter chez/i }),
+      ).not.toBeInTheDocument();
+    });
   });
 });
