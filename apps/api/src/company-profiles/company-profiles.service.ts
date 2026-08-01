@@ -13,15 +13,16 @@ export class CompanyProfilesService {
   ) {}
 
   async create(
+    organizationId: string,
     userId: string,
     dto: CreateCompanyProfileDto,
   ): Promise<CompanyProfile> {
-    const existingByUser = await this.repo.findOne({
-      where: { user_id: userId },
+    const existingForOrg = await this.repo.findOne({
+      where: { organization_id: organizationId },
     });
-    if (existingByUser) {
+    if (existingForOrg) {
       throw new ConflictException(
-        'Un profil entreprise existe deja pour cet utilisateur',
+        'Un profil entreprise existe deja pour cette organisation',
       );
     }
 
@@ -38,6 +39,7 @@ export class CompanyProfilesService {
     // explicites pour normaliser `undefined` en `null` / tableau vide.
     const profile = this.repo.create({
       ...dto,
+      organization_id: organizationId,
       user_id: userId,
       address_line2: dto.address_line2 ?? null,
       phone: dto.phone ?? null,
@@ -47,15 +49,19 @@ export class CompanyProfilesService {
     return this.repo.save(profile);
   }
 
-  async findByUserId(userId: string): Promise<CompanyProfile | null> {
-    return this.repo.findOne({ where: { user_id: userId } });
+  async findByOrganizationId(
+    organizationId: string,
+  ): Promise<CompanyProfile | null> {
+    return this.repo.findOne({ where: { organization_id: organizationId } });
   }
 
   async update(
-    userId: string,
+    organizationId: string,
     dto: UpdateCompanyProfileDto,
   ): Promise<CompanyProfile> {
-    const profile = await this.repo.findOne({ where: { user_id: userId } });
+    const profile = await this.repo.findOne({
+      where: { organization_id: organizationId },
+    });
     if (!profile) {
       throw new ConflictException('Aucun profil entreprise trouve');
     }

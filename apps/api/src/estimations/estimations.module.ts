@@ -5,7 +5,7 @@ import { EmailCapture } from './entities/email-capture.entity';
 import { MaterialCatalog } from '../materials/entities/material-catalog.entity';
 import { WorkType } from '../projects/entities/work-type.entity';
 import { ProjectsModule } from '../projects/projects.module';
-import { UsersModule } from '../users/users.module';
+import { OrgContextModule } from '../organizations/org-context.module';
 import { EmailModule } from '../email/email.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { EstimationEngine } from './estimation-engine';
@@ -22,7 +22,7 @@ import { PublicCalculatorsController } from './public-calculators.controller';
       EmailCapture,
     ]),
     ProjectsModule,
-    UsersModule,
+    OrgContextModule,
     EmailModule,
     AnalyticsModule,
   ],

@@ -101,7 +101,11 @@ describe('PriceComparisonService', () => {
         shoppingList: buildShoppingList([]),
       });
 
-      const result = await service.comparePrices('project-1', 'user-1');
+      const result = await service.comparePrices(
+        'project-1',
+        'org-1',
+        'user-1',
+      );
 
       expect(result.items).toEqual([]);
       expect(result.supplier_totals).toEqual([]);
@@ -160,7 +164,11 @@ describe('PriceComparisonService', () => {
         cheapAdapter,
       ]);
 
-      const result = await service.comparePrices('project-1', 'user-1');
+      const result = await service.comparePrices(
+        'project-1',
+        'org-1',
+        'user-1',
+      );
 
       expect(result.items).toHaveLength(1);
       const [item] = result.items;
@@ -205,7 +213,11 @@ describe('PriceComparisonService', () => {
       };
       supplierRegistryMock.getAllAdapters.mockReturnValue([adapter]);
 
-      const result = await service.comparePrices('project-1', 'user-1');
+      const result = await service.comparePrices(
+        'project-1',
+        'org-1',
+        'user-1',
+      );
 
       expect(result.items[0].best_supplier_key).toBeNull();
       expect(result.optimized_total).toBe(0);
@@ -219,7 +231,7 @@ describe('PriceComparisonService', () => {
         shoppingList: buildShoppingList([]),
       });
 
-      const result = await service.getBuyLinks('project-1', 'user-1');
+      const result = await service.getBuyLinks('project-1', 'org-1', 'user-1');
 
       expect(result).toEqual([]);
     });
@@ -253,7 +265,7 @@ describe('PriceComparisonService', () => {
       };
       supplierRegistryMock.getAllAdapters.mockReturnValue([adapter]);
 
-      const result = await service.getBuyLinks('project-1', 'user-1');
+      const result = await service.getBuyLinks('project-1', 'org-1', 'user-1');
 
       expect(result).toEqual([
         {
@@ -293,7 +305,7 @@ describe('PriceComparisonService', () => {
       };
       supplierRegistryMock.getAllAdapters.mockReturnValue([adapter]);
 
-      const result = await service.getBuyLinks('project-1', 'user-1');
+      const result = await service.getBuyLinks('project-1', 'org-1', 'user-1');
 
       expect(result).toEqual([]);
     });
@@ -352,7 +364,7 @@ describe('PriceComparisonService', () => {
         cheapAdapter,
       ]);
 
-      const result = await service.getBuyLinks('project-1', 'user-1');
+      const result = await service.getBuyLinks('project-1', 'org-1', 'user-1');
 
       expect(result).toEqual([
         {
@@ -381,7 +393,7 @@ describe('PriceComparisonService', () => {
         },
       });
 
-      await service.applySelections('project-1', 'user-1', [
+      await service.applySelections('project-1', 'org-1', 'user-1', [
         { material_id: 'mat-paint', supplier_key: 'manomano' },
       ]);
 
@@ -407,7 +419,7 @@ describe('PriceComparisonService', () => {
         },
       });
 
-      await service.applySelections('project-1', 'user-1', [
+      await service.applySelections('project-1', 'org-1', 'user-1', [
         {
           material_id: 'mat-paint',
           work_item_id: 'stale-legacy-id',
@@ -427,7 +439,7 @@ describe('PriceComparisonService', () => {
       });
       cacheRepoMock.findOne.mockResolvedValue(null);
 
-      await service.applySelections('project-1', 'user-1', [
+      await service.applySelections('project-1', 'org-1', 'user-1', [
         { material_id: 'mat-paint', supplier_key: 'manomano' },
       ]);
 

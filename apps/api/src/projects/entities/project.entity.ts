@@ -35,9 +35,14 @@ export class Project {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
+  /** Auteur du projet. La propriété, elle, est portée par `organization_id` (PLAT-4). */
   @Index()
   @Column({ type: 'uuid' })
   user_id!: string;
+
+  @Index()
+  @Column({ type: 'uuid' })
+  organization_id!: string;
 
   @Column({ type: 'varchar', length: 255 })
   name!: string;

@@ -3,6 +3,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { FirebaseConfig } from '../config/firebase.config';
 import { UsersModule } from '../users/users.module';
+import { OrgContextModule } from '../organizations/org-context.module';
 import { CompanyProfilesModule } from '../company-profiles/company-profiles.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { FirebaseAuthGuard } from './guards/firebase-auth.guard';
@@ -11,7 +12,12 @@ import { AdminGuard } from './guards/admin.guard';
 
 @Global()
 @Module({
-  imports: [UsersModule, CompanyProfilesModule, AnalyticsModule],
+  imports: [
+    UsersModule,
+    OrgContextModule,
+    CompanyProfilesModule,
+    AnalyticsModule,
+  ],
   controllers: [AuthController],
   providers: [
     AuthService,

@@ -29,6 +29,7 @@ import { CommunityModule } from './community/community.module';
 import { ReferralsModule } from './referrals/referrals.module';
 import { LogbookModule } from './logbook/logbook.module';
 import { LifecycleEmailsModule } from './lifecycle-emails/lifecycle-emails.module';
+import { OrganizationsModule } from './organizations/organizations.module';
 import configuration from './config/configuration';
 import { validate } from './config/env.validation';
 
@@ -80,6 +81,7 @@ import { validate } from './config/env.validation';
     ReferralsModule,
     LogbookModule,
     LifecycleEmailsModule,
+    OrganizationsModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

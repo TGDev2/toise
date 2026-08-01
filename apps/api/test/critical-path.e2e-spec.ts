@@ -16,6 +16,7 @@ import { EstimationsService } from '../src/estimations/estimations.service';
 import { ShoppingListsController } from '../src/shopping-lists/shopping-lists.controller';
 import { ShoppingListsService } from '../src/shopping-lists/shopping-lists.service';
 import { UsersService } from '../src/users/users.service';
+import { OrgContextService } from '../src/organizations/org-context.service';
 import { FeatureGatesService } from '../src/feature-gates/feature-gates.service';
 import { CvCorrectionService } from '../src/analysis/cv-correction.service';
 import { FirebaseAuthGuard } from '../src/auth/guards/firebase-auth.guard';
@@ -257,6 +258,26 @@ const usersServiceMock = {
   }),
 };
 
+// PLAT-4 : les contrôleurs résolvent désormais la portée (organisation + auteur)
+// au lieu de recharger l'utilisateur ; le guard de feature gates lit le palier
+// effectif de l'organisation via ce même service.
+const mockOrgId = '00000000-0000-4000-8000-0000000000aa';
+const orgContextMock = {
+  resolveForFirebaseUid: jest.fn().mockResolvedValue({
+    user: { id: mockUserId, subscription_tier: SubscriptionTier.FREE },
+    userId: mockUserId,
+    organization: { id: mockOrgId, name: 'Mon espace', is_personal: true },
+    organizationId: mockOrgId,
+    role: 'owner',
+    effectiveTier: SubscriptionTier.FREE,
+  }),
+  resolveForUser: jest.fn(),
+  getOrCreatePersonalOrganization: jest
+    .fn()
+    .mockResolvedValue({ id: mockOrgId }),
+  findMembership: jest.fn(),
+};
+
 const featureGatesServiceMock = {
   isFeatureAllowed: jest.fn().mockResolvedValue(true),
   getGateConfig: jest.fn().mockResolvedValue(null),
@@ -287,6 +308,7 @@ describe('Critical path (e2e): project → dimensions → work-items → estimat
         { provide: EstimationsService, useValue: estimationsServiceMock },
         { provide: ShoppingListsService, useValue: shoppingListsServiceMock },
         { provide: UsersService, useValue: usersServiceMock },
+        { provide: OrgContextService, useValue: orgContextMock },
         { provide: FeatureGatesService, useValue: featureGatesServiceMock },
         { provide: CvCorrectionService, useValue: cvCorrectionServiceMock },
       ],

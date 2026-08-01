@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { HttpModule } from '@nestjs/axios';
 import { ProjectsModule } from '../projects/projects.module';
 import { PhotosModule } from '../photos/photos.module';
-import { UsersModule } from '../users/users.module';
+import { OrgContextModule } from '../organizations/org-context.module';
 import { FeatureGatesModule } from '../feature-gates/feature-gates.module';
 import { AnalysisJob } from './entities/analysis-job.entity';
 import { CvCorrectionLog } from './entities/cv-correction-log.entity';
@@ -22,7 +22,7 @@ import { CvRetrainingService } from './cv-retraining.service';
     HttpModule,
     ProjectsModule,
     PhotosModule,
-    UsersModule,
+    OrgContextModule,
     FeatureGatesModule,
   ],
   controllers: [

@@ -64,7 +64,7 @@ const estimationsServiceMock = {
 };
 
 const projectsServiceMock = {
-  findOneByUser: jest.fn(),
+  findOneForOrg: jest.fn(),
   getWorkItems: jest.fn(),
   getRooms: jest.fn().mockResolvedValue([]),
   updateStatus: jest.fn(),
@@ -132,7 +132,7 @@ describe('ShoppingListsService.generate', () => {
   });
 
   it('builds material items from the latest estimation and persists them', async () => {
-    const result = await service.generate('project-1', 'user-1');
+    const result = await service.generate('project-1', 'org-1', 'user-1');
 
     expect(shoppingListRepoMock.delete).toHaveBeenCalledWith({
       project_id: 'project-1',
@@ -146,7 +146,7 @@ describe('ShoppingListsService.generate', () => {
   });
 
   it('tracks a shopping_list_generated analytics event with the item count', async () => {
-    await service.generate('project-1', 'user-1');
+    await service.generate('project-1', 'org-1', 'user-1');
 
     expect(analyticsServiceMock.track).toHaveBeenCalledWith(
       AnalyticsEventName.SHOPPING_LIST_GENERATED,
@@ -180,7 +180,7 @@ describe('ShoppingListsService.generate', () => {
       ],
     });
 
-    const result = await service.generate('project-1', 'user-1');
+    const result = await service.generate('project-1', 'org-1', 'user-1');
 
     // Une seule ligne malgré deux pièces contributrices.
     expect(result.items_json.material_items).toHaveLength(1);
@@ -217,7 +217,7 @@ describe('ShoppingListsService.generate', () => {
       ],
     });
 
-    const result = await service.generate('project-1', 'user-1');
+    const result = await service.generate('project-1', 'org-1', 'user-1');
 
     expect(result.items_json.material_items[0]).toMatchObject({
       units_needed_low: 1,
@@ -234,7 +234,7 @@ describe('ShoppingListsService.generate', () => {
       aggregated_json: null,
     });
 
-    const result = await service.generate('project-1', 'user-1');
+    const result = await service.generate('project-1', 'org-1', 'user-1');
 
     expect(result.items_json.material_items[0]).toMatchObject({
       units_needed_low: 1,
@@ -243,7 +243,7 @@ describe('ShoppingListsService.generate', () => {
   });
 
   it('leaves units_needed_low/high undefined when the estimation carries no range', async () => {
-    const result = await service.generate('project-1', 'user-1');
+    const result = await service.generate('project-1', 'org-1', 'user-1');
 
     expect(
       result.items_json.material_items[0].units_needed_low,
@@ -264,7 +264,7 @@ describe('ShoppingListsService.getBudgetSummary', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
 
-    projectsServiceMock.findOneByUser.mockResolvedValue({
+    projectsServiceMock.findOneForOrg.mockResolvedValue({
       id: 'project-1',
       user_id: 'user-1',
     });
@@ -374,7 +374,7 @@ describe('ShoppingListsService.getEcoSuggestions', () => {
     materialCatalogRepoMock.find.mockResolvedValue([]);
     ecoEquivalenceRepoMock.find.mockResolvedValue([]);
 
-    projectsServiceMock.findOneByUser.mockResolvedValue({
+    projectsServiceMock.findOneForOrg.mockResolvedValue({
       id: 'project-1',
       user_id: 'user-1',
     });
@@ -528,7 +528,7 @@ describe('ShoppingListsService.finalizeBudgetSummary', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
 
-    projectsServiceMock.findOneByUser.mockResolvedValue({
+    projectsServiceMock.findOneForOrg.mockResolvedValue({
       id: 'project-1',
       user_id: 'user-1',
     });
@@ -590,7 +590,7 @@ describe('ShoppingListsService.finalizeBudgetSummary', () => {
     };
     shoppingListRepoMock.findOne.mockResolvedValue(shoppingList);
 
-    await service.finalizeBudgetSummary('project-1', 'user-1');
+    await service.finalizeBudgetSummary('project-1', 'org-1', 'user-1');
 
     expect(projectsServiceMock.updateStatus).toHaveBeenCalledWith(
       'project-1',
@@ -598,6 +598,7 @@ describe('ShoppingListsService.finalizeBudgetSummary', () => {
     );
     expect(logbookServiceMock.recordChantierCompletion).toHaveBeenCalledWith(
       'project-1',
+      'org-1',
       'user-1',
       expect.objectContaining({ id: 'estimation-1' }),
       expect.objectContaining({ id: 'shopping-list-1' }),
@@ -615,7 +616,7 @@ describe('ShoppingListsService.finalizeBudgetSummary', () => {
     });
 
     await expect(
-      service.finalizeBudgetSummary('project-1', 'user-1'),
+      service.finalizeBudgetSummary('project-1', 'org-1', 'user-1'),
     ).rejects.toThrow();
 
     expect(projectsServiceMock.updateStatus).not.toHaveBeenCalled();

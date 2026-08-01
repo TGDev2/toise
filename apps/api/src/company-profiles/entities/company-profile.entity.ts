@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
   OneToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 
@@ -14,8 +15,13 @@ export class CompanyProfile {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
+  /** Auteur de la saisie. L'identité légale appartient à `organization_id` (PLAT-4). */
   @Column({ type: 'uuid' })
   user_id!: string;
+
+  @Index()
+  @Column({ type: 'uuid' })
+  organization_id!: string;
 
   @Column({ type: 'varchar', length: 255 })
   raison_sociale!: string;

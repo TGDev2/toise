@@ -10,14 +10,14 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
-  NotFoundException,
 } from '@nestjs/common';
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { FeatureGateGuard } from '../feature-gates/guards/feature-gate.guard';
 import { RequireFeature } from '../feature-gates/decorators/require-feature.decorator';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
-import { UsersService } from '../users/users.service';
+import { OrgContextService } from '../organizations/org-context.service';
+import type { OrgScope } from '../organizations/org-context.service';
 import { ClientsService } from './clients.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
@@ -27,13 +27,11 @@ import { UpdateClientDto } from './dto/update-client.dto';
 export class ClientsController {
   constructor(
     private readonly clientsService: ClientsService,
-    private readonly usersService: UsersService,
+    private readonly orgContext: OrgContextService,
   ) {}
 
-  private async resolveUserId(firebaseUser: DecodedIdToken): Promise<string> {
-    const user = await this.usersService.findByFirebaseUid(firebaseUser.uid);
-    if (!user) throw new NotFoundException('User not found');
-    return user.id;
+  private resolveScope(firebaseUser: DecodedIdToken): Promise<OrgScope> {
+    return this.orgContext.resolveForFirebaseUid(firebaseUser.uid);
   }
 
   @Post()
@@ -42,15 +40,15 @@ export class ClientsController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Body() dto: CreateClientDto,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
-    return this.clientsService.create(userId, dto);
+    const scope = await this.resolveScope(firebaseUser);
+    return this.clientsService.create(scope.organizationId, scope.userId, dto);
   }
 
   @Get()
   @RequireFeature('client_management')
   async findAll(@CurrentFirebaseUser() firebaseUser: DecodedIdToken) {
-    const userId = await this.resolveUserId(firebaseUser);
-    return this.clientsService.findAllByUser(userId);
+    const scope = await this.resolveScope(firebaseUser);
+    return this.clientsService.findAllForOrg(scope.organizationId);
   }
 
   @Get(':id')
@@ -59,8 +57,8 @@ export class ClientsController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
-    return this.clientsService.findOneByUser(id, userId);
+    const scope = await this.resolveScope(firebaseUser);
+    return this.clientsService.findOneForOrg(id, scope.organizationId);
   }
 
   @Patch(':id')
@@ -70,8 +68,8 @@ export class ClientsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateClientDto,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
-    return this.clientsService.update(id, userId, dto);
+    const scope = await this.resolveScope(firebaseUser);
+    return this.clientsService.update(id, scope.organizationId, dto);
   }
 
   @Delete(':id')
@@ -81,7 +79,7 @@ export class ClientsController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
-    await this.clientsService.remove(id, userId);
+    const scope = await this.resolveScope(firebaseUser);
+    await this.clientsService.remove(id, scope.organizationId);
   }
 }

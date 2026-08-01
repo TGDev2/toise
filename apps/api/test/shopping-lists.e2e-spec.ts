@@ -11,6 +11,7 @@ import type { App } from 'supertest/types';
 import { ShoppingListsController } from '../src/shopping-lists/shopping-lists.controller';
 import { ShoppingListsService } from '../src/shopping-lists/shopping-lists.service';
 import { UsersService } from '../src/users/users.service';
+import { OrgContextService } from '../src/organizations/org-context.service';
 import { FeatureGatesService } from '../src/feature-gates/feature-gates.service';
 import { FirebaseAuthGuard } from '../src/auth/guards/firebase-auth.guard';
 import { SubscriptionTier } from '../src/users/entities/user.entity';
@@ -87,6 +88,26 @@ const usersServiceMock = {
   }),
 };
 
+// PLAT-4 : les contrôleurs résolvent désormais la portée (organisation + auteur)
+// au lieu de recharger l'utilisateur ; le guard de feature gates lit le palier
+// effectif de l'organisation via ce même service.
+const mockOrgId = '00000000-0000-4000-8000-0000000000aa';
+const orgContextMock = {
+  resolveForFirebaseUid: jest.fn().mockResolvedValue({
+    user: { id: mockUserId, subscription_tier: SubscriptionTier.FREE },
+    userId: mockUserId,
+    organization: { id: mockOrgId, name: 'Mon espace', is_personal: true },
+    organizationId: mockOrgId,
+    role: 'owner',
+    effectiveTier: SubscriptionTier.FREE,
+  }),
+  resolveForUser: jest.fn(),
+  getOrCreatePersonalOrganization: jest
+    .fn()
+    .mockResolvedValue({ id: mockOrgId }),
+  findMembership: jest.fn(),
+};
+
 // Requis pour que Nest puisse instancier FeatureGateGuard (appliqué aux
 // routes budget-summary et eco-suggestions ; seule cette dernière est
 // exercée ici via son gate réel — budget-summary reste hors périmètre du
@@ -128,6 +149,7 @@ describe('ShoppingListsController (e2e)', () => {
       providers: [
         { provide: ShoppingListsService, useValue: shoppingListsServiceMock },
         { provide: UsersService, useValue: usersServiceMock },
+        { provide: OrgContextService, useValue: orgContextMock },
         { provide: FeatureGatesService, useValue: featureGatesServiceMock },
       ],
     })
@@ -227,7 +249,7 @@ describe('ShoppingListsController (e2e)', () => {
 
     expect(shoppingListsServiceMock.update).toHaveBeenCalledWith(
       mockProjectId,
-      mockUserId,
+      mockOrgId,
       expect.objectContaining({
         material_items: [
           expect.objectContaining({
@@ -330,7 +352,7 @@ describe('ShoppingListsController (e2e)', () => {
 
       expect(shoppingListsServiceMock.getEcoSuggestions).toHaveBeenCalledWith(
         mockProjectId,
-        mockUserId,
+        mockOrgId,
       );
     });
 

@@ -88,9 +88,10 @@ export class QuoteRemindersService {
 
     if (quote.client?.email) {
       try {
-        const companyProfile = await this.companyProfilesService.findByUserId(
-          quote.user_id,
-        );
+        const companyProfile =
+          await this.companyProfilesService.findByOrganizationId(
+            quote.organization_id,
+          );
         await this.emailService.sendQuoteReminderClientEmail(
           quote.client.email,
           {

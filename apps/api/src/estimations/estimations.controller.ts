@@ -11,7 +11,8 @@ import {
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
-import { UsersService } from '../users/users.service';
+import { OrgContextService } from '../organizations/org-context.service';
+import type { OrgScope } from '../organizations/org-context.service';
 import { EstimationsService } from './estimations.service';
 import { EstimateRequestDto } from './dto/estimate-request.dto';
 import { EstimationResponseDto } from './dto/estimation-response.dto';
@@ -21,15 +22,15 @@ import { EstimationResponseDto } from './dto/estimation-response.dto';
 export class EstimationsController {
   constructor(
     private readonly estimationsService: EstimationsService,
-    private readonly usersService: UsersService,
+    private readonly orgContext: OrgContextService,
   ) {}
 
-  private async resolveUserId(firebaseUser: DecodedIdToken): Promise<string> {
-    const user = await this.usersService.findByFirebaseUid(firebaseUser.uid);
-    if (!user) {
+  private async resolveScope(firebaseUser: DecodedIdToken): Promise<OrgScope> {
+    try {
+      return await this.orgContext.resolveForFirebaseUid(firebaseUser.uid);
+    } catch {
       throw new UnauthorizedException('Utilisateur non authentifié.');
     }
-    return user.id;
   }
 
   @Post(':id/estimate')
@@ -38,10 +39,11 @@ export class EstimationsController {
     @Param('id', ParseUUIDPipe) projectId: string,
     @Body() dto: EstimateRequestDto,
   ): Promise<EstimationResponseDto> {
-    const userId = await this.resolveUserId(firebaseUser);
+    const scope = await this.resolveScope(firebaseUser);
     const result = await this.estimationsService.estimate(
       projectId,
-      userId,
+      scope.organizationId,
+      scope.userId,
       dto.skill_level,
     );
     return EstimationResponseDto.fromEntity(result);
@@ -52,8 +54,11 @@ export class EstimationsController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) projectId: string,
   ): Promise<EstimationResponseDto> {
-    const userId = await this.resolveUserId(firebaseUser);
-    const result = await this.estimationsService.getLatest(projectId, userId);
+    const scope = await this.resolveScope(firebaseUser);
+    const result = await this.estimationsService.getLatest(
+      projectId,
+      scope.organizationId,
+    );
     return EstimationResponseDto.fromEntity(result);
   }
 
@@ -62,8 +67,11 @@ export class EstimationsController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) projectId: string,
   ): Promise<EstimationResponseDto[]> {
-    const userId = await this.resolveUserId(firebaseUser);
-    const results = await this.estimationsService.getHistory(projectId, userId);
+    const scope = await this.resolveScope(firebaseUser);
+    const results = await this.estimationsService.getHistory(
+      projectId,
+      scope.organizationId,
+    );
     return results.map((result) => EstimationResponseDto.fromEntity(result));
   }
 }

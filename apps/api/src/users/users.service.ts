@@ -55,10 +55,19 @@ export class UsersService {
     return { user: saved, isNewAccount: provider !== AuthProvider.ANONYMOUS };
   }
 
-  async transferProjects(fromUserId: string, toUserId: string): Promise<void> {
+  /**
+   * Fusion invité → compte réel. Depuis PLAT-4 la propriété est portée par
+   * l'organisation : repointer `user_id` seul laisserait le projet dans l'org
+   * de l'invité, donc hors de portée du compte cible.
+   */
+  async transferProjects(
+    fromUserId: string,
+    toUserId: string,
+    toOrganizationId: string,
+  ): Promise<void> {
     await this.projectsRepo.update(
       { user_id: fromUserId, deleted_at: IsNull() },
-      { user_id: toUserId },
+      { user_id: toUserId, organization_id: toOrganizationId },
     );
   }
 

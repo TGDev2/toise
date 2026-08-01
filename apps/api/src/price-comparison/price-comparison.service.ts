@@ -39,11 +39,13 @@ export class PriceComparisonService {
 
   async comparePrices(
     projectId: string,
+    organizationId: string,
     userId: string,
     postalCode?: string,
   ): Promise<PriceComparisonResponseDto> {
     const { shoppingList } = await this.shoppingListsService.getOrGenerate(
       projectId,
+      organizationId,
       userId,
     );
 
@@ -128,11 +130,13 @@ export class PriceComparisonService {
 
   async applySelections(
     projectId: string,
+    organizationId: string,
     userId: string,
     selections: ItemSupplierSelectionDto[],
   ): Promise<void> {
     const { shoppingList } = await this.shoppingListsService.getOrGenerate(
       projectId,
+      organizationId,
       userId,
     );
 
@@ -191,9 +195,14 @@ export class PriceComparisonService {
    * même critère que `best_supplier_key` ci-dessus. Une ligne `not_found`
    * (aucun rapprochement marchand exploitable) n'apparaît simplement pas.
    */
-  async getBuyLinks(projectId: string, userId: string): Promise<BuyLinkItem[]> {
+  async getBuyLinks(
+    projectId: string,
+    organizationId: string,
+    userId: string,
+  ): Promise<BuyLinkItem[]> {
     const { shoppingList } = await this.shoppingListsService.getOrGenerate(
       projectId,
+      organizationId,
       userId,
     );
 

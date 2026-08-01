@@ -5,16 +5,23 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { UsersService } from '../../users/users.service';
+import { OrgContextService } from '../../organizations/org-context.service';
+import type { OrgScope } from '../../organizations/org-context.service';
 import { FeatureGatesService } from '../feature-gates.service';
 import { FEATURE_KEY } from '../decorators/require-feature.decorator';
 import type { Request } from 'express';
 
+/**
+ * Le palier évalué est celui de l'**organisation active** (PLAT-4), c'est-à-dire
+ * celui de son propriétaire — et non plus celui de l'utilisateur qui appelle.
+ * C'est ce qui donne à un salarié `free` les capacités du Contractor Premium
+ * qui l'a invité, tant qu'il travaille dans l'organisation de ce dernier.
+ */
 @Injectable()
 export class FeatureGateGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    private readonly usersService: UsersService,
+    private readonly orgContext: OrgContextService,
     private readonly featureGatesService: FeatureGatesService,
   ) {}
 
@@ -32,21 +39,17 @@ export class FeatureGateGuard implements CanActivate {
       throw new ForbiddenException('Authentication required');
     }
 
-    let user = request.appUser;
-    if (!user) {
-      user =
-        (await this.usersService.findByFirebaseUid(firebaseUser.uid)) ??
-        undefined;
-      request.appUser = user;
-    }
-
-    if (!user) {
+    let scope: OrgScope;
+    try {
+      scope = await this.orgContext.resolveForFirebaseUid(firebaseUser.uid);
+    } catch {
       throw new ForbiddenException('User not found');
     }
+    request.appUser = scope.user;
 
     const allowed = await this.featureGatesService.isFeatureAllowed(
       featureKey,
-      user.subscription_tier,
+      scope.effectiveTier,
     );
 
     if (!allowed) {
@@ -56,7 +59,7 @@ export class FeatureGateGuard implements CanActivate {
         error: 'FEATURE_GATED',
         feature_key: featureKey,
         required_tier: gate?.min_tier ?? 'pro',
-        current_tier: user.subscription_tier,
+        current_tier: scope.effectiveTier,
       });
     }
 

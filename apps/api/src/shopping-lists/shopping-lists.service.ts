@@ -57,11 +57,15 @@ export class ShoppingListsService {
 
   async getOrGenerate(
     projectId: string,
+    organizationId: string,
     userId: string,
   ): Promise<{ shoppingList: ShoppingList; latestEstimationId: string }> {
-    await this.projectsService.findOneByUser(projectId, userId);
+    await this.projectsService.findOneForOrg(projectId, organizationId);
 
-    const latest = await this.estimationsService.getLatest(projectId, userId);
+    const latest = await this.estimationsService.getLatest(
+      projectId,
+      organizationId,
+    );
 
     const existing = await this.shoppingListRepo.findOne({
       where: { project_id: projectId },
@@ -71,12 +75,19 @@ export class ShoppingListsService {
       return { shoppingList: existing, latestEstimationId: latest.id };
     }
 
-    const generated = await this.generate(projectId, userId);
+    const generated = await this.generate(projectId, organizationId, userId);
     return { shoppingList: generated, latestEstimationId: latest.id };
   }
 
-  async generate(projectId: string, userId: string): Promise<ShoppingList> {
-    const latest = await this.estimationsService.getLatest(projectId, userId);
+  async generate(
+    projectId: string,
+    organizationId: string,
+    userId: string,
+  ): Promise<ShoppingList> {
+    const latest = await this.estimationsService.getLatest(
+      projectId,
+      organizationId,
+    );
 
     // Build work_type_code → category map
     const codes = [
@@ -138,7 +149,7 @@ export class ShoppingListsService {
     // Build tiling context for calculated complementary materials
     const tilingContext = await this.buildTilingContext(
       projectId,
-      userId,
+      organizationId,
       latest.items_json,
       categoryByCode,
     );
@@ -205,10 +216,10 @@ export class ShoppingListsService {
 
   async update(
     projectId: string,
-    userId: string,
+    organizationId: string,
     dto: UpdateShoppingListDto,
   ): Promise<{ shoppingList: ShoppingList; latestEstimationId: string }> {
-    await this.projectsService.findOneByUser(projectId, userId);
+    await this.projectsService.findOneForOrg(projectId, organizationId);
 
     const shoppingList = await this.shoppingListRepo.findOne({
       where: { project_id: projectId },
@@ -269,15 +280,19 @@ export class ShoppingListsService {
     shoppingList.items_json = data;
     const saved = await this.shoppingListRepo.save(shoppingList);
 
-    const latest = await this.estimationsService.getLatest(projectId, userId);
+    const latest = await this.estimationsService.getLatest(
+      projectId,
+      organizationId,
+    );
     return { shoppingList: saved, latestEstimationId: latest.id };
   }
 
   async regenerate(
     projectId: string,
+    organizationId: string,
     userId: string,
   ): Promise<{ shoppingList: ShoppingList; latestEstimationId: string }> {
-    await this.projectsService.findOneByUser(projectId, userId);
+    await this.projectsService.findOneForOrg(projectId, organizationId);
 
     // Preserve existing prices before regeneration
     const existing = await this.shoppingListRepo.findOne({
@@ -299,7 +314,7 @@ export class ShoppingListsService {
       }
     }
 
-    const shoppingList = await this.generate(projectId, userId);
+    const shoppingList = await this.generate(projectId, organizationId, userId);
 
     // Restore prices on matching items
     if (priceMap.size > 0) {
@@ -322,9 +337,9 @@ export class ShoppingListsService {
 
   async getBudgetSummary(
     projectId: string,
-    userId: string,
+    organizationId: string,
   ): Promise<{ summary: BudgetSummary; isFinalized: boolean }> {
-    await this.projectsService.findOneByUser(projectId, userId);
+    await this.projectsService.findOneForOrg(projectId, organizationId);
 
     const shoppingList = await this.shoppingListRepo.findOne({
       where: { project_id: projectId },
@@ -351,9 +366,9 @@ export class ShoppingListsService {
 
   async getEcoSuggestions(
     projectId: string,
-    userId: string,
+    organizationId: string,
   ): Promise<{ eco_items: EcoItemDto[]; suggestions: EcoSuggestionDto[] }> {
-    await this.projectsService.findOneByUser(projectId, userId);
+    await this.projectsService.findOneForOrg(projectId, organizationId);
 
     const shoppingList = await this.shoppingListRepo.findOne({
       where: { project_id: projectId },
@@ -409,9 +424,10 @@ export class ShoppingListsService {
 
   async finalizeBudgetSummary(
     projectId: string,
+    organizationId: string,
     userId: string,
   ): Promise<BudgetSummary> {
-    await this.projectsService.findOneByUser(projectId, userId);
+    await this.projectsService.findOneForOrg(projectId, organizationId);
 
     const shoppingList = await this.shoppingListRepo.findOne({
       where: { project_id: projectId },
@@ -451,6 +467,7 @@ export class ShoppingListsService {
     // connus pour tout utilisateur.
     await this.logbookService.recordChantierCompletion(
       projectId,
+      organizationId,
       userId,
       estimation,
       shoppingList,
@@ -575,9 +592,9 @@ export class ShoppingListsService {
 
   async generateShareToken(
     projectId: string,
-    userId: string,
+    organizationId: string,
   ): Promise<{ share_token: string }> {
-    await this.projectsService.findOneByUser(projectId, userId);
+    await this.projectsService.findOneForOrg(projectId, organizationId);
 
     const shoppingList = await this.shoppingListRepo.findOne({
       where: { project_id: projectId },
@@ -601,8 +618,11 @@ export class ShoppingListsService {
     return { share_token: token };
   }
 
-  async revokeShareToken(projectId: string, userId: string): Promise<void> {
-    await this.projectsService.findOneByUser(projectId, userId);
+  async revokeShareToken(
+    projectId: string,
+    organizationId: string,
+  ): Promise<void> {
+    await this.projectsService.findOneForOrg(projectId, organizationId);
 
     const shoppingList = await this.shoppingListRepo.findOne({
       where: { project_id: projectId },
@@ -638,7 +658,7 @@ export class ShoppingListsService {
 
   private async buildTilingContext(
     projectId: string,
-    userId: string,
+    organizationId: string,
     estimationItems: { work_type_code: string; surface_m2: number }[],
     categoryByCode: Map<string, string>,
   ): Promise<ComplementaryContext | null> {
@@ -652,7 +672,10 @@ export class ShoppingListsService {
     // Format de carreau : 1er work item carrelage trouvé, toutes pièces
     // confondues (hypothèse mono-format documentée — multi-format = passe
     // ultérieure).
-    const rooms = await this.projectsService.getRooms(projectId, userId);
+    const rooms = await this.projectsService.getRooms(
+      projectId,
+      organizationId,
+    );
     const tilingWorkItem = rooms
       .flatMap((r) => r.workItems || [])
       .find((wi) => wi.work_type.category === 'tiling');

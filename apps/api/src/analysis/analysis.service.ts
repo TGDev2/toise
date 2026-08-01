@@ -44,14 +44,17 @@ export class AnalysisService {
 
   async startAnalysis(
     projectId: string,
-    userId: string,
+    organizationId: string,
     referenceObject?: CvAnalysisRequest['reference_object'],
   ): Promise<AnalysisJob> {
     // Verify project ownership
-    await this.projectsService.findOneByUser(projectId, userId);
+    await this.projectsService.findOneForOrg(projectId, organizationId);
 
     // Verify project has photos
-    const photos = await this.photosService.getProjectPhotos(projectId, userId);
+    const photos = await this.photosService.getProjectPhotos(
+      projectId,
+      organizationId,
+    );
     if (photos.length === 0) {
       throw new BadRequestException(
         "Le projet doit avoir au moins une photo pour lancer l'analyse",
@@ -83,7 +86,7 @@ export class AnalysisService {
     this.processAnalysis(
       saved.id,
       projectId,
-      userId,
+      organizationId,
       imagePaths,
       referenceObject,
     ).catch((err: Error) =>
@@ -97,11 +100,11 @@ export class AnalysisService {
 
   async getJobStatus(
     projectId: string,
-    userId: string,
+    organizationId: string,
     jobId: string,
   ): Promise<AnalysisStatusDto> {
     // Verify project ownership
-    await this.projectsService.findOneByUser(projectId, userId);
+    await this.projectsService.findOneForOrg(projectId, organizationId);
 
     const job = await this.jobRepo.findOne({
       where: { id: jobId, project_id: projectId },
@@ -133,7 +136,7 @@ export class AnalysisService {
       if (result.dimensions) {
         const persisted = await this.projectsService.getDimensions(
           projectId,
-          userId,
+          organizationId,
         );
         if (persisted?.source === DimensionSource.CV) {
           result.dimensions = {
@@ -156,7 +159,7 @@ export class AnalysisService {
   private async processAnalysis(
     jobId: string,
     projectId: string,
-    userId: string,
+    organizationId: string,
     imagePaths: string[],
     referenceObject?: CvAnalysisRequest['reference_object'],
   ): Promise<void> {
@@ -236,12 +239,17 @@ export class AnalysisService {
           ),
         };
 
-        await this.projectsService.updateDimensions(projectId, userId, dto, {
-          source: DimensionSource.CV,
-          confidence_score: confidenceScore,
-          raw_cv_output_json: cvResponse.raw_output,
-          uncertainty,
-        });
+        await this.projectsService.updateDimensions(
+          projectId,
+          organizationId,
+          dto,
+          {
+            source: DimensionSource.CV,
+            confidence_score: confidenceScore,
+            raw_cv_output_json: cvResponse.raw_output,
+            uncertainty,
+          },
+        );
       }
 
       // Save detected openings
@@ -255,7 +263,7 @@ export class AnalysisService {
         for (const detected of cvResponse.openings) {
           await this.projectsService.addOpening(
             projectId,
-            userId,
+            organizationId,
             {
               type: detected.type as OpeningType,
               width_cm: detected.width_cm,

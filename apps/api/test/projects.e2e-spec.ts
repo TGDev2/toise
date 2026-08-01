@@ -11,6 +11,7 @@ import type { App } from 'supertest/types';
 import { ProjectsController } from '../src/projects/projects.controller';
 import { ProjectsService } from '../src/projects/projects.service';
 import { UsersService } from '../src/users/users.service';
+import { OrgContextService } from '../src/organizations/org-context.service';
 import { FeatureGatesService } from '../src/feature-gates/feature-gates.service';
 import { CvCorrectionService } from '../src/analysis/cv-correction.service';
 import { FirebaseAuthGuard } from '../src/auth/guards/firebase-auth.guard';
@@ -101,11 +102,11 @@ const cvOpeningSnapshot = {
 
 const projectsServiceMock = {
   createProject: jest.fn().mockResolvedValue(mockProject),
-  findByUser: jest.fn().mockResolvedValue({
+  findByOrg: jest.fn().mockResolvedValue({
     data: [mockProject],
     meta: { total: 1, page: 1, limit: 12, totalPages: 1 },
   }),
-  findOneByUser: jest.fn().mockResolvedValue(mockProject),
+  findOneForOrg: jest.fn().mockResolvedValue(mockProject),
   getWritableProjectIds: jest.fn().mockResolvedValue([mockProjectId]),
   isProjectWritable: jest.fn().mockResolvedValue(true),
   ensureProjectWritable: jest.fn().mockResolvedValue(undefined),
@@ -118,7 +119,7 @@ const projectsServiceMock = {
   renameRoom: jest.fn().mockResolvedValue({ ...mockRoom, name: 'Cuisine' }),
   deleteRoom: jest.fn().mockResolvedValue(undefined),
   addOpening: jest.fn().mockResolvedValue(mockCvOpening),
-  findOpeningForUser: jest.fn().mockResolvedValue(mockCvOpening),
+  findOpeningForOrg: jest.fn().mockResolvedValue(mockCvOpening),
   updateOpening: jest.fn().mockResolvedValue(mockCvOpening),
   removeOpening: jest.fn().mockResolvedValue(undefined),
 };
@@ -128,6 +129,26 @@ const usersServiceMock = {
     id: mockUserId,
     subscription_tier: SubscriptionTier.FREE,
   }),
+};
+
+// PLAT-4 : les contrôleurs résolvent désormais la portée (organisation + auteur)
+// au lieu de recharger l'utilisateur ; le guard de feature gates lit le palier
+// effectif de l'organisation via ce même service.
+const mockOrgId = '00000000-0000-4000-8000-0000000000aa';
+const orgContextMock = {
+  resolveForFirebaseUid: jest.fn().mockResolvedValue({
+    user: { id: mockUserId, subscription_tier: SubscriptionTier.FREE },
+    userId: mockUserId,
+    organization: { id: mockOrgId, name: 'Mon espace', is_personal: true },
+    organizationId: mockOrgId,
+    role: 'owner',
+    effectiveTier: SubscriptionTier.FREE,
+  }),
+  resolveForUser: jest.fn(),
+  getOrCreatePersonalOrganization: jest
+    .fn()
+    .mockResolvedValue({ id: mockOrgId }),
+  findMembership: jest.fn(),
 };
 
 const featureGatesServiceMock = {
@@ -149,6 +170,7 @@ describe('ProjectsController (e2e)', () => {
       providers: [
         { provide: ProjectsService, useValue: projectsServiceMock },
         { provide: UsersService, useValue: usersServiceMock },
+        { provide: OrgContextService, useValue: orgContextMock },
         {
           provide: FeatureGatesService,
           useValue: featureGatesServiceMock,
@@ -206,6 +228,7 @@ describe('ProjectsController (e2e)', () => {
       });
 
     expect(projectsServiceMock.createProject).toHaveBeenCalledWith(
+      mockOrgId,
       mockUserId,
       expect.objectContaining({ name: 'Renovation salon' }),
       SubscriptionTier.FREE,
@@ -314,7 +337,7 @@ describe('ProjectsController (e2e)', () => {
 
     expect(projectsServiceMock.saveWorkItems).toHaveBeenCalledWith(
       mockProjectId,
-      mockUserId,
+      mockOrgId,
       expect.objectContaining({
         items: [
           expect.objectContaining({
@@ -375,7 +398,7 @@ describe('ProjectsController (e2e)', () => {
 
     expect(projectsServiceMock.createRoom).toHaveBeenCalledWith(
       mockProjectId,
-      mockUserId,
+      mockOrgId,
       expect.objectContaining({ name: 'Chambre' }),
     );
   });
@@ -442,7 +465,7 @@ describe('ProjectsController (e2e)', () => {
         source: 'manual',
         cv_confidence: null,
       };
-      projectsServiceMock.findOpeningForUser.mockResolvedValueOnce(manual);
+      projectsServiceMock.findOpeningForOrg.mockResolvedValueOnce(manual);
       projectsServiceMock.updateOpening.mockResolvedValueOnce({
         ...manual,
         width_cm: 120,

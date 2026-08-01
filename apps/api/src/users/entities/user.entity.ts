@@ -64,6 +64,14 @@ export class User {
   @Column({ type: 'timestamptz', nullable: true })
   referral_converted_at!: Date | null;
 
+  /**
+   * Organisation dans laquelle l'utilisateur travaille (PLAT-4). `null` = son
+   * espace personnel. Jamais lue sans revérifier l'adhésion correspondante :
+   * une adhésion révoquée fait retomber sur l'espace personnel.
+   */
+  @Column({ type: 'uuid', nullable: true })
+  active_organization_id!: string | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   created_at!: Date;
 

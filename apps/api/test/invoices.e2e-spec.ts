@@ -18,6 +18,7 @@ import {
   OperationCategory,
 } from '../src/invoices/entities/invoice.entity';
 import { UsersService } from '../src/users/users.service';
+import { OrgContextService } from '../src/organizations/org-context.service';
 import { FeatureGatesService } from '../src/feature-gates/feature-gates.service';
 import { FirebaseAuthGuard } from '../src/auth/guards/firebase-auth.guard';
 import { SubscriptionTier } from '../src/users/entities/user.entity';
@@ -50,8 +51,8 @@ const mockInvoice = {
 
 const invoicesServiceMock = {
   createFromQuote: jest.fn(),
-  findAllByUser: jest.fn(),
-  findOneByUser: jest.fn(),
+  findAllForOrg: jest.fn(),
+  findOneForOrg: jest.fn(),
   updateStatus: jest.fn(),
 };
 
@@ -61,6 +62,26 @@ const invoicePdfServiceMock = {
 
 const usersServiceMock = {
   findByFirebaseUid: jest.fn(),
+};
+
+// PLAT-4 : les contrôleurs résolvent désormais la portée (organisation + auteur)
+// au lieu de recharger l'utilisateur ; le guard de feature gates lit le palier
+// effectif de l'organisation via ce même service.
+const mockOrgId = '00000000-0000-4000-8000-0000000000aa';
+const orgContextMock = {
+  resolveForFirebaseUid: jest.fn().mockResolvedValue({
+    user: { id: mockUserId, subscription_tier: SubscriptionTier.FREE },
+    userId: mockUserId,
+    organization: { id: mockOrgId, name: 'Mon espace', is_personal: true },
+    organizationId: mockOrgId,
+    role: 'owner',
+    effectiveTier: SubscriptionTier.FREE,
+  }),
+  resolveForUser: jest.fn(),
+  getOrCreatePersonalOrganization: jest
+    .fn()
+    .mockResolvedValue({ id: mockOrgId }),
+  findMembership: jest.fn(),
 };
 
 const featureGatesServiceMock = {
@@ -74,8 +95,8 @@ describe('InvoicesController (e2e)', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     invoicesServiceMock.createFromQuote.mockResolvedValue(mockInvoice);
-    invoicesServiceMock.findAllByUser.mockResolvedValue([mockInvoice]);
-    invoicesServiceMock.findOneByUser.mockResolvedValue(mockInvoice);
+    invoicesServiceMock.findAllForOrg.mockResolvedValue([mockInvoice]);
+    invoicesServiceMock.findOneForOrg.mockResolvedValue(mockInvoice);
     invoicesServiceMock.updateStatus.mockResolvedValue({
       ...mockInvoice,
       status: InvoiceStatus.PAID,
@@ -99,6 +120,7 @@ describe('InvoicesController (e2e)', () => {
         { provide: InvoicesService, useValue: invoicesServiceMock },
         { provide: InvoicePdfService, useValue: invoicePdfServiceMock },
         { provide: UsersService, useValue: usersServiceMock },
+        { provide: OrgContextService, useValue: orgContextMock },
         { provide: FeatureGatesService, useValue: featureGatesServiceMock },
       ],
     })
@@ -145,6 +167,7 @@ describe('InvoicesController (e2e)', () => {
         });
 
       expect(invoicesServiceMock.createFromQuote).toHaveBeenCalledWith(
+        mockOrgId,
         mockUserId,
         { quote_id: mockQuoteId },
       );
@@ -167,6 +190,7 @@ describe('InvoicesController (e2e)', () => {
         .expect(201);
 
       expect(invoicesServiceMock.createFromQuote).toHaveBeenCalledWith(
+        mockOrgId,
         mockUserId,
         expect.objectContaining({
           operation_category: 'services',
@@ -271,8 +295,8 @@ describe('InvoicesController (e2e)', () => {
           expect(res.body).toEqual([mockInvoice]);
         });
 
-      expect(invoicesServiceMock.findAllByUser).toHaveBeenCalledWith(
-        mockUserId,
+      expect(invoicesServiceMock.findAllForOrg).toHaveBeenCalledWith(
+        mockOrgId,
         { status: undefined, quote_id: undefined },
       );
     });
@@ -282,8 +306,8 @@ describe('InvoicesController (e2e)', () => {
         .get('/invoices?status=paid')
         .expect(200);
 
-      expect(invoicesServiceMock.findAllByUser).toHaveBeenCalledWith(
-        mockUserId,
+      expect(invoicesServiceMock.findAllForOrg).toHaveBeenCalledWith(
+        mockOrgId,
         { status: 'paid', quote_id: undefined },
       );
     });
@@ -293,8 +317,8 @@ describe('InvoicesController (e2e)', () => {
         .get(`/invoices?quote_id=${mockQuoteId}`)
         .expect(200);
 
-      expect(invoicesServiceMock.findAllByUser).toHaveBeenCalledWith(
-        mockUserId,
+      expect(invoicesServiceMock.findAllForOrg).toHaveBeenCalledWith(
+        mockOrgId,
         { status: undefined, quote_id: mockQuoteId },
       );
     });
@@ -344,7 +368,7 @@ describe('InvoicesController (e2e)', () => {
 
       expect(invoicesServiceMock.updateStatus).toHaveBeenCalledWith(
         mockInvoiceId,
-        mockUserId,
+        mockOrgId,
         { status: 'paid', paid_at: '2026-08-20' },
       );
     });
@@ -392,7 +416,7 @@ describe('InvoicesController (e2e)', () => {
           expect(body.required_tier).toBe('contractor_essentiel');
         });
 
-      expect(invoicesServiceMock.findAllByUser).not.toHaveBeenCalled();
+      expect(invoicesServiceMock.findAllForOrg).not.toHaveBeenCalled();
     });
 
     it('gates the conversion route too', async () => {

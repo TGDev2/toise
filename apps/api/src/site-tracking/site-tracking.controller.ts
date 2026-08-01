@@ -17,7 +17,8 @@ import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { FeatureGateGuard } from '../feature-gates/guards/feature-gate.guard';
 import { RequireFeature } from '../feature-gates/decorators/require-feature.decorator';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
-import { UsersService } from '../users/users.service';
+import { OrgContextService } from '../organizations/org-context.service';
+import type { OrgScope } from '../organizations/org-context.service';
 import { SiteTrackingService } from './site-tracking.service';
 import { CreateMilestoneDto } from './dto/create-milestone.dto';
 import { UpdateMilestoneDto } from './dto/update-milestone.dto';
@@ -27,15 +28,15 @@ import { UpdateMilestoneDto } from './dto/update-milestone.dto';
 export class SiteTrackingController {
   constructor(
     private readonly siteTrackingService: SiteTrackingService,
-    private readonly usersService: UsersService,
+    private readonly orgContext: OrgContextService,
   ) {}
 
-  private async resolveUserId(firebaseUser: DecodedIdToken): Promise<string> {
-    const user = await this.usersService.findByFirebaseUid(firebaseUser.uid);
-    if (!user) {
-      throw new UnauthorizedException('Utilisateur non authentifie.');
+  private async resolveScope(firebaseUser: DecodedIdToken): Promise<OrgScope> {
+    try {
+      return await this.orgContext.resolveForFirebaseUid(firebaseUser.uid);
+    } catch {
+      throw new UnauthorizedException('Utilisateur non authentifié.');
     }
-    return user.id;
   }
 
   @Get(':id/milestones')
@@ -44,8 +45,11 @@ export class SiteTrackingController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) projectId: string,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
-    return this.siteTrackingService.findAllForProject(projectId, userId);
+    const scope = await this.resolveScope(firebaseUser);
+    return this.siteTrackingService.findAllForProject(
+      projectId,
+      scope.organizationId,
+    );
   }
 
   @Post(':id/milestones')
@@ -55,8 +59,12 @@ export class SiteTrackingController {
     @Param('id', ParseUUIDPipe) projectId: string,
     @Body() dto: CreateMilestoneDto,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
-    return this.siteTrackingService.create(projectId, userId, dto);
+    const scope = await this.resolveScope(firebaseUser);
+    return this.siteTrackingService.create(
+      projectId,
+      scope.organizationId,
+      dto,
+    );
   }
 
   @Patch(':id/milestones/:milestoneId')
@@ -67,8 +75,13 @@ export class SiteTrackingController {
     @Param('milestoneId', ParseUUIDPipe) milestoneId: string,
     @Body() dto: UpdateMilestoneDto,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
-    return this.siteTrackingService.update(projectId, userId, milestoneId, dto);
+    const scope = await this.resolveScope(firebaseUser);
+    return this.siteTrackingService.update(
+      projectId,
+      scope.organizationId,
+      milestoneId,
+      dto,
+    );
   }
 
   @Delete(':id/milestones/:milestoneId')
@@ -79,7 +92,11 @@ export class SiteTrackingController {
     @Param('id', ParseUUIDPipe) projectId: string,
     @Param('milestoneId', ParseUUIDPipe) milestoneId: string,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
-    await this.siteTrackingService.remove(projectId, userId, milestoneId);
+    const scope = await this.resolveScope(firebaseUser);
+    await this.siteTrackingService.remove(
+      projectId,
+      scope.organizationId,
+      milestoneId,
+    );
   }
 }

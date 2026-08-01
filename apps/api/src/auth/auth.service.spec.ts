@@ -6,6 +6,7 @@ import { FirebaseConfig } from '../config/firebase.config';
 import { UsersService } from '../users/users.service';
 import { CompanyProfilesService } from '../company-profiles/company-profiles.service';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { OrgContextService } from '../organizations/org-context.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 import {
   AuthProvider,
@@ -46,6 +47,12 @@ describe('AuthService', () => {
     track: jest.fn(),
   };
 
+  const orgContextMock = {
+    getOrCreatePersonalOrganization: jest
+      .fn()
+      .mockResolvedValue({ id: 'org-uuid' }),
+  };
+
   let usersService: typeof usersServiceMock;
 
   const mockUser: User = {
@@ -56,6 +63,10 @@ describe('AuthService', () => {
     role: UserRole.USER,
     email_verified: false,
     firebase_uid: 'firebase-uid-123',
+    referral_code: null,
+    referred_by_user_id: null,
+    referral_converted_at: null,
+    active_organization_id: null,
     created_at: new Date(),
     updated_at: new Date(),
   };
@@ -111,6 +122,10 @@ describe('AuthService', () => {
         {
           provide: AnalyticsService,
           useValue: analyticsServiceMock,
+        },
+        {
+          provide: OrgContextService,
+          useValue: orgContextMock,
         },
       ],
     }).compile();
@@ -386,9 +401,12 @@ describe('AuthService', () => {
       );
 
       expect(result).toEqual(mockUser);
+      // La propriété est portée par l'organisation (PLAT-4) : le transfert
+      // repointe aussi l'org, sans quoi le projet fusionné resterait invisible.
       expect(usersService.transferProjects).toHaveBeenCalledWith(
         'anon-db-id',
         mockUser.id,
+        'org-uuid',
       );
       expect(usersService.deleteUser).toHaveBeenCalledWith('anon-db-id');
     });

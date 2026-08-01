@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { UsersModule } from '../users/users.module';
+import { OrgContextModule } from '../organizations/org-context.module';
 import { FeatureGatesModule } from '../feature-gates/feature-gates.module';
 import { Project } from './entities/project.entity';
 import { Room } from './entities/room.entity';
@@ -26,7 +26,7 @@ import { CvCorrectionService } from '../analysis/cv-correction.service';
       CvCorrectionLog,
       AnalysisJob,
     ]),
-    UsersModule,
+    OrgContextModule,
     FeatureGatesModule,
   ],
   controllers: [ProjectsController],

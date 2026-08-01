@@ -48,10 +48,14 @@ export class InvoicesService {
   ) {}
 
   async createFromQuote(
+    organizationId: string,
     userId: string,
     dto: CreateInvoiceDto,
   ): Promise<Invoice> {
-    const quote = await this.quotesService.findOneByUser(dto.quote_id, userId);
+    const quote = await this.quotesService.findOneForOrg(
+      dto.quote_id,
+      organizationId,
+    );
 
     if (quote.status !== QuoteStatus.ACCEPTED) {
       throw new BadRequestException(
@@ -71,7 +75,8 @@ export class InvoicesService {
       });
     }
 
-    const profile = await this.companyProfilesService.findByUserId(userId);
+    const profile =
+      await this.companyProfilesService.findByOrganizationId(organizationId);
     if (!profile) {
       throw new BadRequestException({
         message: 'Profil entreprise requis pour emettre une facture',
@@ -91,7 +96,7 @@ export class InvoicesService {
     }
 
     const client = quote.client_id
-      ? await this.clientsService.findOneByUser(quote.client_id, userId)
+      ? await this.clientsService.findOneForOrg(quote.client_id, organizationId)
       : null;
 
     const issuedOn = dto.issued_on ?? this.todayInParis();
@@ -111,9 +116,10 @@ export class InvoicesService {
     // échec rend le numéro au lieu de laisser un trou dans la séquence.
     return this.dataSource.transaction(async (manager) => {
       const year = Number(issuedOn.slice(0, 4));
-      const sequence = await this.allocateNumber(manager, userId, year);
+      const sequence = await this.allocateNumber(manager, organizationId, year);
 
       const invoice = manager.create(Invoice, {
+        organization_id: organizationId,
         user_id: userId,
         quote_id: quote.id,
         project_id: quote.project_id,
@@ -152,11 +158,11 @@ export class InvoicesService {
     });
   }
 
-  async findAllByUser(
-    userId: string,
+  async findAllForOrg(
+    organizationId: string,
     filters: { status?: InvoiceStatus; quote_id?: string } = {},
   ): Promise<Invoice[]> {
-    const where: Record<string, unknown> = { user_id: userId };
+    const where: Record<string, unknown> = { organization_id: organizationId };
     if (filters.status) {
       where.status = filters.status;
     }
@@ -170,9 +176,9 @@ export class InvoicesService {
     });
   }
 
-  async findOneByUser(id: string, userId: string): Promise<Invoice> {
+  async findOneForOrg(id: string, organizationId: string): Promise<Invoice> {
     const invoice = await this.repo.findOne({
-      where: { id, user_id: userId },
+      where: { id, organization_id: organizationId },
       relations: ['project', 'client'],
     });
     if (!invoice) {
@@ -189,10 +195,10 @@ export class InvoicesService {
    */
   async updateStatus(
     id: string,
-    userId: string,
+    organizationId: string,
     dto: UpdateInvoiceStatusDto,
   ): Promise<Invoice> {
-    const invoice = await this.findOneByUser(id, userId);
+    const invoice = await this.findOneForOrg(id, organizationId);
 
     invoice.status = dto.status;
     invoice.paid_at =
@@ -204,7 +210,12 @@ export class InvoicesService {
   }
 
   /**
-   * Alloue le prochain numéro de la séquence (artisan, année).
+   * Alloue le prochain numéro de la séquence (organisation, année).
+   *
+   * La séquence est clé sur l'**organisation** depuis PLAT-4, et non plus sur
+   * l'utilisateur : la continuité exigée par l'art. 242 nonies A CGI porte sur
+   * l'émetteur légal. Restée sur `user_id`, deux salariés d'une même entreprise
+   * auraient chacun émis leur `F-2026-0001`.
    *
    * `ON CONFLICT DO UPDATE` prend un verrou de ligne : deux allocations
    * concurrentes se sérialisent, et un rollback restitue le numéro. Doit être
@@ -214,16 +225,16 @@ export class InvoicesService {
    */
   private async allocateNumber(
     manager: EntityManager,
-    userId: string,
+    organizationId: string,
     year: number,
   ): Promise<number> {
     const rows = await manager.query<{ last_number: number }[]>(
-      `INSERT INTO "invoice_sequences" ("user_id", "year", "last_number")
+      `INSERT INTO "invoice_sequences" ("organization_id", "year", "last_number")
        VALUES ($1, $2, 1)
-       ON CONFLICT ("user_id", "year")
+       ON CONFLICT ("organization_id", "year")
        DO UPDATE SET "last_number" = "invoice_sequences"."last_number" + 1
        RETURNING "last_number"`,
-      [userId, year],
+      [organizationId, year],
     );
     return Number(rows[0].last_number);
   }

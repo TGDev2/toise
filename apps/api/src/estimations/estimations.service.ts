@@ -96,10 +96,14 @@ export class EstimationsService {
 
   async estimate(
     projectId: string,
+    organizationId: string,
     userId: string,
     skillLevelOverride?: SkillLevel,
   ): Promise<EstimationResult> {
-    const rooms = await this.projectsService.getRooms(projectId, userId);
+    const rooms = await this.projectsService.getRooms(
+      projectId,
+      organizationId,
+    );
 
     // Une pièce est estimable si elle a des dimensions ET ≥ 1 work item.
     const estimableRooms = rooms.filter(
@@ -320,9 +324,9 @@ export class EstimationsService {
 
   async getLatest(
     projectId: string,
-    userId: string,
+    organizationId: string,
   ): Promise<EstimationResult> {
-    await this.projectsService.findOneByUser(projectId, userId);
+    await this.projectsService.findOneForOrg(projectId, organizationId);
 
     const result = await this.estimationRepo.findOne({
       where: { project_id: projectId },
@@ -350,9 +354,9 @@ export class EstimationsService {
 
   async getHistory(
     projectId: string,
-    userId: string,
+    organizationId: string,
   ): Promise<EstimationResult[]> {
-    await this.projectsService.findOneByUser(projectId, userId);
+    await this.projectsService.findOneForOrg(projectId, organizationId);
 
     return this.estimationRepo.find({
       where: { project_id: projectId },

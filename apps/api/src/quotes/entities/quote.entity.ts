@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Project } from '../../projects/entities/project.entity';
@@ -42,8 +43,13 @@ export class Quote {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
+  /** Auteur du devis. La propriété est portée par `organization_id` (PLAT-4). */
   @Column({ type: 'uuid' })
   user_id!: string;
+
+  @Index()
+  @Column({ type: 'uuid' })
+  organization_id!: string;
 
   @Column({ type: 'uuid' })
   project_id!: string;

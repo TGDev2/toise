@@ -66,7 +66,7 @@ describe('QuoteRemindersService', () => {
   };
 
   const companyProfilesServiceMock = {
-    findByUserId: jest.fn(),
+    findByOrganizationId: jest.fn(),
   };
 
   const emailServiceMock = {
@@ -83,7 +83,7 @@ describe('QuoteRemindersService', () => {
     quoteRepoMock.find.mockResolvedValue([]);
     quoteRepoMock.save.mockImplementation((q: Quote) => Promise.resolve(q));
     featureGatesServiceMock.isFeatureAllowed.mockResolvedValue(true);
-    companyProfilesServiceMock.findByUserId.mockResolvedValue({
+    companyProfilesServiceMock.findByOrganizationId.mockResolvedValue({
       raison_sociale: 'Dupont Rénovation',
       phone: '0102030405',
     });

@@ -1,13 +1,13 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { AnalysisController } from './analysis.controller';
 import type { AnalysisService } from './analysis.service';
-import type { UsersService } from './../users/users.service';
+import type { OrgContextService } from '../organizations/org-context.service';
 import type { DecodedIdToken } from 'firebase-admin/auth';
 
 describe('AnalysisController', () => {
   let controller: AnalysisController;
   let analysisService: { startAnalysis: jest.Mock; getJobStatus: jest.Mock };
-  let usersService: { findByFirebaseUid: jest.Mock };
+  let orgContext: { resolveForFirebaseUid: jest.Mock };
 
   const firebaseUser = { uid: 'fb-uid' } as DecodedIdToken;
 
@@ -18,12 +18,14 @@ describe('AnalysisController', () => {
         .mockResolvedValue({ id: 'job-1', status: 'pending' }),
       getJobStatus: jest.fn(),
     };
-    usersService = {
-      findByFirebaseUid: jest.fn().mockResolvedValue({ id: 'user-1' }),
+    orgContext = {
+      resolveForFirebaseUid: jest
+        .fn()
+        .mockResolvedValue({ userId: 'user-1', organizationId: 'org-1' }),
     };
     controller = new AnalysisController(
       analysisService as unknown as AnalysisService,
-      usersService as unknown as UsersService,
+      orgContext as unknown as OrgContextService,
     );
   });
 
@@ -34,7 +36,7 @@ describe('AnalysisController', () => {
 
     expect(analysisService.startAnalysis).toHaveBeenCalledWith(
       'proj-1',
-      'user-1',
+      'org-1',
       { type: 'a4' },
     );
     expect(res).toEqual({ job_id: 'job-1', status: 'pending' });
@@ -45,13 +47,15 @@ describe('AnalysisController', () => {
 
     expect(analysisService.startAnalysis).toHaveBeenCalledWith(
       'proj-1',
-      'user-1',
+      'org-1',
       undefined,
     );
   });
 
   it('rejects an unknown Firebase user', async () => {
-    usersService.findByFirebaseUid.mockResolvedValue(null);
+    orgContext.resolveForFirebaseUid.mockRejectedValue(
+      new Error('User not found'),
+    );
 
     await expect(
       controller.startAnalysis('proj-1', firebaseUser, {}),

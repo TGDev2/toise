@@ -47,7 +47,12 @@ export class ProjectsService {
     private readonly featureGatesService: FeatureGatesService,
   ) {}
 
+  /**
+   * `organizationId` porte la propriété (et donc le quota), `userId` l'auteur —
+   * les deux divergent dès qu'une organisation a plusieurs membres (PLAT-4).
+   */
   async createProject(
+    organizationId: string,
     userId: string,
     dto: CreateProjectDto,
     userTier: SubscriptionTier = SubscriptionTier.FREE,
@@ -58,7 +63,7 @@ export class ProjectsService {
     );
 
     if (!unlimitedAllowed) {
-      const count = await this.countActiveProjects(userId);
+      const count = await this.countActiveProjects(organizationId);
       if (count >= this.FREE_TIER_PROJECT_LIMIT) {
         throw new ForbiddenException({
           message: 'Limite de projets atteinte pour le forfait gratuit',
@@ -70,6 +75,7 @@ export class ProjectsService {
     }
 
     const project = this.projectsRepo.create({
+      organization_id: organizationId,
       user_id: userId,
       name: dto.name,
       room_name: dto.room_name ?? '',
@@ -90,15 +96,15 @@ export class ProjectsService {
     return saved;
   }
 
-  async countActiveProjects(userId: string): Promise<number> {
+  async countActiveProjects(organizationId: string): Promise<number> {
     return this.projectsRepo.count({
-      where: { user_id: userId, deleted_at: IsNull() },
+      where: { organization_id: organizationId, deleted_at: IsNull() },
     });
   }
 
   async isProjectWritable(
     projectId: string,
-    userId: string,
+    organizationId: string,
     userTier: SubscriptionTier,
   ): Promise<boolean> {
     const unlimitedAllowed = await this.featureGatesService.isFeatureAllowed(
@@ -108,7 +114,7 @@ export class ProjectsService {
     if (unlimitedAllowed) return true;
 
     const topProjects = await this.projectsRepo.find({
-      where: { user_id: userId, deleted_at: IsNull() },
+      where: { organization_id: organizationId, deleted_at: IsNull() },
       order: { updated_at: 'DESC' },
       take: this.FREE_TIER_PROJECT_LIMIT,
       select: ['id'],
@@ -117,9 +123,9 @@ export class ProjectsService {
     return topProjects.some((p) => p.id === projectId);
   }
 
-  async getWritableProjectIds(userId: string): Promise<string[]> {
+  async getWritableProjectIds(organizationId: string): Promise<string[]> {
     const topProjects = await this.projectsRepo.find({
-      where: { user_id: userId, deleted_at: IsNull() },
+      where: { organization_id: organizationId, deleted_at: IsNull() },
       order: { updated_at: 'DESC' },
       take: this.FREE_TIER_PROJECT_LIMIT,
       select: ['id'],
@@ -129,10 +135,14 @@ export class ProjectsService {
 
   async ensureProjectWritable(
     projectId: string,
-    userId: string,
+    organizationId: string,
     userTier: SubscriptionTier,
   ): Promise<void> {
-    const writable = await this.isProjectWritable(projectId, userId, userTier);
+    const writable = await this.isProjectWritable(
+      projectId,
+      organizationId,
+      userTier,
+    );
     if (!writable) {
       throw new ForbiddenException({
         message:
@@ -142,8 +152,8 @@ export class ProjectsService {
     }
   }
 
-  async findByUser(
-    userId: string,
+  async findByOrg(
+    organizationId: string,
     query: ListProjectsQueryDto = {},
   ): Promise<{
     data: Project[];
@@ -152,7 +162,9 @@ export class ProjectsService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 12;
 
-    const where: FindOptionsWhere<Project> = { user_id: userId };
+    const where: FindOptionsWhere<Project> = {
+      organization_id: organizationId,
+    };
     if (query.status) {
       where.status = query.status;
     }
@@ -175,7 +187,10 @@ export class ProjectsService {
     };
   }
 
-  async findOneByUser(projectId: string, userId: string): Promise<Project> {
+  async findOneForOrg(
+    projectId: string,
+    organizationId: string,
+  ): Promise<Project> {
     const project = await this.projectsRepo.findOne({
       where: { id: projectId },
     });
@@ -184,7 +199,7 @@ export class ProjectsService {
       throw new NotFoundException('Project not found');
     }
 
-    if (project.user_id !== userId) {
+    if (project.organization_id !== organizationId) {
       throw new ForbiddenException('Access denied');
     }
 
@@ -226,8 +241,8 @@ export class ProjectsService {
    * Toutes les pièces d'un projet avec géométrie et travaux chargés, ordonnées.
    * Source de vérité de l'estimation multi-pièces.
    */
-  async getRooms(projectId: string, userId: string): Promise<Room[]> {
-    await this.findOneByUser(projectId, userId);
+  async getRooms(projectId: string, organizationId: string): Promise<Room[]> {
+    await this.findOneForOrg(projectId, organizationId);
     return this.roomsRepo.find({
       where: { project_id: projectId },
       relations: ['dimensions', 'openings', 'workItems', 'workItems.work_type'],
@@ -271,10 +286,10 @@ export class ProjectsService {
 
   async createRoom(
     projectId: string,
-    userId: string,
+    organizationId: string,
     dto: CreateRoomDto,
   ): Promise<Room> {
-    await this.findOneByUser(projectId, userId);
+    await this.findOneForOrg(projectId, organizationId);
     const count = await this.roomsRepo.count({
       where: { project_id: projectId },
     });
@@ -289,11 +304,11 @@ export class ProjectsService {
 
   async renameRoom(
     projectId: string,
-    userId: string,
+    organizationId: string,
     roomId: string,
     dto: UpdateRoomDto,
   ): Promise<Room> {
-    await this.findOneByUser(projectId, userId);
+    await this.findOneForOrg(projectId, organizationId);
     const room = await this.roomsRepo.findOne({
       where: { id: roomId, project_id: projectId },
     });
@@ -305,10 +320,10 @@ export class ProjectsService {
 
   async deleteRoom(
     projectId: string,
-    userId: string,
+    organizationId: string,
     roomId: string,
   ): Promise<void> {
-    await this.findOneByUser(projectId, userId);
+    await this.findOneForOrg(projectId, organizationId);
     // Garde-fou : un projet conserve toujours ≥ 1 pièce.
     const count = await this.roomsRepo.count({
       where: { project_id: projectId },
@@ -328,7 +343,7 @@ export class ProjectsService {
 
   async updateDimensions(
     projectId: string,
-    userId: string,
+    organizationId: string,
     dto: UpdateDimensionsDto,
     overrides?: {
       source?: DimensionSource;
@@ -348,7 +363,7 @@ export class ProjectsService {
     },
     roomId?: string,
   ): Promise<RoomDimensions> {
-    await this.findOneByUser(projectId, userId);
+    await this.findOneForOrg(projectId, organizationId);
     const room = await this.resolveRoomForWrite(projectId, roomId);
 
     const source = overrides?.source ?? DimensionSource.MANUAL;
@@ -399,10 +414,10 @@ export class ProjectsService {
 
   async getDimensions(
     projectId: string,
-    userId: string,
+    organizationId: string,
     roomId?: string,
   ): Promise<RoomDimensions | null> {
-    await this.findOneByUser(projectId, userId);
+    await this.findOneForOrg(projectId, organizationId);
 
     const room = await this.resolveRoomForRead(projectId, roomId);
     if (!room) return null;
@@ -414,12 +429,12 @@ export class ProjectsService {
 
   async addOpening(
     projectId: string,
-    userId: string,
+    organizationId: string,
     dto: CreateOpeningDto,
     overrides?: { source?: OpeningSource; cv_confidence?: number },
     roomId?: string,
   ): Promise<Opening> {
-    await this.findOneByUser(projectId, userId);
+    await this.findOneForOrg(projectId, organizationId);
     const room = await this.resolveRoomForWrite(projectId, roomId);
 
     const opening = this.openingsRepo.create({
@@ -448,12 +463,12 @@ export class ProjectsService {
     });
   }
 
-  async findOpeningForUser(
+  async findOpeningForOrg(
     projectId: string,
-    userId: string,
+    organizationId: string,
     openingId: string,
   ): Promise<Opening> {
-    await this.findOneByUser(projectId, userId);
+    await this.findOneForOrg(projectId, organizationId);
 
     const opening = await this.openingsRepo.findOne({
       where: { id: openingId },
@@ -469,11 +484,15 @@ export class ProjectsService {
 
   async updateOpening(
     projectId: string,
-    userId: string,
+    organizationId: string,
     openingId: string,
     dto: UpdateOpeningDto,
   ): Promise<Opening> {
-    const opening = await this.findOpeningForUser(projectId, userId, openingId);
+    const opening = await this.findOpeningForOrg(
+      projectId,
+      organizationId,
+      openingId,
+    );
 
     if (dto.type !== undefined) opening.type = dto.type;
     if (dto.width_cm !== undefined) opening.width_cm = dto.width_cm;
@@ -485,20 +504,24 @@ export class ProjectsService {
 
   async removeOpening(
     projectId: string,
-    userId: string,
+    organizationId: string,
     openingId: string,
   ): Promise<void> {
-    const opening = await this.findOpeningForUser(projectId, userId, openingId);
+    const opening = await this.findOpeningForOrg(
+      projectId,
+      organizationId,
+      openingId,
+    );
 
     await this.openingsRepo.remove(opening);
   }
 
   async getOpenings(
     projectId: string,
-    userId: string,
+    organizationId: string,
     roomId?: string,
   ): Promise<Opening[]> {
-    await this.findOneByUser(projectId, userId);
+    await this.findOneForOrg(projectId, organizationId);
 
     const room = await this.resolveRoomForRead(projectId, roomId);
     if (!room) return [];
@@ -517,11 +540,11 @@ export class ProjectsService {
 
   async saveWorkItems(
     projectId: string,
-    userId: string,
+    organizationId: string,
     dto: SaveWorkItemsDto,
     roomId?: string,
   ): Promise<ProjectWorkItem[]> {
-    await this.findOneByUser(projectId, userId);
+    await this.findOneForOrg(projectId, organizationId);
     const room = await this.resolveRoomForWrite(projectId, roomId);
 
     // Validate all work_type_ids exist
@@ -579,10 +602,10 @@ export class ProjectsService {
 
   async getWorkItems(
     projectId: string,
-    userId: string,
+    organizationId: string,
     roomId?: string,
   ): Promise<ProjectWorkItem[]> {
-    await this.findOneByUser(projectId, userId);
+    await this.findOneForOrg(projectId, organizationId);
 
     const room = await this.resolveRoomForRead(projectId, roomId);
     if (!room) return [];
@@ -594,8 +617,11 @@ export class ProjectsService {
     });
   }
 
-  async softDeleteProject(projectId: string, userId: string): Promise<void> {
-    await this.findOneByUser(projectId, userId);
+  async softDeleteProject(
+    projectId: string,
+    organizationId: string,
+  ): Promise<void> {
+    await this.findOneForOrg(projectId, organizationId);
     await this.projectsRepo.softDelete(projectId);
   }
 

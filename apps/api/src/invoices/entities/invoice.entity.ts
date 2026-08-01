@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Project } from '../../projects/entities/project.entity';
@@ -89,8 +90,13 @@ export class Invoice {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
+  /** Auteur de l'émission. L'émetteur légal, lui, est `organization_id` (PLAT-4). */
   @Column({ type: 'uuid' })
   user_id!: string;
+
+  @Index()
+  @Column({ type: 'uuid' })
+  organization_id!: string;
 
   @Column({ type: 'uuid', nullable: true })
   quote_id!: string | null;

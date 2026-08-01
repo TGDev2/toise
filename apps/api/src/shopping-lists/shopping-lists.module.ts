@@ -7,7 +7,7 @@ import { MaterialCatalog } from '../materials/entities/material-catalog.entity';
 import { MaterialEcoEquivalence } from '../materials/entities/material-eco-equivalence.entity';
 import { ProjectsModule } from '../projects/projects.module';
 import { EstimationsModule } from '../estimations/estimations.module';
-import { UsersModule } from '../users/users.module';
+import { OrgContextModule } from '../organizations/org-context.module';
 import { FeatureGatesModule } from '../feature-gates/feature-gates.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { LogbookModule } from '../logbook/logbook.module';
@@ -28,7 +28,7 @@ import { ShoppingListSharedController } from './shopping-list-shared.controller'
     ]),
     ProjectsModule,
     EstimationsModule,
-    UsersModule,
+    OrgContextModule,
     FeatureGatesModule,
     AnalyticsModule,
     LogbookModule,

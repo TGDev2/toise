@@ -17,8 +17,8 @@ import {
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
-import { UsersService } from '../users/users.service';
-import type { User } from '../users/entities/user.entity';
+import { OrgContextService } from '../organizations/org-context.service';
+import type { OrgScope } from '../organizations/org-context.service';
 import { ProjectsService } from './projects.service';
 import { FeatureGatesService } from '../feature-gates/feature-gates.service';
 import { CvCorrectionService } from '../analysis/cv-correction.service';
@@ -53,17 +53,17 @@ function openingSnapshot(o: Opening) {
 export class ProjectsController {
   constructor(
     private readonly projectsService: ProjectsService,
-    private readonly usersService: UsersService,
+    private readonly orgContext: OrgContextService,
     private readonly featureGatesService: FeatureGatesService,
     private readonly cvCorrectionService: CvCorrectionService,
   ) {}
 
-  private async resolveUser(firebaseUser: DecodedIdToken): Promise<User> {
-    const user = await this.usersService.findByFirebaseUid(firebaseUser.uid);
-    if (!user) {
+  private async resolveScope(firebaseUser: DecodedIdToken): Promise<OrgScope> {
+    try {
+      return await this.orgContext.resolveForFirebaseUid(firebaseUser.uid);
+    } catch {
       throw new UnauthorizedException('Utilisateur non authentifié.');
     }
-    return user;
   }
 
   @Post()
@@ -71,11 +71,12 @@ export class ProjectsController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Body() dto: CreateProjectDto,
   ) {
-    const user = await this.resolveUser(firebaseUser);
+    const scope = await this.resolveScope(firebaseUser);
     const project = await this.projectsService.createProject(
-      user.id,
+      scope.organizationId,
+      scope.userId,
       dto,
-      user.subscription_tier,
+      scope.effectiveTier,
     );
     return {
       id: project.id,
@@ -92,21 +93,21 @@ export class ProjectsController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Query() query: ListProjectsQueryDto,
   ) {
-    const user = await this.resolveUser(firebaseUser);
-    const { data, meta } = await this.projectsService.findByUser(
-      user.id,
+    const scope = await this.resolveScope(firebaseUser);
+    const { data, meta } = await this.projectsService.findByOrg(
+      scope.organizationId,
       query,
     );
 
     // Determine writable project IDs for free-tier users
     const unlimitedAllowed = await this.featureGatesService.isFeatureAllowed(
       'unlimited_projects',
-      user.subscription_tier,
+      scope.effectiveTier,
     );
     let writableIds: Set<string> | null = null;
     if (!unlimitedAllowed && data.length > 0) {
       const topProjects = await this.projectsService.getWritableProjectIds(
-        user.id,
+        scope.organizationId,
       );
       writableIds = new Set(topProjects);
     }
@@ -149,8 +150,8 @@ export class ProjectsController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    const user = await this.resolveUser(firebaseUser);
-    await this.projectsService.softDeleteProject(id, user.id);
+    const scope = await this.resolveScope(firebaseUser);
+    await this.projectsService.softDeleteProject(id, scope.organizationId);
   }
 
   @Get('work-types')
@@ -163,12 +164,15 @@ export class ProjectsController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    const user = await this.resolveUser(firebaseUser);
-    const project = await this.projectsService.findOneByUser(id, user.id);
+    const scope = await this.resolveScope(firebaseUser);
+    const project = await this.projectsService.findOneForOrg(
+      id,
+      scope.organizationId,
+    );
     const isReadOnly = !(await this.projectsService.isProjectWritable(
       id,
-      user.id,
-      user.subscription_tier,
+      scope.organizationId,
+      scope.effectiveTier,
     ));
     return {
       id: project.id,
@@ -206,24 +210,24 @@ export class ProjectsController {
     @Body() dto: UpdateDimensionsDto,
     @Query('room', new ParseUUIDPipe({ optional: true })) roomId?: string,
   ) {
-    const user = await this.resolveUser(firebaseUser);
+    const scope = await this.resolveScope(firebaseUser);
     await this.projectsService.ensureProjectWritable(
       id,
-      user.id,
-      user.subscription_tier,
+      scope.organizationId,
+      scope.effectiveTier,
     );
 
     // Check if current dimensions are CV-sourced for correction logging
     const currentDims = await this.projectsService.getDimensions(
       id,
-      user.id,
+      scope.organizationId,
       roomId,
     );
     const wasCvSourced = currentDims?.source === DimensionSource.CV;
 
     const dimensions = await this.projectsService.updateDimensions(
       id,
-      user.id,
+      scope.organizationId,
       dto,
       undefined,
       roomId,
@@ -267,10 +271,10 @@ export class ProjectsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Query('room', new ParseUUIDPipe({ optional: true })) roomId?: string,
   ) {
-    const user = await this.resolveUser(firebaseUser);
+    const scope = await this.resolveScope(firebaseUser);
     const dimensions = await this.projectsService.getDimensions(
       id,
-      user.id,
+      scope.organizationId,
       roomId,
     );
     if (!dimensions) {
@@ -297,15 +301,15 @@ export class ProjectsController {
     @Body() dto: CreateOpeningDto,
     @Query('room', new ParseUUIDPipe({ optional: true })) roomId?: string,
   ) {
-    const user = await this.resolveUser(firebaseUser);
+    const scope = await this.resolveScope(firebaseUser);
     await this.projectsService.ensureProjectWritable(
       id,
-      user.id,
-      user.subscription_tier,
+      scope.organizationId,
+      scope.effectiveTier,
     );
     const opening = await this.projectsService.addOpening(
       id,
-      user.id,
+      scope.organizationId,
       dto,
       undefined,
       roomId,
@@ -342,10 +346,10 @@ export class ProjectsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Query('room', new ParseUUIDPipe({ optional: true })) roomId?: string,
   ) {
-    const user = await this.resolveUser(firebaseUser);
+    const scope = await this.resolveScope(firebaseUser);
     const openings = await this.projectsService.getOpenings(
       id,
-      user.id,
+      scope.organizationId,
       roomId,
     );
     return openings.map((o) => ({
@@ -364,22 +368,22 @@ export class ProjectsController {
     @Param('openingId', ParseUUIDPipe) openingId: string,
     @Body() dto: UpdateOpeningDto,
   ) {
-    const user = await this.resolveUser(firebaseUser);
+    const scope = await this.resolveScope(firebaseUser);
     await this.projectsService.ensureProjectWritable(
       id,
-      user.id,
-      user.subscription_tier,
+      scope.organizationId,
+      scope.effectiveTier,
     );
     // État avant mutation, pour le log de correction (pattern dimensions)
-    const before = await this.projectsService.findOpeningForUser(
+    const before = await this.projectsService.findOpeningForOrg(
       id,
-      user.id,
+      scope.organizationId,
       openingId,
     );
 
     const opening = await this.projectsService.updateOpening(
       id,
-      user.id,
+      scope.organizationId,
       openingId,
       dto,
     );
@@ -417,19 +421,23 @@ export class ProjectsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Param('openingId', ParseUUIDPipe) openingId: string,
   ) {
-    const user = await this.resolveUser(firebaseUser);
+    const scope = await this.resolveScope(firebaseUser);
     await this.projectsService.ensureProjectWritable(
       id,
-      user.id,
-      user.subscription_tier,
+      scope.organizationId,
+      scope.effectiveTier,
     );
-    const before = await this.projectsService.findOpeningForUser(
+    const before = await this.projectsService.findOpeningForOrg(
       id,
-      user.id,
+      scope.organizationId,
       openingId,
     );
 
-    await this.projectsService.removeOpening(id, user.id, openingId);
+    await this.projectsService.removeOpening(
+      id,
+      scope.organizationId,
+      openingId,
+    );
 
     // Suppression d'une détection CV : signal pour le rapport de précision
     // et le triage CV-6 (jamais converti en négatif d'entraînement).
@@ -450,15 +458,15 @@ export class ProjectsController {
     @Body() dto: SaveWorkItemsDto,
     @Query('room', new ParseUUIDPipe({ optional: true })) roomId?: string,
   ) {
-    const user = await this.resolveUser(firebaseUser);
+    const scope = await this.resolveScope(firebaseUser);
     await this.projectsService.ensureProjectWritable(
       id,
-      user.id,
-      user.subscription_tier,
+      scope.organizationId,
+      scope.effectiveTier,
     );
     const items = await this.projectsService.saveWorkItems(
       id,
-      user.id,
+      scope.organizationId,
       dto,
       roomId,
     );
@@ -483,8 +491,12 @@ export class ProjectsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Query('room', new ParseUUIDPipe({ optional: true })) roomId?: string,
   ) {
-    const user = await this.resolveUser(firebaseUser);
-    const items = await this.projectsService.getWorkItems(id, user.id, roomId);
+    const scope = await this.resolveScope(firebaseUser);
+    const items = await this.projectsService.getWorkItems(
+      id,
+      scope.organizationId,
+      roomId,
+    );
     return items.map((item) => ({
       id: item.id,
       work_type: {
@@ -509,8 +521,8 @@ export class ProjectsController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    const user = await this.resolveUser(firebaseUser);
-    const rooms = await this.projectsService.getRooms(id, user.id);
+    const scope = await this.resolveScope(firebaseUser);
+    const rooms = await this.projectsService.getRooms(id, scope.organizationId);
     return rooms.map((r) => this.mapRoom(r));
   }
 
@@ -520,13 +532,17 @@ export class ProjectsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CreateRoomDto,
   ) {
-    const user = await this.resolveUser(firebaseUser);
+    const scope = await this.resolveScope(firebaseUser);
     await this.projectsService.ensureProjectWritable(
       id,
-      user.id,
-      user.subscription_tier,
+      scope.organizationId,
+      scope.effectiveTier,
     );
-    const room = await this.projectsService.createRoom(id, user.id, dto);
+    const room = await this.projectsService.createRoom(
+      id,
+      scope.organizationId,
+      dto,
+    );
     return this.mapRoom(room);
   }
 
@@ -537,15 +553,15 @@ export class ProjectsController {
     @Param('roomId', ParseUUIDPipe) roomId: string,
     @Body() dto: UpdateRoomDto,
   ) {
-    const user = await this.resolveUser(firebaseUser);
+    const scope = await this.resolveScope(firebaseUser);
     await this.projectsService.ensureProjectWritable(
       id,
-      user.id,
-      user.subscription_tier,
+      scope.organizationId,
+      scope.effectiveTier,
     );
     const room = await this.projectsService.renameRoom(
       id,
-      user.id,
+      scope.organizationId,
       roomId,
       dto,
     );
@@ -559,13 +575,13 @@ export class ProjectsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Param('roomId', ParseUUIDPipe) roomId: string,
   ) {
-    const user = await this.resolveUser(firebaseUser);
+    const scope = await this.resolveScope(firebaseUser);
     await this.projectsService.ensureProjectWritable(
       id,
-      user.id,
-      user.subscription_tier,
+      scope.organizationId,
+      scope.effectiveTier,
     );
-    await this.projectsService.deleteRoom(id, user.id, roomId);
+    await this.projectsService.deleteRoom(id, scope.organizationId, roomId);
   }
 
   private mapRoom(room: Room) {

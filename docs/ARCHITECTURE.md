@@ -84,7 +84,9 @@ AppModule
 ├── CompanyProfilesModule   # Profils entreprise (tier Contractor)
 ├── ClientsModule           # Gestion clients (tier Contractor)
 ├── QuotesModule            # Génération de devis + export PDF
-└── CommunityModule         # Galerie communautaire, commentaires, likes
+├── CommunityModule         # Galerie communautaire, commentaires, likes
+└── OrganizationsModule     # Organisations, membres, rôles, invitations (PLAT-4)
+    └── OrgContextModule    # Résolution de la portée (organisation active + auteur), sans dépendance applicative
 ```
 
 ## Flux de données principaux
@@ -284,8 +286,9 @@ supplier_price_cache   (cache prix fournisseurs)
 | Auth | Firebase ID Token (Bearer) vérifié par `FirebaseAuthGuard` |
 | Auth optionnelle | `OptionalAuthGuard` pour les routes publiques avec contexte utilisateur optionnel |
 | Admin | `AdminGuard` vérifie `user.role === 'admin'` |
-| Feature access | `FeatureGateGuard` + `@RequireFeature()` par tier d'abonnement |
-| Ownership | Chaque service vérifie que la ressource appartient à l'utilisateur courant |
+| Feature access | `FeatureGateGuard` + `@RequireFeature()` sur le palier **effectif de l'organisation active** (celui de son propriétaire), pas celui de l'appelant |
+| Ownership | Chaque service vérifie que la ressource appartient à l'**organisation** courante (PLAT-4), résolue côté serveur par `OrgContextService` — jamais depuis un en-tête ou un paramètre client |
+| Rôles d'organisation | `owner` / `admin` / `member` sur `organization_memberships`, orthogonaux au `users.role` (rôle plateforme) |
 
 ### Validation et protection
 

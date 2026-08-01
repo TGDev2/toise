@@ -20,7 +20,8 @@ import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { FeatureGateGuard } from '../feature-gates/guards/feature-gate.guard';
 import { RequireFeature } from '../feature-gates/decorators/require-feature.decorator';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
-import { UsersService } from '../users/users.service';
+import { OrgContextService } from '../organizations/org-context.service';
+import type { OrgScope } from '../organizations/org-context.service';
 import { CompanyProfilesService } from '../company-profiles/company-profiles.service';
 import { ClientsService } from '../clients/clients.service';
 import { QuotesService } from './quotes.service';
@@ -36,15 +37,13 @@ export class QuotesController {
   constructor(
     private readonly quotesService: QuotesService,
     private readonly quotePdfService: QuotePdfService,
-    private readonly usersService: UsersService,
+    private readonly orgContext: OrgContextService,
     private readonly companyProfilesService: CompanyProfilesService,
     private readonly clientsService: ClientsService,
   ) {}
 
-  private async resolveUserId(firebaseUser: DecodedIdToken): Promise<string> {
-    const user = await this.usersService.findByFirebaseUid(firebaseUser.uid);
-    if (!user) throw new NotFoundException('User not found');
-    return user.id;
+  private resolveScope(firebaseUser: DecodedIdToken): Promise<OrgScope> {
+    return this.orgContext.resolveForFirebaseUid(firebaseUser.uid);
   }
 
   @Post()
@@ -53,8 +52,8 @@ export class QuotesController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Body() dto: CreateQuoteDto,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
-    return this.quotesService.create(userId, dto);
+    const scope = await this.resolveScope(firebaseUser);
+    return this.quotesService.create(scope.organizationId, scope.userId, dto);
   }
 
   @Get()
@@ -63,8 +62,8 @@ export class QuotesController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Query('status') status?: QuoteStatus,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
-    return this.quotesService.findAllByUser(userId, status);
+    const scope = await this.resolveScope(firebaseUser);
+    return this.quotesService.findAllForOrg(scope.organizationId, status);
   }
 
   @Get(':id')
@@ -73,8 +72,8 @@ export class QuotesController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
-    return this.quotesService.findOneByUser(id, userId);
+    const scope = await this.resolveScope(firebaseUser);
+    return this.quotesService.findOneForOrg(id, scope.organizationId);
   }
 
   @Patch(':id')
@@ -84,8 +83,8 @@ export class QuotesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateQuoteDto,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
-    return this.quotesService.update(id, userId, dto);
+    const scope = await this.resolveScope(firebaseUser);
+    return this.quotesService.update(id, scope.organizationId, dto);
   }
 
   @Patch(':id/status')
@@ -95,8 +94,12 @@ export class QuotesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateQuoteStatusDto,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
-    return this.quotesService.updateStatus(id, userId, dto.status);
+    const scope = await this.resolveScope(firebaseUser);
+    return this.quotesService.updateStatus(
+      id,
+      scope.organizationId,
+      dto.status,
+    );
   }
 
   @Get(':id/export/pdf')
@@ -106,11 +109,16 @@ export class QuotesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Res() res: Response,
   ): Promise<void> {
-    const userId = await this.resolveUserId(firebaseUser);
-    const quote = await this.quotesService.findOneByUser(id, userId);
+    const scope = await this.resolveScope(firebaseUser);
+    const quote = await this.quotesService.findOneForOrg(
+      id,
+      scope.organizationId,
+    );
 
     const companyProfile =
-      await this.companyProfilesService.findByUserId(userId);
+      await this.companyProfilesService.findByOrganizationId(
+        scope.organizationId,
+      );
     if (!companyProfile) {
       throw new NotFoundException(
         'Profil entreprise requis pour generer un devis PDF',
@@ -119,7 +127,10 @@ export class QuotesController {
 
     let client = null;
     if (quote.client_id) {
-      client = await this.clientsService.findOneByUser(quote.client_id, userId);
+      client = await this.clientsService.findOneForOrg(
+        quote.client_id,
+        scope.organizationId,
+      );
     }
 
     const buffer = await this.quotePdfService.generatePdf(
@@ -146,7 +157,7 @@ export class QuotesController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
-    await this.quotesService.remove(id, userId);
+    const scope = await this.resolveScope(firebaseUser);
+    await this.quotesService.remove(id, scope.organizationId);
   }
 }

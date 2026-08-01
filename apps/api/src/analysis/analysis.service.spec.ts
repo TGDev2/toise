@@ -59,7 +59,7 @@ function makeReport(groups: CvAccuracyReport['groups'] = []): CvAccuracyReport {
 const jobRepoMock = { findOne: jest.fn(), update: jest.fn() };
 const cvClientMock = { analyze: jest.fn() };
 const projectsServiceMock = {
-  findOneByUser: jest.fn(),
+  findOneForOrg: jest.fn(),
   updateDimensions: jest.fn(),
   getDimensions: jest.fn(),
   removeCvOpenings: jest.fn(),
@@ -74,7 +74,7 @@ describe('AnalysisService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     jobRepoMock.update.mockResolvedValue({});
-    projectsServiceMock.findOneByUser.mockResolvedValue({ id: 'project-uuid' });
+    projectsServiceMock.findOneForOrg.mockResolvedValue({ id: 'project-uuid' });
     projectsServiceMock.updateDimensions.mockResolvedValue({});
     projectsServiceMock.removeCvOpenings.mockResolvedValue(undefined);
     projectsServiceMock.addOpening.mockResolvedValue({});

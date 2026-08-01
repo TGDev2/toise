@@ -20,7 +20,8 @@ import type { Response } from 'express';
 import { createReadStream, existsSync } from 'fs';
 import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
-import { UsersService } from '../users/users.service';
+import { OrgContextService } from '../organizations/org-context.service';
+import type { OrgScope } from '../organizations/org-context.service';
 import { PhotosService } from './photos.service';
 import { PhotoResponseDto } from './dto/photo-response.dto';
 import { ProjectPhoto } from './entities/project-photo.entity';
@@ -50,15 +51,15 @@ function mimeFilter(
 export class PhotosController {
   constructor(
     private readonly photosService: PhotosService,
-    private readonly usersService: UsersService,
+    private readonly orgContext: OrgContextService,
   ) {}
 
-  private async resolveUserId(firebaseUser: DecodedIdToken): Promise<string> {
-    const user = await this.usersService.findByFirebaseUid(firebaseUser.uid);
-    if (!user) {
+  private async resolveScope(firebaseUser: DecodedIdToken): Promise<OrgScope> {
+    try {
+      return await this.orgContext.resolveForFirebaseUid(firebaseUser.uid);
+    } catch {
       throw new UnauthorizedException('Utilisateur non authentifié.');
     }
-    return user.id;
   }
 
   private toDto(photo: ProjectPhoto): PhotoResponseDto {
@@ -92,8 +93,12 @@ export class PhotosController {
     if (!file) {
       throw new BadRequestException('Aucun fichier fourni');
     }
-    const userId = await this.resolveUserId(firebaseUser);
-    const photo = await this.photosService.uploadPhoto(projectId, userId, file);
+    const scope = await this.resolveScope(firebaseUser);
+    const photo = await this.photosService.uploadPhoto(
+      projectId,
+      scope.organizationId,
+      file,
+    );
     return this.toDto(photo);
   }
 
@@ -102,8 +107,11 @@ export class PhotosController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) projectId: string,
   ): Promise<PhotoResponseDto[]> {
-    const userId = await this.resolveUserId(firebaseUser);
-    const photos = await this.photosService.getProjectPhotos(projectId, userId);
+    const scope = await this.resolveScope(firebaseUser);
+    const photos = await this.photosService.getProjectPhotos(
+      projectId,
+      scope.organizationId,
+    );
     return photos.map((p) => this.toDto(p));
   }
 
@@ -114,8 +122,12 @@ export class PhotosController {
     @Param('id', ParseUUIDPipe) projectId: string,
     @Param('photoId', ParseUUIDPipe) photoId: string,
   ): Promise<void> {
-    const userId = await this.resolveUserId(firebaseUser);
-    await this.photosService.deletePhoto(projectId, userId, photoId);
+    const scope = await this.resolveScope(firebaseUser);
+    await this.photosService.deletePhoto(
+      projectId,
+      scope.organizationId,
+      photoId,
+    );
   }
 
   @Get(':projectId/photos/:photoId/file')
@@ -125,10 +137,10 @@ export class PhotosController {
     @Param('photoId', ParseUUIDPipe) photoId: string,
     @Res() res: Response,
   ): Promise<void> {
-    const userId = await this.resolveUserId(firebaseUser);
+    const scope = await this.resolveScope(firebaseUser);
     const photo = await this.photosService.findPhotoForServing(
       projectId,
-      userId,
+      scope.organizationId,
       photoId,
     );
 
@@ -150,10 +162,10 @@ export class PhotosController {
     @Param('photoId', ParseUUIDPipe) photoId: string,
     @Res() res: Response,
   ): Promise<void> {
-    const userId = await this.resolveUserId(firebaseUser);
+    const scope = await this.resolveScope(firebaseUser);
     const photo = await this.photosService.findPhotoForServing(
       projectId,
-      userId,
+      scope.organizationId,
       photoId,
     );
 

@@ -65,10 +65,10 @@ export class PhotosService {
 
   async uploadPhoto(
     projectId: string,
-    userId: string,
+    organizationId: string,
     file: Express.Multer.File,
   ): Promise<ProjectPhoto> {
-    await this.assertProjectOwnership(projectId, userId);
+    await this.assertProjectInOrg(projectId, organizationId);
 
     const count = await this.photoRepo.count({
       where: { project_id: projectId },
@@ -121,9 +121,9 @@ export class PhotosService {
 
   async getProjectPhotos(
     projectId: string,
-    userId: string,
+    organizationId: string,
   ): Promise<ProjectPhoto[]> {
-    await this.assertProjectOwnership(projectId, userId);
+    await this.assertProjectInOrg(projectId, organizationId);
     return this.photoRepo.find({
       where: { project_id: projectId },
       order: { sort_order: 'ASC', created_at: 'ASC' },
@@ -132,10 +132,10 @@ export class PhotosService {
 
   async deletePhoto(
     projectId: string,
-    userId: string,
+    organizationId: string,
     photoId: string,
   ): Promise<void> {
-    await this.assertProjectOwnership(projectId, userId);
+    await this.assertProjectInOrg(projectId, organizationId);
 
     const photo = await this.photoRepo.findOne({
       where: { id: photoId, project_id: projectId },
@@ -157,10 +157,10 @@ export class PhotosService {
 
   async findPhotoForServing(
     projectId: string,
-    userId: string,
+    organizationId: string,
     photoId: string,
   ): Promise<ProjectPhoto> {
-    await this.assertProjectOwnership(projectId, userId);
+    await this.assertProjectInOrg(projectId, organizationId);
 
     const photo = await this.photoRepo.findOne({
       where: { id: photoId, project_id: projectId },
@@ -179,18 +179,18 @@ export class PhotosService {
     return this.photoRepo.findOne({ where: { storage_url: storageUrl } });
   }
 
-  private async assertProjectOwnership(
+  private async assertProjectInOrg(
     projectId: string,
-    userId: string,
+    organizationId: string,
   ): Promise<void> {
     const project = await this.projectRepo.findOne({
       where: { id: projectId },
-      select: ['id', 'user_id'],
+      select: ['id', 'organization_id'],
     });
     if (!project) {
       throw new NotFoundException('Projet non trouve');
     }
-    if (project.user_id !== userId) {
+    if (project.organization_id !== organizationId) {
       throw new ForbiddenException('Acces interdit');
     }
   }

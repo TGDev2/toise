@@ -12,7 +12,8 @@ import {
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
-import { UsersService } from '../users/users.service';
+import { OrgContextService } from '../organizations/org-context.service';
+import type { OrgScope } from '../organizations/org-context.service';
 import { ShoppingListsService } from './shopping-lists.service';
 import { ShoppingListResponseDto } from './dto/shopping-list-response.dto';
 import { BudgetSummaryResponseDto } from './dto/budget-summary-response.dto';
@@ -26,15 +27,15 @@ import { FeatureGateGuard } from '../feature-gates/guards/feature-gate.guard';
 export class ShoppingListsController {
   constructor(
     private readonly shoppingListsService: ShoppingListsService,
-    private readonly usersService: UsersService,
+    private readonly orgContext: OrgContextService,
   ) {}
 
-  private async resolveUserId(firebaseUser: DecodedIdToken): Promise<string> {
-    const user = await this.usersService.findByFirebaseUid(firebaseUser.uid);
-    if (!user) {
+  private async resolveScope(firebaseUser: DecodedIdToken): Promise<OrgScope> {
+    try {
+      return await this.orgContext.resolveForFirebaseUid(firebaseUser.uid);
+    } catch {
       throw new UnauthorizedException('Utilisateur non authentifié.');
     }
-    return user.id;
   }
 
   @Get(':id/shopping-list')
@@ -42,9 +43,13 @@ export class ShoppingListsController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) projectId: string,
   ): Promise<ShoppingListResponseDto> {
-    const userId = await this.resolveUserId(firebaseUser);
+    const scope = await this.resolveScope(firebaseUser);
     const { shoppingList, latestEstimationId } =
-      await this.shoppingListsService.getOrGenerate(projectId, userId);
+      await this.shoppingListsService.getOrGenerate(
+        projectId,
+        scope.organizationId,
+        scope.userId,
+      );
     return ShoppingListResponseDto.fromEntity(shoppingList, latestEstimationId);
   }
 
@@ -54,9 +59,13 @@ export class ShoppingListsController {
     @Param('id', ParseUUIDPipe) projectId: string,
     @Body() dto: UpdateShoppingListDto,
   ): Promise<ShoppingListResponseDto> {
-    const userId = await this.resolveUserId(firebaseUser);
+    const scope = await this.resolveScope(firebaseUser);
     const { shoppingList, latestEstimationId } =
-      await this.shoppingListsService.update(projectId, userId, dto);
+      await this.shoppingListsService.update(
+        projectId,
+        scope.organizationId,
+        dto,
+      );
     return ShoppingListResponseDto.fromEntity(shoppingList, latestEstimationId);
   }
 
@@ -65,9 +74,13 @@ export class ShoppingListsController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) projectId: string,
   ): Promise<ShoppingListResponseDto> {
-    const userId = await this.resolveUserId(firebaseUser);
+    const scope = await this.resolveScope(firebaseUser);
     const { shoppingList, latestEstimationId } =
-      await this.shoppingListsService.regenerate(projectId, userId);
+      await this.shoppingListsService.regenerate(
+        projectId,
+        scope.organizationId,
+        scope.userId,
+      );
     return ShoppingListResponseDto.fromEntity(shoppingList, latestEstimationId);
   }
 
@@ -78,9 +91,12 @@ export class ShoppingListsController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) projectId: string,
   ): Promise<BudgetSummaryResponseDto> {
-    const userId = await this.resolveUserId(firebaseUser);
+    const scope = await this.resolveScope(firebaseUser);
     const { summary, isFinalized } =
-      await this.shoppingListsService.getBudgetSummary(projectId, userId);
+      await this.shoppingListsService.getBudgetSummary(
+        projectId,
+        scope.organizationId,
+      );
     return BudgetSummaryResponseDto.fromSummary(summary, isFinalized);
   }
 
@@ -91,10 +107,10 @@ export class ShoppingListsController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) projectId: string,
   ): Promise<EcoSuggestionsResponseDto> {
-    const userId = await this.resolveUserId(firebaseUser);
+    const scope = await this.resolveScope(firebaseUser);
     const result = await this.shoppingListsService.getEcoSuggestions(
       projectId,
-      userId,
+      scope.organizationId,
     );
     return EcoSuggestionsResponseDto.fromResult(result);
   }
@@ -106,10 +122,11 @@ export class ShoppingListsController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) projectId: string,
   ): Promise<BudgetSummaryResponseDto> {
-    const userId = await this.resolveUserId(firebaseUser);
+    const scope = await this.resolveScope(firebaseUser);
     const summary = await this.shoppingListsService.finalizeBudgetSummary(
       projectId,
-      userId,
+      scope.organizationId,
+      scope.userId,
     );
     return BudgetSummaryResponseDto.fromSummary(summary);
   }

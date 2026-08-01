@@ -16,7 +16,8 @@ import type { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
-import { UsersService } from '../users/users.service';
+import { OrgContextService } from '../organizations/org-context.service';
+import type { OrgScope } from '../organizations/org-context.service';
 import { ProjectsService } from '../projects/projects.service';
 import { ShoppingListsService } from './shopping-lists.service';
 import { ShoppingListExportService } from './shopping-list-export.service';
@@ -28,16 +29,16 @@ export class ShoppingListExportController {
     private readonly shoppingListsService: ShoppingListsService,
     private readonly exportService: ShoppingListExportService,
     private readonly projectsService: ProjectsService,
-    private readonly usersService: UsersService,
+    private readonly orgContext: OrgContextService,
     private readonly configService: ConfigService,
   ) {}
 
-  private async resolveUserId(firebaseUser: DecodedIdToken): Promise<string> {
-    const user = await this.usersService.findByFirebaseUid(firebaseUser.uid);
-    if (!user) {
+  private async resolveScope(firebaseUser: DecodedIdToken): Promise<OrgScope> {
+    try {
+      return await this.orgContext.resolveForFirebaseUid(firebaseUser.uid);
+    } catch {
       throw new UnauthorizedException('Utilisateur non authentifié.');
     }
-    return user.id;
   }
 
   @Get(':id/shopping-list/export/pdf')
@@ -46,12 +47,16 @@ export class ShoppingListExportController {
     @Param('id', ParseUUIDPipe) projectId: string,
     @Res() res: Response,
   ): Promise<void> {
-    const userId = await this.resolveUserId(firebaseUser);
+    const scope = await this.resolveScope(firebaseUser);
     const { shoppingList } = await this.shoppingListsService.getOrGenerate(
       projectId,
-      userId,
+      scope.organizationId,
+      scope.userId,
     );
-    const project = await this.projectsService.findOneByUser(projectId, userId);
+    const project = await this.projectsService.findOneForOrg(
+      projectId,
+      scope.organizationId,
+    );
 
     const buffer = await this.exportService.generatePdf(
       project,
@@ -74,10 +79,10 @@ export class ShoppingListExportController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) projectId: string,
   ): Promise<{ share_url: string; share_token: string }> {
-    const userId = await this.resolveUserId(firebaseUser);
+    const scope = await this.resolveScope(firebaseUser);
     const { share_token } = await this.shoppingListsService.generateShareToken(
       projectId,
-      userId,
+      scope.organizationId,
     );
     const publicUrl = this.configService.get<string>('publicUrl');
     return {
@@ -92,7 +97,10 @@ export class ShoppingListExportController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) projectId: string,
   ): Promise<void> {
-    const userId = await this.resolveUserId(firebaseUser);
-    await this.shoppingListsService.revokeShareToken(projectId, userId);
+    const scope = await this.resolveScope(firebaseUser);
+    await this.shoppingListsService.revokeShareToken(
+      projectId,
+      scope.organizationId,
+    );
   }
 }

@@ -8,7 +8,6 @@ import {
   Query,
   ParseUUIDPipe,
   UseGuards,
-  NotFoundException,
   Res,
 } from '@nestjs/common';
 import type { DecodedIdToken } from 'firebase-admin/auth';
@@ -17,7 +16,8 @@ import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { FeatureGateGuard } from '../feature-gates/guards/feature-gate.guard';
 import { RequireFeature } from '../feature-gates/decorators/require-feature.decorator';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
-import { UsersService } from '../users/users.service';
+import { OrgContextService } from '../organizations/org-context.service';
+import type { OrgScope } from '../organizations/org-context.service';
 import { InvoicesService } from './invoices.service';
 import { InvoicePdfService } from './invoice-pdf.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
@@ -34,13 +34,11 @@ export class InvoicesController {
   constructor(
     private readonly invoicesService: InvoicesService,
     private readonly invoicePdfService: InvoicePdfService,
-    private readonly usersService: UsersService,
+    private readonly orgContext: OrgContextService,
   ) {}
 
-  private async resolveUserId(firebaseUser: DecodedIdToken): Promise<string> {
-    const user = await this.usersService.findByFirebaseUid(firebaseUser.uid);
-    if (!user) throw new NotFoundException('User not found');
-    return user.id;
+  private resolveScope(firebaseUser: DecodedIdToken): Promise<OrgScope> {
+    return this.orgContext.resolveForFirebaseUid(firebaseUser.uid);
   }
 
   @Post()
@@ -49,8 +47,12 @@ export class InvoicesController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Body() dto: CreateInvoiceDto,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
-    return this.invoicesService.createFromQuote(userId, dto);
+    const scope = await this.resolveScope(firebaseUser);
+    return this.invoicesService.createFromQuote(
+      scope.organizationId,
+      scope.userId,
+      dto,
+    );
   }
 
   @Get()
@@ -60,8 +62,8 @@ export class InvoicesController {
     @Query('status') status?: InvoiceStatus,
     @Query('quote_id') quoteId?: string,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
-    return this.invoicesService.findAllByUser(userId, {
+    const scope = await this.resolveScope(firebaseUser);
+    return this.invoicesService.findAllForOrg(scope.organizationId, {
       status,
       quote_id: quoteId,
     });
@@ -73,8 +75,8 @@ export class InvoicesController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
-    return this.invoicesService.findOneByUser(id, userId);
+    const scope = await this.resolveScope(firebaseUser);
+    return this.invoicesService.findOneForOrg(id, scope.organizationId);
   }
 
   @Get(':id/export/pdf')
@@ -84,8 +86,11 @@ export class InvoicesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Res() res: Response,
   ): Promise<void> {
-    const userId = await this.resolveUserId(firebaseUser);
-    const invoice = await this.invoicesService.findOneByUser(id, userId);
+    const scope = await this.resolveScope(firebaseUser);
+    const invoice = await this.invoicesService.findOneForOrg(
+      id,
+      scope.organizationId,
+    );
 
     const buffer = await this.invoicePdfService.generatePdf(invoice);
 
@@ -107,7 +112,7 @@ export class InvoicesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateInvoiceStatusDto,
   ) {
-    const userId = await this.resolveUserId(firebaseUser);
-    return this.invoicesService.updateStatus(id, userId, dto);
+    const scope = await this.resolveScope(firebaseUser);
+    return this.invoicesService.updateStatus(id, scope.organizationId, dto);
   }
 }

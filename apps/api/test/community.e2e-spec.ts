@@ -9,6 +9,7 @@ import type { App } from 'supertest/types';
 import { CommunityController } from '../src/community/community.controller';
 import { CommunityService } from '../src/community/community.service';
 import { UsersService } from '../src/users/users.service';
+import { OrgContextService } from '../src/organizations/org-context.service';
 import { PhotosService } from '../src/photos/photos.service';
 import { FirebaseConfig } from '../src/config/firebase.config';
 import { FeatureGatesService } from '../src/feature-gates/feature-gates.service';
@@ -65,6 +66,27 @@ const usersServiceMock = {
   findByFirebaseUid: jest.fn(),
 };
 
+// PLAT-4 : les contrôleurs résolvent désormais la portée (organisation + auteur)
+// au lieu de recharger l'utilisateur ; le guard de feature gates lit le palier
+// effectif de l'organisation via ce même service.
+const mockUserId = '00000000-0000-4000-8000-0000000000bb';
+const mockOrgId = '00000000-0000-4000-8000-0000000000aa';
+const orgContextMock = {
+  resolveForFirebaseUid: jest.fn().mockResolvedValue({
+    user: { id: mockUserId, subscription_tier: 'free' },
+    userId: mockUserId,
+    organization: { id: mockOrgId, name: 'Mon espace', is_personal: true },
+    organizationId: mockOrgId,
+    role: 'owner',
+    effectiveTier: 'free',
+  }),
+  resolveForUser: jest.fn(),
+  getOrCreatePersonalOrganization: jest
+    .fn()
+    .mockResolvedValue({ id: mockOrgId }),
+  findMembership: jest.fn(),
+};
+
 const photosServiceMock = {
   getFileAbsolutePath: jest.fn(),
 };
@@ -92,6 +114,7 @@ describe('CommunityController (e2e) — accès sans compte (COM-2)', () => {
       providers: [
         { provide: CommunityService, useValue: communityServiceMock },
         { provide: UsersService, useValue: usersServiceMock },
+        { provide: OrgContextService, useValue: orgContextMock },
         { provide: PhotosService, useValue: photosServiceMock },
         { provide: FirebaseConfig, useValue: firebaseConfigMock },
         { provide: FeatureGatesService, useValue: featureGatesServiceMock },

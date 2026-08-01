@@ -32,6 +32,10 @@ import {
   buildTrialEndingSoonEmail,
   TrialEndingSoonEmailData,
 } from './templates/trial-ending-soon.template';
+import {
+  buildOrganizationInvitationEmail,
+  OrganizationInvitationEmailData,
+} from './templates/organization-invitation.template';
 
 @Injectable()
 export class EmailService {
@@ -98,6 +102,14 @@ export class EmailService {
     data: TrialEndingSoonEmailData,
   ): Promise<void> {
     const { subject, html, text } = buildTrialEndingSoonEmail(data);
+    await this.brevoClient.sendTransactionalEmail({ to, subject, html, text });
+  }
+
+  async sendOrganizationInvitationEmail(
+    to: string,
+    data: OrganizationInvitationEmailData,
+  ): Promise<void> {
+    const { subject, html, text } = buildOrganizationInvitationEmail(data);
     await this.brevoClient.sendTransactionalEmail({ to, subject, html, text });
   }
 }

@@ -42,7 +42,8 @@ const mockSharpInstance = (sharp as unknown as jest.Mock)() as {
 
 const mockProject: Project = {
   id: 'project-uuid',
-  user_id: 'user-uuid',
+  user_id: 'author-uuid',
+  organization_id: 'org-uuid',
   name: 'Test Project',
   room_name: 'Salon',
   work_type: WorkType.PAINTING,
@@ -149,13 +150,13 @@ describe('PhotosService', () => {
     it('should upload a photo successfully', async () => {
       const result = await service.uploadPhoto(
         'project-uuid',
-        'user-uuid',
+        'org-uuid',
         mockFile,
       );
 
       expect(projectRepoMock.findOne).toHaveBeenCalledWith({
         where: { id: 'project-uuid' },
-        select: ['id', 'user_id'],
+        select: ['id', 'organization_id'],
       });
       expect(photoRepoMock.count).toHaveBeenCalled();
       expect(storageMock.save).toHaveBeenCalled();
@@ -165,7 +166,7 @@ describe('PhotosService', () => {
 
     it('should throw ForbiddenException for wrong user', async () => {
       await expect(
-        service.uploadPhoto('project-uuid', 'other-user-uuid', mockFile),
+        service.uploadPhoto('project-uuid', 'other-org-uuid', mockFile),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -173,7 +174,7 @@ describe('PhotosService', () => {
       projectRepoMock.findOne.mockResolvedValueOnce(null);
 
       await expect(
-        service.uploadPhoto('nonexistent', 'user-uuid', mockFile),
+        service.uploadPhoto('nonexistent', 'org-uuid', mockFile),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -181,7 +182,7 @@ describe('PhotosService', () => {
       photoRepoMock.count.mockResolvedValueOnce(5);
 
       await expect(
-        service.uploadPhoto('project-uuid', 'user-uuid', mockFile),
+        service.uploadPhoto('project-uuid', 'org-uuid', mockFile),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -193,7 +194,7 @@ describe('PhotosService', () => {
       });
 
       await expect(
-        service.uploadPhoto('project-uuid', 'user-uuid', mockFile),
+        service.uploadPhoto('project-uuid', 'org-uuid', mockFile),
       ).rejects.toThrow(/trop petite ou trop eloignee/);
     });
 
@@ -204,7 +205,7 @@ describe('PhotosService', () => {
       });
 
       await expect(
-        service.uploadPhoto('project-uuid', 'user-uuid', mockFile),
+        service.uploadPhoto('project-uuid', 'org-uuid', mockFile),
       ).rejects.toThrow(/trop sombre/);
     });
 
@@ -215,7 +216,7 @@ describe('PhotosService', () => {
       });
 
       await expect(
-        service.uploadPhoto('project-uuid', 'user-uuid', mockFile),
+        service.uploadPhoto('project-uuid', 'org-uuid', mockFile),
       ).rejects.toThrow(/surexposee/);
     });
 
@@ -226,7 +227,7 @@ describe('PhotosService', () => {
       });
 
       await expect(
-        service.uploadPhoto('project-uuid', 'user-uuid', mockFile),
+        service.uploadPhoto('project-uuid', 'org-uuid', mockFile),
       ).rejects.toThrow(/trop floue/);
     });
 
@@ -235,7 +236,7 @@ describe('PhotosService', () => {
 
       const result = await service.uploadPhoto(
         'project-uuid',
-        'user-uuid',
+        'org-uuid',
         mockFile,
       );
 
@@ -246,10 +247,7 @@ describe('PhotosService', () => {
 
   describe('getProjectPhotos', () => {
     it('should return photos ordered by sort_order', async () => {
-      const result = await service.getProjectPhotos(
-        'project-uuid',
-        'user-uuid',
-      );
+      const result = await service.getProjectPhotos('project-uuid', 'org-uuid');
 
       expect(photoRepoMock.find).toHaveBeenCalledWith({
         where: { project_id: 'project-uuid' },
@@ -260,14 +258,14 @@ describe('PhotosService', () => {
 
     it('should throw ForbiddenException for wrong user', async () => {
       await expect(
-        service.getProjectPhotos('project-uuid', 'other-user-uuid'),
+        service.getProjectPhotos('project-uuid', 'other-org-uuid'),
       ).rejects.toThrow(ForbiddenException);
     });
   });
 
   describe('deletePhoto', () => {
     it('should delete photo from storage and database', async () => {
-      await service.deletePhoto('project-uuid', 'user-uuid', 'photo-uuid');
+      await service.deletePhoto('project-uuid', 'org-uuid', 'photo-uuid');
 
       expect(storageMock.delete).toHaveBeenCalledWith(mockPhoto.storage_url);
       expect(storageMock.delete).toHaveBeenCalledWith(mockPhoto.thumbnail_url);
@@ -278,13 +276,13 @@ describe('PhotosService', () => {
       photoRepoMock.findOne.mockResolvedValueOnce(null);
 
       await expect(
-        service.deletePhoto('project-uuid', 'user-uuid', 'nonexistent'),
+        service.deletePhoto('project-uuid', 'org-uuid', 'nonexistent'),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw ForbiddenException for wrong user', async () => {
       await expect(
-        service.deletePhoto('project-uuid', 'other-user-uuid', 'photo-uuid'),
+        service.deletePhoto('project-uuid', 'other-org-uuid', 'photo-uuid'),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -293,7 +291,7 @@ describe('PhotosService', () => {
     it('should return the photo', async () => {
       const result = await service.findPhotoForServing(
         'project-uuid',
-        'user-uuid',
+        'org-uuid',
         'photo-uuid',
       );
       expect(result).toBeDefined();
@@ -304,7 +302,7 @@ describe('PhotosService', () => {
       photoRepoMock.findOne.mockResolvedValueOnce(null);
 
       await expect(
-        service.findPhotoForServing('project-uuid', 'user-uuid', 'nonexistent'),
+        service.findPhotoForServing('project-uuid', 'org-uuid', 'nonexistent'),
       ).rejects.toThrow(NotFoundException);
     });
   });

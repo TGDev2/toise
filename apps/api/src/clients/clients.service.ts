@@ -12,8 +12,13 @@ export class ClientsService {
     private readonly repo: Repository<Client>,
   ) {}
 
-  async create(userId: string, dto: CreateClientDto): Promise<Client> {
+  async create(
+    organizationId: string,
+    userId: string,
+    dto: CreateClientDto,
+  ): Promise<Client> {
     const client = this.repo.create({
+      organization_id: organizationId,
       user_id: userId,
       name: dto.name,
       email: dto.email ?? null,
@@ -31,16 +36,16 @@ export class ClientsService {
     return this.repo.save(client);
   }
 
-  async findAllByUser(userId: string): Promise<Client[]> {
+  async findAllForOrg(organizationId: string): Promise<Client[]> {
     return this.repo.find({
-      where: { user_id: userId },
+      where: { organization_id: organizationId },
       order: { created_at: 'DESC' },
     });
   }
 
-  async findOneByUser(id: string, userId: string): Promise<Client> {
+  async findOneForOrg(id: string, organizationId: string): Promise<Client> {
     const client = await this.repo.findOne({
-      where: { id, user_id: userId },
+      where: { id, organization_id: organizationId },
     });
     if (!client) {
       throw new NotFoundException('Client non trouve');
@@ -48,22 +53,22 @@ export class ClientsService {
     return client;
   }
 
-  async countByUser(userId: string): Promise<number> {
-    return this.repo.count({ where: { user_id: userId } });
+  async countForOrg(organizationId: string): Promise<number> {
+    return this.repo.count({ where: { organization_id: organizationId } });
   }
 
   async update(
     id: string,
-    userId: string,
+    organizationId: string,
     dto: UpdateClientDto,
   ): Promise<Client> {
-    const client = await this.findOneByUser(id, userId);
+    const client = await this.findOneForOrg(id, organizationId);
     Object.assign(client, dto);
     return this.repo.save(client);
   }
 
-  async remove(id: string, userId: string): Promise<void> {
-    const client = await this.findOneByUser(id, userId);
+  async remove(id: string, organizationId: string): Promise<void> {
+    const client = await this.findOneForOrg(id, organizationId);
     await this.repo.remove(client);
   }
 }

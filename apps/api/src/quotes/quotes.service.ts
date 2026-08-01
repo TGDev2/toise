@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import {
   Quote,
   QuoteStatus,
@@ -25,14 +25,19 @@ export class QuotesService {
     private readonly repo: Repository<Quote>,
     @InjectRepository(EstimationResult)
     private readonly estimationRepo: Repository<EstimationResult>,
+    private readonly dataSource: DataSource,
     private readonly shoppingListsService: ShoppingListsService,
     private readonly projectsService: ProjectsService,
     private readonly clientsService: ClientsService,
   ) {}
 
-  async create(userId: string, dto: CreateQuoteDto): Promise<Quote> {
-    // Verify project belongs to user
-    await this.projectsService.findOneByUser(dto.project_id, userId);
+  async create(
+    organizationId: string,
+    userId: string,
+    dto: CreateQuoteDto,
+  ): Promise<Quote> {
+    // Verify project belongs to the organization
+    await this.projectsService.findOneForOrg(dto.project_id, organizationId);
 
     // Verify estimation exists and belongs to project
     const estimation = await this.estimationRepo.findOne({
@@ -42,14 +47,15 @@ export class QuotesService {
       throw new NotFoundException('Estimation non trouvee pour ce projet');
     }
 
-    // Verify client belongs to user when provided
+    // Verify client belongs to the organization when provided
     if (dto.client_id) {
-      await this.clientsService.findOneByUser(dto.client_id, userId);
+      await this.clientsService.findOneForOrg(dto.client_id, organizationId);
     }
 
     // Get shopping list for prices
     const { shoppingList } = await this.shoppingListsService.getOrGenerate(
       dto.project_id,
+      organizationId,
       userId,
     );
 
@@ -88,37 +94,49 @@ export class QuotesService {
     const tvaRate = dto.tva_rate ?? 20;
     const totalTtc = totalHt * (1 + tvaRate / 100);
 
-    const quoteNumber = await this.generateNextQuoteNumber(userId);
+    // Numéro alloué et devis inséré dans la même transaction : un échec rend le
+    // numéro au lieu de le consommer.
+    return this.dataSource.transaction(async (manager) => {
+      const quoteNumber = await this.allocateQuoteNumber(
+        manager,
+        organizationId,
+        new Date().getFullYear(),
+      );
 
-    const quote = this.repo.create({
-      user_id: userId,
-      project_id: dto.project_id,
-      client_id: dto.client_id ?? null,
-      estimation_id: dto.estimation_id,
-      quote_number: quoteNumber,
-      status: QuoteStatus.DRAFT,
-      labor_type: dto.labor_type,
-      labor_hourly_rate: dto.labor_hourly_rate ?? null,
-      labor_estimated_hours: dto.labor_estimated_hours ?? null,
-      labor_flat_amount: dto.labor_flat_amount ?? null,
-      material_margin_percent: marginPercent,
-      discount_percent: discountPercent,
-      payment_terms: dto.payment_terms ?? null,
-      validity_days: dto.validity_days ?? 30,
-      notes: dto.notes ?? null,
-      items_json: items,
-      subtotal_materials_ht: Math.round(subtotalMaterials * 100) / 100,
-      subtotal_labor_ht: Math.round(subtotalLabor * 100) / 100,
-      total_ht: Math.round(totalHt * 100) / 100,
-      tva_rate: tvaRate,
-      total_ttc: Math.round(totalTtc * 100) / 100,
+      const quote = manager.create(Quote, {
+        organization_id: organizationId,
+        user_id: userId,
+        project_id: dto.project_id,
+        client_id: dto.client_id ?? null,
+        estimation_id: dto.estimation_id,
+        quote_number: quoteNumber,
+        status: QuoteStatus.DRAFT,
+        labor_type: dto.labor_type,
+        labor_hourly_rate: dto.labor_hourly_rate ?? null,
+        labor_estimated_hours: dto.labor_estimated_hours ?? null,
+        labor_flat_amount: dto.labor_flat_amount ?? null,
+        material_margin_percent: marginPercent,
+        discount_percent: discountPercent,
+        payment_terms: dto.payment_terms ?? null,
+        validity_days: dto.validity_days ?? 30,
+        notes: dto.notes ?? null,
+        items_json: items,
+        subtotal_materials_ht: Math.round(subtotalMaterials * 100) / 100,
+        subtotal_labor_ht: Math.round(subtotalLabor * 100) / 100,
+        total_ht: Math.round(totalHt * 100) / 100,
+        tva_rate: tvaRate,
+        total_ttc: Math.round(totalTtc * 100) / 100,
+      });
+
+      return manager.save(quote);
     });
-
-    return this.repo.save(quote);
   }
 
-  async findAllByUser(userId: string, status?: QuoteStatus): Promise<Quote[]> {
-    const where: Record<string, unknown> = { user_id: userId };
+  async findAllForOrg(
+    organizationId: string,
+    status?: QuoteStatus,
+  ): Promise<Quote[]> {
+    const where: Record<string, unknown> = { organization_id: organizationId };
     if (status) {
       where.status = status;
     }
@@ -129,9 +147,9 @@ export class QuotesService {
     });
   }
 
-  async findOneByUser(id: string, userId: string): Promise<Quote> {
+  async findOneForOrg(id: string, organizationId: string): Promise<Quote> {
     const quote = await this.repo.findOne({
-      where: { id, user_id: userId },
+      where: { id, organization_id: organizationId },
       relations: ['project', 'client'],
     });
     if (!quote) {
@@ -140,16 +158,16 @@ export class QuotesService {
     return quote;
   }
 
-  async countByUser(userId: string): Promise<number> {
-    return this.repo.count({ where: { user_id: userId } });
+  async countForOrg(organizationId: string): Promise<number> {
+    return this.repo.count({ where: { organization_id: organizationId } });
   }
 
   async update(
     id: string,
-    userId: string,
+    organizationId: string,
     dto: UpdateQuoteDto,
   ): Promise<Quote> {
-    const quote = await this.findOneByUser(id, userId);
+    const quote = await this.findOneForOrg(id, organizationId);
 
     if (quote.status !== QuoteStatus.DRAFT) {
       throw new BadRequestException(
@@ -160,7 +178,7 @@ export class QuotesService {
     // Apply updates
     if (dto.client_id !== undefined) {
       if (dto.client_id !== null) {
-        await this.clientsService.findOneByUser(dto.client_id, userId);
+        await this.clientsService.findOneForOrg(dto.client_id, organizationId);
       }
       quote.client_id = dto.client_id;
     }
@@ -218,10 +236,10 @@ export class QuotesService {
 
   async updateStatus(
     id: string,
-    userId: string,
+    organizationId: string,
     status: QuoteStatus,
   ): Promise<Quote> {
-    const quote = await this.findOneByUser(id, userId);
+    const quote = await this.findOneForOrg(id, organizationId);
 
     quote.status = status;
     const now = new Date();
@@ -239,8 +257,8 @@ export class QuotesService {
     return this.repo.save(quote);
   }
 
-  async remove(id: string, userId: string): Promise<void> {
-    const quote = await this.findOneByUser(id, userId);
+  async remove(id: string, organizationId: string): Promise<void> {
+    const quote = await this.findOneForOrg(id, organizationId);
     if (quote.status !== QuoteStatus.DRAFT) {
       throw new BadRequestException(
         'Seul un devis en brouillon peut etre supprime',
@@ -266,25 +284,31 @@ export class QuotesService {
     );
   }
 
-  private async generateNextQuoteNumber(userId: string): Promise<string> {
-    const year = new Date().getFullYear();
-    const prefix = `D-${year}-`;
-
-    const latest = await this.repo
-      .createQueryBuilder('q')
-      .where('q.user_id = :userId', { userId })
-      .andWhere('q.quote_number LIKE :prefix', { prefix: `${prefix}%` })
-      .orderBy('q.quote_number', 'DESC')
-      .getOne();
-
-    let nextSeq = 1;
-    if (latest) {
-      const lastSeq = parseInt(latest.quote_number.replace(prefix, ''), 10);
-      if (!isNaN(lastSeq)) {
-        nextSeq = lastSeq + 1;
-      }
-    }
-
-    return `${prefix}${String(nextSeq).padStart(3, '0')}`;
+  /**
+   * Alloue le prochain numéro de devis de l'organisation, dans la transaction
+   * qui insère le devis.
+   *
+   * Le `MAX(quote_number) … LIKE` d'origine convenait tant qu'un compte était
+   * mono-utilisateur : deux devis ne pouvaient pas naître en parallèle. Avec des
+   * membres (PLAT-4) c'est faux, et sans verrou deux allocations simultanées
+   * rendaient le même numéro — que `UQ_quotes_org_number` transformerait en 500.
+   * On reprend donc le compteur `ON CONFLICT … DO UPDATE … RETURNING` de PRO-4,
+   * qui sérialise les allocations sur un verrou de ligne. Les trous, interdits
+   * sur une facture, sont ici sans enjeu : c'est le verrou qu'on vient chercher.
+   */
+  private async allocateQuoteNumber(
+    manager: EntityManager,
+    organizationId: string,
+    year: number,
+  ): Promise<string> {
+    const rows = await manager.query<{ last_number: number }[]>(
+      `INSERT INTO "quote_sequences" ("organization_id", "year", "last_number")
+       VALUES ($1, $2, 1)
+       ON CONFLICT ("organization_id", "year")
+       DO UPDATE SET "last_number" = "quote_sequences"."last_number" + 1
+       RETURNING "last_number"`,
+      [organizationId, year],
+    );
+    return `D-${year}-${String(Number(rows[0].last_number)).padStart(3, '0')}`;
   }
 }

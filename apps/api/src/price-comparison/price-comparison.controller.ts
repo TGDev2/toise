@@ -13,7 +13,8 @@ import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
 import { FeatureGateGuard } from '../feature-gates/guards/feature-gate.guard';
 import { RequireFeature } from '../feature-gates/decorators/require-feature.decorator';
-import { UsersService } from '../users/users.service';
+import { OrgContextService } from '../organizations/org-context.service';
+import type { OrgScope } from '../organizations/org-context.service';
 import { PriceComparisonService } from './price-comparison.service';
 import { ComparePricesRequestDto } from './dto/compare-prices-request.dto';
 import { ApplySelectionsRequestDto } from './dto/apply-selections-request.dto';
@@ -25,15 +26,15 @@ import type { BuyLinksResponseDto } from './dto/buy-links-response.dto';
 export class PriceComparisonController {
   constructor(
     private readonly priceComparisonService: PriceComparisonService,
-    private readonly usersService: UsersService,
+    private readonly orgContext: OrgContextService,
   ) {}
 
-  private async resolveUserId(firebaseUser: DecodedIdToken): Promise<string> {
-    const user = await this.usersService.findByFirebaseUid(firebaseUser.uid);
-    if (!user) {
+  private async resolveScope(firebaseUser: DecodedIdToken): Promise<OrgScope> {
+    try {
+      return await this.orgContext.resolveForFirebaseUid(firebaseUser.uid);
+    } catch {
       throw new UnauthorizedException('Utilisateur non authentifié.');
     }
-    return user.id;
   }
 
   @Get(':id/shopping-list/buy-links')
@@ -41,10 +42,11 @@ export class PriceComparisonController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) projectId: string,
   ): Promise<BuyLinksResponseDto> {
-    const userId = await this.resolveUserId(firebaseUser);
+    const scope = await this.resolveScope(firebaseUser);
     const links = await this.priceComparisonService.getBuyLinks(
       projectId,
-      userId,
+      scope.organizationId,
+      scope.userId,
     );
     return { links };
   }
@@ -57,10 +59,11 @@ export class PriceComparisonController {
     @Param('id', ParseUUIDPipe) projectId: string,
     @Body() dto: ComparePricesRequestDto,
   ): Promise<PriceComparisonResponseDto> {
-    const userId = await this.resolveUserId(firebaseUser);
+    const scope = await this.resolveScope(firebaseUser);
     return this.priceComparisonService.comparePrices(
       projectId,
-      userId,
+      scope.organizationId,
+      scope.userId,
       dto.postal_code,
     );
   }
@@ -73,10 +76,11 @@ export class PriceComparisonController {
     @Param('id', ParseUUIDPipe) projectId: string,
     @Body() dto: ApplySelectionsRequestDto,
   ): Promise<{ applied: boolean }> {
-    const userId = await this.resolveUserId(firebaseUser);
+    const scope = await this.resolveScope(firebaseUser);
     await this.priceComparisonService.applySelections(
       projectId,
-      userId,
+      scope.organizationId,
+      scope.userId,
       dto.selections,
     );
     return { applied: true };

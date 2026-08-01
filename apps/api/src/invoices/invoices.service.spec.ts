@@ -25,6 +25,7 @@ import type { CompanyProfile } from '../company-profiles/entities/company-profil
 import type { Client } from '../clients/entities/client.entity';
 
 const USER_ID = 'user-1';
+const ORG_ID = 'org-1';
 
 // `pg` renvoie les colonnes numeric sous forme de chaînes : les fixtures le
 // reproduisent, sinon les tests valident un comportement que la prod n'a pas.
@@ -32,6 +33,7 @@ function makeQuote(overrides: Partial<Quote> = {}): Quote {
   return {
     id: 'quote-1',
     user_id: USER_ID,
+    organization_id: ORG_ID,
     project_id: 'project-1',
     client_id: 'client-1',
     estimation_id: 'estimation-1',
@@ -79,6 +81,7 @@ function makeProfile(overrides: Partial<CompanyProfile> = {}): CompanyProfile {
   return {
     id: 'profile-1',
     user_id: USER_ID,
+    organization_id: ORG_ID,
     raison_sociale: 'Dupont Renovation SARL',
     siret: '12345678901234',
     address_line1: '1 rue de Paris',
@@ -110,6 +113,7 @@ function makeClient(overrides: Partial<Client> = {}): Client {
   return {
     id: 'client-1',
     user_id: USER_ID,
+    organization_id: ORG_ID,
     name: 'Marie Martin',
     email: 'marie@example.com',
     phone: null,
@@ -134,9 +138,9 @@ describe('InvoicesService', () => {
   };
 
   const repoMock = { findOne: jest.fn(), find: jest.fn(), save: jest.fn() };
-  const quotesServiceMock = { findOneByUser: jest.fn() };
-  const companyProfilesServiceMock = { findByUserId: jest.fn() };
-  const clientsServiceMock = { findOneByUser: jest.fn() };
+  const quotesServiceMock = { findOneForOrg: jest.fn() };
+  const companyProfilesServiceMock = { findByOrganizationId: jest.fn() };
+  const clientsServiceMock = { findOneForOrg: jest.fn() };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -155,9 +159,11 @@ describe('InvoicesService', () => {
     };
 
     repoMock.findOne.mockResolvedValue(null);
-    quotesServiceMock.findOneByUser.mockResolvedValue(makeQuote());
-    companyProfilesServiceMock.findByUserId.mockResolvedValue(makeProfile());
-    clientsServiceMock.findOneByUser.mockResolvedValue(makeClient());
+    quotesServiceMock.findOneForOrg.mockResolvedValue(makeQuote());
+    companyProfilesServiceMock.findByOrganizationId.mockResolvedValue(
+      makeProfile(),
+    );
+    clientsServiceMock.findOneForOrg.mockResolvedValue(makeClient());
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -177,7 +183,7 @@ describe('InvoicesService', () => {
   });
 
   async function create(): Promise<Invoice> {
-    return service.createFromQuote(USER_ID, {
+    return service.createFromQuote(ORG_ID, USER_ID, {
       quote_id: 'quote-1',
       issued_on: '2026-08-01',
     });
@@ -204,25 +210,25 @@ describe('InvoicesService', () => {
         unknown[],
       ];
       expect(sql).toContain('INSERT INTO "invoice_sequences"');
-      expect(sql).toContain('ON CONFLICT ("user_id", "year")');
+      expect(sql).toContain('ON CONFLICT ("organization_id", "year")');
       expect(sql).toContain(
         '"last_number" = "invoice_sequences"."last_number" + 1',
       );
       expect(sql).toContain('RETURNING "last_number"');
-      expect(params).toEqual([USER_ID, 2026]);
+      expect(params).toEqual([ORG_ID, 2026]);
     });
 
     it('derives the sequence year from the issue date', async () => {
-      await service.createFromQuote(USER_ID, {
+      await service.createFromQuote(ORG_ID, USER_ID, {
         quote_id: 'quote-1',
         issued_on: '2027-01-02',
       });
       const [, params] = managerMock.query.mock.calls[0] as [string, unknown[]];
-      expect(params).toEqual([USER_ID, 2027]);
+      expect(params).toEqual([ORG_ID, 2027]);
     });
 
     it('rejects a quote that is not accepted', async () => {
-      quotesServiceMock.findOneByUser.mockResolvedValue(
+      quotesServiceMock.findOneForOrg.mockResolvedValue(
         makeQuote({ status: QuoteStatus.SENT }),
       );
       await expect(create()).rejects.toBeInstanceOf(BadRequestException);
@@ -230,7 +236,7 @@ describe('InvoicesService', () => {
     });
 
     it('propagates a not-found quote', async () => {
-      quotesServiceMock.findOneByUser.mockRejectedValue(
+      quotesServiceMock.findOneForOrg.mockRejectedValue(
         new NotFoundException('Devis non trouve'),
       );
       await expect(create()).rejects.toBeInstanceOf(NotFoundException);
@@ -253,7 +259,7 @@ describe('InvoicesService', () => {
     });
 
     it('refuses to issue when legal mentions are missing', async () => {
-      companyProfilesServiceMock.findByUserId.mockResolvedValue(
+      companyProfilesServiceMock.findByOrganizationId.mockResolvedValue(
         makeProfile({ vat_number: null, insurance_name: null }),
       );
 
@@ -267,7 +273,7 @@ describe('InvoicesService', () => {
     });
 
     it('refuses to issue without a company profile', async () => {
-      companyProfilesServiceMock.findByUserId.mockResolvedValue(null);
+      companyProfilesServiceMock.findByOrganizationId.mockResolvedValue(null);
       await expect(create()).rejects.toMatchObject({
         response: { error: 'MISSING_LEGAL_MENTIONS' },
       });
@@ -283,7 +289,7 @@ describe('InvoicesService', () => {
 
     it('materialises the quote discount as a negative amount line', async () => {
       // Devis remisé : 151,47 + 720,00 = 871,47 brut, remisé 5 % => 827,90.
-      quotesServiceMock.findOneByUser.mockResolvedValue(
+      quotesServiceMock.findOneForOrg.mockResolvedValue(
         makeQuote({
           discount_percent: '5.00' as unknown as number,
           total_ht: '827.90' as unknown as number,
@@ -318,7 +324,7 @@ describe('InvoicesService', () => {
     });
 
     it('omits the labour line when the quote has none', async () => {
-      quotesServiceMock.findOneByUser.mockResolvedValue(
+      quotesServiceMock.findOneForOrg.mockResolvedValue(
         makeQuote({
           subtotal_labor_ht: '0.00' as unknown as number,
           labor_hourly_rate: '0.00' as unknown as number,
@@ -342,7 +348,7 @@ describe('InvoicesService', () => {
     });
 
     it('forces a zero rate and the 293 B mention under the franchise en base', async () => {
-      companyProfilesServiceMock.findByUserId.mockResolvedValue(
+      companyProfilesServiceMock.findByOrganizationId.mockResolvedValue(
         makeProfile({ vat_exempt: true, vat_number: null }),
       );
 
@@ -377,7 +383,7 @@ describe('InvoicesService', () => {
     });
 
     it('snapshots the buyer identity and the B2B SIREN', async () => {
-      clientsServiceMock.findOneByUser.mockResolvedValue(
+      clientsServiceMock.findOneForOrg.mockResolvedValue(
         makeClient({ is_company: true, siret: '98765432109876' }),
       );
 
@@ -399,13 +405,13 @@ describe('InvoicesService', () => {
     });
 
     it('falls back to a placeholder buyer when the quote has no client', async () => {
-      quotesServiceMock.findOneByUser.mockResolvedValue(
+      quotesServiceMock.findOneForOrg.mockResolvedValue(
         makeQuote({ client_id: null }),
       );
 
       const invoice = await create();
 
-      expect(clientsServiceMock.findOneByUser).not.toHaveBeenCalled();
+      expect(clientsServiceMock.findOneForOrg).not.toHaveBeenCalled();
       expect(invoice.buyer_snapshot.name).toBe('Client particulier');
     });
 
@@ -416,7 +422,7 @@ describe('InvoicesService', () => {
     });
 
     it('derives the due date from the profile payment terms', async () => {
-      companyProfilesServiceMock.findByUserId.mockResolvedValue(
+      companyProfilesServiceMock.findByOrganizationId.mockResolvedValue(
         makeProfile({ default_payment_terms_days: 45 }),
       );
 
@@ -431,7 +437,7 @@ describe('InvoicesService', () => {
     });
 
     it('carries the 2026 mandatory mentions', async () => {
-      const invoice = await service.createFromQuote(USER_ID, {
+      const invoice = await service.createFromQuote(ORG_ID, USER_ID, {
         quote_id: 'quote-1',
         issued_on: '2026-08-01',
         delivery_address: '12 rue du Chantier, 75011 Paris',
@@ -462,6 +468,8 @@ describe('InvoicesService', () => {
       repoMock.findOne.mockResolvedValue({
         id: 'invoice-1',
         user_id: USER_ID,
+        organization_id: ORG_ID,
+        organization_id: ORG_ID,
         status: InvoiceStatus.ISSUED,
         paid_at: null,
       });
@@ -480,6 +488,8 @@ describe('InvoicesService', () => {
       repoMock.findOne.mockResolvedValue({
         id: 'invoice-1',
         user_id: USER_ID,
+        organization_id: ORG_ID,
+        organization_id: ORG_ID,
         status: InvoiceStatus.PAID,
         paid_at: new Date('2026-08-20T00:00:00.000Z'),
       });
@@ -502,11 +512,11 @@ describe('InvoicesService', () => {
     });
   });
 
-  describe('findAllByUser', () => {
+  describe('findAllForOrg', () => {
     it('scopes to the user and applies the filters', async () => {
       repoMock.find.mockResolvedValue([]);
 
-      await service.findAllByUser(USER_ID, {
+      await service.findAllForOrg(ORG_ID, {
         status: InvoiceStatus.PAID,
         quote_id: 'quote-1',
       });
@@ -514,7 +524,7 @@ describe('InvoicesService', () => {
       expect(repoMock.find).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
-            user_id: USER_ID,
+            organization_id: ORG_ID,
             status: InvoiceStatus.PAID,
             quote_id: 'quote-1',
           },
@@ -524,9 +534,9 @@ describe('InvoicesService', () => {
 
     it('omits absent filters', async () => {
       repoMock.find.mockResolvedValue([]);
-      await service.findAllByUser(USER_ID);
+      await service.findAllForOrg(ORG_ID);
       expect(repoMock.find).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { user_id: USER_ID } }),
+        expect.objectContaining({ where: { organization_id: ORG_ID } }),
       );
     });
   });

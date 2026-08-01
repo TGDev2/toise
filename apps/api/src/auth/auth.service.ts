@@ -8,6 +8,7 @@ import { DecodedIdToken } from 'firebase-admin/auth';
 import { FirebaseConfig } from '../config/firebase.config';
 import { UsersService } from '../users/users.service';
 import { CompanyProfilesService } from '../company-profiles/company-profiles.service';
+import { OrgContextService } from '../organizations/org-context.service';
 import { AuthProvider, User } from '../users/entities/user.entity';
 import { RegisterDto } from './dto/register.dto';
 import { AnalyticsService } from '../analytics/analytics.service';
@@ -22,6 +23,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly companyProfilesService: CompanyProfilesService,
     private readonly analyticsService: AnalyticsService,
+    private readonly orgContext: OrgContextService,
   ) {}
 
   async register(dto: RegisterDto): Promise<{ user: User; message: string }> {
@@ -49,7 +51,15 @@ export class AuthService {
       );
 
       if (dto.company_profile) {
-        await this.companyProfilesService.create(user.id, dto.company_profile);
+        // Le profil d'entreprise appartient à l'organisation (PLAT-4) : on
+        // matérialise l'espace personnel du nouveau compte avant de l'y poser.
+        const organization =
+          await this.orgContext.getOrCreatePersonalOrganization(user);
+        await this.companyProfilesService.create(
+          organization.id,
+          user.id,
+          dto.company_profile,
+        );
       }
 
       if (isNewAccount) {
@@ -145,7 +155,16 @@ export class AuthService {
       throw new ConflictException('Cannot merge an account into itself');
     }
 
-    await this.usersService.transferProjects(anonymousUser.id, targetUser.id);
+    // La propriété d'un projet est désormais l'organisation (PLAT-4) : ne
+    // repointer que `user_id` laisserait le projet fusionné dans l'org de
+    // l'invité, donc invisible pour le compte cible.
+    const targetOrganization =
+      await this.orgContext.getOrCreatePersonalOrganization(targetUser);
+    await this.usersService.transferProjects(
+      anonymousUser.id,
+      targetUser.id,
+      targetOrganization.id,
+    );
 
     // Delete the anonymous user from Firebase and DB
     try {

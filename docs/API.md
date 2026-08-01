@@ -34,6 +34,7 @@
 - [Invoices](#invoices)
 - [Suivi de chantier](#suivi-de-chantier)
 - [Community](#community)
+- [Organisations](#organisations)
 
 ---
 
@@ -1691,6 +1692,111 @@ Approuver ou rejeter un projet communautaire.
 ```
 
 **Réponses :** `200 OK` | `404 Not Found`
+
+---
+
+## Organisations
+
+BACKLOG PLAT-4. La propriété des projets, clients, devis et factures appartient à
+l'**organisation**, pas à l'utilisateur. Tout compte possède une organisation
+personnelle (créée d'office) ; les paliers Contractor Premium peuvent en plus
+inviter des membres.
+
+L'organisation active est résolue **côté serveur** à partir du compte
+authentifié — aucune route n'accepte d'identifiant d'organisation fourni par le
+client, hormis `POST /organizations/:id/activate` qui revérifie l'adhésion.
+
+Le palier appliqué par les feature gates est celui du **propriétaire de
+l'organisation active** : un membre au palier `free` invité chez un Contractor
+Premium travaille avec les capacités Premium tant qu'il est dans cette
+organisation, et retrouve son propre palier dans son espace personnel.
+
+Rôles : `owner` (porte le palier, ni rétrogradable ni retirable), `admin` (gère
+les membres non-`owner`), `member` (travaille sur les données de l'organisation).
+
+### `GET /organizations/current`
+
+Organisation active, rôle de l'appelant et palier effectif.
+
+**Réponse :** `200 OK`
+```json
+{
+  "id": "uuid",
+  "name": "Peinture Dupont SARL",
+  "is_personal": false,
+  "role": "owner",
+  "effective_tier": "contractor_premium"
+}
+```
+
+### `GET /organizations/mine`
+
+Liste des organisations dont l'appelant est membre, avec son rôle et laquelle est active.
+
+**Réponse :** `200 OK`
+
+### `PATCH /organizations/current`
+
+Renomme l'organisation active. Réservé à `owner`/`admin`.
+
+**Body :** `{ "name": "Peinture Dupont SARL" }`
+
+**Réponses :** `200 OK` | `403 Forbidden`
+
+### `POST /organizations/:id/activate`
+
+Bascule l'organisation active. L'adhésion est revérifiée : un membre retiré est refusé.
+
+**Réponses :** `204 No Content` | `403 Forbidden`
+
+### `GET /organizations/current/members`
+
+**Réponse :** `200 OK` — `[{ "user_id", "email", "role", "joined_at" }]`
+
+### `PATCH /organizations/current/members/:userId`
+
+Change le rôle d'un membre (`admin` ou `member`). Réservé à `owner`/`admin`.
+Le propriétaire ne peut pas être modifié.
+
+**Réponses :** `200 OK` | `403 Forbidden` | `404 Not Found`
+
+### `DELETE /organizations/current/members/:userId`
+
+Retire un membre. Son organisation active est réinitialisée sur son espace personnel.
+
+**Réponses :** `204 No Content` | `403 Forbidden` | `404 Not Found`
+
+### `POST /organizations/current/invitations`
+
+**Feature gate :** `multi_user` (Contractor Premium). Réservé à `owner`/`admin`.
+
+Crée une invitation valable 7 jours et envoie le lien par e-mail. Seul le SHA-256
+du jeton est stocké : le secret ne vit que dans l'e-mail. Un renvoi sur la même
+adresse remplace l'invitation en attente.
+
+**Body :** `{ "email": "salarie@example.com", "role": "member" }`
+
+**Réponses :** `201 Created` | `403 Forbidden` | `409 Conflict` (déjà membre)
+
+### `GET /organizations/current/invitations`
+
+Invitations en attente. **Feature gate :** `multi_user`.
+
+### `DELETE /organizations/current/invitations/:id`
+
+Révoque une invitation. **Feature gate :** `multi_user`.
+
+**Réponses :** `204 No Content`
+
+### `POST /organizations/invitations/accept`
+
+Accepte une invitation. Non gatée : le membre invité peut être au palier `free`.
+Exige d'être authentifié **avec l'adresse e-mail invitée** — un jeton intercepté
+ne permet pas d'entrer avec un autre compte.
+
+**Body :** `{ "token": "..." }`
+
+**Réponses :** `201 Created` | `400 Bad Request` (expirée) | `403 Forbidden` (e-mail non concordant) | `404 Not Found` (jeton inconnu ou déjà utilisé)
 
 ---
 
