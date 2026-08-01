@@ -38,6 +38,20 @@ export class Client {
   @Column({ type: 'varchar', length: 100, nullable: true })
   city!: string | null;
 
+  /** Client professionnel : déclenche le SIREN acheteur obligatoire sur facture (réforme 2026). */
+  @Column({ type: 'boolean', default: false })
+  is_company!: boolean;
+
+  @Column({ type: 'varchar', length: 14, nullable: true })
+  siret!: string | null;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  vat_number!: string | null;
+
+  /** EN 16931 BT-55. */
+  @Column({ type: 'varchar', length: 2, default: 'FR' })
+  country!: string;
+
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user!: User;

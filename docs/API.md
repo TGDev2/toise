@@ -31,6 +31,7 @@
 - [Company Profiles](#company-profiles)
 - [Clients](#clients)
 - [Quotes](#quotes)
+- [Invoices](#invoices)
 - [Suivi de chantier](#suivi-de-chantier)
 - [Community](#community)
 
@@ -1075,6 +1076,27 @@ Créer un profil entreprise.
 | `phone` | string | non | Max 20 caractères |
 | `specialties` | string[] | non | — |
 
+**Mentions légales de facturation** (toutes facultatives ; requises seulement à l'émission d'une facture — cf. [Invoices](#invoices) et [CONFORMITE_FACTURATION.md](CONFORMITE_FACTURATION.md)) :
+
+| Champ | Type | Validation |
+|-------|------|------------|
+| `legal_form` | string | Max 50 caractères |
+| `capital_social` | number | Min 0 |
+| `vat_number` | string | Format `FRxx999999999` |
+| `vat_exempt` | boolean | Franchise en base, art. 293 B du CGI |
+| `rcs_city` | string | Max 100 caractères |
+| `rm_department` | string | Max 100 caractères |
+| `insurance_name` | string | Assureur décennale, max 255 |
+| `insurance_policy` | string | Max 100 caractères |
+| `insurance_coverage` | string | Couverture géographique, max 255 |
+| `iban` | string | Format IBAN |
+| `bic` | string | Format BIC (8 ou 11) |
+| `email` | string | Format email valide |
+| `late_penalty_rate` | number | 0-100 |
+| `default_payment_terms_days` | number | Entier 0-90 |
+
+> Le SIREN et le numéro RCS ne sont pas stockés : ils se dérivent du SIRET (9 premiers chiffres).
+
 **Réponses :** `201 Created`
 
 ---
@@ -1132,6 +1154,12 @@ Créer un client.
 | `address_line2` | string | non | — |
 | `postal_code` | string | non | Max 10 caractères |
 | `city` | string | non | Max 100 caractères |
+| `is_company` | boolean | non | Client professionnel |
+| `siret` | string | non | Exactement 14 chiffres |
+| `vat_number` | string | non | Max 20 caractères |
+| `country` | string | non | Code ISO 2 lettres (défaut `FR`) |
+
+> `is_company` + `siret` alimentent la mention « SIREN du client », obligatoire sur les factures B2B au 1er septembre 2026.
 
 **Réponses :** `201 Created` | `403 Forbidden`
 
@@ -1301,6 +1329,136 @@ Supprimer un devis.
 **Auth :** Requise (propriétaire uniquement) | **Feature gate :** `export_devis`
 
 **Réponses :** `204 No Content` | `404 Not Found` | `403 Forbidden`
+
+---
+
+## Invoices
+
+> Toutes les routes factures nécessitent la feature gate `invoicing` (tier Contractor Essentiel).
+>
+> **Une facture émise est immuable** : il n'existe ni route de modification de contenu, ni route de suppression. Seul l'état de règlement évolue. Voir [CONFORMITE_FACTURATION.md](CONFORMITE_FACTURATION.md).
+
+### `POST /invoices`
+
+Convertir un devis **accepté** en facture. Le numéro est alloué dans une séquence continue par artisan et par année (`F-AAAA-NNNN`).
+
+**Auth :** Requise | **Feature gate :** `invoicing`
+
+**Body :**
+```json
+{
+  "quote_id": "uuid",
+  "issued_on": "2026-08-01",
+  "supply_date": "2026-07-28",
+  "due_on": "2026-08-31",
+  "payment_terms": "30 % à la commande, solde à la livraison",
+  "delivery_address": "12 rue du Chantier, 75011 Paris",
+  "operation_category": "mixte",
+  "vat_on_debits": false,
+  "notes": "Merci de votre confiance"
+}
+```
+
+| Champ | Type | Requis | Validation |
+|-------|------|--------|------------|
+| `quote_id` | UUID | oui | Le devis doit être au statut `accepted` |
+| `issued_on` | date | non | Défaut : aujourd'hui (`Europe/Paris`) |
+| `supply_date` | date | non | Date de prestation. Défaut : `issued_on` |
+| `due_on` | date | non | Défaut : `issued_on` + délai du profil, ou 30 jours |
+| `payment_terms` | string | non | Défaut : conditions du devis |
+| `delivery_address` | string | non | Max 500. Mention 2026 si ≠ adresse de facturation |
+| `operation_category` | enum | non | `biens`, `services`, `mixte` (défaut `mixte`) |
+| `vat_on_debits` | boolean | non | Option TVA d'après les débits (mention 2026) |
+| `notes` | string | non | — |
+
+**Réponses :** `201 Created` | `400 Bad Request` | `403 Forbidden` | `404 Not Found` | `409 Conflict`
+
+`400` lorsque le profil entreprise est incomplet :
+```json
+{
+  "statusCode": 400,
+  "error": "MISSING_LEGAL_MENTIONS",
+  "message": "Mentions legales manquantes sur le profil entreprise, facture non emise",
+  "missing_fields": ["vat_number", "registration", "insurance"]
+}
+```
+
+Valeurs possibles de `missing_fields` : `company_profile`, `siret`, `address`, `vat_number`, `registration`, `insurance`.
+
+`409` lorsqu'une facture de solde existe déjà pour ce devis :
+```json
+{
+  "statusCode": 409,
+  "error": "INVOICE_ALREADY_EXISTS",
+  "message": "Une facture existe deja pour ce devis",
+  "invoice_id": "uuid",
+  "invoice_number": "F-2026-0001"
+}
+```
+
+`400` simple lorsque le devis n'est pas au statut `accepted`.
+
+---
+
+### `GET /invoices`
+
+Lister les factures de l'utilisateur.
+
+**Auth :** Requise | **Feature gate :** `invoicing`
+
+**Query params :**
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `status` | string | Filtrer par statut (`issued`, `paid`) |
+| `quote_id` | UUID | Factures issues d'un devis donné (liste vide si non facturé) |
+
+**Réponses :** `200 OK` | `403 Forbidden`
+
+---
+
+### `GET /invoices/:id`
+
+Récupérer une facture par ID. Le corps contient les identités figées à l'émission (`seller_snapshot`, `buyer_snapshot`), les lignes (`items_json`) et la ventilation de TVA (`vat_breakdown`).
+
+**Auth :** Requise (propriétaire uniquement) | **Feature gate :** `invoicing`
+
+**Réponses :** `200 OK` | `404 Not Found` | `403 Forbidden`
+
+---
+
+### `GET /invoices/:id/export/pdf`
+
+Exporter une facture en PDF, avec toutes les mentions légales françaises.
+
+**Auth :** Requise (propriétaire uniquement) | **Feature gate :** `invoicing`
+
+**Réponses :** `200 OK` — `Content-Type: application/pdf` | `404 Not Found` | `403 Forbidden`
+
+---
+
+### `PATCH /invoices/:id/status`
+
+Changer l'état de règlement. C'est la **seule** mutation autorisée sur une facture émise.
+
+**Auth :** Requise (propriétaire uniquement) | **Feature gate :** `invoicing`
+
+**Body :**
+```json
+{
+  "status": "paid",
+  "paid_at": "2026-08-20"
+}
+```
+
+| Champ | Type | Requis | Validation |
+|-------|------|--------|------------|
+| `status` | enum | oui | `issued`, `paid` |
+| `paid_at` | date | non | Date réelle du règlement. Défaut : maintenant |
+
+> Repasser à `issued` efface `paid_at` — c'est l'annulation d'un marquage erroné, pas l'annulation de la facture, qui exigerait un avoir (non implémenté).
+
+**Réponses :** `200 OK` | `400 Bad Request` | `404 Not Found` | `403 Forbidden`
 
 ---
 

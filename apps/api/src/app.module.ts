@@ -24,6 +24,7 @@ import { ClientsModule } from './clients/clients.module';
 import { QuotesModule } from './quotes/quotes.module';
 import { SiteTrackingModule } from './site-tracking/site-tracking.module';
 import { QuoteRemindersModule } from './quote-reminders/quote-reminders.module';
+import { InvoicesModule } from './invoices/invoices.module';
 import { CommunityModule } from './community/community.module';
 import configuration from './config/configuration';
 import { validate } from './config/env.validation';
@@ -71,6 +72,7 @@ import { validate } from './config/env.validation';
     QuotesModule,
     SiteTrackingModule,
     QuoteRemindersModule,
+    InvoicesModule,
     CommunityModule,
   ],
   controllers: [AppController],

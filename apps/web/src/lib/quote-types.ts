@@ -62,6 +62,10 @@ export interface Client {
   address_line2: string | null;
   postal_code: string | null;
   city: string | null;
+  is_company: boolean;
+  siret: string | null;
+  vat_number: string | null;
+  country: string;
   created_at: string;
   updated_at: string;
 }
@@ -90,6 +94,9 @@ export interface CreateClientPayload {
   address_line2?: string;
   postal_code?: string;
   city?: string;
+  is_company?: boolean;
+  siret?: string;
+  vat_number?: string;
 }
 
 export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {

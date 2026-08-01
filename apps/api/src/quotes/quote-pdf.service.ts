@@ -1,10 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import PDFDocument from 'pdfkit';
-import { PassThrough } from 'stream';
 import { LaborType } from './entities/quote.entity';
 import type { Quote, QuoteLineItem } from './entities/quote.entity';
 import type { CompanyProfile } from '../company-profiles/entities/company-profile.entity';
 import type { Client } from '../clients/entities/client.entity';
+import { PdfBuilder, type PdfColumn } from '../common/pdf/pdf-builder';
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Brouillon',
@@ -14,6 +13,13 @@ const STATUS_LABELS: Record<string, string> = {
   negotiation: 'En négociation',
 };
 
+const COLUMNS: PdfColumn[] = [
+  { label: 'Designation', offset: 0, width: 200 },
+  { label: 'Qte', offset: 210, width: 40, align: 'center' },
+  { label: 'PU HT', offset: 260, width: 80, align: 'right' },
+  { label: 'Total HT', offset: 360, width: 85, align: 'right' },
+];
+
 @Injectable()
 export class QuotePdfService {
   async generatePdf(
@@ -21,29 +27,31 @@ export class QuotePdfService {
     companyProfile: CompanyProfile,
     client: Client | null,
   ): Promise<Buffer> {
-    const doc = new PDFDocument({ size: 'A4', margin: 50 });
-    const stream = new PassThrough();
-    doc.pipe(stream);
-
-    const chunks: Buffer[] = [];
-    stream.on('data', (chunk: Buffer) => chunks.push(chunk));
+    const pdf = new PdfBuilder();
+    const doc = pdf.doc;
 
     // ── Company header (top-left) ──
     doc
       .fontSize(16)
       .font('Helvetica-Bold')
-      .text(companyProfile.raison_sociale, 50, 50);
+      .text(companyProfile.raison_sociale, pdf.left, 50);
 
     doc.fontSize(9).font('Helvetica').fillColor('#444444');
-    doc.text(companyProfile.address_line1, 50, doc.y + 4);
+    doc.text(companyProfile.address_line1, pdf.left, doc.y + 4);
     if (companyProfile.address_line2) {
-      doc.text(companyProfile.address_line2);
+      doc.text(companyProfile.address_line2, pdf.left, doc.y);
     }
-    doc.text(`${companyProfile.postal_code} ${companyProfile.city}`);
+    doc.text(
+      `${companyProfile.postal_code} ${companyProfile.city}`,
+      pdf.left,
+      doc.y,
+    );
     if (companyProfile.phone) {
-      doc.text(`Tel : ${companyProfile.phone}`);
+      doc.text(`Tel : ${companyProfile.phone}`, pdf.left, doc.y);
     }
-    doc.text(`SIRET : ${companyProfile.siret}`);
+    doc.text(`SIRET : ${companyProfile.siret}`, pdf.left, doc.y);
+
+    const headerBottom = doc.y;
 
     // ── Client block (top-right) ──
     if (client) {
@@ -85,33 +93,24 @@ export class QuotePdfService {
 
     // ── Quote metadata ──
     doc.fillColor('#000000');
-    const metaY = Math.max(doc.y, 160);
-    doc.y = metaY;
+    doc.y = Math.max(headerBottom, doc.y, 160);
+    pdf.resetX();
     doc.moveDown(1.5);
 
-    doc
-      .fontSize(18)
-      .font('Helvetica-Bold')
-      .text(`DEVIS N° ${quote.quote_number}`, { align: 'center' });
+    doc.fontSize(18).font('Helvetica-Bold');
+    pdf.text(`DEVIS N° ${quote.quote_number}`, { align: 'center' });
 
     doc.moveDown(0.3);
-    const dateStr = new Date(quote.created_at).toLocaleDateString('fr-FR', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-    });
+    const dateStr = PdfBuilder.formatDate(quote.created_at);
     doc.fontSize(10).font('Helvetica').fillColor('#555555');
-    doc.text(`Date : ${dateStr}`, { align: 'center' });
+    pdf.text(`Date : ${dateStr}`, { align: 'center' });
 
     const validityDate = new Date(quote.created_at);
     validityDate.setDate(validityDate.getDate() + quote.validity_days);
-    const validityStr = validityDate.toLocaleDateString('fr-FR', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
+    pdf.text(`Valable jusqu'au : ${PdfBuilder.formatDate(validityDate)}`, {
+      align: 'center',
     });
-    doc.text(`Valable jusqu'au : ${validityStr}`, { align: 'center' });
-    doc.text(`Statut : ${STATUS_LABELS[quote.status] ?? quote.status}`, {
+    pdf.text(`Statut : ${STATUS_LABELS[quote.status] ?? quote.status}`, {
       align: 'center',
     });
 
@@ -119,201 +118,112 @@ export class QuotePdfService {
 
     // ── Materials table ──
     doc.moveDown(1);
-    this.drawSectionTitle(doc, 'Detail des materiaux');
+    pdf.sectionTitle('Detail des materiaux');
     doc.moveDown(0.3);
-
-    // Table header
-    this.drawMaterialTableHeader(doc);
+    pdf.tableHeader(COLUMNS);
 
     for (const item of quote.items_json) {
-      this.checkPageBreak(doc, 30);
-      this.drawMaterialRow(doc, item);
+      pdf.checkPageBreak(30);
+      this.drawMaterialRow(pdf, item);
     }
 
     // ── Labor section ──
     doc.moveDown(0.8);
-    this.drawSectionTitle(doc, "Main d'oeuvre");
+    pdf.sectionTitle("Main d'oeuvre");
     doc.moveDown(0.3);
 
     doc.fontSize(10).font('Helvetica');
     if (quote.labor_type === LaborType.HOURLY) {
       const rate = Number(quote.labor_hourly_rate) || 0;
       const hours = Number(quote.labor_estimated_hours) || 0;
-      doc.text(
-        `${hours} h x ${this.formatPrice(rate)} EUR/h = ${this.formatPrice(rate * hours)} EUR HT`,
+      pdf.text(
+        `${hours} h x ${PdfBuilder.formatPrice(rate)} EUR/h = ${PdfBuilder.formatPrice(rate * hours)} EUR HT`,
       );
     } else {
       const amount = Number(quote.labor_flat_amount) || 0;
-      doc.text(`Forfait : ${this.formatPrice(amount)} EUR HT`);
+      pdf.text(`Forfait : ${PdfBuilder.formatPrice(amount)} EUR HT`);
     }
 
     // ── Totals block ──
     doc.moveDown(1);
-    this.drawLine(doc);
+    pdf.hr();
     doc.moveDown(0.5);
 
-    const totalsX = 300;
-    const valuesX = 430;
-
-    doc.fontSize(10).font('Helvetica');
-    doc.text('Sous-total materiaux HT', totalsX, doc.y);
-    doc.text(
-      `${this.formatPrice(Number(quote.subtotal_materials_ht))} EUR`,
-      valuesX,
-      doc.y - 12,
-      { width: 115, align: 'right' },
+    pdf.totalsRow(
+      'Sous-total materiaux HT',
+      `${PdfBuilder.formatPrice(Number(quote.subtotal_materials_ht))} EUR`,
     );
-
-    doc.moveDown(0.3);
-    doc.text("Sous-total main d'oeuvre HT", totalsX, doc.y);
-    doc.text(
-      `${this.formatPrice(Number(quote.subtotal_labor_ht))} EUR`,
-      valuesX,
-      doc.y - 12,
-      { width: 115, align: 'right' },
+    pdf.totalsRow(
+      "Sous-total main d'oeuvre HT",
+      `${PdfBuilder.formatPrice(Number(quote.subtotal_labor_ht))} EUR`,
     );
 
     const discountPercent = Number(quote.discount_percent) || 0;
     if (discountPercent > 0) {
-      doc.moveDown(0.3);
-      doc.text(`Remise (${discountPercent} %)`, totalsX, doc.y);
       const discountAmount =
         (Number(quote.subtotal_materials_ht) +
           Number(quote.subtotal_labor_ht)) *
         (discountPercent / 100);
-      doc.text(
-        `-${this.formatPrice(discountAmount)} EUR`,
-        valuesX,
-        doc.y - 12,
-        { width: 115, align: 'right' },
+      pdf.totalsRow(
+        `Remise (${discountPercent} %)`,
+        `-${PdfBuilder.formatPrice(discountAmount)} EUR`,
       );
     }
 
-    doc.moveDown(0.3);
-    doc.font('Helvetica-Bold');
-    doc.text('Total HT', totalsX, doc.y);
-    doc.text(
-      `${this.formatPrice(Number(quote.total_ht))} EUR`,
-      valuesX,
-      doc.y - 12,
-      { width: 115, align: 'right' },
+    pdf.totalsRow(
+      'Total HT',
+      `${PdfBuilder.formatPrice(Number(quote.total_ht))} EUR`,
+      { bold: true },
+    );
+
+    const tvaAmount = Number(quote.total_ttc) - Number(quote.total_ht);
+    pdf.totalsRow(
+      `TVA (${Number(quote.tva_rate)} %)`,
+      `${PdfBuilder.formatPrice(tvaAmount)} EUR`,
     );
 
     doc.moveDown(0.3);
-    doc.font('Helvetica');
-    doc.text(`TVA (${Number(quote.tva_rate)} %)`, totalsX, doc.y);
-    const tvaAmount = Number(quote.total_ttc) - Number(quote.total_ht);
-    doc.text(`${this.formatPrice(tvaAmount)} EUR`, valuesX, doc.y - 12, {
-      width: 115,
-      align: 'right',
-    });
-
-    doc.moveDown(0.5);
-    doc.fontSize(13).font('Helvetica-Bold');
-    doc.text('Total TTC', totalsX, doc.y);
-    doc.text(
-      `${this.formatPrice(Number(quote.total_ttc))} EUR`,
-      valuesX,
-      doc.y - 15,
-      { width: 115, align: 'right' },
+    pdf.totalsRow(
+      'Total TTC',
+      `${PdfBuilder.formatPrice(Number(quote.total_ttc))} EUR`,
+      { bold: true, size: 13 },
     );
 
     // ── Payment terms ──
     if (quote.payment_terms) {
       doc.moveDown(1.5);
-      this.drawSectionTitle(doc, 'Conditions de reglement');
+      pdf.sectionTitle('Conditions de reglement');
       doc.moveDown(0.3);
-      doc.fontSize(10).font('Helvetica').text(quote.payment_terms);
+      doc.fontSize(10).font('Helvetica');
+      pdf.text(quote.payment_terms);
     }
 
     // ── Notes ──
     if (quote.notes) {
       doc.moveDown(0.8);
-      this.drawSectionTitle(doc, 'Notes');
+      pdf.sectionTitle('Notes');
       doc.moveDown(0.3);
-      doc.fontSize(10).font('Helvetica').text(quote.notes);
+      doc.fontSize(10).font('Helvetica');
+      pdf.text(quote.notes);
     }
 
     // ── Footer ──
     doc.moveDown(2);
-    doc
-      .fontSize(8)
-      .fillColor('#999999')
-      .text(
-        `SIRET : ${companyProfile.siret} — Genere par Chiffréo — ${dateStr}`,
-        { align: 'center' },
-      );
-
-    doc.end();
-
-    return new Promise<Buffer>((resolve, reject) => {
-      stream.on('end', () => resolve(Buffer.concat(chunks)));
-      stream.on('error', reject);
-    });
-  }
-
-  private drawSectionTitle(doc: PDFKit.PDFDocument, title: string): void {
-    doc.fontSize(13).font('Helvetica-Bold').fillColor('#000000').text(title);
-    doc.moveDown(0.1);
-    this.drawLine(doc);
-  }
-
-  private drawLine(doc: PDFKit.PDFDocument): void {
-    const x = doc.x;
-    const y = doc.y;
-    doc
-      .strokeColor('#CCCCCC')
-      .lineWidth(0.5)
-      .moveTo(x, y)
-      .lineTo(x + 495, y)
-      .stroke();
-  }
-
-  private drawMaterialTableHeader(doc: PDFKit.PDFDocument): void {
-    const startX = doc.x;
-    const y = doc.y;
-    doc.fontSize(8).font('Helvetica-Bold').fillColor('#666666');
-    doc.text('Designation', startX, y, { width: 200 });
-    doc.text('Qte', startX + 210, y, { width: 40, align: 'center' });
-    doc.text('PU HT', startX + 260, y, { width: 80, align: 'right' });
-    doc.text('Total HT', startX + 360, y, { width: 85, align: 'right' });
-    doc.fillColor('#000000');
-    doc.moveDown(0.3);
-    this.drawLine(doc);
-    doc.moveDown(0.2);
-  }
-
-  private drawMaterialRow(doc: PDFKit.PDFDocument, item: QuoteLineItem): void {
-    const startX = doc.x;
-    const y = doc.y;
-    doc.fontSize(9).font('Helvetica').fillColor('#000000');
-    doc.text(item.material_name, startX, y, { width: 200 });
-    doc.text(String(item.units_needed), startX + 210, y, {
-      width: 40,
-      align: 'center',
-    });
-    doc.text(
-      `${this.formatPrice(item.unit_price_with_margin)} EUR`,
-      startX + 260,
-      y,
-      { width: 80, align: 'right' },
+    doc.fontSize(8).fillColor('#999999');
+    pdf.text(
+      `SIRET : ${companyProfile.siret} — Genere par Chiffréo — ${dateStr}`,
+      { align: 'center' },
     );
-    doc
-      .font('Helvetica-Bold')
-      .text(`${this.formatPrice(item.line_total_ht)} EUR`, startX + 360, y, {
-        width: 85,
-        align: 'right',
-      });
-    doc.moveDown(0.4);
+
+    return pdf.finish();
   }
 
-  private checkPageBreak(doc: PDFKit.PDFDocument, needed: number): void {
-    if (doc.y + needed > doc.page.height - doc.page.margins.bottom) {
-      doc.addPage();
-    }
-  }
-
-  private formatPrice(value: number): string {
-    return value.toFixed(2).replace('.', ',');
+  private drawMaterialRow(pdf: PdfBuilder, item: QuoteLineItem): void {
+    pdf.tableRow(COLUMNS, [
+      { text: item.material_name },
+      { text: String(item.units_needed) },
+      { text: `${PdfBuilder.formatPrice(item.unit_price_with_margin)} EUR` },
+      { text: `${PdfBuilder.formatPrice(item.line_total_ht)} EUR`, bold: true },
+    ]);
   }
 }

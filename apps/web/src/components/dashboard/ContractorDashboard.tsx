@@ -186,6 +186,9 @@ export function ContractorDashboard() {
           <Button variant="secondary" onClick={() => router.push('/quotes')}>
             Mes devis
           </Button>
+          <Button variant="secondary" onClick={() => router.push('/invoices')}>
+            Mes factures
+          </Button>
           <Button
             variant="secondary"
             onClick={() => router.push('/settings/company')}

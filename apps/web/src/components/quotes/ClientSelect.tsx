@@ -28,6 +28,9 @@ export function ClientSelect({
     address_line1: '',
     postal_code: '',
     city: '',
+    is_company: false,
+    siret: '',
+    vat_number: '',
   });
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -42,11 +45,30 @@ export function ClientSelect({
         address_line1: form.address_line1?.trim() || undefined,
         postal_code: form.postal_code?.trim() || undefined,
         city: form.city?.trim() || undefined,
+        is_company: form.is_company ?? false,
+        // Réservés aux clients professionnels : le SIREN acheteur devient une
+        // mention obligatoire sur les factures B2B au 1er septembre 2026.
+        ...(form.is_company && form.siret?.trim()
+          ? { siret: form.siret.trim() }
+          : {}),
+        ...(form.is_company && form.vat_number?.trim()
+          ? { vat_number: form.vat_number.trim() }
+          : {}),
       });
       onClientCreated(client);
       onChange(client.id);
       setShowNewForm(false);
-      setForm({ name: '', email: '', phone: '', address_line1: '', postal_code: '', city: '' });
+      setForm({
+        name: '',
+        email: '',
+        phone: '',
+        address_line1: '',
+        postal_code: '',
+        city: '',
+        is_company: false,
+        siret: '',
+        vat_number: '',
+      });
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Impossible de créer le client'));
     } finally {
@@ -154,6 +176,53 @@ export function ClientSelect({
               />
             </label>
           </div>
+
+          <label className="flex items-center gap-2 text-xs font-medium text-stone-600">
+            <input
+              type="checkbox"
+              checked={form.is_company ?? false}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, is_company: e.target.checked }))
+              }
+            />
+            Client professionnel (entreprise)
+          </label>
+
+          {form.is_company && (
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="space-y-1">
+                <span className="text-xs font-medium text-stone-600">
+                  SIRET
+                </span>
+                <input
+                  value={form.siret ?? ''}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      siret: e.target.value.replace(/\D/g, '').slice(0, 14),
+                    }))
+                  }
+                  className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none"
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="text-xs font-medium text-stone-600">
+                  N° de TVA
+                </span>
+                <input
+                  value={form.vat_number ?? ''}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      vat_number: e.target.value.toUpperCase(),
+                    }))
+                  }
+                  className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none"
+                />
+              </label>
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={creating}

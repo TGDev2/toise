@@ -4,6 +4,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { apiGet, apiPut } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { Alert, Button, Input, Skeleton, useToast } from '@/components/ui';
+import {
+  LegalMentionsFields,
+  EMPTY_LEGAL_MENTIONS,
+  fromCompanyProfile,
+  toLegalMentionsPayload,
+} from '@/components/invoices/LegalMentionsFields';
+import type { LegalMentions } from '@/components/invoices/LegalMentionsFields';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -21,7 +28,7 @@ const SPECIALTIES = [
   'Toiture',
 ];
 
-interface CompanyProfile {
+interface CompanyProfile extends Partial<LegalMentions> {
   raison_sociale: string;
   siret: string;
   address_line1: string;
@@ -50,6 +57,7 @@ export default function CompanySettingsPage() {
   const [city, setCity] = useState('');
   const [phone, setPhone] = useState('');
   const [specialties, setSpecialties] = useState<string[]>([]);
+  const [legal, setLegal] = useState<LegalMentions>(EMPTY_LEGAL_MENTIONS);
 
   useEffect(() => {
     if (!authLoading && !appUser) {
@@ -68,6 +76,7 @@ export default function CompanySettingsPage() {
         setCity(profile.city);
         setPhone(profile.phone ?? '');
         setSpecialties(profile.specialties);
+        setLegal(fromCompanyProfile(profile));
       })
       .catch(() => {
         setError('Impossible de charger le profil entreprise.');
@@ -96,6 +105,7 @@ export default function CompanySettingsPage() {
         city,
         ...(phone ? { phone } : {}),
         specialties,
+        ...toLegalMentionsPayload(legal),
       });
       toast.success('Profil mis à jour avec succès.');
     } catch (err: unknown) {
@@ -227,6 +237,8 @@ export default function CompanySettingsPage() {
               ))}
             </div>
           </div>
+
+          <LegalMentionsFields values={legal} onChange={setLegal} />
 
           <Button type="submit" loading={saving} className="w-full">
             Enregistrer les modifications

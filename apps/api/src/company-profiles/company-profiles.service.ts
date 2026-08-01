@@ -32,14 +32,14 @@ export class CompanyProfilesService {
       throw new ConflictException('Ce numero SIRET est deja utilise');
     }
 
+    // Le spread porte les mentions légales de facturation (PRO-4) sans avoir à
+    // les recopier une à une ; le ValidationPipe global (`whitelist: true`) a
+    // déjà écarté tout champ hors DTO. Les trois champs ci-dessous restent
+    // explicites pour normaliser `undefined` en `null` / tableau vide.
     const profile = this.repo.create({
+      ...dto,
       user_id: userId,
-      raison_sociale: dto.raison_sociale,
-      siret: dto.siret,
-      address_line1: dto.address_line1,
       address_line2: dto.address_line2 ?? null,
-      postal_code: dto.postal_code,
-      city: dto.city,
       phone: dto.phone ?? null,
       specialties: dto.specialties ?? [],
     });

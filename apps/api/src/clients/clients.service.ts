@@ -22,6 +22,10 @@ export class ClientsService {
       address_line2: dto.address_line2 ?? null,
       postal_code: dto.postal_code ?? null,
       city: dto.city ?? null,
+      is_company: dto.is_company ?? false,
+      siret: dto.siret ?? null,
+      vat_number: dto.vat_number ?? null,
+      country: dto.country ?? 'FR',
     });
 
     return this.repo.save(client);

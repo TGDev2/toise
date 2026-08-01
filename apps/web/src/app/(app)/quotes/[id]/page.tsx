@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { apiGet, apiPatch, apiDelete, apiDownload } from '@/lib/api';
-import { getErrorMessage } from '@/lib/errors';
+import { apiGet, apiPost, apiPatch, apiDelete, apiDownload } from '@/lib/api';
+import { getErrorMessage, errorHasCode } from '@/lib/errors';
 import { QuoteStatusBadge } from '@/components/quotes/QuoteStatusBadge';
+import { MissingLegalMentionsAlert } from '@/components/invoices/MissingLegalMentionsAlert';
 import { Alert, Button, ConfirmDialog, Skeleton } from '@/components/ui';
 import type { Quote, QuoteStatus } from '@/lib/quote-types';
+import type { Invoice } from '@/lib/invoice-types';
 
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat('fr-FR', {
@@ -40,6 +42,9 @@ export default function QuoteDetailPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [invoice, setInvoice] = useState<Invoice | null>(null);
+  const [invoicing, setInvoicing] = useState(false);
+  const [missingMentions, setMissingMentions] = useState<string[] | null>(null);
 
   useEffect(() => {
     if (!isLoading && !appUser) {
@@ -64,6 +69,15 @@ export default function QuoteDetailPage() {
     if (appUser) fetchQuote();
   }, [appUser, fetchQuote]);
 
+  // Un devis accepté est facturable : on regarde s'il l'est déjà pour choisir
+  // entre « Créer la facture » et un lien vers la facture existante.
+  useEffect(() => {
+    if (!appUser || quote?.status !== 'accepted') return;
+    apiGet<Invoice[]>(`/invoices?quote_id=${quoteId}`)
+      .then((list) => setInvoice(list[0] ?? null))
+      .catch(() => setInvoice(null));
+  }, [appUser, quote?.status, quoteId]);
+
   const handleStatusChange = async (status: QuoteStatus) => {
     setActionLoading(true);
     setError('');
@@ -76,6 +90,37 @@ export default function QuoteDetailPage() {
       setError(getErrorMessage(err, 'Impossible de mettre à jour le statut'));
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleCreateInvoice = async () => {
+    setInvoicing(true);
+    setError('');
+    setMissingMentions(null);
+    try {
+      const created = await apiPost<Invoice>('/invoices', {
+        quote_id: quoteId,
+      });
+      router.push(`/invoices/${created.id}`);
+    } catch (err: unknown) {
+      // Une facture existe déjà (409) : on y emmène plutôt que d'afficher une erreur.
+      if (errorHasCode(err, 'INVOICE_ALREADY_EXISTS')) {
+        const existingId = (err as { details: { invoice_id?: string } }).details
+          .invoice_id;
+        if (existingId) {
+          router.push(`/invoices/${existingId}`);
+          return;
+        }
+      }
+      if (errorHasCode(err, 'MISSING_LEGAL_MENTIONS')) {
+        const fields = (err as { details: { missing_fields?: string[] } })
+          .details.missing_fields;
+        setMissingMentions(fields ?? []);
+        return;
+      }
+      setError(getErrorMessage(err, 'Impossible de créer la facture'));
+    } finally {
+      setInvoicing(false);
     }
   };
 
@@ -195,6 +240,50 @@ export default function QuoteDetailPage() {
           </button>
         )}
       </div>
+
+      {/* Facturation — PRO-4 */}
+      {quote.status === 'accepted' && (
+        <section className="mt-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
+          <h2 className="text-lg font-semibold text-stone-950">Facturation</h2>
+          {invoice ? (
+            <>
+              <p className="mt-3 text-sm text-stone-600">
+                Ce devis a été facturé sous le numéro{' '}
+                <span className="font-semibold text-stone-900">
+                  {invoice.invoice_number}
+                </span>
+                .
+              </p>
+              <Button
+                className="mt-4"
+                variant="secondary"
+                onClick={() => router.push(`/invoices/${invoice.id}`)}
+              >
+                Voir la facture
+              </Button>
+            </>
+          ) : (
+            <>
+              <p className="mt-3 text-sm text-stone-600">
+                Transformez ce devis accepté en facture conforme, numérotée
+                automatiquement. Une facture émise ne peut plus être modifiée.
+              </p>
+              {missingMentions && (
+                <div className="mt-4">
+                  <MissingLegalMentionsAlert missingFields={missingMentions} />
+                </div>
+              )}
+              <Button
+                className="mt-4"
+                onClick={handleCreateInvoice}
+                loading={invoicing}
+              >
+                Créer la facture
+              </Button>
+            </>
+          )}
+        </section>
+      )}
 
       {/* Client info */}
       {quote.client && (

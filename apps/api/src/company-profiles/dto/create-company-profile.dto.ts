@@ -6,8 +6,9 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { LegalMentionsDto } from './legal-mentions.dto';
 
-export class CreateCompanyProfileDto {
+export class CreateCompanyProfileDto extends LegalMentionsDto {
   @IsString()
   @MinLength(1)
   @MaxLength(255)

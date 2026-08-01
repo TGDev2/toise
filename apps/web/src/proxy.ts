@@ -22,6 +22,7 @@ export const config = {
     '/dashboard/:path*',
     '/projects/:path*',
     '/quotes/:path*',
+    '/invoices/:path*',
     '/settings/:path*',
     '/admin/:path*',
     '/subscription/:path*',
