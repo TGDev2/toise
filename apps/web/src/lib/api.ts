@@ -158,7 +158,67 @@ export async function apiDownload(path: string, filename: string): Promise<void>
     throwApiError(error, res.status);
   }
 
+  triggerBlobDownload(await res.blob(), filename);
+}
+
+/** Résultat d'`apiShareOrDownload`, pour que l'appelant adapte son message. */
+export type ShareOutcome = 'shared' | 'downloaded' | 'cancelled';
+
+/**
+ * Envoie un document via la feuille de partage native, sinon le télécharge
+ * (PRO-5).
+ *
+ * `apiDownload` dépose un blob dans « Téléchargements » : sur un téléphone, chez
+ * le client, ça n'est pas « le devis envoyé avant de partir » — il faut ensuite
+ * ouvrir une app mail, retrouver le fichier, le joindre. La Web Share API passe
+ * le PDF directement à WhatsApp, Mail ou SMS en une étape.
+ *
+ * Repli en cascade, jamais d'impasse : navigateur sans `canShare({ files })`
+ * (Firefox, tous les navigateurs desktop) → téléchargement. Un `AbortError` est
+ * en revanche un choix de l'utilisateur (feuille de partage fermée) et ne doit
+ * PAS déclencher un téléchargement qu'il n'a pas demandé.
+ */
+export async function apiShareOrDownload(
+  path: string,
+  filename: string,
+  share: { title: string; text?: string },
+): Promise<ShareOutcome> {
+  const headers: HeadersInit = {};
+  const user = typeof window !== 'undefined' ? getFirebaseAuth().currentUser : null;
+  if (user) {
+    headers['Authorization'] = `Bearer ${await user.getIdToken()}`;
+  }
+
+  const res = await fetch(`${API_URL}${path}`, { headers });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: 'Download failed' }));
+    throwApiError(error, res.status);
+  }
+
   const blob = await res.blob();
+  const file = new File([blob], filename, { type: 'application/pdf' });
+
+  if (
+    typeof navigator !== 'undefined' &&
+    typeof navigator.canShare === 'function' &&
+    navigator.canShare({ files: [file] })
+  ) {
+    try {
+      await navigator.share({ files: [file], ...share });
+      return 'shared';
+    } catch (err) {
+      if ((err as Error)?.name === 'AbortError') return 'cancelled';
+      // Toute autre erreur (NotAllowedError quand le geste utilisateur a
+      // expiré pendant le téléchargement, par exemple) retombe sur le
+      // téléchargement plutôt que de laisser l'artisan sans document.
+    }
+  }
+
+  triggerBlobDownload(blob, filename);
+  return 'downloaded';
+}
+
+function triggerBlobDownload(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

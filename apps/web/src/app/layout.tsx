@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { FeatureGateProvider } from '@/contexts/FeatureGateContext';
 import { PaywallModal } from '@/components/paywall/PaywallModal';
@@ -24,6 +24,17 @@ export const metadata: Metadata = {
     description:
       'Scannez votre pièce, sélectionnez vos travaux, obtenez une liste d\'achat précise.',
   },
+};
+
+// PRO-5 : `viewportFit: 'cover'` est le prérequis technique des barres d'action
+// collantes du tunnel — sans lui `env(safe-area-inset-*)` vaut 0 et le CTA passe
+// sous la barre home des iPhone à encoche. `themeColor` réaligne la barre de
+// statut sur `manifest.ts`, qui déclarait déjà cette couleur de son côté.
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#1d6b57',
 };
 
 export default function RootLayout({

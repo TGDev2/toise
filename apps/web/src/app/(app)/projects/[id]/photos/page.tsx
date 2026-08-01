@@ -6,6 +6,8 @@ import { getErrorMessage } from '@/lib/errors';
 import { usePhotoUpload } from '@/hooks/usePhotoUpload';
 import type { ServerPhoto } from '@/hooks/usePhotoUpload';
 import { PhotoUploadPanel } from '@/components/photos/PhotoUploadPanel';
+import { FlowProgress } from '@/components/quote-flow/FlowProgress';
+import { StickyActionBar } from '@/components/ui';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -75,16 +77,7 @@ export default function PhotosPage() {
   return (
     <div className="min-h-screen bg-[var(--background)] px-4 py-8">
       <div className="mx-auto max-w-2xl">
-        {/* Back to dashboard */}
-        <button
-          onClick={() => router.push('/dashboard')}
-          className="mb-6 inline-flex items-center gap-1 text-sm font-medium text-[var(--accent)] hover:underline"
-        >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-          </svg>
-          Tableau de bord
-        </button>
+        <FlowProgress step="photos" projectId={projectId} backHref="/dashboard" />
 
         <div className="rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)] sm:p-8">
           {error && (
@@ -103,34 +96,40 @@ export default function PhotosPage() {
             onRetry={retryPhoto}
           />
 
-          {/* Actions */}
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-between">
-            <button
-              onClick={handleSkip}
-              className="rounded-xl border border-stone-300 px-6 py-3 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-50"
-            >
-              Passer cette étape
-            </button>
-
-            <div className="flex gap-3">
-              {canProceed && (
-                <button
-                  onClick={() => router.push(`/projects/${projectId}/dimensions?analyze=true`)}
-                  className="rounded-xl border border-emerald-300 bg-emerald-50 px-6 py-3 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-100"
-                >
-                  Analyser les dimensions
-                </button>
-              )}
-              <button
-                onClick={handleNext}
-                disabled={!canProceed}
-                className="rounded-xl bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isUploading ? 'Upload en cours...' : 'Suivant'}
-              </button>
-            </div>
-          </div>
         </div>
+
+        {/*
+          L'analyse CV est l'action principale de l'étape, pas une option à côté
+          de « Suivant » : c'est elle qui remplit les mesures et évite la saisie
+          manuelle. Elle prend donc la barre collante, « Suivant » reculant en
+          action secondaire tant qu'aucune photo n'est prête.
+        */}
+        <StickyActionBar>
+          {canProceed ? (
+            <button
+              onClick={() =>
+                router.push(`/projects/${projectId}/dimensions?analyze=true`)
+              }
+              className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--accent-strong)]"
+            >
+              Analyser les dimensions
+            </button>
+          ) : (
+            <button
+              onClick={handleNext}
+              disabled={!canProceed}
+              className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isUploading ? 'Upload en cours...' : 'Suivant'}
+            </button>
+          )}
+          <button
+            onClick={handleSkip}
+            className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-stone-300 px-6 py-3 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-50"
+          >
+            {canProceed ? 'Saisir les mesures à la main' : 'Passer cette étape'}
+          </button>
+        </StickyActionBar>
       </div>
     </div>
   );

@@ -3,11 +3,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { apiGet, apiPost, apiPatch, apiDelete, apiDownload } from '@/lib/api';
+import { apiGet, apiPost, apiPatch, apiDelete, apiShareOrDownload } from '@/lib/api';
 import { getErrorMessage, errorHasCode } from '@/lib/errors';
 import { QuoteStatusBadge } from '@/components/quotes/QuoteStatusBadge';
 import { MissingLegalMentionsAlert } from '@/components/invoices/MissingLegalMentionsAlert';
-import { Alert, Button, ConfirmDialog, Skeleton } from '@/components/ui';
+import {
+  Alert,
+  Button,
+  ConfirmDialog,
+  Skeleton,
+  StickyActionBar,
+  useToast,
+} from '@/components/ui';
 import type { Quote, QuoteStatus } from '@/lib/quote-types';
 import type { Invoice } from '@/lib/invoice-types';
 
@@ -33,6 +40,7 @@ const STATUS_ACTIONS: { status: QuoteStatus; label: string; color: string }[] = 
 export default function QuoteDetailPage() {
   const { appUser, isLoading } = useAuth();
   const router = useRouter();
+  const toast = useToast();
   const params = useParams<{ id: string }>();
   const quoteId = params.id;
 
@@ -124,16 +132,32 @@ export default function QuoteDetailPage() {
     }
   };
 
-  const handleDownloadPdf = async () => {
+  /**
+   * L'action de fin de parcours (PRO-5) : sur mobile, la feuille de partage
+   * native envoie le PDF au client sans quitter l'app ; ailleurs, on retombe
+   * sur le téléchargement historique.
+   */
+  const handleSendPdf = async () => {
     if (!quote) return;
     setDownloading(true);
     try {
-      await apiDownload(
+      const outcome = await apiShareOrDownload(
         `/quotes/${quoteId}/export/pdf`,
         `devis-${quote.quote_number}.pdf`,
+        {
+          title: `Devis ${quote.quote_number}`,
+          text: `Votre devis ${quote.quote_number}${
+            quote.project ? ` — ${quote.project.name}` : ''
+          }.`,
+        },
       );
+      if (outcome === 'shared') {
+        toast.success('Devis envoyé.');
+      } else if (outcome === 'downloaded') {
+        toast.info('PDF téléchargé.');
+      }
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Impossible de télécharger le PDF'));
+      setError(getErrorMessage(err, 'Impossible de générer le PDF'));
     } finally {
       setDownloading(false);
     }
@@ -200,9 +224,9 @@ export default function QuoteDetailPage() {
             </p>
           )}
         </div>
-        <div className="flex flex-wrap gap-3">
-          <Button onClick={handleDownloadPdf} loading={downloading}>
-            Télécharger PDF
+        <div className="hidden flex-wrap gap-3 lg:flex">
+          <Button onClick={handleSendPdf} loading={downloading}>
+            Envoyer le devis
           </Button>
           <Button variant="secondary" onClick={() => router.push('/quotes')}>
             Retour aux devis
@@ -216,30 +240,38 @@ export default function QuoteDetailPage() {
         </Alert>
       )}
 
-      {/* Status actions */}
-      <div className="mt-6 flex flex-wrap gap-3">
+      {/*
+        Statuts : quatre boutons de 36 px se répartissaient sur trois lignes à
+        390 px, « Accepté » (vert) et « Refusé » (rouge) côte à côte. Un devis
+        marqué refusé par erreur, c'est une relance PRO-3 perdue et un historique
+        faux. Grille 2 colonnes, cibles à 44 px, « Supprimer » sur sa propre
+        ligne, à distance des changements de statut.
+      */}
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
         {STATUS_ACTIONS.filter((a) => a.status !== quote.status).map((a) => (
           <button
             key={a.status}
             type="button"
             disabled={actionLoading}
             onClick={() => handleStatusChange(a.status)}
-            className={`rounded-full px-4 py-2 text-sm font-semibold ${a.color} disabled:opacity-60`}
+            className={`inline-flex min-h-11 items-center justify-center rounded-full px-4 py-2 text-sm font-semibold ${a.color} disabled:opacity-60`}
           >
             {a.label}
           </button>
         ))}
-        {quote.status === 'draft' && (
+      </div>
+      {quote.status === 'draft' && (
+        <div className="mt-3">
           <button
             type="button"
             disabled={actionLoading}
             onClick={() => setShowDeleteConfirm(true)}
-            className="rounded-full border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
           >
             Supprimer
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Facturation — PRO-4 */}
       {quote.status === 'accepted' && (
@@ -308,8 +340,11 @@ export default function QuoteDetailPage() {
         <h2 className="text-lg font-semibold text-stone-950">
           Détail des matériaux
         </h2>
+        {/* `w-full` seul annulait l'`overflow-x-auto` : la table se comprimait
+            dans 358 px au lieu de déborder, chaque ligne partant sur trois ou
+            quatre retours. `min-w-` rend le scroll horizontal effectif. */}
         <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[32rem] text-sm">
             <thead>
               <tr className="border-b border-stone-200 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
                 <th className="pb-2 pr-4">Désignation</th>
@@ -467,6 +502,28 @@ export default function QuoteDetailPage() {
           </p>
         </div>
       </section>
+
+      {/*
+        Fin du tunnel. La page fait ~3000 px sur mobile (neuf sections) et
+        l'envoi n'était accessible que par le bouton du header, donc seulement
+        tout en haut. C'est pourtant l'action qui clôt le « devis-minute » :
+        elle reste sous le pouce du début à la fin.
+      */}
+      <StickyActionBar
+        summary={
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-sm text-stone-600">Total TTC</span>
+            <span className="text-lg font-bold text-stone-950">
+              {formatPrice(quote.total_ttc)} EUR
+            </span>
+          </div>
+        }
+        className="lg:hidden"
+      >
+        <Button onClick={handleSendPdf} loading={downloading}>
+          Envoyer le devis
+        </Button>
+      </StickyActionBar>
 
       <ConfirmDialog
         open={showDeleteConfirm}

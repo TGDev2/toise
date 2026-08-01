@@ -69,7 +69,7 @@ export function RoomSwitcher({
                 }}
                 maxLength={255}
                 aria-label="Nom de la pièce"
-                className="rounded-full border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-900 focus:border-stone-500 focus:outline-none"
+                className="min-h-11 rounded-full border border-stone-300 bg-white px-3 py-1.5 text-base text-stone-900 focus:border-stone-500 focus:outline-none sm:text-sm"
               />
             );
           }
@@ -77,7 +77,10 @@ export function RoomSwitcher({
           return (
             <div
               key={room.id}
-              className={`inline-flex items-center gap-1 rounded-full border px-1 py-0.5 text-sm transition-colors ${
+              /* PRO-5 : « Renommer » et « Supprimer » faisaient 22 px, séparés
+                 de 4 px. Supprimer une pièce au lieu de la renommer, au doigt,
+                 était quasi inévitable — et perd toutes ses mesures. */
+              className={`inline-flex items-center gap-1 rounded-full border px-1 text-sm transition-colors ${
                 isActive
                   ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
                   : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50'
@@ -87,7 +90,7 @@ export function RoomSwitcher({
                 type="button"
                 onClick={() => onSelect(room.id)}
                 disabled={busy}
-                className="rounded-full px-3 py-1 font-medium disabled:opacity-50"
+                className="inline-flex min-h-11 items-center rounded-full px-3 py-1 font-medium disabled:opacity-50"
               >
                 {room.name}
               </button>
@@ -99,9 +102,9 @@ export function RoomSwitcher({
                   disabled={busy}
                   title="Renommer la pièce"
                   aria-label={`Renommer ${room.name}`}
-                  className="rounded-full p-1 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
                     <path d="m2.695 12.477 1.83-.363 6.945-6.945-1.467-1.467-6.945 6.945-.363 1.83ZM12.79 3.665l.53-.53a1.037 1.037 0 0 0-1.467-1.467l-.53.53 1.467 1.467Z" />
                   </svg>
                 </button>
@@ -113,9 +116,9 @@ export function RoomSwitcher({
                   disabled={busy}
                   title="Supprimer la pièce"
                   aria-label={`Supprimer ${room.name}`}
-                  className="rounded-full p-1 text-stone-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full text-stone-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
                     <path d="M5 3.5V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v.5h2.25a.75.75 0 0 1 0 1.5h-.32l-.6 8.4A1.75 1.75 0 0 1 10.79 14H5.21a1.75 1.75 0 0 1-1.74-1.6l-.6-8.4h-.32a.75.75 0 0 1 0-1.5H5Z" />
                   </svg>
                 </button>
@@ -129,7 +132,7 @@ export function RoomSwitcher({
             type="button"
             onClick={onAdd}
             disabled={busy}
-            className="rounded-full border border-dashed border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-500 hover:border-stone-400 hover:text-stone-700 disabled:opacity-50"
+            className="inline-flex min-h-11 items-center rounded-full border border-dashed border-stone-300 px-4 py-1.5 text-sm font-medium text-stone-500 hover:border-stone-400 hover:text-stone-700 disabled:opacity-50"
           >
             + Ajouter une pièce
           </button>
@@ -146,14 +149,14 @@ export function RoomSwitcher({
               setConfirmDeleteId(null);
             }}
             disabled={busy}
-            className="rounded-full bg-red-600 px-3 py-1 font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            className="inline-flex min-h-11 items-center rounded-full bg-red-600 px-4 py-1 font-medium text-white hover:bg-red-700 disabled:opacity-50"
           >
             Supprimer
           </button>
           <button
             type="button"
             onClick={() => setConfirmDeleteId(null)}
-            className="rounded-full px-3 py-1 font-medium text-red-700 hover:bg-red-100"
+            className="inline-flex min-h-11 items-center rounded-full px-4 py-1 font-medium text-red-700 hover:bg-red-100"
           >
             Annuler
           </button>

@@ -213,7 +213,7 @@ export function BudgetDashboard({
           <button
             type="button"
             onClick={onFinalize}
-            className="rounded-full bg-emerald-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-emerald-700"
+            className="inline-flex min-h-11 items-center rounded-full bg-emerald-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-emerald-700"
           >
             Finaliser le budget
           </button>

@@ -10,6 +10,7 @@ import type {
 } from '@/lib/work-types';
 import type { Room } from '@/lib/room-types';
 import { WorkSelectionForm } from '@/components/work-selection/WorkSelectionForm';
+import { FlowProgress } from '@/components/quote-flow/FlowProgress';
 import { RoomSwitcher } from '@/components/rooms/RoomSwitcher';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -155,21 +156,16 @@ export default function WorkSelectionPage() {
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
-      <div className="mb-6">
-        <button
-          type="button"
-          onClick={() => router.push(backHref)}
-          className="text-sm text-stone-500 hover:text-stone-700"
-        >
-          &larr; Retour aux dimensions
-        </button>
-        <h1 className="mt-2 text-3xl font-semibold text-stone-950">
-          Selection des travaux
-        </h1>
-        {projectName && (
-          <p className="mt-1 text-sm text-stone-500">{projectName}</p>
-        )}
-      </div>
+      <FlowProgress
+        step="work"
+        projectId={projectId}
+        backHref={backHref}
+        projectName={projectName}
+      />
+
+      <h1 className="mb-6 text-2xl font-semibold text-stone-950 sm:text-3xl">
+        Selection des travaux
+      </h1>
 
       {/* Sélecteur de pièces (sélection seule ; ajout/suppression à l'étape dimensions) */}
       {appUser && rooms.length > 0 && activeRoomId && (

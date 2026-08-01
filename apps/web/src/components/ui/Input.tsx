@@ -7,8 +7,11 @@ import {
   type TextareaHTMLAttributes,
 } from 'react';
 
-const FIELD_BASE =
-  'w-full rounded-2xl border bg-white px-4 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/40 focus:border-[var(--accent)] disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-400';
+// PRO-5 : `text-base` (16 px) sous `sm:` — en dessous de 16 px, iOS Safari zoome
+// automatiquement à la prise de focus et l'utilisateur doit dézoomer à la main
+// après chaque champ. `min-h-11` porte la cible tactile à 44 px.
+export const FIELD_BASE =
+  'w-full min-h-11 rounded-2xl border bg-white px-4 py-2.5 text-base sm:text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/40 focus:border-[var(--accent)] disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-400';
 
 function fieldBorder(error?: string) {
   return error ? 'border-red-300' : 'border-stone-300';

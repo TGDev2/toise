@@ -15,6 +15,35 @@ describe('DimensionsForm', () => {
     expect(screen.getByLabelText(/hauteur \(m\)/i)).toBeInTheDocument();
   });
 
+  // PRO-5 : les champs métriques étaient en `type="number"`, qui refuse la
+  // virgule des claviers français et renvoie alors une chaîne vide. « 2,5 m »
+  // partait donc à 0 cm vers l'API, sans erreur ni signal visible.
+  it('accepts French decimal commas in metric fields', async () => {
+    render(<DimensionsForm onSave={mockSave} />);
+
+    fireEvent.change(screen.getByLabelText(/longueur \(m\)/i), {
+      target: { value: '5,2' },
+    });
+    fireEvent.change(screen.getByLabelText(/largeur \(m\)/i), {
+      target: { value: '4' },
+    });
+    fireEvent.change(screen.getByLabelText(/hauteur \(m\)/i), {
+      target: { value: '2,5' },
+    });
+
+    fireEvent.click(screen.getByText(/enregistrer les dimensions/i));
+    await waitFor(() => {
+      expect(
+        screen.getByText(/vous n'avez pas ajoute de portes ou fenêtres/i),
+      ).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /continuer/i }));
+
+    await waitFor(() => {
+      expect(mockSave).toHaveBeenCalledWith(520, 400, 250, [], [], []);
+    });
+  });
+
   it('renders unit selector with metric selected', () => {
     render(<DimensionsForm onSave={mockSave} />);
     const metricBtn = screen.getByRole('radio', { name: /mètres/i });

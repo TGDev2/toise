@@ -15,7 +15,7 @@ const DOOR_DEFAULTS: Opening = { type: 'door', width_cm: 90, height_cm: 204, cou
 const WINDOW_DEFAULTS: Opening = { type: 'window', width_cm: 120, height_cm: 100, count: 1 };
 
 const inputClass =
-  'w-full rounded-2xl border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]';
+  'w-full min-h-11 rounded-2xl border border-stone-300 px-3 py-2 text-base sm:text-sm text-stone-900 focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]';
 
 export function OpeningsSection({
   openings,
@@ -35,14 +35,14 @@ export function OpeningsSection({
           <button
             type="button"
             onClick={() => onAdd({ ...DOOR_DEFAULTS })}
-            className="rounded-xl bg-stone-100 px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-200 transition-colors"
+            className="inline-flex min-h-11 items-center rounded-xl bg-stone-100 px-4 py-1.5 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-200"
           >
             + Porte
           </button>
           <button
             type="button"
             onClick={() => onAdd({ ...WINDOW_DEFAULTS })}
-            className="rounded-xl bg-stone-100 px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-200 transition-colors"
+            className="inline-flex min-h-11 items-center rounded-xl bg-stone-100 px-4 py-1.5 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-200"
           >
             + Fenêtre
           </button>
@@ -90,18 +90,43 @@ function OpeningRow({ opening, index, onUpdate, onRemove }: OpeningRowProps) {
   const prefix = `opening-${index}`;
 
   return (
-    <div className="flex items-end gap-2 rounded-2xl border border-stone-200 bg-stone-50 p-3">
-      <span className="shrink-0 rounded-lg bg-stone-200 px-2 py-1.5 text-xs font-medium text-stone-700">
+    /*
+      PRO-5 : la rangée était un `flex` non wrappé de cinq éléments. À 390 px il
+      restait ~51 px de zone de saisie utile par champ, labels tronqués compris.
+
+      Une grille dont seul le gabarit change au breakpoint — et non deux variantes
+      masquées l'une ou l'autre : dupliquer la rangée mettrait deux boutons
+      « Supprimer » et deux champs de même rôle dans le DOM, que les lecteurs
+      d'écran et les tests verraient tous les deux. Le bouton de suppression est
+      simplement repoussé en fin de rangée sur `sm:` via `order`.
+
+      Mobile (2 colonnes) :  [badge]   [supprimer]
+                             [largeur] [hauteur]
+                             [qté]
+      sm+ (une rangée)    :  [badge] [largeur] [hauteur] [qté] [supprimer]
+    */
+    <div className="grid grid-cols-2 items-end gap-2 rounded-2xl border border-stone-200 bg-stone-50 p-3 sm:grid-cols-[auto_1fr_1fr_4rem_auto]">
+      <span className="self-center rounded-lg bg-stone-200 px-2 py-1.5 text-center text-xs font-medium text-stone-700">
         {label}
       </span>
 
-      <div className="flex-1 min-w-0">
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={`Supprimer ${label} ${index + 1}`}
+        className="inline-flex h-11 w-11 items-center justify-center justify-self-end rounded-xl text-stone-400 transition-colors hover:bg-red-50 hover:text-red-500 sm:order-last sm:justify-self-auto"
+      >
+        <TrashIcon />
+      </button>
+
+      <div className="min-w-0">
         <label htmlFor={`${prefix}-width`} className="text-xs text-stone-500">
           Largeur (cm)
         </label>
         <input
           id={`${prefix}-width`}
           type="number"
+          inputMode="numeric"
           min="1"
           step="1"
           value={opening.width_cm}
@@ -112,13 +137,14 @@ function OpeningRow({ opening, index, onUpdate, onRemove }: OpeningRowProps) {
         />
       </div>
 
-      <div className="flex-1 min-w-0">
+      <div className="min-w-0">
         <label htmlFor={`${prefix}-height`} className="text-xs text-stone-500">
           Hauteur (cm)
         </label>
         <input
           id={`${prefix}-height`}
           type="number"
+          inputMode="numeric"
           min="1"
           step="1"
           value={opening.height_cm}
@@ -129,13 +155,14 @@ function OpeningRow({ opening, index, onUpdate, onRemove }: OpeningRowProps) {
         />
       </div>
 
-      <div className="w-16 shrink-0">
+      <div className="min-w-0">
         <label htmlFor={`${prefix}-count`} className="text-xs text-stone-500">
           Qte
         </label>
         <input
           id={`${prefix}-count`}
           type="number"
+          inputMode="numeric"
           min="1"
           max="50"
           step="1"
@@ -146,26 +173,24 @@ function OpeningRow({ opening, index, onUpdate, onRemove }: OpeningRowProps) {
           className={inputClass}
         />
       </div>
-
-      <button
-        type="button"
-        onClick={onRemove}
-        aria-label={`Supprimer ${label} ${index + 1}`}
-        className="shrink-0 rounded-xl p-2 text-stone-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          className="h-4 w-4"
-        >
-          <path
-            fillRule="evenodd"
-            d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.519.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z"
-            clipRule="evenodd"
-          />
-        </svg>
-      </button>
     </div>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      className="h-4 w-4"
+      aria-hidden="true"
+    >
+      <path
+        fillRule="evenodd"
+        d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.519.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z"
+        clipRule="evenodd"
+      />
+    </svg>
   );
 }

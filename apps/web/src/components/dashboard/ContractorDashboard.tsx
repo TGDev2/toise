@@ -46,6 +46,7 @@ export function ContractorDashboard() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [clientsCount, setClientsCount] = useState<number | null>(null);
   const [quotesCount, setQuotesCount] = useState<number | null>(null);
+  const [quickStarting, setQuickStarting] = useState(false);
 
   // Fetch company profile + stats
   useEffect(() => {
@@ -111,6 +112,35 @@ export function ContractorDashboard() {
       router.push(`/projects/${created.id}/photos`);
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Impossible de créer le projet'));
+    }
+  };
+
+  /**
+   * Entrée du parcours « devis-minute » (PRO-5).
+   *
+   * Chez le client, nommer le chantier avant de pouvoir photographier est une
+   * étape sans valeur : le nom se corrige à froid, la photo non — le client
+   * attend. On crée donc le chantier avec un libellé daté et on part droit sur
+   * l'appareil photo. Le composer « Nouveau chantier » reste là pour qui veut
+   * nommer d'emblée.
+   */
+  const handleQuickQuote = async () => {
+    setError('');
+    setQuickStarting(true);
+    try {
+      const stamp = new Intl.DateTimeFormat('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      }).format(new Date());
+      const created = await apiPost<{ id: string }>('/projects', {
+        name: `Devis du ${stamp}`,
+        room_name: 'Pièce 1',
+      });
+      router.push(`/projects/${created.id}/photos`);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Impossible de démarrer le devis'));
+      setQuickStarting(false);
     }
   };
 
@@ -180,7 +210,7 @@ export function ContractorDashboard() {
           <p className="mt-2 text-sm text-stone-500">{appUser.email}</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Button onClick={() => setIsComposerOpen((v) => !v)}>
+          <Button variant="secondary" onClick={() => setIsComposerOpen((v) => !v)}>
             {isComposerOpen ? 'Fermer' : 'Nouveau chantier'}
           </Button>
           <Button variant="secondary" onClick={() => router.push('/quotes')}>
@@ -201,12 +231,48 @@ export function ContractorDashboard() {
           <button
             type="button"
             onClick={() => setShowAccountConfirm(true)}
-            className="rounded-full border border-red-200 px-5 py-2.5 text-sm font-semibold text-red-700 hover:-translate-y-0.5 hover:bg-red-50"
+            className="inline-flex min-h-11 items-center rounded-full border border-red-200 px-5 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50"
           >
             Supprimer mon compte
           </button>
         </div>
       </div>
+
+      {/* Devis-minute — le pitch n°1 du tier Contractor (stratégie §7.2) */}
+      <button
+        type="button"
+        onClick={handleQuickQuote}
+        disabled={quickStarting}
+        className="mt-6 flex w-full min-h-16 items-center gap-4 rounded-[2rem] bg-[var(--accent)] px-6 py-5 text-left text-white shadow-[0_20px_50px_rgba(29,107,87,0.25)] transition-colors hover:bg-[var(--accent-strong)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:opacity-70"
+      >
+        <svg
+          className="h-7 w-7 shrink-0"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={1.7}
+          stroke="currentColor"
+          aria-hidden="true"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"
+          />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z"
+          />
+        </svg>
+        <span className="min-w-0">
+          <span className="block text-base font-semibold">
+            {quickStarting ? 'Démarrage...' : 'Devis-minute'}
+          </span>
+          <span className="block text-sm text-white/80">
+            Photo de la pièce → devis PDF envoyé au client
+          </span>
+        </span>
+      </button>
 
       {/* Subscription Card */}
       <div className="mt-6 rounded-[2rem] border border-stone-200 bg-white/85 px-6 py-4 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">

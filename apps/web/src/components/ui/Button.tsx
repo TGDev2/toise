@@ -14,6 +14,9 @@ const VARIANTS = {
   ghost: 'text-stone-600 hover:bg-stone-100 hover:text-stone-900',
 } as const;
 
+// PRO-5 : `min-h-11` (44 px) est porté par BASE et non par les tailles, pour que
+// même `sm` reste une cible tactile conforme (Apple HIG 44 px / Material 48 dp).
+// Seul le padding varie donc désormais d'une taille à l'autre.
 const SIZES = {
   sm: 'px-4 py-2 text-xs',
   md: 'px-5 py-2.5 text-sm',
@@ -21,7 +24,7 @@ const SIZES = {
 } as const;
 
 const BASE =
-  'inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]';
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-full font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: keyof typeof VARIANTS;

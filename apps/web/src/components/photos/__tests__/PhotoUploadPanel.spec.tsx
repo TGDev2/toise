@@ -148,7 +148,7 @@ describe('PhotoUploadPanel', () => {
     );
 
     expect(
-      screen.queryByText('Prendre ou ajouter des photos'),
+      screen.queryByRole('button', { name: 'Prendre une photo' }),
     ).not.toBeInTheDocument();
   });
 
@@ -167,7 +167,7 @@ describe('PhotoUploadPanel', () => {
 
     expect(screen.getByText('Avant de commencer')).toBeInTheDocument();
     expect(
-      screen.queryByText('Prendre ou ajouter des photos'),
+      screen.queryByRole('button', { name: 'Prendre une photo' }),
     ).not.toBeInTheDocument();
   });
 
@@ -190,7 +190,32 @@ describe('PhotoUploadPanel', () => {
 
     expect(screen.queryByText('Avant de commencer')).not.toBeInTheDocument();
     expect(
-      screen.getByText('Prendre ou ajouter des photos'),
+      screen.getByRole('button', { name: 'Prendre une photo' }),
+    ).toBeInTheDocument();
+  });
+
+  // PRO-5 : `capture="environment"` sur l'unique input forçait l'appareil photo
+  // et supprimait l'accès à la photothèque. Un artisan ayant déjà photographié
+  // la pièce devait tout refaire sur place.
+  it('offers the photo library alongside the camera (PRO-5)', () => {
+    render(
+      <PhotoUploadPanel
+        photos={[]}
+        canAddMore={true}
+        readyCount={0}
+        maxPhotos={5}
+        onFiles={noop}
+        onRemove={noop}
+        onRetry={noop}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /Compris, commencer/i }),
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'Choisir dans la galerie' }),
     ).toBeInTheDocument();
   });
 });

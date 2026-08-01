@@ -84,7 +84,7 @@ export function ClientSelect({
           <select
             value={selectedId}
             onChange={(e) => onChange(e.target.value)}
-            className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm text-stone-900 focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+            className="w-full min-h-12 rounded-2xl border border-stone-300 px-4 py-3 text-base sm:text-sm text-stone-900 focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
           >
             <option value="">-- Sans client --</option>
             {clients.map((c) => (

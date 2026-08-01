@@ -17,6 +17,7 @@ import {
   segmentsToSections,
 } from '@/lib/surface';
 import { getDimensionWarnings, getMissingFields } from '@/lib/dimension-validation';
+import { DecimalInput, StickyActionBar } from '@/components/ui';
 import { RoomPreview } from './RoomPreview';
 import { OpeningsSection } from './OpeningsSection';
 import { ExclusionsSection } from './ExclusionsSection';
@@ -62,8 +63,10 @@ interface DimensionsFormProps {
   savingLabel?: string;
 }
 
+// `text-base sm:text-sm` : sous 16 px, iOS Safari zoome à la prise de focus et
+// oblige à dézoomer après chaque champ — soit trois fois rien que pour L/l/H.
 const inputClass =
-  'w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm text-stone-900 focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]';
+  'w-full min-h-12 rounded-2xl border border-stone-300 px-4 py-3 text-base sm:text-sm text-stone-900 focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]';
 
 function uncertaintyHint(uncertaintyCm?: number | null): string | undefined {
   return uncertaintyCm && uncertaintyCm > 0
@@ -338,7 +341,7 @@ export function DimensionsForm({
 
         {/* Dimension inputs */}
         {unitSystem === 'metric' ? (
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             <MetricField
               label="Longueur (m)"
               id="length"
@@ -368,7 +371,7 @@ export function DimensionsForm({
             />
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             <ImperialField
               label="Longueur"
               idPrefix="length"
@@ -433,17 +436,17 @@ export function DimensionsForm({
             <p className="text-sm text-blue-800">
               Vous n&apos;avez pas ajoute de portes ou fenêtres. Souhaitez-vous continuer ?
             </p>
-            <div className="mt-2 flex gap-2">
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
               <button
                 type="submit"
-                className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 transition-colors"
+                className="inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
               >
                 Continuer
               </button>
               <button
                 type="button"
                 onClick={() => setShowZeroOpeningsSuggestion(false)}
-                className="rounded-xl bg-white px-3 py-1.5 text-xs font-medium text-blue-700 border border-blue-200 hover:bg-blue-50 transition-colors"
+                className="inline-flex min-h-11 items-center justify-center rounded-xl border border-blue-200 bg-white px-4 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50"
               >
                 Ajouter des ouvertures
               </button>
@@ -451,13 +454,33 @@ export function DimensionsForm({
           </div>
         )}
 
-        <button
-          type="submit"
-          disabled={isSaving || (touched && !isValid)}
-          className="rounded-full bg-stone-950 px-6 py-3 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-60"
+        {/*
+          Le CTA était en fin de colonne : avec deux portes, une fenêtre et une
+          exclusion, il tombait à ~1400 px de scroll sur un écran de 390 px.
+          Collé en bas, il reste sous le pouce quelle que soit la longueur du
+          formulaire — et le récapitulatif de surface le suit, pour valider une
+          mesure sans avoir à remonter.
+        */}
+        <StickyActionBar
+          summary={
+            surfaceM2 > 0 ? (
+              <p className="text-sm text-stone-600 sm:hidden">
+                Surface estimée{' '}
+                <span className="font-semibold text-stone-900">
+                  {surfaceM2.toFixed(2).replace('.', ',')} m²
+                </span>
+              </p>
+            ) : undefined
+          }
         >
-          {isSaving ? savingLabel : submitLabel}
-        </button>
+          <button
+            type="submit"
+            disabled={isSaving || (touched && !isValid)}
+            className="inline-flex min-h-12 items-center justify-center rounded-full bg-stone-950 px-6 py-3 text-sm font-semibold text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isSaving ? savingLabel : submitLabel}
+          </button>
+        </StickyActionBar>
       </div>
 
       {/* Right column: preview + surface */}
@@ -539,13 +562,17 @@ function MetricField({ label, id, value, onChange, warning, showError, hint }: M
         {label}
         {hint && <span className="ml-1.5 font-normal text-stone-400">{hint}</span>}
       </label>
-      <input
+      {/*
+        PRO-5 : `DecimalInput` (type=text + inputMode=decimal) et non
+        `type="number"` — sur un clavier français la touche décimale est une
+        virgule, que `type="number"` rejette en renvoyant une chaîne vide.
+        « 3,5 m » se transformait donc en 0 m sans le moindre signal.
+      */}
+      <DecimalInput
         id={id}
-        type="number"
-        step="0.01"
-        min="0"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onValueChange={onChange}
+        enterKeyHint="next"
         aria-describedby={showError ? errorId : warning ? warningId : undefined}
         className={inputClass}
       />
@@ -598,6 +625,7 @@ function ImperialField({
           <input
             id={`${idPrefix}-feet`}
             type="number"
+            inputMode="numeric"
             min="0"
             step="1"
             placeholder="pi"
@@ -614,6 +642,7 @@ function ImperialField({
           <input
             id={`${idPrefix}-inches`}
             type="number"
+            inputMode="numeric"
             min="0"
             max="11"
             step="1"

@@ -53,7 +53,7 @@ export function PhotoCaptureGuidance({
       <button
         type="button"
         onClick={onAcknowledge}
-        className="mt-4 rounded-full bg-amber-600 px-4 py-1.5 text-sm text-white transition hover:-translate-y-0.5"
+        className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-700 sm:w-auto"
       >
         Compris, commencer
       </button>

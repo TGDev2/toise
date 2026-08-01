@@ -7,6 +7,8 @@ import { useFeatureGates } from '@/contexts/FeatureGateContext';
 import { apiGet, apiPost } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { ClientSelect } from '@/components/quotes/ClientSelect';
+import { FlowProgress } from '@/components/quote-flow/FlowProgress';
+import { DecimalInput, StickyActionBar } from '@/components/ui';
 import type { EstimationResponse } from '@/lib/estimation-types';
 import type {
   Client,
@@ -37,9 +39,18 @@ function formatPrice(v: number): string {
   return v.toFixed(2).replace('.', ',');
 }
 
+// `text-base` sous `sm:` : sept champs à 14 px, c'était sept zooms iOS à
+// annuler à la main pendant qu'on chiffre devant le client.
+const NUMBER_FIELD =
+  'w-full min-h-12 rounded-2xl border border-stone-300 px-4 py-3 text-base sm:text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]';
+
 export default function NewQuotePage() {
   const { appUser, isLoading } = useAuth();
-  const { isFeatureAllowed, showPaywall } = useFeatureGates();
+  const {
+    isFeatureAllowed,
+    showPaywall,
+    isLoading: gatesLoading,
+  } = useFeatureGates();
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const projectId = params.id;
@@ -72,11 +83,15 @@ export default function NewQuotePage() {
       router.push('/login');
       return;
     }
+    // `isFeatureAllowed` est fail-closed *pendant* le chargement des gates :
+    // sans ce garde, tout arrivant sur l'étape « Devis » voyait le paywall
+    // s'ouvrir puis se refermer — y compris un Contractor qui y a droit.
+    if (gatesLoading) return;
     if (!isFeatureAllowed('export_devis')) {
       showPaywall('export_devis');
       return;
     }
-  }, [appUser, isLoading, isFeatureAllowed, showPaywall, router]);
+  }, [appUser, isLoading, gatesLoading, isFeatureAllowed, showPaywall, router]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -99,9 +114,14 @@ export default function NewQuotePage() {
     }
   }, [projectId]);
 
+  // La gate `export_devis` ouvrait le paywall mais laissait le rendu et le
+  // `fetchData()` se poursuivre : le formulaire complet s'affichait derrière la
+  // modale, et se retrouvait utilisable dès sa fermeture jusqu'au 403 serveur.
+  const quotingAllowed = !gatesLoading && isFeatureAllowed('export_devis');
+
   useEffect(() => {
-    if (appUser) fetchData();
-  }, [appUser, fetchData]);
+    if (appUser && quotingAllowed) fetchData();
+  }, [appUser, quotingAllowed, fetchData]);
 
   // Live totals
   const pricedItems = useMemo(() => {
@@ -165,10 +185,20 @@ export default function NewQuotePage() {
     }
   };
 
-  if (isLoading || loading) {
+  if (isLoading || gatesLoading || (quotingAllowed && loading)) {
     return (
       <main className="flex min-h-screen items-center justify-center">
         <p className="text-gray-500">Chargement...</p>
+      </main>
+    );
+  }
+
+  if (!quotingAllowed) {
+    // Le paywall est déjà ouvert par l'effet ci-dessus ; on ne rend rien
+    // derrière lui plutôt qu'un formulaire que l'API refuserait.
+    return (
+      <main className="mx-auto w-full max-w-4xl px-4 py-8">
+        <FlowProgress step="quote" projectId={projectId} />
       </main>
     );
   }
@@ -192,12 +222,11 @@ export default function NewQuotePage() {
 
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6">
+      <FlowProgress step="quote" projectId={projectId} />
+
       {/* Header */}
       <div className="rounded-[2rem] border border-stone-200 bg-[var(--surface)] p-6 shadow-[0_25px_80px_rgba(67,39,15,0.10)]">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
-          Nouveau devis
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold text-stone-950">
+        <h1 className="text-2xl font-semibold text-stone-950 sm:text-3xl">
           Générer un devis
         </h1>
         <p className="mt-2 text-sm text-stone-500">
@@ -237,47 +266,35 @@ export default function NewQuotePage() {
           <h2 className="text-lg font-semibold text-stone-950">
             Marge matériaux
           </h2>
-          <div className="mt-4 grid gap-4 md:grid-cols-3">
+          <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3">
             <label className="space-y-2">
               <span className="text-sm font-medium text-stone-700">
                 Marge (%)
               </span>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                step="0.5"
+              <DecimalInput
                 value={marginPercent}
-                onChange={(e) => setMarginPercent(e.target.value)}
-                className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                onValueChange={setMarginPercent}
+                className={NUMBER_FIELD}
               />
             </label>
             <label className="space-y-2">
               <span className="text-sm font-medium text-stone-700">
                 Remise (%)
               </span>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                step="0.5"
+              <DecimalInput
                 value={discountPercent}
-                onChange={(e) => setDiscountPercent(e.target.value)}
-                className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                onValueChange={setDiscountPercent}
+                className={NUMBER_FIELD}
               />
             </label>
             <label className="space-y-2">
               <span className="text-sm font-medium text-stone-700">
                 TVA (%)
               </span>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                step="0.5"
+              <DecimalInput
                 value={tvaRate}
-                onChange={(e) => setTvaRate(e.target.value)}
-                className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                onValueChange={setTvaRate}
+                className={NUMBER_FIELD}
               />
             </label>
           </div>
@@ -293,7 +310,7 @@ export default function NewQuotePage() {
               <button
                 type="button"
                 onClick={() => setLaborType('hourly')}
-                className={`rounded-full px-4 py-2 text-sm font-semibold ${
+                className={`inline-flex min-h-11 items-center justify-center rounded-full px-4 py-2 text-sm font-semibold ${
                   laborType === 'hourly'
                     ? 'bg-stone-950 text-white'
                     : 'border border-stone-300 text-stone-700 hover:bg-white'
@@ -304,7 +321,7 @@ export default function NewQuotePage() {
               <button
                 type="button"
                 onClick={() => setLaborType('flat')}
-                className={`rounded-full px-4 py-2 text-sm font-semibold ${
+                className={`inline-flex min-h-11 items-center justify-center rounded-full px-4 py-2 text-sm font-semibold ${
                   laborType === 'flat'
                     ? 'bg-stone-950 text-white'
                     : 'border border-stone-300 text-stone-700 hover:bg-white'
@@ -315,31 +332,25 @@ export default function NewQuotePage() {
             </div>
 
             {laborType === 'hourly' ? (
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-2 gap-4">
                 <label className="space-y-2">
                   <span className="text-sm font-medium text-stone-700">
                     Taux horaire (EUR/h)
                   </span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.5"
+                  <DecimalInput
                     value={hourlyRate}
-                    onChange={(e) => setHourlyRate(e.target.value)}
-                    className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                    onValueChange={setHourlyRate}
+                    className={NUMBER_FIELD}
                   />
                 </label>
                 <label className="space-y-2">
                   <span className="text-sm font-medium text-stone-700">
                     Heures estimées
                   </span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.5"
+                  <DecimalInput
                     value={estimatedHours}
-                    onChange={(e) => setEstimatedHours(e.target.value)}
-                    className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                    onValueChange={setEstimatedHours}
+                    className={NUMBER_FIELD}
                   />
                 </label>
               </div>
@@ -348,13 +359,10 @@ export default function NewQuotePage() {
                 <span className="text-sm font-medium text-stone-700">
                   Montant forfaitaire (EUR)
                 </span>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
+                <DecimalInput
                   value={flatAmount}
-                  onChange={(e) => setFlatAmount(e.target.value)}
-                  className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                  onValueChange={setFlatAmount}
+                  className={NUMBER_FIELD}
                 />
               </label>
             )}
@@ -371,11 +379,12 @@ export default function NewQuotePage() {
               </span>
               <input
                 type="number"
+                inputMode="numeric"
                 min="1"
                 max="365"
                 value={validityDays}
                 onChange={(e) => setValidityDays(e.target.value)}
-                className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                className={NUMBER_FIELD}
               />
             </label>
           </div>
@@ -387,7 +396,7 @@ export default function NewQuotePage() {
               rows={3}
               value={paymentTerms}
               onChange={(e) => setPaymentTerms(e.target.value)}
-              className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+              className={NUMBER_FIELD}
             />
           </label>
           <label className="mt-4 block space-y-2">
@@ -396,7 +405,7 @@ export default function NewQuotePage() {
               rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+              className={NUMBER_FIELD}
             />
           </label>
         </section>
@@ -444,23 +453,37 @@ export default function NewQuotePage() {
           </div>
         </section>
 
-        {/* Submit */}
-        <div className="flex gap-3">
+        {/*
+          Le total TTC vivait dans le récapitulatif, ~600 px sous le champ de
+          marge : ajuster une marge devant le client obligeait à descendre pour
+          lire l'effet, puis à remonter. C'est la boucle qui coûtait le plus de
+          temps sur cet écran. Il suit désormais le CTA dans la barre collante.
+        */}
+        <StickyActionBar
+          summary={
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-sm text-stone-600">Total TTC</span>
+              <span className="text-lg font-bold text-stone-950">
+                {formatPrice(totalTtc)} EUR
+              </span>
+            </div>
+          }
+        >
           <button
             type="submit"
             disabled={submitting || pricedItems.length === 0}
-            className="rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-12 items-center justify-center rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitting ? 'Creation...' : 'Créer le devis'}
           </button>
           <button
             type="button"
             onClick={() => router.back()}
-            className="rounded-full border border-stone-300 px-6 py-3 text-sm font-semibold text-stone-700 hover:-translate-y-0.5 hover:bg-white"
+            className="inline-flex min-h-12 items-center justify-center rounded-full border border-stone-300 px-6 py-3 text-sm font-semibold text-stone-700 hover:bg-white"
           >
             Annuler
           </button>
-        </div>
+        </StickyActionBar>
       </form>
     </main>
   );

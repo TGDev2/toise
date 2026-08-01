@@ -15,7 +15,8 @@ import { ShoppingListComplements } from '@/components/shopping-list/ShoppingList
 import { ShareLinkPanel } from '@/components/shopping-list/ShareLinkPanel';
 import { BudgetDashboard } from '@/components/shopping-list/BudgetDashboard';
 import { PriceComparisonPanel } from '@/components/shopping-list/PriceComparisonPanel';
-import { Alert, ConfirmDialog, Skeleton } from '@/components/ui';
+import { FlowProgress } from '@/components/quote-flow/FlowProgress';
+import { Alert, ConfirmDialog, Skeleton, StickyActionBar } from '@/components/ui';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -28,6 +29,7 @@ export default function ShoppingListPage() {
 
   const budgetAllowed = isFeatureAllowed('budget_tracking');
   const priceComparisonAllowed = isFeatureAllowed('price_comparison');
+  const canQuote = isFeatureAllowed('export_devis');
 
   const [data, setData] = useState<ShoppingListResponse | null>(null);
   const [projectName, setProjectName] = useState('');
@@ -43,6 +45,13 @@ export default function ShoppingListPage() {
   const [buyLinks, setBuyLinks] = useState<Map<string, BuyLinkItem>>(new Map());
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
   const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
+
+  // Même filtre que `QuotesService.create` : seules les lignes réellement
+  // chiffrées entrent dans le devis.
+  const pricedCount =
+    data?.material_items.filter(
+      (i) => i.real_unit_price != null && i.real_unit_price > 0,
+    ).length ?? 0;
 
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingUpdatesRef = useRef<{
@@ -438,26 +447,20 @@ export default function ShoppingListPage() {
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
-      <div className="mb-6">
-        <button
-          type="button"
-          onClick={() => router.push(`/projects/${projectId}/estimate`)}
-          className="text-sm text-stone-500 hover:text-stone-700"
-        >
-          &larr; Retour à l&apos;estimation
-        </button>
-        <div className="mt-2 flex items-center gap-3">
-          <h1 className="text-3xl font-semibold text-stone-950">
-            Liste de courses
-          </h1>
-          {saving && (
-            <span className="rounded-full bg-stone-100 px-3 py-1 text-xs text-stone-500">
-              Sauvegarde...
-            </span>
-          )}
-        </div>
-        {projectName && (
-          <p className="mt-1 text-sm text-stone-500">{projectName}</p>
+      <FlowProgress
+        step="prices"
+        projectId={projectId}
+        projectName={projectName}
+      />
+
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <h1 className="text-2xl font-semibold text-stone-950 sm:text-3xl">
+          Liste de courses
+        </h1>
+        {saving && (
+          <span className="rounded-full bg-stone-100 px-3 py-1 text-xs text-stone-500">
+            Sauvegarde...
+          </span>
         )}
       </div>
 
@@ -467,7 +470,7 @@ export default function ShoppingListPage() {
             type="button"
             onClick={handleDownloadPdf}
             disabled={downloading}
-            className="inline-flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-700 shadow-sm hover:bg-stone-50 disabled:opacity-50"
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-700 shadow-sm hover:bg-stone-50 disabled:opacity-50"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
               <path d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z" />
@@ -478,7 +481,7 @@ export default function ShoppingListPage() {
           <button
             type="button"
             onClick={() => setShowSharePanel((v) => !v)}
-            className="inline-flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-700 shadow-sm hover:bg-stone-50"
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-700 shadow-sm hover:bg-stone-50"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
               <path d="M12.232 4.232a2.5 2.5 0 0 1 3.536 3.536l-1.225 1.224a.75.75 0 0 0 1.061 1.06l1.224-1.224a4 4 0 0 0-5.656-5.656l-3 3a4 4 0 0 0 .225 5.865.75.75 0 0 0 .977-1.138 2.5 2.5 0 0 1-.142-3.667l3-3Z" />
@@ -486,23 +489,11 @@ export default function ShoppingListPage() {
             </svg>
             Partager un lien
           </button>
-          {appUser?.subscription_tier?.startsWith('contractor') && (
-            <button
-              type="button"
-              onClick={() => router.push(`/projects/${projectId}/quote/new`)}
-              className="inline-flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-700 shadow-sm hover:bg-stone-50"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                <path fillRule="evenodd" d="M4.5 2A1.5 1.5 0 0 0 3 3.5v13A1.5 1.5 0 0 0 4.5 18h11a1.5 1.5 0 0 0 1.5-1.5V7.621a1.5 1.5 0 0 0-.44-1.06l-4.12-4.122A1.5 1.5 0 0 0 11.378 2H4.5Zm4.75 6.75a.75.75 0 0 1 1.5 0v2.25h2.25a.75.75 0 0 1 0 1.5h-2.25v2.25a.75.75 0 0 1-1.5 0v-2.25H7a.75.75 0 0 1 0-1.5h2.25V8.75Z" clipRule="evenodd" />
-              </svg>
-              Générer un devis
-            </button>
-          )}
           <button
             type="button"
             onClick={handleComparePrices}
             disabled={comparing}
-            className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 shadow-sm hover:bg-emerald-100 disabled:opacity-50"
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 shadow-sm hover:bg-emerald-100 disabled:opacity-50"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
               <path fillRule="evenodd" d="M10 2a.75.75 0 0 1 .75.75v.258a33.186 33.186 0 0 1 6.668.83.75.75 0 0 1-.336 1.461 31.28 31.28 0 0 0-1.103-.232l1.702 7.545a.75.75 0 0 1-.387.832A4.981 4.981 0 0 1 15 14c-.825 0-1.606-.2-2.294-.556a.75.75 0 0 1-.387-.832l1.77-7.849a31.743 31.743 0 0 0-3.339-.254v11.505a20.01 20.01 0 0 1 3.78.501.75.75 0 1 1-.339 1.462A18.558 18.558 0 0 0 10 17.5c-1.442 0-2.845.165-4.191.477a.75.75 0 0 1-.339-1.462 20.01 20.01 0 0 1 3.78-.501V4.509c-1.129.026-2.243.112-3.34.254l1.771 7.85a.75.75 0 0 1-.387.83A4.981 4.981 0 0 1 5 14a4.981 4.981 0 0 1-2.294-.556.75.75 0 0 1-.387-.832L4.02 5.067c-.37.07-.738.148-1.103.232a.75.75 0 0 1-.336-1.462 33.053 33.053 0 0 1 6.668-.829V2.75A.75.75 0 0 1 10 2ZM5 12.662l-1.395-6.185a31.67 31.67 0 0 0-1.36.37L3.64 12.54a3.56 3.56 0 0 0 1.36.122Zm10 0a3.56 3.56 0 0 0 1.36-.122l1.395-5.693a31.67 31.67 0 0 0-1.36-.37L15 12.662Z" clipRule="evenodd" />
@@ -596,6 +587,41 @@ export default function ShoppingListPage() {
             </section>
           )}
         </>
+      )}
+
+      {/*
+        Sortie de l'étape « Prix » vers le devis (PRO-5).
+
+        Elle était noyée dans la barre d'outils secondaire, et conditionnée à
+        `subscription_tier.startsWith('contractor')` alors que la route serveur
+        est gardée par `export_devis` : deux systèmes d'autorisation divergents,
+        qui masquaient le bouton à des utilisateurs autorisés côté API. On lit
+        désormais la même gate que le serveur.
+
+        Le compteur de matériaux chiffrés rend visible le prérequis réel du
+        devis : sans aucun prix saisi, `POST /quotes` produit un devis vide et
+        le formulaire refuse la soumission — jusqu'ici sans que rien, à cette
+        étape, ne l'annonce.
+      */}
+      {data && canQuote && (
+        <StickyActionBar
+          summary={
+            <p className="text-sm text-stone-600">
+              {pricedCount === 0
+                ? 'Renseignez au moins un prix pour établir le devis.'
+                : `${pricedCount} matériau${pricedCount > 1 ? 'x' : ''} chiffré${pricedCount > 1 ? 's' : ''} sur ${data.material_items.length}.`}
+            </p>
+          }
+        >
+          <button
+            type="button"
+            disabled={pricedCount === 0}
+            onClick={() => router.push(`/projects/${projectId}/quote/new`)}
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Générer le devis
+          </button>
+        </StickyActionBar>
       )}
 
       <ConfirmDialog

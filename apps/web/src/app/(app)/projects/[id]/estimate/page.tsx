@@ -1,20 +1,28 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeatureGates } from '@/contexts/FeatureGateContext';
 import { apiGet, apiPost } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import type { EstimationResponse } from '@/lib/estimation-types';
 import { EstimationResults } from '@/components/estimation/EstimationResults';
 import { EstimationSummary } from '@/components/estimation/EstimationSummary';
 import { SkillLevelSelector } from '@/components/estimation/SkillLevelSelector';
+import { FlowProgress } from '@/components/quote-flow/FlowProgress';
+import { StickyActionBar } from '@/components/ui';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
 export default function EstimatePage() {
   const { appUser, isLoading } = useAuth();
+  const { isFeatureAllowed } = useFeatureGates();
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const projectId = params.id;
+
+  // Même clé que la gate serveur portée par `QuotesController` : le libellé de
+  // l'étape suivante s'aligne sur ce que l'utilisateur pourra réellement faire.
+  const canQuote = isFeatureAllowed('export_devis');
 
   const [estimation, setEstimation] = useState<EstimationResponse | null>(null);
   const [skillLevel, setSkillLevel] = useState('beginner');
@@ -88,21 +96,15 @@ export default function EstimatePage() {
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
-      <div className="mb-6">
-        <button
-          type="button"
-          onClick={() => router.push(`/projects/${projectId}/work-selection`)}
-          className="text-sm text-stone-500 hover:text-stone-700"
-        >
-          &larr; Retour aux travaux
-        </button>
-        <h1 className="mt-2 text-3xl font-semibold text-stone-950">
-          Estimation des matériaux
-        </h1>
-        {projectName && (
-          <p className="mt-1 text-sm text-stone-500">{projectName}</p>
-        )}
-      </div>
+      <FlowProgress
+        step="estimate"
+        projectId={projectId}
+        projectName={projectName}
+      />
+
+      <h1 className="mb-6 text-2xl font-semibold text-stone-950 sm:text-3xl">
+        Estimation des matériaux
+      </h1>
 
       {error && (
         <div className="mb-6 rounded-3xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
@@ -148,15 +150,22 @@ export default function EstimatePage() {
       </section>
 
       {estimation && (
-        <div className="mt-6 text-center">
+        /*
+          Le CTA était centré sous la liste complète des matériaux — soit hors
+          écran dès une dizaine de lignes, alors que c'est l'unique sortie de
+          l'étape. Le libellé dit maintenant où mène la suite : pour un artisan
+          l'étape « Prix » n'est pas une liste de courses, c'est le chiffrage qui
+          conditionne son devis.
+        */
+        <StickyActionBar>
           <button
             type="button"
             onClick={() => router.push(`/projects/${projectId}/shopping-list`)}
-            className="rounded-3xl bg-stone-950 px-8 py-3 text-sm font-semibold text-white shadow-sm hover:bg-stone-800"
+            className="inline-flex min-h-12 items-center justify-center rounded-3xl bg-stone-950 px-8 py-3 text-sm font-semibold text-white shadow-sm hover:bg-stone-800"
           >
-            Voir la liste de courses
+            {canQuote ? 'Chiffrer les matériaux' : 'Voir la liste de courses'}
           </button>
-        </div>
+        </StickyActionBar>
       )}
     </main>
   );

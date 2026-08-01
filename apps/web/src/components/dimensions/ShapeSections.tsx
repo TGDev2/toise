@@ -26,7 +26,7 @@ const DEFAULT_SECTION: ShapeSection = {
 };
 
 const inputClass =
-  'w-full rounded-2xl border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]';
+  'w-full min-h-11 rounded-2xl border border-stone-300 px-3 py-2 text-base sm:text-sm text-stone-900 focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]';
 
 export function ShapeSections({
   sections,
@@ -48,7 +48,7 @@ export function ShapeSections({
         <button
           type="button"
           onClick={() => onAdd({ ...DEFAULT_SECTION })}
-          className="shrink-0 rounded-xl bg-stone-100 px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-200 transition-colors"
+          className="inline-flex min-h-11 shrink-0 items-center rounded-xl bg-stone-100 px-4 py-1.5 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-200"
         >
           + Décroché
         </button>
@@ -100,7 +100,7 @@ function ShapeSectionRow({
           type="button"
           onClick={onRemove}
           aria-label={`Supprimer décroché ${index + 1}`}
-          className="rounded-xl p-1.5 text-stone-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-stone-400 transition-colors hover:bg-red-50 hover:text-red-500"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

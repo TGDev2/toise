@@ -21,7 +21,7 @@ export function SkillLevelSelector({
           type="button"
           disabled={disabled}
           onClick={() => onChange(level.value)}
-          className={`flex-1 rounded-xl px-4 py-2 text-sm font-medium transition-all ${
+          className={`min-h-11 flex-1 rounded-xl px-4 py-2 text-sm font-medium transition-all ${
             value === level.value
               ? 'bg-white text-stone-900 shadow-sm'
               : 'text-stone-500 hover:text-stone-700'

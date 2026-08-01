@@ -7,6 +7,7 @@ import type {
   SavedWorkItem,
 } from '@/lib/work-types';
 import { SKILL_LEVELS, WORK_TYPE_ICONS } from '@/lib/work-types';
+import { StickyActionBar } from '@/components/ui';
 import { ContextualQuestions } from './ContextualQuestions';
 
 interface WorkSelectionFormProps {
@@ -210,16 +211,19 @@ export function WorkSelectionForm({
         )}
       </div>
 
-      {/* Submit */}
-      <div className="flex justify-end">
+      {/*
+        Le CTA vivait dans un `flex justify-end`, donc collé au bord droit sous
+        ~900 px de tuiles à 390 px. Barre collante, pleine largeur sur mobile.
+      */}
+      <StickyActionBar>
         <button
           type="submit"
           disabled={isSaving || (touched && !canSubmit)}
-          className="rounded-full bg-[var(--accent)] px-8 py-3 text-sm font-semibold text-white shadow-md transition-all hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex min-h-12 items-center justify-center rounded-full bg-[var(--accent)] px-8 py-3 text-sm font-semibold text-white shadow-md transition-all hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSaving ? 'Enregistrement...' : 'Calculer'}
         </button>
-      </div>
+      </StickyActionBar>
     </form>
   );
 }

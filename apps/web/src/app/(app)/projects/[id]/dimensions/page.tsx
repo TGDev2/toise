@@ -8,6 +8,7 @@ import { getErrorMessage } from '@/lib/errors';
 import type { Opening, RectSegment, SurfaceExclusion } from '@/lib/surface';
 import type { Room } from '@/lib/room-types';
 import { DimensionsForm } from '@/components/dimensions/DimensionsForm';
+import { FlowProgress } from '@/components/quote-flow/FlowProgress';
 import { RoomSwitcher } from '@/components/rooms/RoomSwitcher';
 import { AnalyzeButton } from '@/components/analysis/AnalyzeButton';
 import { AnalysisResultPanel } from '@/components/analysis/AnalysisResultPanel';
@@ -388,21 +389,15 @@ export default function DimensionsPage() {
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
-      <div className="mb-6">
-        <button
-          type="button"
-          onClick={() => router.push('/dashboard')}
-          className="text-sm text-stone-500 hover:text-stone-700"
-        >
-          &larr; Retour au dashboard
-        </button>
-        <h1 className="mt-2 text-3xl font-semibold text-stone-950">
-          Dimensions de la pièce
-        </h1>
-        {projectName && (
-          <p className="mt-1 text-sm text-stone-500">{projectName}</p>
-        )}
-      </div>
+      <FlowProgress
+        step="dimensions"
+        projectId={projectId}
+        projectName={projectName}
+      />
+
+      <h1 className="mb-6 text-2xl font-semibold text-stone-950 sm:text-3xl">
+        Dimensions de la pièce
+      </h1>
 
       {/* Sélecteur de pièces (connecté uniquement — l'invité reste mono-pièce) */}
       {appUser && rooms.length > 0 && activeRoomId && (

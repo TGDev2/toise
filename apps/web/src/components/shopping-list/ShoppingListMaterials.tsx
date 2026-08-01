@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import type { ShoppingListMaterialItem } from '@/lib/shopping-list-types';
 import type { BuyLinkItem } from '@/lib/price-comparison-types';
+import { DecimalInput } from '@/components/ui';
 
 const CATEGORY_LABELS: Record<string, string> = {
   painting: 'Peinture',
@@ -108,7 +109,12 @@ function MaterialRow({
 
   return (
     <div className="rounded-2xl border border-stone-200 bg-white">
-      <div className="flex items-center gap-4 px-5 py-4">
+      {/*
+        PRO-5 : la rangée était un `flex` unique. Le suffixe « x Rouleau 150 m »
+        du bloc de contrôles ne se tronquait pas et poussait la désignation à un
+        mot par ligne à 390 px. Les contrôles passent sous le libellé sur mobile.
+      */}
+      <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="font-medium text-stone-900">{item.material_name}</p>
@@ -154,7 +160,9 @@ function MaterialRow({
             <button
               type="button"
               onClick={handlePriceToggle}
-              className={`rounded-full p-1.5 transition-colors ${
+              // Ouvre la saisie du prix : le geste le plus répété de l'étape
+              // « Prix », il faisait 28 px de haut (PRO-5).
+              className={`inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors ${
                 hasPriceSet
                   ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
                   : budgetAllowed === false
@@ -192,16 +200,19 @@ function MaterialRow({
           ) : (
             <input
               type="number"
+              inputMode="numeric"
               min={0}
               value={localQty}
               onChange={(e) => setLocalQty(Number(e.target.value))}
               onBlur={handleBlur}
               onKeyDown={handleKeyDown}
-              className="w-16 rounded-xl border border-stone-200 bg-stone-50 px-2 py-1.5 text-center text-sm font-semibold text-stone-900 focus:border-stone-400 focus:bg-white focus:outline-none"
+              className="min-h-11 w-16 rounded-xl border border-stone-200 bg-stone-50 px-2 py-1.5 text-center text-base font-semibold text-stone-900 focus:border-stone-400 focus:bg-white focus:outline-none sm:text-sm"
               aria-label={`Quantité pour ${item.material_name}`}
             />
           )}
-          <span className="text-sm text-stone-500">
+          {/* Doublon du sous-titre (« … · Rouleau 150 m ») : on le garde là où
+              la place le permet, on le retire là où il casse la mise en page. */}
+          <span className="truncate text-sm text-stone-500">
             x {item.packaging_label}
           </span>
         </div>
@@ -215,17 +226,17 @@ function MaterialRow({
                 Prix unitaire
               </label>
               <div className="relative">
-                <input
+                {/* Le chiffrage est l'étape la plus dactylographiée du parcours
+                    mobile : pavé décimal, virgule acceptée (PRO-5). */}
+                <DecimalInput
                   id={`price-${item.material_id}`}
-                  type="number"
-                  min={0}
-                  step={0.01}
                   value={localPrice}
-                  onChange={(e) => setLocalPrice(e.target.value)}
+                  onValueChange={setLocalPrice}
                   onBlur={handlePriceBlur}
                   onKeyDown={handleKeyDown}
-                  placeholder="0.00"
-                  className="w-24 rounded-lg border border-stone-200 bg-stone-50 px-2 py-1.5 pr-7 text-right text-sm text-stone-900 focus:border-stone-400 focus:bg-white focus:outline-none"
+                  enterKeyHint="next"
+                  placeholder="0,00"
+                  className="min-h-11 w-24 rounded-lg border border-stone-200 bg-stone-50 px-2 py-1.5 pr-7 text-right text-base text-stone-900 focus:border-stone-400 focus:bg-white focus:outline-none sm:text-sm"
                   aria-label={`Prix unitaire pour ${item.material_name}`}
                 />
                 <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-stone-400">

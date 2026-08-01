@@ -7,16 +7,20 @@ interface PhotoDropzoneProps {
   disabled: boolean;
 }
 
+const ACCEPT = 'image/jpeg,image/png,image/heic,.heic';
+
 export function PhotoDropzone({ onFiles, disabled }: PhotoDropzoneProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = e.target.files;
+      const input = e.currentTarget;
+      const files = input.files;
       if (files && files.length > 0) {
         onFiles(Array.from(files));
       }
-      if (inputRef.current) inputRef.current.value = '';
+      input.value = '';
     },
     [onFiles],
   );
@@ -41,18 +45,33 @@ export function PhotoDropzone({ onFiles, disabled }: PhotoDropzoneProps) {
     <div
       onDrop={handleDrop}
       onDragOver={handleDragOver}
-      className={`relative flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-8 text-center transition-colors ${
+      className={`flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed p-6 text-center transition-colors ${
         disabled
-          ? 'cursor-not-allowed border-stone-200 bg-stone-50 opacity-50'
-          : 'cursor-pointer border-stone-300 bg-white/60 hover:border-[var(--accent)] hover:bg-white/80'
+          ? 'border-stone-200 bg-stone-50 opacity-50'
+          : 'border-stone-300 bg-white/60'
       }`}
-      onClick={() => !disabled && inputRef.current?.click()}
     >
+      {/*
+        PRO-5 : deux entrées distinctes au lieu d'un seul input porteur de
+        `capture="environment"`. Cet attribut force l'appareil photo et retire
+        l'accès à la photothèque sur Android comme sur iOS : un artisan ayant
+        déjà photographié la pièce devait tout refaire sur place. La capture
+        directe reste l'action mise en avant — c'est le cas d'usage du parcours.
+      */}
       <input
-        ref={inputRef}
+        ref={cameraRef}
         type="file"
-        accept="image/jpeg,image/png,image/heic,.heic"
+        accept={ACCEPT}
         capture="environment"
+        multiple
+        className="hidden"
+        onChange={handleChange}
+        disabled={disabled}
+      />
+      <input
+        ref={galleryRef}
+        type="file"
+        accept={ACCEPT}
         multiple
         className="hidden"
         onChange={handleChange}
@@ -60,11 +79,12 @@ export function PhotoDropzone({ onFiles, disabled }: PhotoDropzoneProps) {
       />
 
       <svg
-        className="h-10 w-10 text-stone-400"
+        className="h-9 w-9 text-stone-400"
         fill="none"
         viewBox="0 0 24 24"
         strokeWidth={1.5}
         stroke="currentColor"
+        aria-hidden="true"
       >
         <path
           strokeLinecap="round"
@@ -78,14 +98,28 @@ export function PhotoDropzone({ onFiles, disabled }: PhotoDropzoneProps) {
         />
       </svg>
 
-      <div>
-        <p className="text-sm font-medium text-stone-700">
-          Prendre ou ajouter des photos
-        </p>
-        <p className="mt-1 text-xs text-stone-500">
-          JPEG, PNG ou HEIC - 20 Mo max par photo
-        </p>
+      <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-center">
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => cameraRef.current?.click()}
+          className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed"
+        >
+          Prendre une photo
+        </button>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => galleryRef.current?.click()}
+          className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-stone-300 bg-white px-5 py-3 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-50 disabled:cursor-not-allowed"
+        >
+          Choisir dans la galerie
+        </button>
       </div>
+
+      <p className="text-xs text-stone-500">
+        JPEG, PNG ou HEIC - 20 Mo max par photo
+      </p>
     </div>
   );
 }
