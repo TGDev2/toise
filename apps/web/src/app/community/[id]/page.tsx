@@ -1,17 +1,18 @@
-'use client';
-
-import { useCallback, useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import type { Metadata } from 'next';
 import Link from 'next/link';
-import { apiDelete, apiGet } from '@/lib/api';
-import { getErrorMessage } from '@/lib/errors';
+import { notFound } from 'next/navigation';
+import { apiGet, ApiError } from '@/lib/api';
 import { WORK_TYPE_LABELS } from '@/lib/project-types';
 import type { CommunityProjectDetail } from '@/lib/community-types';
-import { useAuth } from '@/contexts/AuthContext';
+import {
+  buildCommunityProjectJsonLd,
+  buildCommunityProjectMetadata,
+} from '@/lib/community-seo';
 import { CommunityPhotoCompare } from '@/components/community/CommunityPhotoCompare';
-import { CommunityLikeButton } from '@/components/community/CommunityLikeButton';
+import { CommunityDetailActions } from '@/components/community/CommunityDetailActions';
 import { CommunityComments } from '@/components/community/CommunityComments';
-import { Alert, ConfirmDialog, Skeleton } from '@/components/ui';
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
 
 function formatCost(cents: number): string {
   return new Intl.NumberFormat('fr-FR', {
@@ -27,75 +28,65 @@ function formatEuros(amount: number): string {
   }).format(amount);
 }
 
-export default function CommunityDetailPage() {
-  const params = useParams();
-  const router = useRouter();
-  const { appUser } = useAuth();
-  const communityProjectId = params.id as string;
+interface CommunityDetailPageProps {
+  params: Promise<{ id: string }>;
+}
 
-  const [project, setProject] = useState<CommunityProjectDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [withdrawing, setWithdrawing] = useState(false);
-  const [showWithdrawConfirm, setShowWithdrawConfirm] = useState(false);
-
-  const fetchDetail = useCallback(async () => {
-    try {
-      const result = await apiGet<CommunityProjectDetail>(
-        `/community/${communityProjectId}`,
-      );
-      setProject(result);
-    } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Impossible de charger le projet'));
-    } finally {
-      setLoading(false);
+async function fetchProject(id: string): Promise<CommunityProjectDetail> {
+  try {
+    return await apiGet<CommunityProjectDetail>(`/community/${id}`);
+  } catch (err: unknown) {
+    if (
+      err instanceof ApiError &&
+      typeof err.details.statusCode === 'number' &&
+      [400, 404].includes(err.details.statusCode)
+    ) {
+      notFound();
     }
-  }, [communityProjectId]);
+    throw err;
+  }
+}
 
-  useEffect(() => {
-    fetchDetail();
-  }, [fetchDetail]);
+export async function generateMetadata({
+  params,
+}: CommunityDetailPageProps): Promise<Metadata> {
+  const { id } = await params;
+  const project = await fetchProject(id);
+  const { title, description, ogImageUrl } =
+    buildCommunityProjectMetadata(project);
+  const canonical = `/community/${id}`;
 
-  const handleWithdraw = async () => {
-    setWithdrawing(true);
-    try {
-      await apiDelete(`/community/${communityProjectId}`);
-      router.push('/community');
-    } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Impossible de retirer le projet'));
-      setWithdrawing(false);
-      setShowWithdrawConfirm(false);
-    }
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      title: `${title} | Chiffréo`,
+      description,
+      url: canonical,
+      ...(ogImageUrl ? { images: [ogImageUrl] } : {}),
+    },
   };
+}
 
-  if (loading) {
-    return (
-      <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6">
-        <Skeleton className="h-40 rounded-[2rem]" />
-        <Skeleton className="mt-6 h-72 rounded-[2rem]" />
-      </main>
-    );
-  }
-
-  if (error || !project) {
-    return (
-      <main className="mx-auto max-w-4xl px-4 py-8">
-        <Alert variant="error">{error || 'Projet non trouvé'}</Alert>
-        <Link
-          href="/community"
-          className="mt-4 inline-block text-sm text-stone-500 hover:text-stone-700"
-        >
-          &larr; Retour à la galerie
-        </Link>
-      </main>
-    );
-  }
-
-  const workTypeLabel =
-    WORK_TYPE_LABELS[project.work_type] ?? project.work_type;
+export default async function CommunityDetailPage({
+  params,
+}: CommunityDetailPageProps) {
+  const { id } = await params;
+  const project = await fetchProject(id);
+  const workTypeLabel = WORK_TYPE_LABELS[project.work_type] ?? project.work_type;
+  const jsonLd = buildCommunityProjectJsonLd(
+    project,
+    `${SITE_URL}/community/${id}`,
+  );
 
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
       {/* Back link */}
       <Link
         href="/community"
@@ -122,25 +113,10 @@ export default function CommunityDetailPage() {
             }).format(new Date(project.published_at))}`}
         </p>
 
-        {/* Actions */}
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <CommunityLikeButton
-            communityProjectId={communityProjectId}
-            initialLiked={project.has_liked}
-            initialCount={project.likes_count}
-            disabled={!appUser}
-          />
-          {project.is_owner && (
-            <button
-              type="button"
-              onClick={() => setShowWithdrawConfirm(true)}
-              disabled={withdrawing}
-              className="rounded-full border border-red-200 px-5 py-2.5 text-sm font-semibold text-red-600 hover:-translate-y-0.5 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {withdrawing ? 'Retrait...' : 'Retirer de la galerie'}
-            </button>
-          )}
-        </div>
+        <CommunityDetailActions
+          communityProjectId={id}
+          initialLikesCount={project.likes_count}
+        />
       </div>
 
       {/* Description */}
@@ -159,7 +135,7 @@ export default function CommunityDetailPage() {
           Photos avant / après
         </h2>
         <CommunityPhotoCompare
-          communityProjectId={communityProjectId}
+          communityProjectId={id}
           beforePhotoIds={project.before_photo_ids}
           afterPhotoIds={project.after_photo_ids}
         />
@@ -265,19 +241,8 @@ export default function CommunityDetailPage() {
 
       {/* Comments */}
       <div className="mt-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
-        <CommunityComments communityProjectId={communityProjectId} />
+        <CommunityComments communityProjectId={id} />
       </div>
-
-      <ConfirmDialog
-        open={showWithdrawConfirm}
-        title="Retirer de la galerie"
-        message="Ce projet sera retiré de la galerie communautaire. Cette action est irréversible."
-        confirmLabel="Retirer"
-        destructive
-        busy={withdrawing}
-        onConfirm={handleWithdraw}
-        onCancel={() => setShowWithdrawConfirm(false)}
-      />
     </main>
   );
 }

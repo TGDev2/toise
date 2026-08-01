@@ -1,23 +1,19 @@
-'use client';
-
+import Link from 'next/link';
 import { WORK_TYPE_LABELS } from '@/lib/project-types';
 
 interface CommunityWorkTypeFilterProps {
   selected: string | null;
-  onChange: (workType: string | null) => void;
 }
 
 const WORK_TYPES = Object.entries(WORK_TYPE_LABELS);
 
 export function CommunityWorkTypeFilter({
   selected,
-  onChange,
 }: CommunityWorkTypeFilterProps) {
   return (
     <div className="flex flex-wrap gap-2">
-      <button
-        type="button"
-        onClick={() => onChange(null)}
+      <Link
+        href="/community"
         className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
           selected === null
             ? 'bg-stone-900 text-white'
@@ -25,12 +21,11 @@ export function CommunityWorkTypeFilter({
         }`}
       >
         Tous
-      </button>
+      </Link>
       {WORK_TYPES.map(([key, label]) => (
-        <button
+        <Link
           key={key}
-          type="button"
-          onClick={() => onChange(key)}
+          href={`/community?work_type=${key}`}
           className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
             selected === key
               ? 'bg-stone-900 text-white'
@@ -38,7 +33,7 @@ export function CommunityWorkTypeFilter({
           }`}
         >
           {label}
-        </button>
+        </Link>
       ))}
     </div>
   );

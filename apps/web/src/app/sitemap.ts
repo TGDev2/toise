@@ -1,9 +1,48 @@
 import type { MetadataRoute } from 'next';
 import { CALCULATOR_SLUGS } from '@/lib/calculators';
+import { apiGet } from '@/lib/api';
+import type { PaginatedCommunityProjects } from '@/lib/community-types';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
 
-export default function sitemap(): MetadataRoute.Sitemap {
+// L'API plafonne `limit` à 50 (cf. ListCommunityQueryDto) et la galerie
+// communauté grandit avec le temps sans borne connue à l'avance : on pagine
+// jusqu'à épuisement, avec un plafond de sécurité pour ne jamais boucler
+// indéfiniment si l'API renvoie une pagination incohérente.
+const COMMUNITY_PAGE_SIZE = 50;
+const COMMUNITY_MAX_PAGES = 20;
+
+export const revalidate = 3600;
+
+async function communityProjectEntries(): Promise<MetadataRoute.Sitemap> {
+  const entries: MetadataRoute.Sitemap = [];
+
+  try {
+    for (let page = 1; page <= COMMUNITY_MAX_PAGES; page += 1) {
+      const result = await apiGet<PaginatedCommunityProjects>(
+        `/community?page=${page}&limit=${COMMUNITY_PAGE_SIZE}`,
+      );
+
+      for (const project of result.data) {
+        entries.push({
+          url: `${BASE_URL}/community/${project.id}`,
+          lastModified: project.published_at ?? undefined,
+          changeFrequency: 'monthly',
+          priority: 0.6,
+        });
+      }
+
+      if (page >= result.meta.totalPages) break;
+    }
+  } catch {
+    // Dégrade vers les entrées statiques plutôt que de faire échouer
+    // /sitemap.xml si l'API est momentanément indisponible.
+  }
+
+  return entries;
+}
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     {
       url: BASE_URL,
@@ -25,6 +64,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly' as const,
       priority: 0.8,
     })),
+    {
+      url: `${BASE_URL}/community`,
+      changeFrequency: 'weekly',
+      priority: 0.7,
+    },
+    ...(await communityProjectEntries()),
     {
       url: `${BASE_URL}/login`,
       changeFrequency: 'yearly',
