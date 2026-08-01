@@ -2,11 +2,14 @@
 
 **Base URL :** `http://localhost:3001/api/v1`
 
-**Authentification :** Firebase ID Token dans le header `Authorization: Bearer <token>`
+**Authentification :** Firebase ID Token dans le header `Authorization: Bearer <token>`.
+Les routes `/partner/*` s'authentifient à la place avec une **clé d'API**
+(`Authorization: Bearer chf_…`), cf. [API publique (clés)](#api-publique-clés).
 
 **Rate limiting :**
 - Général : 100 requêtes/minute
 - Auth (register, forgot-password) : 5 requêtes/15 minutes
+- API publique : 60 requêtes/minute **par clé**, plus un quota mensuel par organisation
 
 **Validation :** Toutes les requêtes sont validées via `class-validator`. Les propriétés inconnues sont rejetées (HTTP 400).
 
@@ -35,6 +38,8 @@
 - [Suivi de chantier](#suivi-de-chantier)
 - [Community](#community)
 - [Organisations](#organisations)
+- [API publique (clés)](#api-publique-clés)
+- [Clés d'API (gestion)](#clés-dapi-gestion)
 
 ---
 
@@ -1800,14 +1805,198 @@ ne permet pas d'entrer avec un autre compte.
 
 ---
 
+## API publique (clés)
+
+API destinée aux intégrations tierces, authentifiée par **clé d'API** et non par jeton Firebase.
+Elle calcule des estimations **sans rien persister** : ni projet, ni pièce, ni estimation
+enregistrée. Elle n'expose aucune donnée métier de l'organisation.
+
+**Base :** `http://localhost:3001/api/v1/partner`
+
+**Authentification :** `Authorization: Bearer chf_<64 caractères>`. La clé est créée depuis
+[Clés d'API (gestion)](#clés-dapi-gestion) et n'est affichée **qu'une seule fois** — elle n'est
+stockée que hachée et n'est jamais relisible. Une clé appartient à une **organisation**, pas à
+une personne : elle survit au départ de son créateur.
+
+> **Ne jamais exposer une clé dans un navigateur ni dans une application mobile.** Elle porte
+> toute la portée de l'organisation. Les appels sont conçus pour être faits de serveur à serveur.
+
+**Feature gate :** `public_api` (Contractor Premium). Le palier est réévalué **à chaque
+requête** : une rétrogradation d'abonnement désactive immédiatement toutes les clés de
+l'organisation.
+
+**Limites :**
+
+| Limite | Valeur | Portée |
+|--------|--------|--------|
+| Rafale | 60 requêtes/minute | par clé |
+| Quota mensuel | 10 000 requêtes | par organisation, mois calendaire Europe/Paris |
+
+Seul `POST /partner/estimate` est décompté du quota mensuel ; `work-types` et `usage` ne le sont
+pas. Les deux rejets renvoient `429` avec un en-tête `Retry-After` (secondes) et se distinguent
+par leur champ `error` : `RATE_LIMIT_EXCEEDED` (rafale) ou `QUOTA_EXCEEDED` (quota mensuel).
+
+**Erreurs d'authentification (`401`) :** `INVALID_API_KEY_FORMAT` (en-tête absent ou préfixe
+`chf_` manquant), `INVALID_API_KEY` (clé inconnue), `API_KEY_REVOKED`,
+`API_KEY_ROTATION_EXPIRED` (ancienne clé présentée après la fin de la période de grâce).
+
+---
+
+### `POST /partner/estimate`
+
+Estimer les matériaux d'un ou plusieurs espaces. Aucune donnée n'est enregistrée.
+
+**Auth :** Clé API | **Quota :** décompté | **Feature gate :** `public_api` (Contractor Premium)
+
+**Body :**
+```json
+{
+  "rooms": [
+    {
+      "name": "Salon",
+      "length_cm": 500,
+      "width_cm": 400,
+      "height_cm": 250,
+      "openings": [{ "width_cm": 90, "height_cm": 210, "count": 1 }],
+      "work_items": [
+        { "work_type_code": "wall_painting", "custom_params": { "number_of_coats": 2 } }
+      ]
+    }
+  ],
+  "skill_level": "intermediate"
+}
+```
+
+| Champ | Type | Requis | Validation |
+|-------|------|--------|------------|
+| `rooms` | array | oui | 1 à 20 éléments |
+| `rooms[].name` | string | non | 1 à 100 caractères ; défaut « Pièce N » |
+| `rooms[].length_cm` | int | oui | 50 à 10000 |
+| `rooms[].width_cm` | int | oui | 50 à 10000 |
+| `rooms[].height_cm` | int | oui | 50 à 10000 |
+| `rooms[].openings` | array | non | max 20 ; `width_cm`/`height_cm` 1-1000, `count` 1-20 |
+| `rooms[].segments` | array | non | max 10 ; décomposition d'une pièce non rectangulaire (L, T, U…) |
+| `rooms[].work_items` | array | oui | 1 à 7 éléments |
+| `rooms[].work_items[].work_type_code` | string | oui | code issu de `GET /partner/work-types` |
+| `rooms[].work_items[].skill_level` | enum | non | `beginner`, `intermediate`, `expert` |
+| `rooms[].work_items[].custom_params` | object | non | `number_of_coats` (1-4), `tile_format`, `laying_pattern` |
+| `skill_level` | enum | non | niveau par défaut des ouvrages qui n'en précisent pas |
+
+**Réponses :** `200 OK` — `{ rooms_count, total_items, items[], aggregated[] }`. `items` détaille
+chaque ligne (surface, quantité théorique, perte, quantité ajustée, conditionnement) avec
+`room_id` = `room-1`, `room-2`… dans l'ordre des pièces envoyées ; `aggregated` mutualise les
+achats par matériau sur l'ensemble des pièces. | `400 Bad Request` (bornes dépassées ou
+propriété inconnue) | `401` | `403` `FEATURE_GATED` | `404 Not Found` (`work_type_code`
+inconnu) | `429`
+
+---
+
+### `GET /partner/work-types`
+
+Lister les types de travaux disponibles et leurs questions contextuelles.
+
+**Auth :** Clé API | **Quota :** non décompté
+
+**Réponses :** `200 OK` — tableau de `{ code, label_fr, category, surface_target, contextual_questions }`
+
+---
+
+### `GET /partner/usage`
+
+Consulter sa consommation du mois en cours. Volontairement non décomptée, pour rester
+consultable une fois le quota atteint.
+
+**Auth :** Clé API | **Quota :** non décompté
+
+**Réponses :** `200 OK` — `{ period, count, limit, reset_at }`
+
+---
+
+## Clés d'API (gestion)
+
+Surface d'administration des clés, authentifiée par **jeton Firebase**. Réservée au
+propriétaire et aux administrateurs de l'organisation — créer une clé, c'est créer un
+credential qui porte toute la portée de l'organisation.
+
+**Feature gate :** `public_api` (Contractor Premium) sur toutes les routes.
+Maximum **10 clés actives** par organisation.
+
+---
+
+### `GET /api-keys`
+
+Lister les clés de l'organisation. Les empreintes ne sont **jamais** renvoyées.
+
+**Auth :** Requise (propriétaire ou administrateur) | **Feature gate :** `public_api`
+
+**Réponses :** `200 OK` — tableau de `{ id, name, key_prefix, created_at, last_used_at, revoked_at, rotation_grace_until }`
+
+---
+
+### `GET /api-keys/usage`
+
+Consommation de l'organisation pour le mois en cours.
+
+**Auth :** Requise (propriétaire ou administrateur) | **Feature gate :** `public_api`
+
+**Réponses :** `200 OK` — `{ period, count, limit, reset_at }`
+
+---
+
+### `POST /api-keys`
+
+Créer une clé. **Le secret n'est renvoyé qu'ici, une seule fois** : il n'est stocké que haché et
+ne peut plus être relu ensuite.
+
+**Auth :** Requise (propriétaire ou administrateur) | **Feature gate :** `public_api`
+
+**Body :**
+```json
+{ "name": "Intégration ERP" }
+```
+
+| Champ | Type | Requis | Validation |
+|-------|------|--------|------------|
+| `name` | string | oui | 1 à 100 caractères |
+
+**Réponses :** `201 Created` — `{ secret, key }` | `403 Forbidden` (membre simple) | `409 Conflict` `API_KEY_LIMIT_REACHED`
+
+---
+
+### `POST /api-keys/:id/rotate`
+
+Faire tourner une clé **sans coupure** : un nouveau secret est émis et l'ancien reste accepté
+pendant **24 heures**, le temps de redéployer. L'identifiant, le nom et l'historique de la clé
+sont conservés. Une seconde rotation pendant la période de grâce est refusée — elle tuerait
+sans signal une clé encore déployée. En cas de fuite, utiliser la révocation, immédiate.
+
+**Auth :** Requise (propriétaire ou administrateur) | **Feature gate :** `public_api`
+
+**Réponses :** `200 OK` — `{ secret, key }` (secret affiché une seule fois) | `404 Not Found`
+(clé inexistante, révoquée, ou appartenant à une autre organisation) |
+`409 Conflict` `ROTATION_IN_PROGRESS`
+
+---
+
+### `DELETE /api-keys/:id`
+
+Révoquer une clé, immédiatement et sans période de grâce. Toute empreinte de rotation encore
+valide est effacée en même temps.
+
+**Auth :** Requise (propriétaire ou administrateur) | **Feature gate :** `public_api`
+
+**Réponses :** `204 No Content` | `404 Not Found`
+
+---
+
 ## Codes d'erreur communs
 
 | Code | Description |
 |------|-------------|
 | `400` | Requête invalide (validation échouée, propriétés inconnues) |
-| `401` | Non authentifié (token Firebase manquant ou invalide) |
+| `401` | Non authentifié (token Firebase manquant ou invalide, clé d'API invalide ou révoquée) |
 | `403` | Non autorisé (pas propriétaire, pas admin, feature gate bloquée) |
 | `404` | Ressource non trouvée |
-| `409` | Conflit (email déjà utilisé, ressource dupliquée) |
-| `429` | Rate limit dépassé |
+| `409` | Conflit (email déjà utilisé, ressource dupliquée, rotation de clé en cours) |
+| `429` | Rate limit dépassé (`RATE_LIMIT_EXCEEDED`) ou quota mensuel d'API atteint (`QUOTA_EXCEEDED`) — voir l'en-tête `Retry-After` |
 | `500` | Erreur interne du serveur |

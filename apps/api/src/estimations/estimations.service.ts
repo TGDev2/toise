@@ -5,8 +5,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import {
+  AggregatedMaterialLine,
   EstimationLineItem,
   EstimationResult,
 } from './entities/estimation-result.entity';
@@ -25,6 +26,7 @@ import { ProjectStatus } from '../projects/entities/project.entity';
 import { WorkType } from '../projects/entities/work-type.entity';
 import { PublicEstimateRequestDto } from './dto/public-estimate-request.dto';
 import { PublicEstimateEmailDto } from './dto/public-estimate-email.dto';
+import { ApiEstimateRequestDto } from './dto/api-estimate-request.dto';
 import { EmailService } from '../email/email.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
@@ -39,6 +41,14 @@ export interface PublicEstimateResponse {
 
 export interface PublicEstimateEmailResponse {
   sent: boolean;
+}
+
+/** Réponse de l'API publique (PLAT-5) : lignes détaillées + achats mutualisés. */
+export interface ApiEstimateResponse {
+  rooms_count: number;
+  total_items: number;
+  items: EstimationLineItem[];
+  aggregated: AggregatedMaterialLine[];
 }
 
 @Injectable()
@@ -270,6 +280,127 @@ export class EstimationsService {
       total_items: items.length,
       items,
     };
+  }
+
+  /**
+   * Estimation multi-pièces **sans persistance** (BACKLOG PLAT-5) : ni projet,
+   * ni pièce, ni `estimation_results`. C'est ce qui rend l'API publique
+   * utilisable par une intégration tierce ou un widget embarqué sans lui ouvrir
+   * la moindre surface sur les données métier de l'organisation.
+   *
+   * Elle vit ici, et non dans le module `api-keys`, pour ne pas dupliquer
+   * `loadMaterialInputs` : en recopier le corps forkerait l'invariant
+   * `is_eco: false` (PLAT-3) et l'API payante se mettrait, un jour, à chiffrer
+   * des matériaux éco que l'application n'utilise pas.
+   *
+   * Les pièces n'ayant pas d'identifiant persisté, on leur en synthétise un
+   * (`room-1`, `room-2`…) : l'agrégation compte ainsi correctement les pièces
+   * distinctes et l'appelant peut relier chaque contribution à la pièce qu'il a
+   * envoyée.
+   */
+  async estimatePublicMulti(
+    dto: ApiEstimateRequestDto,
+  ): Promise<ApiEstimateResponse> {
+    const requestedCodes = [
+      ...new Set(
+        dto.rooms.flatMap((r) => r.work_items.map((w) => w.work_type_code)),
+      ),
+    ];
+    const workTypes = await this.workTypesRepo.find({
+      where: { code: In(requestedCodes) },
+    });
+    const workTypeByCode = new Map(workTypes.map((wt) => [wt.code, wt]));
+
+    const unknown = requestedCodes.filter((c) => !workTypeByCode.has(c));
+    if (unknown.length > 0) {
+      throw new NotFoundException(
+        `Type de travaux inconnu : ${unknown.join(', ')}`,
+      );
+    }
+
+    // Une requête par catégorie pour toute la demande, quel que soit le nombre
+    // de pièces — même mémoïsation que `estimate()`.
+    const materialsByCategory = new Map<string, MaterialInput[]>();
+    const loadMaterials = async (
+      category: string,
+    ): Promise<MaterialInput[]> => {
+      const cached = materialsByCategory.get(category);
+      if (cached) return cached;
+      const loaded = await this.loadMaterialInputs(category);
+      materialsByCategory.set(category, loaded);
+      return loaded;
+    };
+
+    const defaultSkillLevel = dto.skill_level ?? SkillLevel.INTERMEDIATE;
+    const granularLines: EstimationLineItem[] = [];
+    const packagingByMaterialId = new Map<string, PackagingInput[]>();
+
+    for (const [index, room] of dto.rooms.entries()) {
+      const roomId = `room-${index + 1}`;
+      const roomName = room.name ?? `Pièce ${index + 1}`;
+
+      const roomData: RoomData = {
+        length_cm: room.length_cm,
+        width_cm: room.width_cm,
+        height_cm: room.height_cm,
+        openings: (room.openings ?? []).map((o) => ({
+          width_cm: o.width_cm,
+          height_cm: o.height_cm,
+          count: o.count,
+        })),
+        segments: room.segments?.map((s) => ({
+          x_cm: s.x_cm,
+          y_cm: s.y_cm,
+          length_cm: s.length_cm,
+          width_cm: s.width_cm,
+        })),
+      };
+
+      const workItemInputs: WorkItemInput[] = [];
+      for (const item of room.work_items) {
+        const workType = workTypeByCode.get(item.work_type_code)!;
+        const materialInputs = await loadMaterials(workType.category);
+
+        for (const mat of materialInputs) {
+          if (!packagingByMaterialId.has(mat.id)) {
+            packagingByMaterialId.set(mat.id, mat.packagings);
+          }
+        }
+
+        workItemInputs.push({
+          id: `${roomId}:${workType.code}`,
+          work_type_code: workType.code,
+          work_type_label: workType.label_fr,
+          category: workType.category,
+          surface_target: workType.surface_target,
+          skill_level: item.skill_level ?? defaultSkillLevel,
+          custom_params: { ...item.custom_params },
+          materials: materialInputs,
+        });
+      }
+
+      for (const line of this.engine.computeEstimation(
+        roomData,
+        workItemInputs,
+      )) {
+        granularLines.push({ ...line, room_id: roomId, room_name: roomName });
+      }
+    }
+
+    return {
+      rooms_count: dto.rooms.length,
+      total_items: granularLines.length,
+      items: granularLines,
+      aggregated: this.engine.aggregatePurchases(
+        granularLines,
+        packagingByMaterialId,
+      ),
+    };
+  }
+
+  /** Types de travaux exposés par l'API publique — données de référence. */
+  async listWorkTypes(): Promise<WorkType[]> {
+    return this.workTypesRepo.find({ order: { display_order: 'ASC' } });
   }
 
   async emailEstimate(

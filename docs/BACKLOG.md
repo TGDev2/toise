@@ -129,7 +129,7 @@
 | ID | Item | Description / valeur | Effort | Dépend de |
 |---|---|---|---|---|
 | PLAT-4 | Organisations, membres, rôles | **Livré (01/08/2026).** `organizations`/`organization_memberships`/`organization_invitations` + rôles `owner`/`admin`/`member` ; propriété de projets/clients/devis/factures/profil d'entreprise transférée à l'org (`organization_id` ajouté, `user_id` conservé comme auteur). Une org personnelle par compte, backfillée 1:1 → aucun changement observable pour un solo. Le palier des feature gates suit le propriétaire de l'org active : un salarié `free` hérite du Premium de son employeur. Numérotation devis/factures re-clé sur l'émetteur légal (`quote_sequences` créée, `invoice_sequences` re-clé). Gate `multi_user` activée. UI web de gestion des membres hors périmètre. Cf. [tasks/todo.md](../tasks/todo.md). | XL | PRO-1 |
-| PLAT-5 | API publique + clés | Endpoints d'estimation documentés, clés API, quotas par tier. Ouvre le widget embarquable (stratégie §7.3) et l'enterprise. | L | PLAT-4 |
+| PLAT-5 | API publique + clés | **Livré (02/08/2026).** Surface `/partner` (estimation multi-pièces sans persistance, types de travaux, usage) authentifiée par clé portée par l'organisation, avec rotation à fenêtre de grâce, révocation immédiate, rafale par clé et quota mensuel. Gate `public_api` désormais activée. | L | PLAT-4 |
 | PLAT-6 | Offre Enterprise (10 k€+/an) | SSO (SAML/OIDC), facturation annuelle sur devis, SLA, environnement dédié éventuel. Uniquement sur demande entrante avérée. | XL | PLAT-4, PLAT-5 |
 | PLAT-7 | Widget d'estimation marque blanche | Calculateur embarquable chez des médias bricolage / marchands, brandé « powered by Chiffréo ». Canal B2B2C (stratégie §7.6). | L | PLAT-5 |
 

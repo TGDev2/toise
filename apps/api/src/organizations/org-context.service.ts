@@ -121,6 +121,29 @@ export class OrgContextService {
     }
   }
 
+  /**
+   * Palier porté par une organisation, **sans utilisateur appelant** — le cas
+   * d'une clé d'API, qui appartient à l'organisation et non à une personne
+   * (BACKLOG PLAT-5 D1). Même règle que `resolveEffectiveTier` : c'est le palier
+   * du propriétaire qui fait foi. Elle vit ici, et nulle part ailleurs : la
+   * réécrire dans le guard des clés la ferait diverger au premier changement.
+   *
+   * Fail-closed : organisation ou propriétaire introuvable ⇒ `free`, palier
+   * auquel la gate `public_api` refuse l'accès.
+   */
+  async resolveTierForOrganization(
+    organizationId: string,
+  ): Promise<SubscriptionTier> {
+    const row = await this.orgsRepo
+      .createQueryBuilder('o')
+      .innerJoin(User, 'u', 'u.id = o.owner_user_id')
+      .where('o.id = :organizationId', { organizationId })
+      .select('u.subscription_tier', 'subscription_tier')
+      .getRawOne<{ subscription_tier: SubscriptionTier }>();
+
+    return row?.subscription_tier ?? SubscriptionTier.FREE;
+  }
+
   async findMembership(
     organizationId: string,
     userId: string,
