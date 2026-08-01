@@ -1,4 +1,9 @@
 import type { PaginationMeta } from './project-types';
+import type {
+  ShoppingListMaterialItem,
+  ShoppingListComplementaryItem,
+  BudgetSummary,
+} from './shopping-list-types';
 
 export interface CommunityProjectSummary {
   id: string;
@@ -11,9 +16,9 @@ export interface CommunityProjectSummary {
   published_at: string | null;
 }
 
-export interface MaterialItem {
-  name: string;
-  quantity: string;
+export interface PurchaseListSnapshot {
+  material_items: ShoppingListMaterialItem[];
+  complementary_items: ShoppingListComplementaryItem[];
 }
 
 export interface CommunityProjectDetail {
@@ -21,7 +26,11 @@ export interface CommunityProjectDetail {
   title: string;
   work_type: string;
   description: string | null;
-  materials_list: MaterialItem[];
+  // COM-1 : liste d'achats réelle figée au moment du partage (quantités +
+  // prix réels), plutôt qu'une saisie manuelle. Absente (null) sur les
+  // publications antérieures que le backfill n'a pas pu rattacher.
+  purchase_list: PurchaseListSnapshot | null;
+  budget_summary: BudgetSummary | null;
   total_cost_cents: number;
   duration_days: number;
   length_cm: number;

@@ -78,11 +78,9 @@ export class ShoppingListsController {
     @Param('id', ParseUUIDPipe) projectId: string,
   ): Promise<BudgetSummaryResponseDto> {
     const userId = await this.resolveUserId(firebaseUser);
-    const summary = await this.shoppingListsService.getBudgetSummary(
-      projectId,
-      userId,
-    );
-    return BudgetSummaryResponseDto.fromSummary(summary);
+    const { summary, isFinalized } =
+      await this.shoppingListsService.getBudgetSummary(projectId, userId);
+    return BudgetSummaryResponseDto.fromSummary(summary, isFinalized);
   }
 
   @Post(':id/shopping-list/budget-summary/finalize')

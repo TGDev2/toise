@@ -311,7 +311,7 @@ export class ShoppingListsService {
   async getBudgetSummary(
     projectId: string,
     userId: string,
-  ): Promise<BudgetSummary> {
+  ): Promise<{ summary: BudgetSummary; isFinalized: boolean }> {
     await this.projectsService.findOneByUser(projectId, userId);
 
     const shoppingList = await this.shoppingListRepo.findOne({
@@ -326,7 +326,15 @@ export class ShoppingListsService {
       shoppingList.estimation_id,
     );
 
-    return this.computeBudgetSummary(shoppingList, estimation.items_json);
+    return {
+      summary: this.computeBudgetSummary(shoppingList, estimation.items_json),
+      // COM-1 : regenerate() peut effacer budget_summary_json sur un projet
+      // deja COMPLETED (prix restaures, resume non recalcule) — le live
+      // recompute ci-dessus ne suffit pas a distinguer ce cas d'un budget
+      // reellement finalise. Les appelants (ex. partage communaute) doivent
+      // se fier a isFinalized, pas a summary.is_complete.
+      isFinalized: shoppingList.budget_summary_json != null,
+    };
   }
 
   async finalizeBudgetSummary(

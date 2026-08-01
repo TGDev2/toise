@@ -5,6 +5,11 @@ import { apiGet, apiPut } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { WORK_TYPE_LABELS } from '@/lib/project-types';
 import type { PaginationMeta } from '@/lib/project-types';
+import type {
+  ShoppingListMaterialItem,
+  ShoppingListComplementaryItem,
+  BudgetSummary,
+} from '@/lib/shopping-list-types';
 
 interface PendingProject {
   id: string;
@@ -19,7 +24,11 @@ interface PendingProject {
   height_cm: number | null;
   before_photo_ids: string[];
   after_photo_ids: string[];
-  materials_list: { name: string; quantity: string }[];
+  purchase_list: {
+    material_items: ShoppingListMaterialItem[];
+    complementary_items: ShoppingListComplementaryItem[];
+  } | null;
+  budget_summary: BudgetSummary | null;
   created_at: string;
 }
 
@@ -188,15 +197,27 @@ export default function AdminCommunityPage() {
               </span>
             </div>
 
-            {project.materials_list.length > 0 && (
+            {project.purchase_list ? (
               <div className="mt-3">
                 <span className="text-xs font-medium text-[var(--foreground)]/50">
-                  Matériaux :
+                  Liste d&apos;achats réelle :
                 </span>
                 <span className="ml-1 text-sm text-[var(--foreground)]/70">
-                  {project.materials_list
-                    .map((m) => `${m.name} (${m.quantity})`)
-                    .join(', ')}
+                  {project.purchase_list.material_items.length} article
+                  {project.purchase_list.material_items.length > 1 ? 's' : ''}
+                  {project.budget_summary &&
+                    ` · coût réel ${formatCost(
+                      Math.round(project.budget_summary.total_real_cost * 100),
+                    )}`}
+                  {project.budget_summary &&
+                    project.budget_summary.savings_amount > 0 &&
+                    ` · économie ${project.budget_summary.savings_percent.toFixed(1)} %`}
+                </span>
+              </div>
+            ) : (
+              <div className="mt-3">
+                <span className="text-xs font-medium text-[var(--foreground)]/50">
+                  Liste d&apos;achats réelle : non disponible
                 </span>
               </div>
             )}

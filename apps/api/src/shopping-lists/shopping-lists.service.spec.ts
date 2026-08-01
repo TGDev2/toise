@@ -47,6 +47,7 @@ const workTypeRepoMock = {
 
 const estimationsServiceMock = {
   getLatest: jest.fn(),
+  findById: jest.fn(),
 };
 
 const projectsServiceMock = {
@@ -223,5 +224,108 @@ describe('ShoppingListsService.generate', () => {
     expect(
       result.items_json.material_items[0].units_needed_high,
     ).toBeUndefined();
+  });
+});
+
+// COM-1 : regenerate() peut effacer budget_summary_json sur un projet déjà
+// COMPLETED sans que le résumé recalculé en direct ne le signale (cf. notes
+// dans le service) — isFinalized doit refléter le snapshot persisté, pas le
+// calcul live.
+describe('ShoppingListsService.getBudgetSummary', () => {
+  let service: ShoppingListsService;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+
+    projectsServiceMock.findOneByUser.mockResolvedValue({
+      id: 'project-1',
+      user_id: 'user-1',
+    });
+    estimationsServiceMock.findById.mockResolvedValue({
+      id: 'estimation-1',
+      items_json: [],
+    });
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        ShoppingListsService,
+        {
+          provide: getRepositoryToken(ShoppingList),
+          useValue: shoppingListRepoMock,
+        },
+        {
+          provide: getRepositoryToken(ComplementaryMaterial),
+          useValue: complementaryRepoMock,
+        },
+        { provide: getRepositoryToken(WorkType), useValue: workTypeRepoMock },
+        { provide: EstimationsService, useValue: estimationsServiceMock },
+        { provide: ProjectsService, useValue: projectsServiceMock },
+        { provide: AnalyticsService, useValue: analyticsServiceMock },
+      ],
+    }).compile();
+
+    service = module.get(ShoppingListsService);
+  });
+
+  it('reports isFinalized: false when budget_summary_json has never been persisted', async () => {
+    shoppingListRepoMock.findOne.mockResolvedValue({
+      id: 'shopping-list-1',
+      estimation_id: 'estimation-1',
+      items_json: { material_items: [], complementary_items: [] },
+      budget_summary_json: null,
+    });
+
+    const { isFinalized } = await service.getBudgetSummary(
+      'project-1',
+      'user-1',
+    );
+
+    expect(isFinalized).toBe(false);
+  });
+
+  it('reports isFinalized: true when a budget has been persisted by finalize()', async () => {
+    shoppingListRepoMock.findOne.mockResolvedValue({
+      id: 'shopping-list-1',
+      estimation_id: 'estimation-1',
+      items_json: { material_items: [], complementary_items: [] },
+      budget_summary_json: { total_real_cost: 91 },
+    });
+
+    const { isFinalized } = await service.getBudgetSummary(
+      'project-1',
+      'user-1',
+    );
+
+    expect(isFinalized).toBe(true);
+  });
+
+  it('reports isFinalized: false even when regenerate() has since restored a complete-looking live summary', async () => {
+    // Cas concret (cf. notes COM-1) : regenerate() restaure real_unit_price
+    // par matériau mais jamais budget_summary_json — le live recompute peut
+    // redevenir "complet" alors que rien n'a été refinalisé.
+    shoppingListRepoMock.findOne.mockResolvedValue({
+      id: 'shopping-list-1',
+      estimation_id: 'estimation-1',
+      items_json: {
+        material_items: [
+          {
+            material_id: 'mat-paint',
+            material_category: 'painting',
+            units_needed: 1,
+            real_unit_price: 45.5,
+          },
+        ],
+        complementary_items: [],
+      },
+      budget_summary_json: null,
+    });
+
+    const { summary, isFinalized } = await service.getBudgetSummary(
+      'project-1',
+      'user-1',
+    );
+
+    expect(summary.is_complete).toBe(true);
+    expect(isFinalized).toBe(false);
   });
 });

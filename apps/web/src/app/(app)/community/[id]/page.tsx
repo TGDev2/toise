@@ -20,6 +20,13 @@ function formatCost(cents: number): string {
   }).format(cents / 100);
 }
 
+function formatEuros(amount: number): string {
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'EUR',
+  }).format(amount);
+}
+
 export default function CommunityDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -202,25 +209,57 @@ export default function CommunityDetailPage() {
         </div>
       </div>
 
-      {/* Materials */}
-      {project.materials_list.length > 0 && (
+      {/* Liste d'achats réelle (COM-1) */}
+      {project.purchase_list ? (
         <div className="mt-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
-          <h2 className="text-lg font-semibold text-stone-950">
-            Matériaux utilisés
-          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold text-stone-950">
+              Liste d&apos;achats réelle
+            </h2>
+            {project.budget_summary && project.budget_summary.savings_amount > 0 && (
+              <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                {formatEuros(project.budget_summary.savings_amount)} d&apos;économies
+                ({project.budget_summary.savings_percent.toFixed(1)} %)
+              </span>
+            )}
+          </div>
+
           <div className="mt-4 space-y-2">
-            {project.materials_list.map((mat, idx) => (
+            {project.purchase_list.material_items.map((item) => (
               <div
-                key={idx}
-                className="flex items-center justify-between rounded-xl bg-stone-50 px-4 py-3"
+                key={item.material_id}
+                className="flex flex-col gap-1 rounded-xl bg-stone-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
               >
-                <span className="text-sm text-stone-700">{mat.name}</span>
-                <span className="text-sm font-medium text-stone-950">
-                  {mat.quantity}
-                </span>
+                <div>
+                  <p className="text-sm font-medium text-stone-900">
+                    {item.material_name}
+                  </p>
+                  <p className="text-xs text-stone-500">
+                    {item.units_needed} x {item.packaging_label}
+                    {item.store_name ? ` · ${item.store_name}` : ''}
+                  </p>
+                </div>
+                {item.real_unit_price != null && (
+                  <span className="text-sm font-semibold text-stone-950">
+                    {formatEuros(item.real_unit_price * item.units_needed)}
+                  </span>
+                )}
               </div>
             ))}
           </div>
+
+          {project.budget_summary && (
+            <div className="mt-4 flex items-center justify-between border-t border-stone-100 pt-4">
+              <span className="text-sm text-stone-500">Coût total réel</span>
+              <span className="text-lg font-semibold text-stone-950">
+                {formatEuros(project.budget_summary.total_real_cost)}
+              </span>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="mt-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 text-sm text-stone-500 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
+          Détails des achats non disponibles pour cette publication.
         </div>
       )}
 

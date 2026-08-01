@@ -53,6 +53,12 @@ export interface BudgetSummary {
   is_complete: boolean;
   by_category: CategoryBreakdown[];
   computed_at: string;
+  // COM-1 : distingue « calculable en direct » (is_complete) de « réellement
+  // persisté par finalize() » — regenerate() peut effacer le budget finalisé
+  // sans que is_complete ne le signale. Optionnel : absent des snapshots
+  // BudgetSummary figés sur une publication communauté (déjà finalisés par
+  // construction), présent sur la réponse live de GET .../budget-summary.
+  is_finalized?: boolean;
 }
 
 export interface ShoppingListResponse {

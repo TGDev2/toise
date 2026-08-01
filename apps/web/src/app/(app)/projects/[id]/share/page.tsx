@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { apiGet } from '@/lib/api';
+import { apiGet, ApiError } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import type { ProjectSummary } from '@/lib/project-types';
+import type { BudgetSummary } from '@/lib/shopping-list-types';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeatureGates } from '@/contexts/FeatureGateContext';
 import { CommunityShareForm } from '@/components/community/CommunityShareForm';
 
 interface PhotoResponse {
@@ -15,14 +17,25 @@ interface PhotoResponse {
   thumbnail_url: string | null;
 }
 
+type ReadinessState = 'checking' | 'not_allowed' | 'not_finalized' | 'ready';
+
 export default function ShareProjectPage() {
   const params = useParams();
   const router = useRouter();
   const { appUser, isLoading: authLoading } = useAuth();
+  const {
+    isFeatureAllowed,
+    isLoading: gatesLoading,
+    showPaywall,
+  } = useFeatureGates();
   const projectId = params.id as string;
 
   const [project, setProject] = useState<ProjectSummary | null>(null);
   const [photos, setPhotos] = useState<PhotoResponse[]>([]);
+  const [budgetSummary, setBudgetSummary] = useState<BudgetSummary | null>(
+    null,
+  );
+  const [readiness, setReadiness] = useState<ReadinessState>('checking');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -59,6 +72,48 @@ export default function ShareProjectPage() {
       fetchData();
     }
   }, [appUser, fetchData]);
+
+  // COM-1 : le partage communaute exige une liste d'achats reelle finalisee
+  // (prix reel par materiau). GET .../budget-summary recalcule toujours en
+  // direct — is_finalized distingue « resume calculable maintenant » de
+  // « reellement fige par finalize() » : regenerate() peut effacer le second
+  // sans que le premier ne le signale (cf. ShoppingListsService).
+  useEffect(() => {
+    if (!project || gatesLoading) return;
+
+    if (!isFeatureAllowed('budget_tracking')) {
+      setReadiness('not_allowed');
+      return;
+    }
+
+    let cancelled = false;
+    apiGet<BudgetSummary>(
+      `/projects/${projectId}/shopping-list/budget-summary`,
+    )
+      .then((summary) => {
+        if (cancelled) return;
+        if (summary.is_finalized === false) {
+          setReadiness('not_finalized');
+        } else {
+          setBudgetSummary(summary);
+          setReadiness('ready');
+        }
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        if (err instanceof ApiError && err.details.statusCode === 404) {
+          setReadiness('not_finalized');
+        } else {
+          setError(
+            getErrorMessage(err, 'Impossible de charger le budget réel du projet'),
+          );
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [project, gatesLoading, isFeatureAllowed, projectId]);
 
   if (authLoading || loading) {
     return (
@@ -152,14 +207,62 @@ export default function ShareProjectPage() {
         </p>
       </div>
 
-      {/* Form */}
-      <div className="mt-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
-        <CommunityShareForm
-          projectId={projectId}
-          photos={photos}
-          onSuccess={() => setSuccess(true)}
-        />
-      </div>
+      {/* Readiness gate */}
+      {readiness === 'checking' && (
+        <div className="mt-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 text-sm text-stone-500 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
+          Vérification du budget réel du projet...
+        </div>
+      )}
+
+      {readiness === 'not_allowed' && (
+        <div className="mt-6 rounded-[2rem] border border-stone-200 bg-gradient-to-br from-stone-50 to-white p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
+          <h2 className="text-lg font-semibold text-stone-900">
+            Suivi budgétaire requis
+          </h2>
+          <p className="mt-2 text-sm text-stone-500">
+            Le partage communauté attache le coût réel de votre projet, tiré du
+            suivi budgétaire. Passez à Pro pour y accéder.
+          </p>
+          <button
+            type="button"
+            onClick={() => showPaywall('budget_tracking')}
+            className="mt-4 rounded-full bg-stone-900 px-5 py-2 text-sm font-medium text-white hover:bg-stone-800"
+          >
+            Passer à Pro
+          </button>
+        </div>
+      )}
+
+      {readiness === 'not_finalized' && (
+        <div className="mt-6 rounded-[2rem] border border-amber-200 bg-amber-50 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
+          <h2 className="text-lg font-semibold text-amber-900">
+            Finalisez d&apos;abord votre budget réel
+          </h2>
+          <p className="mt-2 text-sm text-amber-800">
+            Le partage communauté attache automatiquement votre liste d&apos;achats
+            réelle (quantités et prix payés). Renseignez le prix réel de chaque
+            article puis finalisez le budget de ce projet pour pouvoir le
+            partager.
+          </p>
+          <Link
+            href={`/projects/${projectId}/shopping-list`}
+            className="mt-4 inline-block rounded-full bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-amber-700"
+          >
+            Aller à la liste d&apos;achats
+          </Link>
+        </div>
+      )}
+
+      {readiness === 'ready' && budgetSummary && (
+        <div className="mt-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
+          <CommunityShareForm
+            projectId={projectId}
+            photos={photos}
+            budgetSummary={budgetSummary}
+            onSuccess={() => setSuccess(true)}
+          />
+        </div>
+      )}
     </main>
   );
 }

@@ -7,19 +7,7 @@ import {
   IsUUID,
   MaxLength,
   Min,
-  ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
-
-export class MaterialItemDto {
-  @IsString()
-  @MaxLength(255)
-  name!: string;
-
-  @IsString()
-  @MaxLength(100)
-  quantity!: string;
-}
 
 export class CreateCommunityProjectDto {
   @IsUUID()
@@ -33,15 +21,6 @@ export class CreateCommunityProjectDto {
   @IsString()
   @MaxLength(2000)
   description?: string;
-
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => MaterialItemDto)
-  materials_list!: MaterialItemDto[];
-
-  @IsInt()
-  @Min(0)
-  total_cost_cents!: number;
 
   @IsInt()
   @Min(1)

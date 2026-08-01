@@ -14,6 +14,11 @@ import { User } from '../../users/entities/user.entity';
 import { Project } from '../../projects/entities/project.entity';
 import { CommunityLike } from './community-like.entity';
 import { CommunityComment } from './community-comment.entity';
+import type {
+  ShoppingListMaterialItem,
+  ShoppingListComplementaryItem,
+  BudgetSummary,
+} from '../../shopping-lists/entities/shopping-list.entity';
 
 export enum ModerationStatus {
   PENDING = 'pending',
@@ -21,9 +26,9 @@ export enum ModerationStatus {
   REJECTED = 'rejected',
 }
 
-export interface MaterialItem {
-  name: string;
-  quantity: string;
+export interface PurchaseListSnapshot {
+  material_items: ShoppingListMaterialItem[];
+  complementary_items: ShoppingListComplementaryItem[];
 }
 
 @Entity('community_projects')
@@ -48,8 +53,11 @@ export class CommunityProject {
   @Column({ type: 'text', nullable: true })
   description!: string | null;
 
-  @Column({ type: 'jsonb', default: [] })
-  materials_list!: MaterialItem[];
+  @Column({ type: 'jsonb', nullable: true, default: null })
+  purchase_list_json!: PurchaseListSnapshot | null;
+
+  @Column({ type: 'jsonb', nullable: true, default: null })
+  budget_summary_json!: BudgetSummary | null;
 
   @Column({ type: 'integer' })
   total_cost_cents!: number;

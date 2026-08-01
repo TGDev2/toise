@@ -5,6 +5,7 @@ import { CommunityLike } from './entities/community-like.entity';
 import { CommunityComment } from './entities/community-comment.entity';
 import { Project } from '../projects/entities/project.entity';
 import { ProjectPhoto } from '../photos/entities/project-photo.entity';
+import { ShoppingList } from '../shopping-lists/entities/shopping-list.entity';
 import { UsersModule } from '../users/users.module';
 import { FeatureGatesModule } from '../feature-gates/feature-gates.module';
 import { PhotosModule } from '../photos/photos.module';
@@ -19,6 +20,7 @@ import { CommunityService } from './community.service';
       CommunityComment,
       Project,
       ProjectPhoto,
+      ShoppingList,
     ]),
     UsersModule,
     FeatureGatesModule,

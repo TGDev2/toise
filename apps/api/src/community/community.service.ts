@@ -14,6 +14,7 @@ import { CommunityLike } from './entities/community-like.entity';
 import { CommunityComment } from './entities/community-comment.entity';
 import { Project, ProjectStatus } from '../projects/entities/project.entity';
 import { ProjectPhoto } from '../photos/entities/project-photo.entity';
+import { ShoppingList } from '../shopping-lists/entities/shopping-list.entity';
 import { CreateCommunityProjectDto } from './dto/create-community-project.dto';
 import { ListCommunityQueryDto } from './dto/list-community-query.dto';
 import {
@@ -35,6 +36,8 @@ export class CommunityService {
     private readonly projectRepo: Repository<Project>,
     @InjectRepository(ProjectPhoto)
     private readonly photoRepo: Repository<ProjectPhoto>,
+    @InjectRepository(ShoppingList)
+    private readonly shoppingListRepo: Repository<ShoppingList>,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -61,6 +64,15 @@ export class CommunityService {
     if (project.status !== ProjectStatus.COMPLETED) {
       throw new BadRequestException(
         'Seul un projet termine peut etre partage dans la communaute',
+      );
+    }
+
+    const shoppingList = await this.shoppingListRepo.findOne({
+      where: { project_id: dto.project_id },
+    });
+    if (!shoppingList?.budget_summary_json) {
+      throw new BadRequestException(
+        "Finalisez d'abord le budget reel (liste d'achats) de ce projet avant de le partager dans la communaute",
       );
     }
 
@@ -97,8 +109,11 @@ export class CommunityService {
       work_type: project.work_type ?? '',
       title: dto.title,
       description: dto.description ?? null,
-      materials_list: dto.materials_list,
-      total_cost_cents: dto.total_cost_cents,
+      purchase_list_json: shoppingList.items_json,
+      budget_summary_json: shoppingList.budget_summary_json,
+      total_cost_cents: Math.round(
+        shoppingList.budget_summary_json.total_real_cost * 100,
+      ),
       duration_days: dto.duration_days,
       length_cm: dimensions?.length_cm ?? 0,
       width_cm: dimensions?.width_cm ?? 0,
@@ -227,7 +242,8 @@ export class CommunityService {
       title: entry.title,
       work_type: entry.work_type,
       description: entry.description,
-      materials_list: entry.materials_list,
+      purchase_list: entry.purchase_list_json,
+      budget_summary: entry.budget_summary_json,
       total_cost_cents: entry.total_cost_cents,
       duration_days: entry.duration_days,
       length_cm: Number(entry.length_cm),
@@ -396,7 +412,8 @@ export class CommunityService {
         duration_days: item.duration_days,
         before_photo_ids: item.before_photo_ids,
         after_photo_ids: item.after_photo_ids,
-        materials_list: item.materials_list,
+        purchase_list: item.purchase_list_json,
+        budget_summary: item.budget_summary_json,
         description: item.description,
         length_cm: Number(item.length_cm),
         width_cm: Number(item.width_cm),
