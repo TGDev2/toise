@@ -100,3 +100,142 @@ describe('EmailService.sendCalculatorResultEmail', () => {
     expect(sent.text).toContain('Peinture <Pro> & fils');
   });
 });
+
+describe('EmailService.sendQuoteReminderClientEmail', () => {
+  let service: EmailService;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    brevoClientMock.sendTransactionalEmail.mockResolvedValue(undefined);
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        EmailService,
+        { provide: BrevoClientService, useValue: brevoClientMock },
+      ],
+    }).compile();
+
+    service = module.get(EmailService);
+  });
+
+  it('mentionne le numéro de devis, le montant et le délai dans le sujet', async () => {
+    await service.sendQuoteReminderClientEmail('client@example.fr', {
+      quoteNumber: 'D-2026-001',
+      totalTtc: 1250.5,
+      daysSinceSent: 7,
+      companyName: 'Dupont Rénovation',
+      contractorEmail: 'contact@dupont-renovation.fr',
+      contractorPhone: '0102030405',
+    });
+
+    expect(brevoClientMock.sendTransactionalEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'client@example.fr',
+        subject: expect.stringContaining('D-2026-001') as string,
+      }),
+    );
+  });
+
+  it("retombe sur une formulation générique quand le nom de l'entreprise est absent", async () => {
+    await service.sendQuoteReminderClientEmail('client@example.fr', {
+      quoteNumber: 'D-2026-001',
+      totalTtc: 500,
+      daysSinceSent: 14,
+      companyName: null,
+      contractorEmail: null,
+      contractorPhone: null,
+    });
+
+    const [sent] = brevoClientMock.sendTransactionalEmail.mock.calls[0] as [
+      SentEmail,
+    ];
+    expect(sent.html).toContain('votre artisan');
+    expect(sent.text).toContain('Votre artisan');
+  });
+
+  it('échappe les caractères HTML du nom d’entreprise dans le corps html', async () => {
+    await service.sendQuoteReminderClientEmail('client@example.fr', {
+      quoteNumber: 'D-2026-001',
+      totalTtc: 500,
+      daysSinceSent: 7,
+      companyName: 'Dupont <Pro> & fils',
+      contractorEmail: null,
+      contractorPhone: null,
+    });
+
+    const [sent] = brevoClientMock.sendTransactionalEmail.mock.calls[0] as [
+      SentEmail,
+    ];
+    expect(sent.html).not.toContain('<Pro>');
+    expect(sent.html).toContain('&lt;Pro&gt;');
+    expect(sent.text).toContain('Dupont <Pro> & fils');
+  });
+});
+
+describe('EmailService.sendQuoteReminderContractorEmail', () => {
+  let service: EmailService;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    brevoClientMock.sendTransactionalEmail.mockResolvedValue(undefined);
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        EmailService,
+        { provide: BrevoClientService, useValue: brevoClientMock },
+      ],
+    }).compile();
+
+    service = module.get(EmailService);
+  });
+
+  it('inclut le lien du devis et le délai dans le corps', async () => {
+    await service.sendQuoteReminderContractorEmail('artisan@example.fr', {
+      quoteNumber: 'D-2026-002',
+      totalTtc: 890,
+      daysSinceSent: 14,
+      clientName: 'Marie Petit',
+      quoteUrl: 'https://chiffreo.fr/quotes/quote-id-1',
+    });
+
+    const [sent] = brevoClientMock.sendTransactionalEmail.mock.calls[0] as [
+      SentEmail,
+    ];
+    expect(sent.subject).toContain('D-2026-002');
+    expect(sent.html).toContain('https://chiffreo.fr/quotes/quote-id-1');
+    expect(sent.text).toContain('https://chiffreo.fr/quotes/quote-id-1');
+  });
+
+  it("retombe sur 'Le client' quand le nom du client est absent", async () => {
+    await service.sendQuoteReminderContractorEmail('artisan@example.fr', {
+      quoteNumber: 'D-2026-002',
+      totalTtc: 890,
+      daysSinceSent: 7,
+      clientName: null,
+      quoteUrl: 'https://chiffreo.fr/quotes/quote-id-1',
+    });
+
+    const [sent] = brevoClientMock.sendTransactionalEmail.mock.calls[0] as [
+      SentEmail,
+    ];
+    expect(sent.html).toContain('Le client');
+    expect(sent.text).toContain('Le client');
+  });
+
+  it('échappe les caractères HTML du nom du client dans le corps html', async () => {
+    await service.sendQuoteReminderContractorEmail('artisan@example.fr', {
+      quoteNumber: 'D-2026-002',
+      totalTtc: 890,
+      daysSinceSent: 7,
+      clientName: 'Marie <Petit> & fils',
+      quoteUrl: 'https://chiffreo.fr/quotes/quote-id-1',
+    });
+
+    const [sent] = brevoClientMock.sendTransactionalEmail.mock.calls[0] as [
+      SentEmail,
+    ];
+    expect(sent.html).not.toContain('<Petit>');
+    expect(sent.html).toContain('&lt;Petit&gt;');
+    expect(sent.text).toContain('Marie <Petit> & fils');
+  });
+});

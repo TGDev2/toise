@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -22,6 +23,7 @@ import { CompanyProfilesModule } from './company-profiles/company-profiles.modul
 import { ClientsModule } from './clients/clients.module';
 import { QuotesModule } from './quotes/quotes.module';
 import { SiteTrackingModule } from './site-tracking/site-tracking.module';
+import { QuoteRemindersModule } from './quote-reminders/quote-reminders.module';
 import { CommunityModule } from './community/community.module';
 import configuration from './config/configuration';
 import { validate } from './config/env.validation';
@@ -50,6 +52,7 @@ import { validate } from './config/env.validation';
       { name: 'short', ttl: 60000, limit: 100 },
       { name: 'auth', ttl: 900000, limit: 5 },
     ]),
+    ScheduleModule.forRoot(),
     AuthModule,
     UsersModule,
     ProjectsModule,
@@ -67,6 +70,7 @@ import { validate } from './config/env.validation';
     ClientsModule,
     QuotesModule,
     SiteTrackingModule,
+    QuoteRemindersModule,
     CommunityModule,
   ],
   controllers: [AppController],

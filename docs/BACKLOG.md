@@ -98,7 +98,7 @@
 |---|---|---|---|---|
 | PRO-1 | Différenciation des paliers 50/100/200 € | **Livré (01/08/2026).** Essentiel = devis+clients (gates existantes recalées) ; Standard/Premium = gates `site_tracking`/`quote_reminders`/`multi_user`/`public_api` seedées désactivées, prêtes pour PRO-2/PRO-3/PLAT-4/PLAT-5. Mécanique = feature gates existantes, étendues à 3 rangs Contractor. | M | — |
 | PRO-2 | Suivi de chantier + timeline | **Livré (01/08/2026).** Entité `SiteMilestone` par projet (libellé, statut `pending`/`in_progress`/`done`, dates prévue/réelle, ordre) derrière la gate `site_tracking` (Contractor Standard+), désormais activée. Répond au « project timelines » de la vision ; différenciateur Standard. | L | PRO-1 |
-| PRO-3 | Relances devis | Rappels automatiques sur devis « envoyé » sans réponse à J+7/J+14 (e-mail au client, notification à l'artisan). Augmente le taux d'acceptation = valeur mesurable de l'abonnement. | M | GTM-5 |
+| PRO-3 | Relances devis | **Livré (01/08/2026).** Sweep quotidien (`@nestjs/schedule`) sur les devis « envoyé » sans réponse à J+7/J+14 : e-mail au client (provider GTM-5) + notification e-mail à l'artisan, derrière la gate `quote_reminders` (Contractor Standard+), désormais activée. Augmente le taux d'acceptation = valeur mesurable de l'abonnement. | M | GTM-5 |
 | PRO-4 | Devis → facture | Conversion d'un devis accepté en facture (mentions légales françaises, numérotation). Ferme la boucle métier de l'artisan. Évaluer conformité e-invoicing 2026-2027 avant de construire. | L | — |
 | PRO-5 | Parcours « devis-minute » mobile | Optimiser le flux photo→estimation→devis PDF pour un enchaînement < 10 min sur mobile chez le client. Pitch commercial n°1 du tier Contractor (cf. stratégie §7.2). | M | CV-4 |
 

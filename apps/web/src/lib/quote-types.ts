@@ -45,6 +45,8 @@ export interface Quote {
   sent_at: string | null;
   accepted_at: string | null;
   refused_at: string | null;
+  reminder_7d_sent_at: string | null;
+  reminder_14d_sent_at: string | null;
   created_at: string;
   updated_at: string;
   project?: { id: string; name: string; room_name: string };

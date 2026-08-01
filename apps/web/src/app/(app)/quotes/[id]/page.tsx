@@ -366,6 +366,12 @@ export default function QuoteDetailPage() {
           {quote.refused_at && (
             <p>Refusé le {formatDate(quote.refused_at)}</p>
           )}
+          {quote.reminder_7d_sent_at && (
+            <p>Relance J+7 envoyée le {formatDate(quote.reminder_7d_sent_at)}</p>
+          )}
+          {quote.reminder_14d_sent_at && (
+            <p>Relance J+14 envoyée le {formatDate(quote.reminder_14d_sent_at)}</p>
+          )}
           <p className="text-xs text-stone-400">
             Marge matériaux : {Number(quote.material_margin_percent)} % |
             Validité : {quote.validity_days} jours

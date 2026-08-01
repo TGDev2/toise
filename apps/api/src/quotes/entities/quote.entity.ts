@@ -114,6 +114,12 @@ export class Quote {
   @Column({ type: 'timestamptz', nullable: true })
   refused_at!: Date | null;
 
+  @Column({ type: 'timestamptz', nullable: true })
+  reminder_7d_sent_at!: Date | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  reminder_14d_sent_at!: Date | null;
+
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user!: User;
