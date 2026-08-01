@@ -2,6 +2,7 @@ import {
   IsString,
   IsEnum,
   IsNumber,
+  IsBoolean,
   IsArray,
   IsOptional,
   MaxLength,
@@ -57,6 +58,15 @@ export class CreateMaterialDto {
   @IsNumber({ maxDecimalPlaces: 4 })
   @Min(0.0001)
   yield_per_unit!: number;
+
+  @IsOptional()
+  @IsBoolean()
+  is_eco?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  eco_label_fr?: string;
 
   @IsArray()
   @ArrayMinSize(1)

@@ -20,6 +20,7 @@ interface Material {
   unit: string;
   yield_per_unit: number;
   is_active: boolean;
+  is_eco: boolean;
   packagings: MaterialPackaging[];
   modified_at: string | null;
 }
@@ -38,6 +39,7 @@ export default function MaterialsListPage() {
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('');
   const [showAll, setShowAll] = useState(false);
+  const [ecoOnly, setEcoOnly] = useState(false);
 
   const fetchMaterials = useCallback(async () => {
     setLoading(true);
@@ -45,6 +47,7 @@ export default function MaterialsListPage() {
       const params = new URLSearchParams();
       if (category) params.set('category', category);
       if (!showAll) params.set('is_active', 'true');
+      if (ecoOnly) params.set('is_eco', 'true');
       const query = params.toString() ? `?${params.toString()}` : '';
       const data = await apiGet<Material[]>(`/admin/materials${query}`);
       setMaterials(data);
@@ -53,7 +56,7 @@ export default function MaterialsListPage() {
     } finally {
       setLoading(false);
     }
-  }, [category, showAll]);
+  }, [category, showAll, ecoOnly]);
 
   useEffect(() => {
     if (isAdmin) fetchMaterials();
@@ -77,15 +80,26 @@ export default function MaterialsListPage() {
 
       <div className="mb-4 flex items-center justify-between">
         <CategoryTabs selected={category} onChange={setCategory} />
-        <label className="flex items-center gap-2 text-sm text-[var(--foreground)]">
-          <input
-            type="checkbox"
-            checked={showAll}
-            onChange={(e) => setShowAll(e.target.checked)}
-            className="rounded"
-          />
-          Afficher les desactives
-        </label>
+        <div className="flex items-center gap-4">
+          <label className="flex items-center gap-2 text-sm text-[var(--foreground)]">
+            <input
+              type="checkbox"
+              checked={ecoOnly}
+              onChange={(e) => setEcoOnly(e.target.checked)}
+              className="rounded"
+            />
+            Éco uniquement
+          </label>
+          <label className="flex items-center gap-2 text-sm text-[var(--foreground)]">
+            <input
+              type="checkbox"
+              checked={showAll}
+              onChange={(e) => setShowAll(e.target.checked)}
+              className="rounded"
+            />
+            Afficher les desactives
+          </label>
+        </div>
       </div>
 
       {loading ? (
@@ -134,12 +148,19 @@ export default function MaterialsListPage() {
                   }`}
                 >
                   <td className="px-4 py-3">
-                    <Link
-                      href={`/admin/materials/${mat.id}`}
-                      className="font-medium text-[var(--accent)] hover:underline"
-                    >
-                      {mat.name}
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/admin/materials/${mat.id}`}
+                        className="font-medium text-[var(--accent)] hover:underline"
+                      >
+                        {mat.name}
+                      </Link>
+                      {mat.is_eco && (
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                          Éco
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     {CATEGORY_LABELS[mat.category] ?? mat.category}

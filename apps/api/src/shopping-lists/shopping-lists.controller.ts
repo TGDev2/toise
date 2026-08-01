@@ -16,6 +16,7 @@ import { UsersService } from '../users/users.service';
 import { ShoppingListsService } from './shopping-lists.service';
 import { ShoppingListResponseDto } from './dto/shopping-list-response.dto';
 import { BudgetSummaryResponseDto } from './dto/budget-summary-response.dto';
+import { EcoSuggestionsResponseDto } from './dto/eco-suggestions-response.dto';
 import { UpdateShoppingListDto } from './dto/update-shopping-list.dto';
 import { RequireFeature } from '../feature-gates/decorators/require-feature.decorator';
 import { FeatureGateGuard } from '../feature-gates/guards/feature-gate.guard';
@@ -81,6 +82,21 @@ export class ShoppingListsController {
     const { summary, isFinalized } =
       await this.shoppingListsService.getBudgetSummary(projectId, userId);
     return BudgetSummaryResponseDto.fromSummary(summary, isFinalized);
+  }
+
+  @Get(':id/shopping-list/eco-suggestions')
+  @UseGuards(FeatureGateGuard)
+  @RequireFeature('eco_materials')
+  async getEcoSuggestions(
+    @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
+    @Param('id', ParseUUIDPipe) projectId: string,
+  ): Promise<EcoSuggestionsResponseDto> {
+    const userId = await this.resolveUserId(firebaseUser);
+    const result = await this.shoppingListsService.getEcoSuggestions(
+      projectId,
+      userId,
+    );
+    return EcoSuggestionsResponseDto.fromResult(result);
   }
 
   @Post(':id/shopping-list/budget-summary/finalize')

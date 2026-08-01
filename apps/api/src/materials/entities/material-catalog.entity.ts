@@ -11,6 +11,7 @@ import {
 import { User } from '../../users/entities/user.entity';
 import { MaterialPackaging } from './material-packaging.entity';
 import { WasteFactor } from './waste-factor.entity';
+import { MaterialEcoEquivalence } from './material-eco-equivalence.entity';
 
 export enum MaterialCategory {
   PAINTING = 'painting',
@@ -40,6 +41,12 @@ export class MaterialCatalog {
   @Column({ type: 'boolean', default: true })
   is_active!: boolean;
 
+  @Column({ type: 'boolean', default: false })
+  is_eco!: boolean;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  eco_label_fr!: string | null;
+
   @Column({ type: 'uuid', nullable: true })
   modified_by!: string | null;
 
@@ -57,6 +64,9 @@ export class MaterialCatalog {
 
   @OneToMany(() => WasteFactor, (w) => w.material, { cascade: true })
   waste_factors!: WasteFactor[];
+
+  @OneToMany(() => MaterialEcoEquivalence, (e) => e.standardMaterial)
+  eco_equivalents!: MaterialEcoEquivalence[];
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'modified_by' })

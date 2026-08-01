@@ -16,6 +16,12 @@ import {
 } from './entities/shopping-list.entity';
 import { ComplementaryMaterial } from './entities/complementary-material.entity';
 import { WorkType } from '../projects/entities/work-type.entity';
+import { MaterialCatalog } from '../materials/entities/material-catalog.entity';
+import { MaterialEcoEquivalence } from '../materials/entities/material-eco-equivalence.entity';
+import {
+  EcoItemDto,
+  EcoSuggestionDto,
+} from './dto/eco-suggestions-response.dto';
 import { EstimationsService } from '../estimations/estimations.service';
 import { ProjectsService } from '../projects/projects.service';
 import { AnalyticsService } from '../analytics/analytics.service';
@@ -39,6 +45,10 @@ export class ShoppingListsService {
     private readonly complementaryRepo: Repository<ComplementaryMaterial>,
     @InjectRepository(WorkType)
     private readonly workTypeRepo: Repository<WorkType>,
+    @InjectRepository(MaterialCatalog)
+    private readonly materialCatalogRepo: Repository<MaterialCatalog>,
+    @InjectRepository(MaterialEcoEquivalence)
+    private readonly ecoEquivalenceRepo: Repository<MaterialEcoEquivalence>,
     private readonly estimationsService: EstimationsService,
     private readonly projectsService: ProjectsService,
     private readonly analyticsService: AnalyticsService,
@@ -337,6 +347,64 @@ export class ShoppingListsService {
       // se fier a isFinalized, pas a summary.is_complete.
       isFinalized: shoppingList.budget_summary_json != null,
     };
+  }
+
+  async getEcoSuggestions(
+    projectId: string,
+    userId: string,
+  ): Promise<{ eco_items: EcoItemDto[]; suggestions: EcoSuggestionDto[] }> {
+    await this.projectsService.findOneByUser(projectId, userId);
+
+    const shoppingList = await this.shoppingListRepo.findOne({
+      where: { project_id: projectId },
+    });
+
+    if (!shoppingList) {
+      throw new NotFoundException('No shopping list found for this project.');
+    }
+
+    const materialIds = [
+      ...new Set(
+        shoppingList.items_json.material_items.map((i) => i.material_id),
+      ),
+    ];
+    if (materialIds.length === 0) {
+      return { eco_items: [], suggestions: [] };
+    }
+
+    const materials = await this.materialCatalogRepo.find({
+      where: { id: In(materialIds) },
+    });
+    const materialById = new Map(materials.map((m) => [m.id, m]));
+
+    const eco_items: EcoItemDto[] = materials
+      .filter((m) => m.is_eco)
+      .map((m) => ({
+        material_id: m.id,
+        material_name: m.name,
+        eco_label_fr: m.eco_label_fr,
+      }));
+
+    const standardIds = materials.filter((m) => !m.is_eco).map((m) => m.id);
+    let suggestions: EcoSuggestionDto[] = [];
+    if (standardIds.length > 0) {
+      const equivalences = await this.ecoEquivalenceRepo.find({
+        where: { standard_material_id: In(standardIds) },
+        relations: ['ecoMaterial'],
+      });
+      suggestions = equivalences
+        // N'affiche pas une alternative désactivée entre-temps par l'admin.
+        .filter((e) => e.ecoMaterial.is_active)
+        .map((e) => ({
+          material_id: e.standard_material_id,
+          material_name: materialById.get(e.standard_material_id)?.name ?? '',
+          eco_material_id: e.eco_material_id,
+          eco_material_name: e.ecoMaterial.name,
+          eco_label_fr: e.ecoMaterial.eco_label_fr,
+        }));
+    }
+
+    return { eco_items, suggestions };
   }
 
   async finalizeBudgetSummary(

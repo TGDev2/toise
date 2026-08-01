@@ -14,4 +14,12 @@ export class QueryMaterialsDto {
     return value;
   })
   is_active?: boolean;
+
+  @IsOptional()
+  @Transform(({ value }): unknown => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
+  is_eco?: boolean;
 }

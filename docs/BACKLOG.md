@@ -116,7 +116,7 @@
 |---|---|---|---|---|
 | PLAT-1 | Carnet du logement | Historique persistant par pièce (dimensions validées, teintes/matériaux utilisés, dates). Raison de rester abonné entre deux chantiers — antidote au churn structurel du DIY (cf. stratégie §7.5). | L | ENG-2 |
 | PLAT-2 | E-mails de cycle de vie | **Livré (01/08/2026).** Sweep quotidien (`@nestjs/schedule`) : onboarding J+1/J+3, projet abandonné à mi-parcours, fin d'essai Pro (J-3), via le provider GTM-5. Aucune feature gate, tous paliers. | M | GTM-5, DATA-1 |
-| PLAT-3 | Module éco-matériaux | Alternatives durables dans le catalogue (badge + filtre + équivalences). Intégré au tier Pro plutôt qu'add-on 4,99 € (cf. stratégie §4.4). | L | — |
+| PLAT-3 | Module éco-matériaux | **Livré (01/08/2026).** Badge + filtre + équivalences éco sur la liste de courses, gate `eco_materials` (Pro). | L | — |
 
 ---
 

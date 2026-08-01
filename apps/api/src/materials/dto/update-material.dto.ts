@@ -42,6 +42,15 @@ export class UpdateMaterialDto {
   is_active?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  is_eco?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  eco_label_fr?: string;
+
+  @IsOptional()
   @IsArray()
   @ArrayMinSize(1)
   @ValidateNested({ each: true })

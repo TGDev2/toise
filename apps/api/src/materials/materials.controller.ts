@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -18,6 +19,7 @@ import { MaterialsService } from './materials.service';
 import { CreateMaterialDto } from './dto/create-material.dto';
 import { UpdateMaterialDto } from './dto/update-material.dto';
 import { QueryMaterialsDto } from './dto/query-materials.dto';
+import { LinkEcoEquivalentDto } from './dto/link-eco-equivalent.dto';
 
 @Controller('admin/materials')
 @UseGuards(FirebaseAuthGuard, AdminGuard)
@@ -54,5 +56,21 @@ export class MaterialsController {
     @CurrentAppUser() user: User,
   ) {
     return this.materialsService.deactivate(id, user.id);
+  }
+
+  @Post(':id/eco-equivalent')
+  async linkEcoEquivalent(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: LinkEcoEquivalentDto,
+  ) {
+    return this.materialsService.linkEcoEquivalent(id, dto.eco_material_id);
+  }
+
+  @Delete(':id/eco-equivalent/:ecoMaterialId')
+  async unlinkEcoEquivalent(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('ecoMaterialId', ParseUUIDPipe) ecoMaterialId: string,
+  ) {
+    return this.materialsService.unlinkEcoEquivalent(id, ecoMaterialId);
   }
 }

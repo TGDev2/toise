@@ -1,9 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { NotFoundException } from '@nestjs/common';
 import { ShoppingListsService } from './shopping-lists.service';
 import { ShoppingList } from './entities/shopping-list.entity';
 import { ComplementaryMaterial } from './entities/complementary-material.entity';
 import { WorkType } from '../projects/entities/work-type.entity';
+import { MaterialCatalog } from '../materials/entities/material-catalog.entity';
+import { MaterialEcoEquivalence } from '../materials/entities/material-eco-equivalence.entity';
 import { EstimationsService } from '../estimations/estimations.service';
 import { ProjectsService } from '../projects/projects.service';
 import { AnalyticsService } from '../analytics/analytics.service';
@@ -45,6 +48,14 @@ const complementaryRepoMock = {
 
 const workTypeRepoMock = {
   find: jest.fn(),
+};
+
+const materialCatalogRepoMock = {
+  find: jest.fn().mockResolvedValue([]),
+};
+
+const ecoEquivalenceRepoMock = {
+  find: jest.fn().mockResolvedValue([]),
 };
 
 const estimationsServiceMock = {
@@ -102,6 +113,14 @@ describe('ShoppingListsService.generate', () => {
           useValue: complementaryRepoMock,
         },
         { provide: getRepositoryToken(WorkType), useValue: workTypeRepoMock },
+        {
+          provide: getRepositoryToken(MaterialCatalog),
+          useValue: materialCatalogRepoMock,
+        },
+        {
+          provide: getRepositoryToken(MaterialEcoEquivalence),
+          useValue: ecoEquivalenceRepoMock,
+        },
         { provide: EstimationsService, useValue: estimationsServiceMock },
         { provide: ProjectsService, useValue: projectsServiceMock },
         { provide: AnalyticsService, useValue: analyticsServiceMock },
@@ -266,6 +285,14 @@ describe('ShoppingListsService.getBudgetSummary', () => {
           useValue: complementaryRepoMock,
         },
         { provide: getRepositoryToken(WorkType), useValue: workTypeRepoMock },
+        {
+          provide: getRepositoryToken(MaterialCatalog),
+          useValue: materialCatalogRepoMock,
+        },
+        {
+          provide: getRepositoryToken(MaterialEcoEquivalence),
+          useValue: ecoEquivalenceRepoMock,
+        },
         { provide: EstimationsService, useValue: estimationsServiceMock },
         { provide: ProjectsService, useValue: projectsServiceMock },
         { provide: AnalyticsService, useValue: analyticsServiceMock },
@@ -339,6 +366,162 @@ describe('ShoppingListsService.getBudgetSummary', () => {
   });
 });
 
+describe('ShoppingListsService.getEcoSuggestions', () => {
+  let service: ShoppingListsService;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    materialCatalogRepoMock.find.mockResolvedValue([]);
+    ecoEquivalenceRepoMock.find.mockResolvedValue([]);
+
+    projectsServiceMock.findOneByUser.mockResolvedValue({
+      id: 'project-1',
+      user_id: 'user-1',
+    });
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        ShoppingListsService,
+        {
+          provide: getRepositoryToken(ShoppingList),
+          useValue: shoppingListRepoMock,
+        },
+        {
+          provide: getRepositoryToken(ComplementaryMaterial),
+          useValue: complementaryRepoMock,
+        },
+        { provide: getRepositoryToken(WorkType), useValue: workTypeRepoMock },
+        {
+          provide: getRepositoryToken(MaterialCatalog),
+          useValue: materialCatalogRepoMock,
+        },
+        {
+          provide: getRepositoryToken(MaterialEcoEquivalence),
+          useValue: ecoEquivalenceRepoMock,
+        },
+        { provide: EstimationsService, useValue: estimationsServiceMock },
+        { provide: ProjectsService, useValue: projectsServiceMock },
+        { provide: AnalyticsService, useValue: analyticsServiceMock },
+        { provide: LogbookService, useValue: logbookServiceMock },
+      ],
+    }).compile();
+
+    service = module.get(ShoppingListsService);
+  });
+
+  const shoppingListWithMaterials = {
+    id: 'shopping-list-1',
+    project_id: 'project-1',
+    items_json: {
+      material_items: [
+        { material_id: 'mat-paint', material_category: 'painting' },
+        { material_id: 'mat-paint-eco', material_category: 'painting' },
+      ],
+      complementary_items: [],
+    },
+  };
+
+  it('returns eco_items for materials already flagged is_eco', async () => {
+    shoppingListRepoMock.findOne.mockResolvedValue(shoppingListWithMaterials);
+    materialCatalogRepoMock.find.mockResolvedValue([
+      {
+        id: 'mat-paint',
+        name: 'Peinture acrylique mate',
+        is_eco: false,
+        eco_label_fr: null,
+      },
+      {
+        id: 'mat-paint-eco',
+        name: 'Peinture acrylique mate sans COV',
+        is_eco: true,
+        eco_label_fr: 'Sans COV, écolabel NF Environnement',
+      },
+    ]);
+
+    const result = await service.getEcoSuggestions('project-1', 'user-1');
+
+    expect(result.eco_items).toEqual([
+      {
+        material_id: 'mat-paint-eco',
+        material_name: 'Peinture acrylique mate sans COV',
+        eco_label_fr: 'Sans COV, écolabel NF Environnement',
+      },
+    ]);
+  });
+
+  it('returns suggestions for standard materials with an active eco equivalent', async () => {
+    shoppingListRepoMock.findOne.mockResolvedValue(shoppingListWithMaterials);
+    materialCatalogRepoMock.find.mockResolvedValue([
+      {
+        id: 'mat-paint',
+        name: 'Peinture acrylique mate',
+        is_eco: false,
+        eco_label_fr: null,
+      },
+    ]);
+    ecoEquivalenceRepoMock.find.mockResolvedValue([
+      {
+        standard_material_id: 'mat-paint',
+        eco_material_id: 'mat-paint-eco',
+        ecoMaterial: {
+          id: 'mat-paint-eco',
+          name: 'Peinture acrylique mate sans COV',
+          is_active: true,
+          eco_label_fr: 'Sans COV, écolabel NF Environnement',
+        },
+      },
+    ]);
+
+    const result = await service.getEcoSuggestions('project-1', 'user-1');
+
+    expect(result.suggestions).toEqual([
+      {
+        material_id: 'mat-paint',
+        material_name: 'Peinture acrylique mate',
+        eco_material_id: 'mat-paint-eco',
+        eco_material_name: 'Peinture acrylique mate sans COV',
+        eco_label_fr: 'Sans COV, écolabel NF Environnement',
+      },
+    ]);
+  });
+
+  it('omits a suggestion whose linked eco material has been deactivated', async () => {
+    shoppingListRepoMock.findOne.mockResolvedValue(shoppingListWithMaterials);
+    materialCatalogRepoMock.find.mockResolvedValue([
+      {
+        id: 'mat-paint',
+        name: 'Peinture acrylique mate',
+        is_eco: false,
+        eco_label_fr: null,
+      },
+    ]);
+    ecoEquivalenceRepoMock.find.mockResolvedValue([
+      {
+        standard_material_id: 'mat-paint',
+        eco_material_id: 'mat-paint-eco',
+        ecoMaterial: {
+          id: 'mat-paint-eco',
+          name: 'Peinture acrylique mate sans COV',
+          is_active: false,
+          eco_label_fr: 'Sans COV, écolabel NF Environnement',
+        },
+      },
+    ]);
+
+    const result = await service.getEcoSuggestions('project-1', 'user-1');
+
+    expect(result.suggestions).toEqual([]);
+  });
+
+  it('throws NotFoundException when no shopping list exists for the project', async () => {
+    shoppingListRepoMock.findOne.mockResolvedValue(null);
+
+    await expect(
+      service.getEcoSuggestions('project-1', 'user-1'),
+    ).rejects.toThrow(NotFoundException);
+  });
+});
+
 describe('ShoppingListsService.finalizeBudgetSummary', () => {
   let service: ShoppingListsService;
 
@@ -369,6 +552,14 @@ describe('ShoppingListsService.finalizeBudgetSummary', () => {
           useValue: complementaryRepoMock,
         },
         { provide: getRepositoryToken(WorkType), useValue: workTypeRepoMock },
+        {
+          provide: getRepositoryToken(MaterialCatalog),
+          useValue: materialCatalogRepoMock,
+        },
+        {
+          provide: getRepositoryToken(MaterialEcoEquivalence),
+          useValue: ecoEquivalenceRepoMock,
+        },
         { provide: EstimationsService, useValue: estimationsServiceMock },
         { provide: ProjectsService, useValue: projectsServiceMock },
         { provide: AnalyticsService, useValue: analyticsServiceMock },

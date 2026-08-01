@@ -40,6 +40,7 @@ const mockMaterial = {
   unit: 'L',
   yield_per_unit: 10,
   is_active: true,
+  is_eco: false,
   waste_factors: [
     { pose_type: 'standard', skill_level: 'intermediate', factor_percent: 5 },
   ],
@@ -47,6 +48,15 @@ const mockMaterial = {
     { label: 'Pot 10 L', quantity_per_unit: 10, unit: 'L' },
     { label: 'Pot 2,5 L', quantity_per_unit: 2.5, unit: 'L' },
   ],
+} as unknown as MaterialCatalog;
+
+// PLAT-3 : ne doit jamais être retourné par loadMaterialInputs — cf. test
+// dédié « excludes eco-alternative materials ».
+const mockEcoMaterial = {
+  ...mockMaterial,
+  id: 'mat-paint-eco',
+  name: 'Peinture acrylique mate sans COV',
+  is_eco: true,
 } as unknown as MaterialCatalog;
 
 const estimationRepoMock = {
@@ -179,6 +189,35 @@ describe('EstimationsService.estimatePublic', () => {
 
     expect(withOpenings.items[0].surface_m2).toBeLessThan(
       withoutOpenings.items[0].surface_m2,
+    );
+  });
+
+  it('excludes eco-alternative materials from the automatic estimation loop', async () => {
+    // PLAT-3 : le repo n'est qu'un mock, donc il ne filtre pas vraiment sur
+    // `where` — on simule ici le comportement réel de Postgres pour prouver
+    // que le service demande bien `is_eco: false`, et pas seulement que le
+    // fixture de test est bien formé.
+    materialsRepoMock.find.mockImplementation(
+      (options: { where: { is_eco?: boolean } }) =>
+        Promise.resolve(
+          options.where.is_eco === false
+            ? [mockMaterial]
+            : [mockMaterial, mockEcoMaterial],
+        ),
+    );
+
+    const result = await service.estimatePublic(makeDto());
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].material_id).toBe('mat-paint');
+    expect(materialsRepoMock.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          category: MaterialCategory.PAINTING,
+          is_active: true,
+          is_eco: false,
+        }) as object,
+      }) as object,
     );
   });
 });

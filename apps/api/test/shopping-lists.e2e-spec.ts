@@ -77,6 +77,7 @@ const shoppingListsServiceMock = {
     shoppingList: mockShoppingList,
     latestEstimationId: mockEstimationId,
   }),
+  getEcoSuggestions: jest.fn(),
 };
 
 const usersServiceMock = {
@@ -86,9 +87,10 @@ const usersServiceMock = {
   }),
 };
 
-// Non utilisé par les routes testées ici, mais requis pour que Nest puisse
-// instancier FeatureGateGuard (appliqué aux routes budget-summary, hors
-// périmètre du parcours critique — cf. plan ENG-4).
+// Requis pour que Nest puisse instancier FeatureGateGuard (appliqué aux
+// routes budget-summary et eco-suggestions ; seule cette dernière est
+// exercée ici via son gate réel — budget-summary reste hors périmètre du
+// parcours critique, cf. plan ENG-4).
 const featureGatesServiceMock = {
   isFeatureAllowed: jest.fn().mockResolvedValue(true),
   getGateConfig: jest.fn().mockResolvedValue(null),
@@ -111,10 +113,15 @@ describe('ShoppingListsController (e2e)', () => {
       shoppingList: mockShoppingList,
       latestEstimationId: mockEstimationId,
     });
+    shoppingListsServiceMock.getEcoSuggestions.mockResolvedValue({
+      eco_items: [],
+      suggestions: [],
+    });
     usersServiceMock.findByFirebaseUid.mockResolvedValue({
       id: mockUserId,
       subscription_tier: SubscriptionTier.FREE,
     });
+    featureGatesServiceMock.isFeatureAllowed.mockResolvedValue(true);
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       controllers: [ShoppingListsController],
@@ -293,5 +300,67 @@ describe('ShoppingListsController (e2e)', () => {
     await request(app.getHttpServer())
       .post('/projects/not-a-uuid/shopping-list/regenerate')
       .expect(400);
+  });
+
+  describe('GET /projects/:id/shopping-list/eco-suggestions', () => {
+    it('returns eco items and suggestions when the eco_materials gate allows it', async () => {
+      shoppingListsServiceMock.getEcoSuggestions.mockResolvedValueOnce({
+        eco_items: [
+          {
+            material_id: mockMaterialId,
+            material_name: 'Peinture acrylique sans COV',
+            eco_label_fr: 'Sans COV, écolabel NF Environnement',
+          },
+        ],
+        suggestions: [],
+      });
+
+      await request(app.getHttpServer())
+        .get(`/projects/${mockProjectId}/shopping-list/eco-suggestions`)
+        .expect(200)
+        .expect((res: request.Response) => {
+          const body = res.body as {
+            eco_items: { material_id: string }[];
+            suggestions: unknown[];
+          };
+          expect(body.eco_items).toHaveLength(1);
+          expect(body.eco_items[0].material_id).toBe(mockMaterialId);
+          expect(body.suggestions).toEqual([]);
+        });
+
+      expect(shoppingListsServiceMock.getEcoSuggestions).toHaveBeenCalledWith(
+        mockProjectId,
+        mockUserId,
+      );
+    });
+
+    it('returns 403 FEATURE_GATED when the eco_materials gate refuses', async () => {
+      featureGatesServiceMock.isFeatureAllowed.mockResolvedValueOnce(false);
+      featureGatesServiceMock.getGateConfig.mockResolvedValueOnce({
+        feature_key: 'eco_materials',
+        min_tier: 'pro',
+      });
+
+      await request(app.getHttpServer())
+        .get(`/projects/${mockProjectId}/shopping-list/eco-suggestions`)
+        .expect(403)
+        .expect((res: request.Response) => {
+          const body = res.body as { error: string; feature_key: string };
+          expect(body.error).toBe('FEATURE_GATED');
+          expect(body.feature_key).toBe('eco_materials');
+        });
+
+      expect(shoppingListsServiceMock.getEcoSuggestions).not.toHaveBeenCalled();
+    });
+
+    it('returns 404 when no shopping list exists for the project', async () => {
+      shoppingListsServiceMock.getEcoSuggestions.mockRejectedValueOnce(
+        new NotFoundException('No shopping list found for this project.'),
+      );
+
+      await request(app.getHttpServer())
+        .get(`/projects/${mockProjectId}/shopping-list/eco-suggestions`)
+        .expect(404);
+    });
   });
 });

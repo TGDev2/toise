@@ -5,12 +5,18 @@ import { UsersModule } from '../users/users.module';
 import { MaterialCatalog } from './entities/material-catalog.entity';
 import { MaterialPackaging } from './entities/material-packaging.entity';
 import { WasteFactor } from './entities/waste-factor.entity';
+import { MaterialEcoEquivalence } from './entities/material-eco-equivalence.entity';
 import { MaterialsController } from './materials.controller';
 import { MaterialsService } from './materials.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([MaterialCatalog, MaterialPackaging, WasteFactor]),
+    TypeOrmModule.forFeature([
+      MaterialCatalog,
+      MaterialPackaging,
+      WasteFactor,
+      MaterialEcoEquivalence,
+    ]),
     AuthModule,
     UsersModule,
   ],

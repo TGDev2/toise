@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { MaterialsService } from './materials.service';
 import {
@@ -9,6 +9,14 @@ import {
 } from './entities/material-catalog.entity';
 import { MaterialPackaging } from './entities/material-packaging.entity';
 import { WasteFactor } from './entities/waste-factor.entity';
+import { MaterialEcoEquivalence } from './entities/material-eco-equivalence.entity';
+
+const MATERIAL_RELATIONS = [
+  'packagings',
+  'waste_factors',
+  'eco_equivalents',
+  'eco_equivalents.ecoMaterial',
+];
 
 const mockMaterial: MaterialCatalog = {
   id: 'mat-uuid',
@@ -17,13 +25,24 @@ const mockMaterial: MaterialCatalog = {
   unit: 'L',
   yield_per_unit: 10,
   is_active: true,
+  is_eco: false,
+  eco_label_fr: null,
   modified_by: null,
   modified_at: null,
   created_at: new Date('2026-03-28T00:00:00.000Z'),
   updated_at: new Date('2026-03-28T00:00:00.000Z'),
   packagings: [],
   waste_factors: [],
+  eco_equivalents: [],
   modifier: null,
+};
+
+const mockEcoMaterial: MaterialCatalog = {
+  ...mockMaterial,
+  id: 'eco-mat-uuid',
+  name: 'Peinture acrylique mate sans COV',
+  is_eco: true,
+  eco_label_fr: 'Sans COV, écolabel NF Environnement',
 };
 
 const mockPackaging: MaterialPackaging = {
@@ -51,6 +70,13 @@ const packagingRepoMock = {
 const wasteFactorRepoMock = {
   create: jest.fn(),
   save: jest.fn(),
+};
+
+const ecoEquivalenceRepoMock = {
+  findOne: jest.fn(),
+  create: jest.fn(),
+  save: jest.fn(),
+  delete: jest.fn(),
 };
 
 const mockManager = {
@@ -89,6 +115,10 @@ describe('MaterialsService', () => {
           useValue: wasteFactorRepoMock,
         },
         {
+          provide: getRepositoryToken(MaterialEcoEquivalence),
+          useValue: ecoEquivalenceRepoMock,
+        },
+        {
           provide: DataSource,
           useValue: dataSourceMock,
         },
@@ -125,6 +155,49 @@ describe('MaterialsService', () => {
       expect(result).toEqual(materialWithPkg);
       expect(mockManager.save).toHaveBeenCalled();
     });
+
+    it('should reject is_eco: true without eco_label_fr', async () => {
+      await expect(
+        service.create(
+          {
+            name: 'Peinture éco',
+            category: MaterialCategory.PAINTING,
+            unit: 'L',
+            yield_per_unit: 10,
+            is_eco: true,
+            packagings: [
+              { label: 'Pot 2.5 L', quantity_per_unit: 2.5, unit: 'L' },
+            ],
+          },
+          'user-uuid',
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockManager.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('update', () => {
+    it('should reject setting is_eco: true without an eco_label_fr (new or existing)', async () => {
+      materialRepoMock.findOne.mockResolvedValue(mockMaterial);
+
+      await expect(
+        service.update('mat-uuid', { is_eco: true }, 'user-uuid'),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockManager.update).not.toHaveBeenCalled();
+    });
+
+    it('should accept is_eco: true when the existing material already has an eco_label_fr', async () => {
+      materialRepoMock.findOne.mockResolvedValue(mockEcoMaterial);
+      mockManager.findOne.mockResolvedValue(mockEcoMaterial);
+
+      await service.update('eco-mat-uuid', { is_eco: true }, 'user-uuid');
+
+      expect(mockManager.update).toHaveBeenCalledWith(
+        MaterialCatalog,
+        'eco-mat-uuid',
+        expect.objectContaining({ is_eco: true }) as object,
+      );
+    });
   });
 
   describe('findOne', () => {
@@ -136,7 +209,7 @@ describe('MaterialsService', () => {
       expect(result).toEqual(mockMaterial);
       expect(materialRepoMock.findOne).toHaveBeenCalledWith({
         where: { id: 'mat-uuid' },
-        relations: ['packagings', 'waste_factors'],
+        relations: MATERIAL_RELATIONS,
       });
     });
 
@@ -207,6 +280,95 @@ describe('MaterialsService', () => {
         is_active: false,
         modified_by: 'admin-uuid',
         modified_at: expect.any(Date) as Date,
+      });
+    });
+  });
+
+  describe('linkEcoEquivalent', () => {
+    it('should link a standard material to an eco material of the same category', async () => {
+      materialRepoMock.findOne
+        .mockResolvedValueOnce(mockMaterial) // source
+        .mockResolvedValueOnce(mockEcoMaterial) // target
+        .mockResolvedValueOnce(mockMaterial); // final findOne(materialId)
+      ecoEquivalenceRepoMock.findOne.mockResolvedValue(null);
+      ecoEquivalenceRepoMock.create.mockReturnValue({
+        standard_material_id: 'mat-uuid',
+        eco_material_id: 'eco-mat-uuid',
+      });
+
+      const result = await service.linkEcoEquivalent(
+        'mat-uuid',
+        'eco-mat-uuid',
+      );
+
+      expect(ecoEquivalenceRepoMock.save).toHaveBeenCalled();
+      expect(result).toEqual(mockMaterial);
+    });
+
+    it('should reject linking a material to itself', async () => {
+      await expect(
+        service.linkEcoEquivalent('mat-uuid', 'mat-uuid'),
+      ).rejects.toThrow(BadRequestException);
+      expect(ecoEquivalenceRepoMock.save).not.toHaveBeenCalled();
+    });
+
+    it('should reject when the source material is itself eco', async () => {
+      materialRepoMock.findOne.mockResolvedValueOnce(mockEcoMaterial);
+
+      await expect(
+        service.linkEcoEquivalent('eco-mat-uuid', 'other-uuid'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should reject when the target material is not eco', async () => {
+      materialRepoMock.findOne
+        .mockResolvedValueOnce(mockMaterial)
+        .mockResolvedValueOnce({ ...mockMaterial, id: 'other-uuid' });
+
+      await expect(
+        service.linkEcoEquivalent('mat-uuid', 'other-uuid'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should reject when categories differ', async () => {
+      materialRepoMock.findOne
+        .mockResolvedValueOnce(mockMaterial)
+        .mockResolvedValueOnce({
+          ...mockEcoMaterial,
+          category: MaterialCategory.TILING,
+        });
+
+      await expect(
+        service.linkEcoEquivalent('mat-uuid', 'eco-mat-uuid'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should reject a duplicate equivalence', async () => {
+      materialRepoMock.findOne
+        .mockResolvedValueOnce(mockMaterial)
+        .mockResolvedValueOnce(mockEcoMaterial);
+      ecoEquivalenceRepoMock.findOne.mockResolvedValue({
+        id: 'existing-eq',
+        standard_material_id: 'mat-uuid',
+        eco_material_id: 'eco-mat-uuid',
+      });
+
+      await expect(
+        service.linkEcoEquivalent('mat-uuid', 'eco-mat-uuid'),
+      ).rejects.toThrow(BadRequestException);
+      expect(ecoEquivalenceRepoMock.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('unlinkEcoEquivalent', () => {
+    it('should delete the equivalence row', async () => {
+      materialRepoMock.findOne.mockResolvedValue(mockMaterial);
+
+      await service.unlinkEcoEquivalent('mat-uuid', 'eco-mat-uuid');
+
+      expect(ecoEquivalenceRepoMock.delete).toHaveBeenCalledWith({
+        standard_material_id: 'mat-uuid',
+        eco_material_id: 'eco-mat-uuid',
       });
     });
   });

@@ -1,12 +1,24 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { MaterialCatalog } from './entities/material-catalog.entity';
 import { MaterialPackaging } from './entities/material-packaging.entity';
 import { WasteFactor } from './entities/waste-factor.entity';
+import { MaterialEcoEquivalence } from './entities/material-eco-equivalence.entity';
 import { CreateMaterialDto } from './dto/create-material.dto';
 import { UpdateMaterialDto } from './dto/update-material.dto';
 import { QueryMaterialsDto } from './dto/query-materials.dto';
+
+const MATERIAL_RELATIONS = [
+  'packagings',
+  'waste_factors',
+  'eco_equivalents',
+  'eco_equivalents.ecoMaterial',
+];
 
 @Injectable()
 export class MaterialsService {
@@ -17,19 +29,36 @@ export class MaterialsService {
     private readonly packagingRepo: Repository<MaterialPackaging>,
     @InjectRepository(WasteFactor)
     private readonly wasteFactorRepo: Repository<WasteFactor>,
+    @InjectRepository(MaterialEcoEquivalence)
+    private readonly ecoEquivalenceRepo: Repository<MaterialEcoEquivalence>,
     private readonly dataSource: DataSource,
   ) {}
+
+  private assertEcoLabelPresent(
+    isEco: boolean,
+    ecoLabelFr: string | null | undefined,
+  ): void {
+    if (isEco && !ecoLabelFr?.trim()) {
+      throw new BadRequestException(
+        'eco_label_fr est requis lorsque is_eco est vrai.',
+      );
+    }
+  }
 
   async create(
     dto: CreateMaterialDto,
     userId: string,
   ): Promise<MaterialCatalog> {
+    this.assertEcoLabelPresent(dto.is_eco ?? false, dto.eco_label_fr);
+
     return this.dataSource.transaction(async (manager) => {
       const material = manager.create(MaterialCatalog, {
         name: dto.name,
         category: dto.category,
         unit: dto.unit,
         yield_per_unit: dto.yield_per_unit,
+        is_eco: dto.is_eco ?? false,
+        eco_label_fr: dto.eco_label_fr ?? null,
         modified_by: userId,
         modified_at: new Date(),
       });
@@ -66,6 +95,8 @@ export class MaterialsService {
       .createQueryBuilder('material')
       .leftJoinAndSelect('material.packagings', 'packaging')
       .leftJoinAndSelect('material.waste_factors', 'waste_factor')
+      .leftJoinAndSelect('material.eco_equivalents', 'eco_equivalent')
+      .leftJoinAndSelect('eco_equivalent.ecoMaterial', 'eco_material')
       .orderBy('material.category', 'ASC')
       .addOrderBy('material.name', 'ASC');
 
@@ -81,13 +112,17 @@ export class MaterialsService {
       });
     }
 
+    if (query.is_eco !== undefined) {
+      qb.andWhere('material.is_eco = :is_eco', { is_eco: query.is_eco });
+    }
+
     return qb.getMany();
   }
 
   async findOne(id: string): Promise<MaterialCatalog> {
     const material = await this.materialRepo.findOne({
       where: { id },
-      relations: ['packagings', 'waste_factors'],
+      relations: MATERIAL_RELATIONS,
     });
 
     if (!material) {
@@ -102,7 +137,11 @@ export class MaterialsService {
     dto: UpdateMaterialDto,
     userId: string,
   ): Promise<MaterialCatalog> {
-    await this.findOne(id);
+    const existing = await this.findOne(id);
+    this.assertEcoLabelPresent(
+      dto.is_eco ?? existing.is_eco,
+      dto.eco_label_fr ?? existing.eco_label_fr,
+    );
 
     return this.dataSource.transaction(async (manager) => {
       const { packagings, waste_factors, ...materialFields } = dto;
@@ -168,7 +207,7 @@ export class MaterialsService {
   ): Promise<MaterialCatalog> {
     const material = await manager.findOne(MaterialCatalog, {
       where: { id },
-      relations: ['packagings', 'waste_factors'],
+      relations: MATERIAL_RELATIONS,
     });
 
     if (!material) {
@@ -176,5 +215,68 @@ export class MaterialsService {
     }
 
     return material;
+  }
+
+  async linkEcoEquivalent(
+    materialId: string,
+    ecoMaterialId: string,
+  ): Promise<MaterialCatalog> {
+    if (materialId === ecoMaterialId) {
+      throw new BadRequestException(
+        'Un matériau ne peut pas être sa propre alternative éco.',
+      );
+    }
+
+    const source = await this.findOne(materialId);
+    if (source.is_eco) {
+      throw new BadRequestException(
+        'Un matériau éco ne peut pas avoir sa propre alternative éco.',
+      );
+    }
+
+    const target = await this.findOne(ecoMaterialId);
+    if (!target.is_eco) {
+      throw new BadRequestException(
+        'Le matériau cible doit être marqué éco-responsable.',
+      );
+    }
+    if (target.category !== source.category) {
+      throw new BadRequestException(
+        'Le matériau éco doit appartenir à la même catégorie.',
+      );
+    }
+
+    const existing = await this.ecoEquivalenceRepo.findOne({
+      where: {
+        standard_material_id: materialId,
+        eco_material_id: ecoMaterialId,
+      },
+    });
+    if (existing) {
+      throw new BadRequestException('Cette équivalence existe déjà.');
+    }
+
+    await this.ecoEquivalenceRepo.save(
+      this.ecoEquivalenceRepo.create({
+        standard_material_id: materialId,
+        eco_material_id: ecoMaterialId,
+      }),
+    );
+
+    return this.findOne(materialId);
+  }
+
+  async unlinkEcoEquivalent(
+    materialId: string,
+    ecoMaterialId: string,
+  ): Promise<MaterialCatalog> {
+    await this.findOne(materialId);
+
+    await this.ecoEquivalenceRepo.delete({
+      standard_material_id: materialId,
+      eco_material_id: ecoMaterialId,
+    });
+
+    return this.findOne(materialId);
   }
 }

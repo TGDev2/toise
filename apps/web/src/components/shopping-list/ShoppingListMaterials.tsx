@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import type { ShoppingListMaterialItem } from '@/lib/shopping-list-types';
 import type { BuyLinkItem } from '@/lib/price-comparison-types';
+import type { EcoRowData } from '@/lib/eco-materials-types';
 import { DecimalInput } from '@/components/ui';
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -19,6 +20,9 @@ interface ShoppingListMaterialsProps {
   budgetAllowed?: boolean;
   // BUY-3 : lien affilié par matériau, indépendant du tier (Free inclus).
   buyLinks?: Map<string, BuyLinkItem>;
+  // PLAT-3 : badge/suggestion éco par matériau, tier Pro.
+  ecoAllowed?: boolean;
+  ecoData?: Map<string, EcoRowData>;
   onUpdateQuantity?: (materialId: string, units: number) => void;
   onResetQuantity?: (materialId: string) => void;
   onUpdatePrice?: (
@@ -27,6 +31,7 @@ interface ShoppingListMaterialsProps {
     storeName: string,
   ) => void;
   onShowPaywall?: () => void;
+  onShowEcoPaywall?: () => void;
 }
 
 function MaterialRow({
@@ -34,6 +39,7 @@ function MaterialRow({
   readOnly,
   budgetAllowed,
   buyLink,
+  eco,
   onUpdateQuantity,
   onResetQuantity,
   onUpdatePrice,
@@ -43,6 +49,7 @@ function MaterialRow({
   readOnly?: boolean;
   budgetAllowed?: boolean;
   buyLink?: BuyLinkItem;
+  eco?: EcoRowData;
   onUpdateQuantity?: (units: number) => void;
   onResetQuantity?: () => void;
   onUpdatePrice?: (price: number, storeName: string) => void;
@@ -125,6 +132,14 @@ function MaterialRow({
                 </svg>
               </span>
             )}
+            {eco?.is_eco && (
+              <span
+                title={eco.eco_label_fr ?? undefined}
+                className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700"
+              >
+                Éco
+              </span>
+            )}
           </div>
           <p className="mt-0.5 text-sm text-stone-500">
             {item.work_type_label} · {item.packaging_label}
@@ -138,6 +153,12 @@ function MaterialRow({
             <p className="mt-0.5 text-xs text-stone-400">
               Fourchette selon la mesure : {item.units_needed_low}–
               {item.units_needed_high} {item.packaging_label}
+            </p>
+          )}
+          {eco?.suggestion && (
+            <p className="mt-1 text-xs text-emerald-700">
+              Alternative durable disponible : {eco.suggestion.eco_material_name}
+              {eco.suggestion.eco_label_fr ? ` — ${eco.suggestion.eco_label_fr}` : ''}
             </p>
           )}
           {buyLink && (
@@ -278,14 +299,24 @@ export function ShoppingListMaterials({
   readOnly,
   budgetAllowed,
   buyLinks,
+  ecoAllowed,
+  ecoData,
   onUpdateQuantity,
   onResetQuantity,
   onUpdatePrice,
   onShowPaywall,
+  onShowEcoPaywall,
 }: ShoppingListMaterialsProps) {
+  const [ecoFilterOnly, setEcoFilterOnly] = useState(false);
+
+  const displayedItems = useMemo(() => {
+    if (!ecoFilterOnly || !ecoData) return items;
+    return items.filter((item) => ecoData.has(item.material_id));
+  }, [items, ecoFilterOnly, ecoData]);
+
   const grouped = useMemo(() => {
     const map = new Map<string, ShoppingListMaterialItem[]>();
-    for (const item of items) {
+    for (const item of displayedItems) {
       const cat = item.material_category;
       const existing = map.get(cat);
       if (existing) {
@@ -295,11 +326,19 @@ export function ShoppingListMaterials({
       }
     }
     return Array.from(map.entries());
-  }, [items]);
+  }, [displayedItems]);
 
   const [openSections, setOpenSections] = useState<Set<string>>(
     () => new Set(grouped.map(([cat]) => cat)),
   );
+
+  const handleToggleEcoFilter = () => {
+    if (ecoAllowed === false) {
+      onShowEcoPaywall?.();
+      return;
+    }
+    setEcoFilterOnly((v) => !v);
+  };
 
   if (items.length === 0) {
     return (
@@ -323,6 +362,38 @@ export function ShoppingListMaterials({
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={handleToggleEcoFilter}
+          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+            ecoAllowed === false
+              ? 'bg-stone-100 text-stone-400 hover:bg-stone-200'
+              : ecoFilterOnly
+                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+          }`}
+          title={ecoAllowed === false ? 'Fonctionnalité Pro' : undefined}
+        >
+          {ecoAllowed === false ? (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5">
+              <path fillRule="evenodd" d="M8 1a3.5 3.5 0 0 0-3.5 3.5V7A1.5 1.5 0 0 0 3 8.5v5A1.5 1.5 0 0 0 4.5 15h7a1.5 1.5 0 0 0 1.5-1.5v-5A1.5 1.5 0 0 0 11.5 7V4.5A3.5 3.5 0 0 0 8 1Zm2 6V4.5a2 2 0 1 0-4 0V7h4Z" clipRule="evenodd" />
+            </svg>
+          ) : null}
+          {ecoAllowed === false
+            ? 'Matériaux éco (Pro)'
+            : ecoFilterOnly
+              ? 'Tout afficher'
+              : 'Voir les matériaux éco'}
+        </button>
+      </div>
+
+      {ecoFilterOnly && grouped.length === 0 && (
+        <p className="py-4 text-center text-sm text-stone-400">
+          Aucun matériau éco ou alternative durable dans cette liste.
+        </p>
+      )}
+
       {grouped.map(([category, categoryItems]) => (
         <div key={category}>
           <button
@@ -368,6 +439,7 @@ export function ShoppingListMaterials({
                     readOnly={readOnly}
                     budgetAllowed={budgetAllowed}
                     buyLink={buyLinks?.get(item.material_id)}
+                    eco={ecoData?.get(item.material_id)}
                     onUpdateQuantity={onUpdateQuantity ? (units) =>
                       onUpdateQuantity(item.material_id, units)
                     : undefined}

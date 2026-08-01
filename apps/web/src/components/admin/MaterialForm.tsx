@@ -41,6 +41,8 @@ export interface MaterialFormData {
   category: string;
   unit: string;
   yield_per_unit: number;
+  is_eco: boolean;
+  eco_label_fr?: string;
   packagings: { label: string; quantity_per_unit: number; unit: string }[];
   waste_factors?: {
     pose_type: string;
@@ -55,6 +57,8 @@ interface MaterialFormProps {
     category: string;
     unit: string;
     yield_per_unit: number;
+    is_eco?: boolean;
+    eco_label_fr?: string | null;
     packagings: { label: string; quantity_per_unit: number; unit: string }[];
     waste_factors?: {
       pose_type: string;
@@ -78,6 +82,10 @@ export function MaterialForm({
   const [unit, setUnit] = useState(initialData?.unit ?? '');
   const [yieldPerUnit, setYieldPerUnit] = useState(
     initialData?.yield_per_unit?.toString() ?? '',
+  );
+  const [isEco, setIsEco] = useState(initialData?.is_eco ?? false);
+  const [ecoLabelFr, setEcoLabelFr] = useState(
+    initialData?.eco_label_fr ?? '',
   );
 
   const [packagings, setPackagings] = useState<PackagingRow[]>(
@@ -144,6 +152,13 @@ export function MaterialForm({
       return;
     }
 
+    if (isEco && !ecoLabelFr.trim()) {
+      setError(
+        'Le libellé éco est requis lorsque le matériau est marqué éco-responsable.',
+      );
+      return;
+    }
+
     const validPackagings = packagings.filter(
       (p) => p.label && p.quantity_per_unit && p.unit,
     );
@@ -162,6 +177,8 @@ export function MaterialForm({
         category,
         unit,
         yield_per_unit: parseFloat(yieldPerUnit),
+        is_eco: isEco,
+        eco_label_fr: isEco ? ecoLabelFr.trim() : undefined,
         packagings: validPackagings.map((p) => ({
           label: p.label,
           quantity_per_unit: parseFloat(p.quantity_per_unit),
@@ -258,6 +275,35 @@ export function MaterialForm({
             required
           />
         </div>
+      </div>
+
+      {/* Éco-responsabilité (PLAT-3) */}
+      <div>
+        <label className="flex items-center gap-2 text-sm font-medium text-[var(--foreground)]">
+          <input
+            type="checkbox"
+            checked={isEco}
+            onChange={(e) => setIsEco(e.target.checked)}
+            className="rounded"
+          />
+          Matériau éco-responsable
+        </label>
+        {isEco && (
+          <div className="mt-2">
+            <label className={labelClass}>
+              Justification éco (affichée aux utilisateurs){' '}
+              <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={ecoLabelFr}
+              onChange={(e) => setEcoLabelFr(e.target.value)}
+              placeholder="Ex: Peinture sans COV, écolabel NF Environnement"
+              className={inputClass}
+              maxLength={255}
+            />
+          </div>
+        )}
       </div>
 
       {/* Packagings */}

@@ -10,6 +10,7 @@ import type {
   BuyLinkItem,
   BuyLinksResponse,
 } from '@/lib/price-comparison-types';
+import type { EcoSuggestionsResponse, EcoRowData } from '@/lib/eco-materials-types';
 import { ShoppingListMaterials } from '@/components/shopping-list/ShoppingListMaterials';
 import { ShoppingListComplements } from '@/components/shopping-list/ShoppingListComplements';
 import { ShareLinkPanel } from '@/components/shopping-list/ShareLinkPanel';
@@ -18,7 +19,7 @@ import { PriceComparisonPanel } from '@/components/shopping-list/PriceComparison
 import { FlowProgress } from '@/components/quote-flow/FlowProgress';
 import { Alert, ConfirmDialog, Skeleton, StickyActionBar } from '@/components/ui';
 import { useParams, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 export default function ShoppingListPage() {
   const { appUser, isLoading } = useAuth();
@@ -30,6 +31,7 @@ export default function ShoppingListPage() {
   const budgetAllowed = isFeatureAllowed('budget_tracking');
   const priceComparisonAllowed = isFeatureAllowed('price_comparison');
   const canQuote = isFeatureAllowed('export_devis');
+  const ecoAllowed = isFeatureAllowed('eco_materials');
 
   const [data, setData] = useState<ShoppingListResponse | null>(null);
   const [projectName, setProjectName] = useState('');
@@ -40,6 +42,7 @@ export default function ShoppingListPage() {
   const [downloading, setDownloading] = useState(false);
   const [showSharePanel, setShowSharePanel] = useState(false);
   const [budgetSummary, setBudgetSummary] = useState<BudgetSummary | null>(null);
+  const [ecoData, setEcoData] = useState<EcoSuggestionsResponse | null>(null);
   const [comparing, setComparing] = useState(false);
   const [comparisonData, setComparisonData] = useState<PriceComparisonResponse | null>(null);
   const [buyLinks, setBuyLinks] = useState<Map<string, BuyLinkItem>>(new Map());
@@ -72,6 +75,18 @@ export default function ShoppingListPage() {
       // Budget summary may not exist yet if no prices entered
     }
   }, [budgetAllowed, projectId]);
+
+  const loadEcoSuggestions = useCallback(async () => {
+    if (!ecoAllowed) return;
+    try {
+      const result = await apiGet<EcoSuggestionsResponse>(
+        `/projects/${projectId}/shopping-list/eco-suggestions`,
+      );
+      setEcoData(result);
+    } catch {
+      // Suggestions éco optionnelles : un échec ne doit jamais bloquer l'affichage.
+    }
+  }, [ecoAllowed, projectId]);
 
   const flushUpdates = useCallback(async () => {
     const updates = pendingUpdatesRef.current;
@@ -143,6 +158,33 @@ export default function ShoppingListPage() {
       loadBudgetSummary();
     }
   }, [data, budgetAllowed, loadBudgetSummary]);
+
+  // Load eco suggestions when data is available (PLAT-3)
+  useEffect(() => {
+    if (data && ecoAllowed) {
+      loadEcoSuggestions();
+    }
+  }, [data, ecoAllowed, loadEcoSuggestions]);
+
+  const ecoByMaterialId = useMemo(() => {
+    const map = new Map<string, EcoRowData>();
+    if (!ecoData) return map;
+    for (const item of ecoData.eco_items) {
+      map.set(item.material_id, { is_eco: true, eco_label_fr: item.eco_label_fr });
+    }
+    for (const s of ecoData.suggestions) {
+      map.set(s.material_id, {
+        is_eco: false,
+        eco_label_fr: null,
+        suggestion: {
+          eco_material_id: s.eco_material_id,
+          eco_material_name: s.eco_material_name,
+          eco_label_fr: s.eco_label_fr,
+        },
+      });
+    }
+    return map;
+  }, [ecoData]);
 
   const handleUpdateMaterialQty = useCallback(
     (materialId: string, units: number) => {
@@ -435,6 +477,10 @@ export default function ShoppingListPage() {
     showPaywall('budget_tracking');
   }, [showPaywall]);
 
+  const handleShowEcoPaywall = useCallback(() => {
+    showPaywall('eco_materials');
+  }, [showPaywall]);
+
   if (isLoading || loading) {
     return (
       <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
@@ -566,10 +612,13 @@ export default function ShoppingListPage() {
               items={data.material_items}
               budgetAllowed={budgetAllowed}
               buyLinks={buyLinks}
+              ecoAllowed={ecoAllowed}
+              ecoData={ecoByMaterialId}
               onUpdateQuantity={handleUpdateMaterialQty}
               onResetQuantity={handleResetMaterialQty}
               onUpdatePrice={handleUpdateMaterialPrice}
               onShowPaywall={handleShowPaywall}
+              onShowEcoPaywall={handleShowEcoPaywall}
             />
           </section>
 

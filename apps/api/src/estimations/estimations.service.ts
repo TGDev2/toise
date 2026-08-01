@@ -65,6 +65,13 @@ export class EstimationsService {
       where: {
         category: category as MaterialCatalog['category'],
         is_active: true,
+        // PLAT-3 : les alternatives éco sont informationnelles (badge/
+        // suggestion sur la liste de courses), jamais injectées dans le
+        // chiffrage automatique — la catégorie regroupe des matériaux
+        // consommés ENSEMBLE (ex. peinture + sous-couche), pas des
+        // alternatives, donc un matériau éco actif serait sinon ajouté au
+        // chiffrage de tous les utilisateurs, Free inclus.
+        is_eco: false,
       },
       relations: ['packagings', 'waste_factors'],
     });
