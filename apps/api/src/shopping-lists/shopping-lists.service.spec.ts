@@ -8,6 +8,8 @@ import { EstimationsService } from '../estimations/estimations.service';
 import { ProjectsService } from '../projects/projects.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
+import { LogbookService } from '../logbook/logbook.service';
+import { ProjectStatus } from '../projects/entities/project.entity';
 import type { EstimationLineItem } from '../estimations/entities/estimation-result.entity';
 
 const mockEstimationItem: EstimationLineItem = {
@@ -54,10 +56,15 @@ const projectsServiceMock = {
   findOneByUser: jest.fn(),
   getWorkItems: jest.fn(),
   getRooms: jest.fn().mockResolvedValue([]),
+  updateStatus: jest.fn(),
 };
 
 const analyticsServiceMock = {
   track: jest.fn(),
+};
+
+const logbookServiceMock = {
+  recordChantierCompletion: jest.fn(),
 };
 
 describe('ShoppingListsService.generate', () => {
@@ -98,6 +105,7 @@ describe('ShoppingListsService.generate', () => {
         { provide: EstimationsService, useValue: estimationsServiceMock },
         { provide: ProjectsService, useValue: projectsServiceMock },
         { provide: AnalyticsService, useValue: analyticsServiceMock },
+        { provide: LogbookService, useValue: logbookServiceMock },
       ],
     }).compile();
 
@@ -261,6 +269,7 @@ describe('ShoppingListsService.getBudgetSummary', () => {
         { provide: EstimationsService, useValue: estimationsServiceMock },
         { provide: ProjectsService, useValue: projectsServiceMock },
         { provide: AnalyticsService, useValue: analyticsServiceMock },
+        { provide: LogbookService, useValue: logbookServiceMock },
       ],
     }).compile();
 
@@ -327,5 +336,98 @@ describe('ShoppingListsService.getBudgetSummary', () => {
 
     expect(summary.is_complete).toBe(true);
     expect(isFinalized).toBe(false);
+  });
+});
+
+describe('ShoppingListsService.finalizeBudgetSummary', () => {
+  let service: ShoppingListsService;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+
+    projectsServiceMock.findOneByUser.mockResolvedValue({
+      id: 'project-1',
+      user_id: 'user-1',
+    });
+    estimationsServiceMock.findById.mockResolvedValue({
+      id: 'estimation-1',
+      items_json: [mockEstimationItem],
+    });
+    shoppingListRepoMock.save.mockImplementation(
+      (entity: Record<string, unknown>) => Promise.resolve(entity),
+    );
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        ShoppingListsService,
+        {
+          provide: getRepositoryToken(ShoppingList),
+          useValue: shoppingListRepoMock,
+        },
+        {
+          provide: getRepositoryToken(ComplementaryMaterial),
+          useValue: complementaryRepoMock,
+        },
+        { provide: getRepositoryToken(WorkType), useValue: workTypeRepoMock },
+        { provide: EstimationsService, useValue: estimationsServiceMock },
+        { provide: ProjectsService, useValue: projectsServiceMock },
+        { provide: AnalyticsService, useValue: analyticsServiceMock },
+        { provide: LogbookService, useValue: logbookServiceMock },
+      ],
+    }).compile();
+
+    service = module.get(ShoppingListsService);
+  });
+
+  it('marque le projet COMPLETED puis déclenche le carnet du logement (PLAT-1)', async () => {
+    const shoppingList = {
+      id: 'shopping-list-1',
+      project_id: 'project-1',
+      estimation_id: 'estimation-1',
+      items_json: {
+        material_items: [
+          {
+            material_id: 'mat-paint',
+            material_category: 'painting',
+            units_needed: 1,
+            real_unit_price: 45.5,
+          },
+        ],
+        complementary_items: [],
+      },
+      budget_summary_json: null,
+    };
+    shoppingListRepoMock.findOne.mockResolvedValue(shoppingList);
+
+    await service.finalizeBudgetSummary('project-1', 'user-1');
+
+    expect(projectsServiceMock.updateStatus).toHaveBeenCalledWith(
+      'project-1',
+      ProjectStatus.COMPLETED,
+    );
+    expect(logbookServiceMock.recordChantierCompletion).toHaveBeenCalledWith(
+      'project-1',
+      'user-1',
+      expect.objectContaining({ id: 'estimation-1' }),
+      expect.objectContaining({ id: 'shopping-list-1' }),
+    );
+  });
+
+  it('ne déclenche ni COMPLETED ni le carnet si des articles restent sans prix réel', async () => {
+    shoppingListRepoMock.findOne.mockResolvedValue({
+      id: 'shopping-list-1',
+      estimation_id: 'estimation-1',
+      items_json: {
+        material_items: [{ material_id: 'mat-paint', real_unit_price: null }],
+        complementary_items: [],
+      },
+    });
+
+    await expect(
+      service.finalizeBudgetSummary('project-1', 'user-1'),
+    ).rejects.toThrow();
+
+    expect(projectsServiceMock.updateStatus).not.toHaveBeenCalled();
+    expect(logbookServiceMock.recordChantierCompletion).not.toHaveBeenCalled();
   });
 });

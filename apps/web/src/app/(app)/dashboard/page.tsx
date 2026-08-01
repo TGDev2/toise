@@ -249,6 +249,11 @@ export default function DashboardPage() {
               Parrainage
             </Button>
           )}
+          {appUser && (
+            <Button variant="secondary" onClick={() => router.push('/logbook')}>
+              Carnet du logement
+            </Button>
+          )}
           <Button variant="secondary" onClick={handleLogout}>
             {isGuest ? 'Quitter le mode invité' : 'Déconnexion'}
           </Button>

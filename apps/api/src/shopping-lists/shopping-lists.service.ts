@@ -19,6 +19,7 @@ import { WorkType } from '../projects/entities/work-type.entity';
 import { EstimationsService } from '../estimations/estimations.service';
 import { ProjectsService } from '../projects/projects.service';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { LogbookService } from '../logbook/logbook.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 import { UpdateShoppingListDto } from './dto/update-shopping-list.dto';
 import { DEFAULT_WASTE_PERCENT } from '../estimations/estimation-engine';
@@ -41,6 +42,7 @@ export class ShoppingListsService {
     private readonly estimationsService: EstimationsService,
     private readonly projectsService: ProjectsService,
     private readonly analyticsService: AnalyticsService,
+    private readonly logbookService: LogbookService,
   ) {}
 
   async getOrGenerate(
@@ -374,6 +376,17 @@ export class ShoppingListsService {
     await this.shoppingListRepo.save(shoppingList);
 
     await this.projectsService.updateStatus(projectId, ProjectStatus.COMPLETED);
+
+    // PLAT-1 : instantané par pièce (dimensions validées, matériaux
+    // réellement achetés) — même point d'ancrage que le partage communauté
+    // (COM-1/COM-2), seul moment garanti où prix réels ET dimensions sont
+    // connus pour tout utilisateur.
+    await this.logbookService.recordChantierCompletion(
+      projectId,
+      userId,
+      estimation,
+      shoppingList,
+    );
 
     this.analyticsService.track(AnalyticsEventName.BUDGET_TRACKED, userId, {
       project_id: projectId,

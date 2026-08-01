@@ -8,6 +8,7 @@ import { EstimationsModule } from '../estimations/estimations.module';
 import { UsersModule } from '../users/users.module';
 import { FeatureGatesModule } from '../feature-gates/feature-gates.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
+import { LogbookModule } from '../logbook/logbook.module';
 import { ShoppingListsService } from './shopping-lists.service';
 import { ShoppingListsController } from './shopping-lists.controller';
 import { ShoppingListExportService } from './shopping-list-export.service';
@@ -22,6 +23,7 @@ import { ShoppingListSharedController } from './shopping-list-shared.controller'
     UsersModule,
     FeatureGatesModule,
     AnalyticsModule,
+    LogbookModule,
   ],
   controllers: [
     ShoppingListsController,

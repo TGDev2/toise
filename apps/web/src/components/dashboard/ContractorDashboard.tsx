@@ -228,6 +228,9 @@ export function ContractorDashboard() {
           <Button variant="secondary" onClick={() => router.push('/referrals')}>
             Parrainage
           </Button>
+          <Button variant="secondary" onClick={() => router.push('/logbook')}>
+            Carnet du logement
+          </Button>
           <Button variant="secondary" onClick={handleLogout}>
             Déconnexion
           </Button>

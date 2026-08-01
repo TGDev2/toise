@@ -27,6 +27,7 @@ import { QuoteRemindersModule } from './quote-reminders/quote-reminders.module';
 import { InvoicesModule } from './invoices/invoices.module';
 import { CommunityModule } from './community/community.module';
 import { ReferralsModule } from './referrals/referrals.module';
+import { LogbookModule } from './logbook/logbook.module';
 import configuration from './config/configuration';
 import { validate } from './config/env.validation';
 
@@ -76,6 +77,7 @@ import { validate } from './config/env.validation';
     InvoicesModule,
     CommunityModule,
     ReferralsModule,
+    LogbookModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
