@@ -239,3 +239,170 @@ describe('EmailService.sendQuoteReminderContractorEmail', () => {
     expect(sent.text).toContain('Marie <Petit> & fils');
   });
 });
+
+describe('EmailService.sendOnboardingD1Email', () => {
+  let service: EmailService;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    brevoClientMock.sendTransactionalEmail.mockResolvedValue(undefined);
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        EmailService,
+        { provide: BrevoClientService, useValue: brevoClientMock },
+      ],
+    }).compile();
+
+    service = module.get(EmailService);
+  });
+
+  it("inclut le lien du dashboard dans le corps de l'e-mail", async () => {
+    await service.sendOnboardingD1Email('nouveau@example.fr', {
+      dashboardUrl: 'https://chiffreo.fr/dashboard',
+    });
+
+    const [sent] = brevoClientMock.sendTransactionalEmail.mock.calls[0] as [
+      SentEmail,
+    ];
+    expect(sent.to).toBe('nouveau@example.fr');
+    expect(sent.html).toContain('https://chiffreo.fr/dashboard');
+    expect(sent.text).toContain('https://chiffreo.fr/dashboard');
+  });
+});
+
+describe('EmailService.sendOnboardingD3Email', () => {
+  let service: EmailService;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    brevoClientMock.sendTransactionalEmail.mockResolvedValue(undefined);
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        EmailService,
+        { provide: BrevoClientService, useValue: brevoClientMock },
+      ],
+    }).compile();
+
+    service = module.get(EmailService);
+  });
+
+  it('propose de reprendre le projet quand hasProject vaut true', async () => {
+    await service.sendOnboardingD3Email('utilisateur@example.fr', {
+      dashboardUrl: 'https://chiffreo.fr/dashboard',
+      hasProject: true,
+    });
+
+    const [sent] = brevoClientMock.sendTransactionalEmail.mock.calls[0] as [
+      SentEmail,
+    ];
+    expect(sent.subject).toContain('projet');
+    expect(sent.html).toContain('Reprendre mon projet');
+  });
+
+  it('propose de créer un premier projet quand hasProject vaut false', async () => {
+    await service.sendOnboardingD3Email('utilisateur@example.fr', {
+      dashboardUrl: 'https://chiffreo.fr/dashboard',
+      hasProject: false,
+    });
+
+    const [sent] = brevoClientMock.sendTransactionalEmail.mock.calls[0] as [
+      SentEmail,
+    ];
+    expect(sent.html).toContain('Créer mon premier projet');
+  });
+});
+
+describe('EmailService.sendProjectAbandonedEmail', () => {
+  let service: EmailService;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    brevoClientMock.sendTransactionalEmail.mockResolvedValue(undefined);
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        EmailService,
+        { provide: BrevoClientService, useValue: brevoClientMock },
+      ],
+    }).compile();
+
+    service = module.get(EmailService);
+  });
+
+  it('mentionne le nom du projet et son lien', async () => {
+    await service.sendProjectAbandonedEmail('utilisateur@example.fr', {
+      projectName: 'Salon',
+      projectUrl: 'https://chiffreo.fr/projects/project-1',
+    });
+
+    const [sent] = brevoClientMock.sendTransactionalEmail.mock.calls[0] as [
+      SentEmail,
+    ];
+    expect(sent.subject).toContain('Salon');
+    expect(sent.html).toContain('https://chiffreo.fr/projects/project-1');
+    expect(sent.text).toContain('https://chiffreo.fr/projects/project-1');
+  });
+
+  it('échappe les caractères HTML du nom du projet dans le corps html', async () => {
+    await service.sendProjectAbandonedEmail('utilisateur@example.fr', {
+      projectName: 'Salon <Pro> & cuisine',
+      projectUrl: 'https://chiffreo.fr/projects/project-1',
+    });
+
+    const [sent] = brevoClientMock.sendTransactionalEmail.mock.calls[0] as [
+      SentEmail,
+    ];
+    expect(sent.html).not.toContain('<Pro>');
+    expect(sent.html).toContain('&lt;Pro&gt;');
+    expect(sent.text).toContain('Salon <Pro> & cuisine');
+  });
+});
+
+describe('EmailService.sendTrialEndingSoonEmail', () => {
+  let service: EmailService;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    brevoClientMock.sendTransactionalEmail.mockResolvedValue(undefined);
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        EmailService,
+        { provide: BrevoClientService, useValue: brevoClientMock },
+      ],
+    }).compile();
+
+    service = module.get(EmailService);
+  });
+
+  it('mentionne le nombre de jours restants et le prix qui sera facturé', async () => {
+    await service.sendTrialEndingSoonEmail('utilisateur@example.fr', {
+      daysRemaining: 3,
+      priceEuros: 9.99,
+      manageSubscriptionUrl: 'https://chiffreo.fr/subscription',
+    });
+
+    const [sent] = brevoClientMock.sendTransactionalEmail.mock.calls[0] as [
+      SentEmail,
+    ];
+    expect(sent.subject).toContain('3 jours');
+    expect(sent.html).toContain('9,99 €');
+    expect(sent.html).toContain('https://chiffreo.fr/subscription');
+  });
+
+  it("accorde le singulier quand il ne reste qu'un jour", async () => {
+    await service.sendTrialEndingSoonEmail('utilisateur@example.fr', {
+      daysRemaining: 1,
+      priceEuros: 9.99,
+      manageSubscriptionUrl: 'https://chiffreo.fr/subscription',
+    });
+
+    const [sent] = brevoClientMock.sendTransactionalEmail.mock.calls[0] as [
+      SentEmail,
+    ];
+    expect(sent.subject).toContain('1 jour');
+    expect(sent.subject).not.toContain('1 jours');
+  });
+});

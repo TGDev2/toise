@@ -16,6 +16,22 @@ import {
   buildReferralCreditEarnedEmail,
   ReferralCreditEarnedEmailData,
 } from './templates/referral-credit-earned.template';
+import {
+  buildOnboardingD1Email,
+  OnboardingD1EmailData,
+} from './templates/onboarding-d1.template';
+import {
+  buildOnboardingD3Email,
+  OnboardingD3EmailData,
+} from './templates/onboarding-d3.template';
+import {
+  buildProjectAbandonedEmail,
+  ProjectAbandonedEmailData,
+} from './templates/project-abandoned.template';
+import {
+  buildTrialEndingSoonEmail,
+  TrialEndingSoonEmailData,
+} from './templates/trial-ending-soon.template';
 
 @Injectable()
 export class EmailService {
@@ -50,6 +66,38 @@ export class EmailService {
     data: ReferralCreditEarnedEmailData,
   ): Promise<void> {
     const { subject, html, text } = buildReferralCreditEarnedEmail(data);
+    await this.brevoClient.sendTransactionalEmail({ to, subject, html, text });
+  }
+
+  async sendOnboardingD1Email(
+    to: string,
+    data: OnboardingD1EmailData,
+  ): Promise<void> {
+    const { subject, html, text } = buildOnboardingD1Email(data);
+    await this.brevoClient.sendTransactionalEmail({ to, subject, html, text });
+  }
+
+  async sendOnboardingD3Email(
+    to: string,
+    data: OnboardingD3EmailData,
+  ): Promise<void> {
+    const { subject, html, text } = buildOnboardingD3Email(data);
+    await this.brevoClient.sendTransactionalEmail({ to, subject, html, text });
+  }
+
+  async sendProjectAbandonedEmail(
+    to: string,
+    data: ProjectAbandonedEmailData,
+  ): Promise<void> {
+    const { subject, html, text } = buildProjectAbandonedEmail(data);
+    await this.brevoClient.sendTransactionalEmail({ to, subject, html, text });
+  }
+
+  async sendTrialEndingSoonEmail(
+    to: string,
+    data: TrialEndingSoonEmailData,
+  ): Promise<void> {
+    const { subject, html, text } = buildTrialEndingSoonEmail(data);
     await this.brevoClient.sendTransactionalEmail({ to, subject, html, text });
   }
 }

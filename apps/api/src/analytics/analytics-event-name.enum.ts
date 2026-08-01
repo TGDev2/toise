@@ -18,6 +18,12 @@ export enum AnalyticsEventName {
   REFERRAL_REDEEMED = 'referral_redeemed',
   REFERRAL_CREDIT_GRANTED = 'referral_credit_granted',
 
+  // PLAT-2 : e-mails de cycle de vie
+  ONBOARDING_D1_EMAIL_SENT = 'onboarding_d1_email_sent',
+  ONBOARDING_D3_EMAIL_SENT = 'onboarding_d3_email_sent',
+  PROJECT_ABANDONED_EMAIL_SENT = 'project_abandoned_email_sent',
+  TRIAL_ENDING_EMAIL_SENT = 'trial_ending_email_sent',
+
   // Événements existants (envoyés uniquement depuis le client, en l'état authentifié)
   PAYWALL_SHOWN = 'paywall_shown',
   PAYWALL_CLICKED = 'paywall_clicked',
