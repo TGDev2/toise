@@ -21,6 +21,7 @@ import { PriceComparisonModule } from './price-comparison/price-comparison.modul
 import { CompanyProfilesModule } from './company-profiles/company-profiles.module';
 import { ClientsModule } from './clients/clients.module';
 import { QuotesModule } from './quotes/quotes.module';
+import { SiteTrackingModule } from './site-tracking/site-tracking.module';
 import { CommunityModule } from './community/community.module';
 import configuration from './config/configuration';
 import { validate } from './config/env.validation';
@@ -65,6 +66,7 @@ import { validate } from './config/env.validation';
     CompanyProfilesModule,
     ClientsModule,
     QuotesModule,
+    SiteTrackingModule,
     CommunityModule,
   ],
   controllers: [AppController],

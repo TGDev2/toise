@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { ProjectSummary, WORK_TYPE_LABELS } from '@/lib/project-types';
 import { StatusBadge } from './StatusBadge';
 
@@ -27,6 +28,8 @@ function getProjectRoute(project: ProjectSummary): string {
 
 export function ProjectCard({ project, onDelete }: ProjectCardProps) {
   const router = useRouter();
+  const { appUser } = useAuth();
+  const isContractor = appUser?.subscription_tier?.startsWith('contractor') ?? false;
   const workTypeLabel =
     project.work_type && WORK_TYPE_LABELS[project.work_type]
       ? WORK_TYPE_LABELS[project.work_type]
@@ -113,6 +116,15 @@ export function ProjectCard({ project, onDelete }: ProjectCardProps) {
             className="rounded-full border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-700 hover:-translate-y-0.5 hover:bg-emerald-50"
           >
             Partager dans la communauté
+          </button>
+        )}
+        {isContractor && (
+          <button
+            type="button"
+            onClick={() => router.push(`/projects/${project.id}/site-tracking`)}
+            className="rounded-full border border-stone-300 px-4 py-2 text-sm font-semibold text-stone-700 hover:-translate-y-0.5 hover:bg-stone-50"
+          >
+            Suivi de chantier
           </button>
         )}
         <button

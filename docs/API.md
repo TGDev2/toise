@@ -31,6 +31,7 @@
 - [Company Profiles](#company-profiles)
 - [Clients](#clients)
 - [Quotes](#quotes)
+- [Suivi de chantier](#suivi-de-chantier)
 - [Community](#community)
 
 ---
@@ -1298,6 +1299,81 @@ Exporter un devis en PDF.
 Supprimer un devis.
 
 **Auth :** Requise (propriétaire uniquement) | **Feature gate :** `export_devis`
+
+**Réponses :** `204 No Content` | `404 Not Found` | `403 Forbidden`
+
+---
+
+## Suivi de chantier
+
+> Toutes les routes de suivi de chantier nécessitent la feature gate `site_tracking` (tier Contractor Standard+).
+
+### `GET /projects/:id/milestones`
+
+Lister les jalons d'un projet, triés par `sort_order`.
+
+**Auth :** Requise (propriétaire uniquement) | **Feature gate :** `site_tracking`
+
+**Réponses :** `200 OK` | `404 Not Found` | `403 Forbidden`
+
+---
+
+### `POST /projects/:id/milestones`
+
+Créer un jalon.
+
+**Auth :** Requise (propriétaire uniquement) | **Feature gate :** `site_tracking`
+
+**Body :**
+```json
+{
+  "label": "Démolition",
+  "planned_date": "2026-08-15"
+}
+```
+
+| Champ | Type | Requis | Validation |
+|-------|------|--------|------------|
+| `label` | string | oui | 1-255 caractères |
+| `planned_date` | date (ISO) | non | — |
+| `sort_order` | integer | non | ≥ 0, défaut = nombre de jalons existants |
+
+**Réponses :** `201 Created` | `404 Not Found` | `403 Forbidden`
+
+---
+
+### `PATCH /projects/:id/milestones/:milestoneId`
+
+Mettre à jour un jalon (libellé, statut, dates, ordre).
+
+**Auth :** Requise (propriétaire uniquement) | **Feature gate :** `site_tracking`
+
+**Body :**
+```json
+{
+  "status": "done"
+}
+```
+
+| Champ | Type | Requis | Validation |
+|-------|------|--------|------------|
+| `label` | string | non | 1-255 caractères |
+| `status` | enum | non | `pending`, `in_progress`, `done` |
+| `planned_date` | date (ISO) | non | — |
+| `actual_date` | date (ISO) | non | — |
+| `sort_order` | integer | non | ≥ 0 |
+
+Un jalon dont le statut passe à `done` sans `actual_date` fournie reçoit automatiquement la date du jour.
+
+**Réponses :** `200 OK` | `404 Not Found` | `403 Forbidden`
+
+---
+
+### `DELETE /projects/:id/milestones/:milestoneId`
+
+Supprimer un jalon.
+
+**Auth :** Requise (propriétaire uniquement) | **Feature gate :** `site_tracking`
 
 **Réponses :** `204 No Content` | `404 Not Found` | `403 Forbidden`
 

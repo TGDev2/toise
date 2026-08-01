@@ -7,6 +7,13 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
+const mockAuth: { appUser: { subscription_tier: string } | null } = {
+  appUser: null,
+};
+jest.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => mockAuth,
+}));
+
 const baseProject: ProjectSummary = {
   id: 'test-uuid',
   name: 'Rénovation salon',
@@ -23,6 +30,7 @@ describe('ProjectCard', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockAuth.appUser = null;
   });
 
   it('renders project name and room', () => {
@@ -76,5 +84,17 @@ describe('ProjectCard', () => {
     render(<ProjectCard project={baseProject} onDelete={onDelete} />);
     fireEvent.click(screen.getByText('Supprimer'));
     expect(onDelete).toHaveBeenCalledWith('test-uuid');
+  });
+
+  it('does not render the site tracking entry point for non-contractor users', () => {
+    render(<ProjectCard project={baseProject} onDelete={onDelete} />);
+    expect(screen.queryByText('Suivi de chantier')).not.toBeInTheDocument();
+  });
+
+  it('navigates to site tracking for contractor users', () => {
+    mockAuth.appUser = { subscription_tier: 'contractor_standard' };
+    render(<ProjectCard project={baseProject} onDelete={onDelete} />);
+    fireEvent.click(screen.getByText('Suivi de chantier'));
+    expect(mockPush).toHaveBeenCalledWith('/projects/test-uuid/site-tracking');
   });
 });
