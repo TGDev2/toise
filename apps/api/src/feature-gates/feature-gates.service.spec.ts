@@ -46,6 +46,13 @@ describe('FeatureGatesService', () => {
       ['contractor_standard', SubscriptionTier.CONTRACTOR_PREMIUM, true],
       ['contractor_premium', SubscriptionTier.CONTRACTOR_STANDARD, false],
       ['contractor_premium', SubscriptionTier.CONTRACTOR_PREMIUM, true],
+      // BACKLOG PLAT-6 : `enterprise` domine l'échelle et ouvre donc aussi tout
+      // ce qu'ouvre Premium. Sans son rang, `TIER_RANK[…] ?? 0` le ferait passer
+      // pour `free` et le refuserait partout.
+      ['contractor_premium', SubscriptionTier.ENTERPRISE, true],
+      ['enterprise', SubscriptionTier.ENTERPRISE, true],
+      ['enterprise', SubscriptionTier.CONTRACTOR_PREMIUM, false],
+      ['enterprise', SubscriptionTier.FREE, false],
     ])(
       'gate min_tier=%s + user tier=%s -> allowed=%s',
       async (minTier, userTier, expected) => {

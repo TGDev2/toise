@@ -11,6 +11,9 @@ const TIER_RANK: Record<string, number> = {
   [SubscriptionTier.CONTRACTOR_ESSENTIEL]: 2,
   [SubscriptionTier.CONTRACTOR_STANDARD]: 3,
   [SubscriptionTier.CONTRACTOR_PREMIUM]: 4,
+  // Enterprise domine l'échelle : un contrat annuel ouvre tout ce qu'ouvre le
+  // palier Premium, plus les gates qui lui sont propres (BACKLOG PLAT-6 D2).
+  [SubscriptionTier.ENTERPRISE]: 5,
 };
 
 const CACHE_TTL_MS = 60_000;

@@ -25,6 +25,7 @@ export class UpsertFeatureGateDto {
     'contractor_essentiel',
     'contractor_standard',
     'contractor_premium',
+    'enterprise',
   ])
   min_tier?: string;
 

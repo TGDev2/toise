@@ -12,6 +12,7 @@ import {
   OrganizationMembership,
   OrganizationRole,
 } from './entities/organization-membership.entity';
+import { EnterpriseAgreement } from '../enterprise/entities/enterprise-agreement.entity';
 import { OrgContextService } from './org-context.service';
 
 function makeUser(overrides: Partial<User> = {}): User {
@@ -55,11 +56,15 @@ describe('OrgContextService', () => {
     create: jest.fn(),
     save: jest.fn(),
   };
+  const agreementsRepo = { count: jest.fn() };
 
   beforeEach(async () => {
     jest.clearAllMocks();
     orgsRepo.create.mockImplementation((v: unknown) => v);
     membershipsRepo.create.mockImplementation((v: unknown) => v);
+    // Défaut : aucune organisation sous contrat Enterprise (PLAT-6 D1). Les cas
+    // qui en veulent un le posent explicitement.
+    agreementsRepo.count.mockResolvedValue(0);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -69,6 +74,10 @@ describe('OrgContextService', () => {
         {
           provide: getRepositoryToken(OrganizationMembership),
           useValue: membershipsRepo,
+        },
+        {
+          provide: getRepositoryToken(EnterpriseAgreement),
+          useValue: agreementsRepo,
         },
       ],
     }).compile();
@@ -195,6 +204,42 @@ describe('OrgContextService', () => {
       expect(scope.effectiveTier).toBe(SubscriptionTier.CONTRACTOR_PREMIUM);
     });
 
+    it('est « enterprise » quand un contrat courant couvre l’organisation (PLAT-6 D1)', async () => {
+      // Le contrat est porté par l'organisation : il l'emporte sur le palier
+      // Stripe du propriétaire, qui peut très bien être resté `free`.
+      const user = makeUser({ subscription_tier: SubscriptionTier.FREE });
+      orgsRepo.findOne.mockResolvedValue(makeOrg());
+      agreementsRepo.count.mockResolvedValue(1);
+
+      const scope = await service.resolveForUser(user);
+
+      expect(scope.effectiveTier).toBe(SubscriptionTier.ENTERPRISE);
+    });
+
+    it('ne retient qu’un contrat actif dont la période couvre aujourd’hui', async () => {
+      orgsRepo.findOne.mockResolvedValue(makeOrg());
+
+      await service.resolveForUser(makeUser());
+
+      const [args] = agreementsRepo.count.mock.calls[0] as [
+        { where: { status: string; organization_id: string } },
+      ];
+      expect(args.where.status).toBe('active');
+      expect(args.where.organization_id).toBe('org-perso');
+      expect(args.where).toHaveProperty('starts_at');
+      expect(args.where).toHaveProperty('ends_at');
+    });
+
+    it('retombe sur le palier du propriétaire quand le contrat a expiré', async () => {
+      const user = makeUser({ subscription_tier: SubscriptionTier.PRO });
+      orgsRepo.findOne.mockResolvedValue(makeOrg());
+      agreementsRepo.count.mockResolvedValue(0);
+
+      const scope = await service.resolveForUser(user);
+
+      expect(scope.effectiveTier).toBe(SubscriptionTier.PRO);
+    });
+
     it('retombe sur free si le propriétaire est introuvable (fail-closed)', async () => {
       const user = makeUser({ active_organization_id: 'org-employeur' });
       membershipsRepo.findOne.mockResolvedValue({
@@ -212,6 +257,51 @@ describe('OrgContextService', () => {
       const scope = await service.resolveForUser(user);
 
       expect(scope.effectiveTier).toBe(SubscriptionTier.FREE);
+    });
+  });
+
+  describe('resolveTierForOrganization — chemin machine (clés d’API)', () => {
+    function stubOwnerTier(tier: SubscriptionTier | null) {
+      const qb = {
+        innerJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        getRawOne: jest
+          .fn()
+          .mockResolvedValue(tier ? { subscription_tier: tier } : undefined),
+      };
+      orgsRepo.createQueryBuilder = jest.fn().mockReturnValue(qb);
+      return qb;
+    }
+
+    it('applique la même règle Enterprise que le chemin humain', async () => {
+      // Elle vit à un seul endroit : sans ce test, les deux chemins pourraient
+      // diverger au premier changement — ce que le doc-comment de PLAT-5 interdit.
+      const qb = stubOwnerTier(SubscriptionTier.FREE);
+      agreementsRepo.count.mockResolvedValue(1);
+
+      const tier = await service.resolveTierForOrganization('org-1');
+
+      expect(tier).toBe(SubscriptionTier.ENTERPRISE);
+      expect(qb.getRawOne).not.toHaveBeenCalled();
+    });
+
+    it('retombe sur le palier du propriétaire hors contrat', async () => {
+      stubOwnerTier(SubscriptionTier.CONTRACTOR_PREMIUM);
+      agreementsRepo.count.mockResolvedValue(0);
+
+      await expect(service.resolveTierForOrganization('org-1')).resolves.toBe(
+        SubscriptionTier.CONTRACTOR_PREMIUM,
+      );
+    });
+
+    it('retombe sur free quand l’organisation est introuvable (fail-closed)', async () => {
+      stubOwnerTier(null);
+      agreementsRepo.count.mockResolvedValue(0);
+
+      await expect(service.resolveTierForOrganization('org-x')).resolves.toBe(
+        SubscriptionTier.FREE,
+      );
     });
   });
 });

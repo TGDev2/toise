@@ -19,6 +19,7 @@ export const MONTHLY_QUOTA_BY_TIER: Record<SubscriptionTier, number> = {
   [SubscriptionTier.CONTRACTOR_ESSENTIEL]: 0,
   [SubscriptionTier.CONTRACTOR_STANDARD]: 0,
   [SubscriptionTier.CONTRACTOR_PREMIUM]: 10_000,
+  [SubscriptionTier.ENTERPRISE]: 100_000,
 };
 
 export function monthlyQuotaFor(tier: SubscriptionTier): number {

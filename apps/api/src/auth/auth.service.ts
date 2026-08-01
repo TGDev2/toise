@@ -13,6 +13,7 @@ import { AuthProvider, User } from '../users/entities/user.entity';
 import { RegisterDto } from './dto/register.dto';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
+import { SsoSessionService } from './sso-session.service';
 
 @Injectable()
 export class AuthService {
@@ -24,6 +25,7 @@ export class AuthService {
     private readonly companyProfilesService: CompanyProfilesService,
     private readonly analyticsService: AnalyticsService,
     private readonly orgContext: OrgContextService,
+    private readonly ssoSession: SsoSessionService,
   ) {}
 
   async register(dto: RegisterDto): Promise<{ user: User; message: string }> {
@@ -99,6 +101,14 @@ export class AuthService {
       this.analyticsService.track(AnalyticsEventName.ACCOUNT_CREATED, user.id, {
         auth_provider: user.auth_provider,
       });
+    }
+
+    // Rattachement à l'organisation dont l'IdP a émis cette session (PLAT-6 D6).
+    // Rien à faire pour les autres fournisseurs : un `provider_id` inconnu ne
+    // rattache à rien, et l'utilisateur reste dans son espace personnel.
+    const signInProvider = decodedToken.firebase?.sign_in_provider;
+    if (SsoSessionService.isSsoProvider(signInProvider)) {
+      await this.ssoSession.provisionFromSsoLogin(user, signInProvider);
     }
 
     return user;
@@ -180,14 +190,21 @@ export class AuthService {
   }
 
   private resolveProvider(token: DecodedIdToken): AuthProvider {
-    if (token.firebase?.sign_in_provider === 'anonymous') {
+    const signInProvider = token.firebase?.sign_in_provider;
+    if (signInProvider === 'anonymous') {
       return AuthProvider.ANONYMOUS;
     }
-    if (token.firebase?.sign_in_provider === 'google.com') {
+    if (signInProvider === 'google.com') {
       return AuthProvider.GOOGLE;
     }
-    if (token.firebase?.sign_in_provider === 'apple.com') {
+    if (signInProvider === 'apple.com') {
       return AuthProvider.APPLE;
+    }
+    // Les fournisseurs fédérés (`saml.*` / `oidc.*`) retombaient jusqu'ici sur
+    // `email`, ce qui rendait une connexion d'entreprise indiscernable d'un
+    // mot de passe dans les analytics comme à l'écran (PLAT-6).
+    if (SsoSessionService.isSsoProvider(signInProvider)) {
+      return AuthProvider.SSO;
     }
     return AuthProvider.EMAIL;
   }

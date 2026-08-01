@@ -31,6 +31,7 @@ import { LogbookModule } from './logbook/logbook.module';
 import { LifecycleEmailsModule } from './lifecycle-emails/lifecycle-emails.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { ApiKeysModule } from './api-keys/api-keys.module';
+import { EnterpriseModule } from './enterprise/enterprise.module';
 import configuration from './config/configuration';
 import { validate } from './config/env.validation';
 
@@ -84,6 +85,7 @@ import { validate } from './config/env.validation';
     LifecycleEmailsModule,
     OrganizationsModule,
     ApiKeysModule,
+    EnterpriseModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

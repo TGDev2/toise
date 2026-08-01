@@ -40,6 +40,8 @@ Les routes `/partner/*` s'authentifient à la place avec une **clé d'API**
 - [Organisations](#organisations)
 - [API publique (clés)](#api-publique-clés)
 - [Clés d'API (gestion)](#clés-dapi-gestion)
+- [Enterprise — SSO](#enterprise--sso)
+- [Enterprise — contrat et SLA](#enterprise--contrat-et-sla)
 
 ---
 
@@ -1989,14 +1991,289 @@ valide est effacée en même temps.
 
 ---
 
+## Enterprise — SSO
+
+Fédération d'identité SAML / OIDC par organisation (BACKLOG PLAT-6).
+
+> **Le rattachement d'une session à une organisation se fait par `provider_id`, jamais par le
+> domaine de l'adresse affirmée.** `provider_id` est émis par Chiffréo au moment où le
+> fournisseur est créé chez Google Cloud Identity Platform : un jeton qui le porte prouve que
+> l'assertion vient de l'IdP de cette organisation-là. Les domaines ne servent qu'à la
+> **découverte**, et doivent être prouvés par DNS avant de router quoi que ce soit.
+
+**Feature gate :** `enterprise_sso` (palier `enterprise`, ouvert par un contrat annuel actif —
+cf. [Enterprise — contrat et SLA](#enterprise--contrat-et-sla)).
+
+**Aucun secret d'IdP n'est stocké.** Certificat X.509, `client_secret` et URL de SSO transitent
+vers GCIP et ne sont jamais persistés par Chiffréo.
+
+| Limite | Valeur | Portée |
+|--------|--------|--------|
+| Découverte | 20 req/minute | par IP |
+| Surface organisation | 30 req/minute | par IP |
+| Domaines vérifiés | 1 organisation par domaine | global |
+| Connexions | 1 par organisation | global |
+
+Codes `error` propres à cette section : `SSO_REQUIRED`, `SSO_DOMAIN_NOT_VERIFIED`,
+`SSO_CONNECTION_EXISTS`, `SSO_CONNECTION_NOT_ACTIVE`, `SSO_PROVIDER_DELETION_FAILED`,
+`DOMAIN_ALREADY_VERIFIED`, `PUBLIC_EMAIL_DOMAIN_REFUSED`.
+
+---
+
+### `GET /sso/discover`
+
+Résout l'adresse professionnelle d'un utilisateur vers le fournisseur d'identité de son
+organisation. Première étape du flux SP-initiated, appelée avant toute authentification.
+
+**Auth :** Aucune | **Rate limit :** 20 req/min par IP
+
+| Paramètre | Type | Requis | Validation |
+|-----------|------|--------|------------|
+| `email` | string | oui | adresse dont le domaine est vérifié |
+
+**Réponses :** `200 OK` — `{ provider_id, protocol }` | `400 Bad Request` (adresse absente ou inexploitable) | `404 Not Found` (aucune connexion SSO active pour ce domaine)
+
+---
+
+### `GET /enterprise/sso/connection`
+
+Rend la connexion SSO de l'organisation active et l'état de ses domaines.
+
+**Auth :** Requise | **Feature gate :** `enterprise_sso`
+
+**Réponses :** `200 OK` — `{ id, provider_id, protocol, display_name, status, enforced, default_role, provisioning_error, domains[] }` | `404 Not Found` (aucune connexion)
+
+---
+
+### `PATCH /enterprise/sso/connection`
+
+Bascule l'application obligatoire du SSO. Une fois `enforced`, tout membre dont la session ne
+vient pas de l'IdP reçoit `403 SSO_REQUIRED` — **sauf le propriétaire de l'organisation**,
+délibérément exempté pour qu'un IdP mal configuré ne rende jamais l'organisation inaccessible.
+Restent également accessibles : `POST /auth/sync`, `GET /auth/me`, `GET /organizations/mine` et
+`POST /organizations/:id/activate`, sans quoi un membre bloqué n'aurait aucune sortie.
+
+**Auth :** Requise (propriétaire ou administrateur) | **Feature gate :** `enterprise_sso`
+
+**Body :**
+```json
+{ "enforced": true }
+```
+
+| Champ | Type | Requis | Validation |
+|-------|------|--------|------------|
+| `enforced` | boolean | non | — |
+
+**Réponses :** `200 OK` | `403 Forbidden` (membre simple) | `409 Conflict` `SSO_CONNECTION_NOT_ACTIVE`
+
+---
+
+### `POST /enterprise/sso/domains`
+
+Déclare un domaine de découverte. Le domaine n'oriente aucune connexion tant qu'il n'est pas
+prouvé. Les domaines de messagerie grand public sont refusés.
+
+**Auth :** Requise (propriétaire ou administrateur) | **Feature gate :** `enterprise_sso`
+
+**Body :**
+```json
+{ "domain": "acme.com" }
+```
+
+| Champ | Type | Requis | Validation |
+|-------|------|--------|------------|
+| `domain` | string | oui | domaine valide, 1 à 255 caractères, non public |
+
+**Réponses :** `201 Created` — `{ id, domain, verified, expected_dns_record }` | `400 Bad Request` `PUBLIC_EMAIL_DOMAIN_REFUSED` | `409 Conflict` `DOMAIN_ALREADY_VERIFIED`
+
+---
+
+### `POST /enterprise/sso/domains/:id/verify`
+
+Vérifie la possession du domaine via l'enregistrement TXT
+`chiffreo-verification=<jeton>` publié sur `_chiffreo.<domaine>` ou sur le domaine lui-même.
+Rejouable : la propagation DNS n'est pas instantanée et le jeton n'est jamais regénéré.
+
+**Auth :** Requise (propriétaire ou administrateur) | **Feature gate :** `enterprise_sso`
+
+**Réponses :** `200 OK` | `400 Bad Request` `SSO_DOMAIN_NOT_VERIFIED` | `404 Not Found` | `409 Conflict` `DOMAIN_ALREADY_VERIFIED`
+
+---
+
+### `DELETE /enterprise/sso/domains/:id`
+
+**Auth :** Requise (propriétaire ou administrateur) | **Feature gate :** `enterprise_sso`
+
+**Réponses :** `204 No Content` | `404 Not Found`
+
+---
+
+### `GET /admin/enterprise/sso/connections`
+
+**Auth :** Requise (administrateur plateforme)
+
+**Réponses :** `200 OK` — liste des connexions et de leurs domaines
+
+---
+
+### `POST /admin/enterprise/sso/connections`
+
+Crée le fournisseur d'identité chez GCIP et la connexion qui le rattache à l'organisation.
+Réservé aux administrateurs plateforme : la requête transporte le certificat ou le
+`client_secret` du client. La ligne est écrite avant l'appel à GCIP ; si celui-ci échoue, la
+connexion reste en `failed` avec le motif dans `provisioning_error`.
+
+**Auth :** Requise (administrateur plateforme)
+
+**Body (SAML) :**
+```json
+{
+  "organization_id": "uuid",
+  "protocol": "saml",
+  "display_name": "Acme SSO",
+  "idp_entity_id": "https://idp.acme.com/entity",
+  "sso_url": "https://idp.acme.com/sso",
+  "x509_certificate": "-----BEGIN CERTIFICATE-----…"
+}
+```
+
+| Champ | Type | Requis | Validation |
+|-------|------|--------|------------|
+| `organization_id` | uuid | oui | — |
+| `protocol` | string | oui | `saml` ou `oidc` |
+| `display_name` | string | oui | 1 à 100 caractères |
+| `default_role` | string | non | `admin` ou `member` (jamais `owner`) |
+| `idp_entity_id` | string | si `saml` | 1 à 1024 caractères |
+| `sso_url` | string | si `saml` | URL **https** |
+| `x509_certificate` | string | si `saml` | 1 à 8192 caractères |
+| `issuer` | string | si `oidc` | URL **https** |
+| `client_id` | string | si `oidc` | 1 à 512 caractères |
+| `client_secret` | string | si `oidc` | 1 à 512 caractères |
+
+**Réponses :** `201 Created` | `400 Bad Request` (paramètres d'IdP incomplets) | `409 Conflict` `SSO_CONNECTION_EXISTS`
+
+---
+
+### `DELETE /admin/enterprise/sso/connections/:id`
+
+Supprime le fournisseur chez GCIP **puis** la connexion. Si GCIP refuse, la ligne est conservée
+et l'erreur remonte, pour ne jamais perdre la trace d'un fournisseur encore vivant.
+
+**Auth :** Requise (administrateur plateforme)
+
+**Réponses :** `204 No Content` | `404 Not Found` | `409 Conflict` `SSO_PROVIDER_DELETION_FAILED`
+
+---
+
+## Enterprise — contrat et SLA
+
+Le palier `enterprise` n'est pas achetable en libre-service : il est porté par un **contrat
+annuel négocié sur devis**, rattaché à l'organisation et non à une personne. Tant qu'un contrat
+`active` couvre la date du jour, l'organisation résout le palier `enterprise` — indépendamment
+du plan Stripe de son propriétaire. Les documents comptables (devis signé, facture annuelle)
+sont émis hors produit et référencés par `quote_reference` / `purchase_order_reference`.
+
+**Feature gate :** aucune sur la lecture — une organisation dont le contrat vient d'expirer doit
+pouvoir constater pourquoi elle a perdu ses capacités.
+
+Codes `error` propres à cette section : `ENTERPRISE_AGREEMENT_OVERLAP`.
+
+---
+
+### `GET /enterprise/agreement`
+
+Contrat courant de l'organisation active, engagements de service compris.
+
+**Auth :** Requise
+
+**Réponses :** `200 OK` — `{ id, status, starts_at, ends_at, is_current, days_until_expiry, annual_amount_cents, currency, quote_reference, purchase_order_reference, billing_contact_email, sla: { uptime_target, support_response_hours, support_email }, dedicated_environment, dedicated_environment_region }` | `404 Not Found` (aucun contrat)
+
+---
+
+### `GET /admin/enterprise/agreements`
+
+**Auth :** Requise (administrateur plateforme)
+
+| Paramètre | Type | Requis | Validation |
+|-----------|------|--------|------------|
+| `expiring_within_days` | integer | non | restreint aux contrats actifs arrivant à échéance dans ce délai |
+
+**Réponses :** `200 OK`
+
+---
+
+### `POST /admin/enterprise/agreements`
+
+Crée un contrat en `draft` : il n'habilite rien tant qu'il n'est pas passé en `active`.
+
+**Auth :** Requise (administrateur plateforme)
+
+**Body :**
+```json
+{
+  "organization_id": "uuid",
+  "starts_at": "2026-09-01T00:00:00.000Z",
+  "ends_at": "2027-08-31T00:00:00.000Z",
+  "annual_amount_cents": 1200000,
+  "quote_reference": "DEV-2026-014",
+  "billing_contact_email": "compta@acme.com",
+  "sla_uptime_target": 99.9,
+  "sla_support_response_hours": 4
+}
+```
+
+| Champ | Type | Requis | Validation |
+|-------|------|--------|------------|
+| `organization_id` | uuid | oui | — |
+| `starts_at` / `ends_at` | string | oui | ISO 8601 ; `ends_at` strictement postérieure |
+| `annual_amount_cents` | integer | oui | ≥ 0 |
+| `currency` | string | non | 3 lettres, `EUR` par défaut |
+| `quote_reference` | string | oui | 1 à 100 caractères |
+| `purchase_order_reference` | string | non | 1 à 100 caractères |
+| `billing_contact_email` | string | oui | e-mail |
+| `sla_uptime_target` | number | non | 0 à 100, 2 décimales |
+| `sla_support_response_hours` | integer | non | 1 à 720 |
+| `sla_support_email` | string | non | e-mail |
+| `dedicated_environment` | boolean | non | déclaratif — aucune infrastructure n'est provisionnée |
+| `dedicated_environment_region` | string | non | 1 à 50 caractères |
+| `notes` | string | non | 1 à 2000 caractères, jamais rendues à l'organisation |
+
+**Réponses :** `201 Created` | `400 Bad Request` (période inversée) | `409 Conflict` `ENTERPRISE_AGREEMENT_OVERLAP`
+
+---
+
+### `PATCH /admin/enterprise/agreements/:id`
+
+Mêmes champs que la création, tous optionnels, plus `status` (`draft` / `active` /
+`terminated`). `organization_id` est volontairement absent : un contrat ne se déplace pas d'une
+organisation à l'autre. **Le renouvellement se fait en repoussant `ends_at`**, pas en créant un
+second contrat — une organisation ne peut avoir qu'un seul contrat `active`.
+
+**Auth :** Requise (administrateur plateforme)
+
+**Réponses :** `200 OK` | `400 Bad Request` | `404 Not Found` | `409 Conflict` `ENTERPRISE_AGREEMENT_OVERLAP`
+
+---
+
+### `POST /admin/enterprise/agreements/:id/terminate`
+
+Passe le contrat en `terminated` ; le palier retombe au prochain appel. La ligne est conservée —
+l'historique contractuel ne se supprime pas.
+
+**Auth :** Requise (administrateur plateforme)
+
+**Réponses :** `200 OK` | `404 Not Found`
+
+---
+
 ## Codes d'erreur communs
 
 | Code | Description |
 |------|-------------|
 | `400` | Requête invalide (validation échouée, propriétés inconnues) |
 | `401` | Non authentifié (token Firebase manquant ou invalide, clé d'API invalide ou révoquée) |
-| `403` | Non autorisé (pas propriétaire, pas admin, feature gate bloquée) |
+| `403` | Non autorisé (pas propriétaire, pas admin, feature gate bloquée, SSO exigé — `SSO_REQUIRED`) |
 | `404` | Ressource non trouvée |
-| `409` | Conflit (email déjà utilisé, ressource dupliquée, rotation de clé en cours) |
+| `409` | Conflit (email déjà utilisé, ressource dupliquée, rotation de clé en cours, contrat Enterprise déjà actif) |
 | `429` | Rate limit dépassé (`RATE_LIMIT_EXCEEDED`) ou quota mensuel d'API atteint (`QUOTA_EXCEEDED`) — voir l'en-tête `Retry-After` |
 | `500` | Erreur interne du serveur |

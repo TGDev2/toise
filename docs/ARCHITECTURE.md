@@ -63,7 +63,7 @@ Chiffréo est un **monorepo pnpm** composé de 3 applications communicant via RE
 
 ## Modules backend (NestJS)
 
-L'API est organisée en **17 modules NestJS** indépendants :
+L'API est organisée en **19 modules NestJS** indépendants :
 
 ```
 AppModule
@@ -85,8 +85,13 @@ AppModule
 ├── ClientsModule           # Gestion clients (tier Contractor)
 ├── QuotesModule            # Génération de devis + export PDF
 ├── CommunityModule         # Galerie communautaire, commentaires, likes
-└── OrganizationsModule     # Organisations, membres, rôles, invitations (PLAT-4)
-    └── OrgContextModule    # Résolution de la portée (organisation active + auteur), sans dépendance applicative
+├── OrganizationsModule     # Organisations, membres, rôles, invitations (PLAT-4)
+│   └── OrgContextModule    # Résolution de la portée (organisation active + auteur), sans dépendance applicative
+├── ApiKeysModule           # API publique `/partner`, clés portées par l'organisation, quotas (PLAT-5)
+└── EnterpriseModule        # Contrats annuels, SLA, connexions SSO SAML/OIDC et domaines (PLAT-6)
+                            #   Ce qui arrive à une session au moment de la connexion (rattachement
+                            #   JIT + enforcement) vit dans `auth/sso-session.service.ts` : le graphe
+                            #   de modules reste à sens unique.
 ```
 
 ## Flux de données principaux
@@ -214,7 +219,11 @@ FeatureGateGuard           Lit @RequireFeature('feature_key')
 Accès autorisé / 403 Forbidden
 ```
 
-**Tiers :** `free` < `pro` < `contractor`
+**Tiers :** `free` < `pro` < `contractor_essentiel` < `contractor_standard` < `contractor_premium` < `enterprise`
+
+`enterprise` n'est pas achetable en libre-service : il est ouvert par un contrat annuel actif
+rattaché à l'**organisation** (`enterprise_agreements`, PLAT-6), résolu par `OrgContextService`
+avant tout repli sur le palier du propriétaire.
 
 | Feature Key | Tier minimum |
 |-------------|-------------|
@@ -289,6 +298,8 @@ supplier_price_cache   (cache prix fournisseurs)
 | Feature access | `FeatureGateGuard` + `@RequireFeature()` sur le palier **effectif de l'organisation active** (celui de son propriétaire), pas celui de l'appelant |
 | Ownership | Chaque service vérifie que la ressource appartient à l'**organisation** courante (PLAT-4), résolue côté serveur par `OrgContextService` — jamais depuis un en-tête ou un paramètre client |
 | Rôles d'organisation | `owner` / `admin` / `member` sur `organization_memberships`, orthogonaux au `users.role` (rôle plateforme) |
+| SSO d'entreprise | Une session est rattachée à une organisation par le `provider_id` **émis par nous** chez GCIP, jamais par le domaine de l'adresse affirmée par l'IdP (PLAT-6). Les domaines, prouvés par DNS, ne servent qu'à la découverte |
+| Enforcement SSO | `FirebaseAuthGuard` refuse (`403 SSO_REQUIRED`) une session hors IdP quand l'organisation active l'exige. Le propriétaire est exempté (bris de glace), et `@SsoExempt()` dispense les quatre routes sans lesquelles un membre bloqué n'aurait aucune sortie |
 
 ### Validation et protection
 

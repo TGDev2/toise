@@ -12,6 +12,7 @@ import { UsersService } from '../src/users/users.service';
 import { OrgContextService } from '../src/organizations/org-context.service';
 import { PhotosService } from '../src/photos/photos.service';
 import { FirebaseConfig } from '../src/config/firebase.config';
+import { SsoSessionService } from '../src/auth/sso-session.service';
 import { FeatureGatesService } from '../src/feature-gates/feature-gates.service';
 
 const mockCommunityProjectId = '323e4567-e89b-12d3-a456-426614174000';
@@ -52,6 +53,11 @@ const mockDetail = {
 // d'en-tête Authorization (c'est justement ce qui est testé).
 const firebaseConfigMock = {
   getAuth: () => ({ verifyIdToken: jest.fn() }),
+};
+
+const ssoSessionMock = {
+  assertSessionAllowed: jest.fn(),
+  invalidateEnforcementCache: jest.fn(),
 };
 
 const communityServiceMock = {
@@ -118,6 +124,9 @@ describe('CommunityController (e2e) — accès sans compte (COM-2)', () => {
         { provide: PhotosService, useValue: photosServiceMock },
         { provide: FirebaseConfig, useValue: firebaseConfigMock },
         { provide: FeatureGatesService, useValue: featureGatesServiceMock },
+        // `FirebaseAuthGuard` est laissé réel sur ce contrôleur ; depuis PLAT-6
+        // il consulte la politique SSO, qu'il faut donc doubler ici.
+        { provide: SsoSessionService, useValue: ssoSessionMock },
       ],
     }).compile();
 

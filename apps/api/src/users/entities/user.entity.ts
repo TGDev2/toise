@@ -12,14 +12,23 @@ export enum AuthProvider {
   GOOGLE = 'google',
   APPLE = 'apple',
   ANONYMOUS = 'anonymous',
+  /** Fédération d'identité d'entreprise, SAML ou OIDC (BACKLOG PLAT-6). */
+  SSO = 'sso',
 }
 
+/**
+ * `enterprise` n'est **pas** un plan achetable : il ne figure pas dans `PLANS`
+ * ni dans la liste blanche de `createCheckoutSession`. Il est porté par un
+ * contrat annuel rattaché à l'organisation (`enterprise_agreements`, PLAT-6 D1),
+ * et non par un abonnement Stripe rattaché à une personne.
+ */
 export enum SubscriptionTier {
   FREE = 'free',
   PRO = 'pro',
   CONTRACTOR_ESSENTIEL = 'contractor_essentiel',
   CONTRACTOR_STANDARD = 'contractor_standard',
   CONTRACTOR_PREMIUM = 'contractor_premium',
+  ENTERPRISE = 'enterprise',
 }
 
 export enum UserRole {
