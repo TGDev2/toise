@@ -26,6 +26,7 @@ import {
 import { apiDelete, apiPost, apiPut } from '@/lib/api';
 import { errorHasCode } from '@/lib/errors';
 import { getFirebaseAuth } from '@/lib/firebase';
+import { REFERRAL_CODE_STORAGE_KEY } from '@/lib/referral';
 
 const LOCAL_PROJECTS_KEY = 'chiffreo_local_projects';
 
@@ -105,14 +106,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isGuest = firebaseUser?.isAnonymous ?? false;
 
+  const redeemPendingReferralCode = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+    const code = localStorage.getItem(REFERRAL_CODE_STORAGE_KEY);
+    if (!code) return;
+
+    // Best-effort : l'éligibilité réelle (un seul parrainage, fenêtre de 7
+    // jours) est vérifiée côté serveur, qui ne renvoie jamais d'erreur
+    // bloquante. On efface la clé dans tous les cas pour ne tenter qu'une
+    // fois par lien cliqué.
+    await apiPost('/referrals/redeem', { code }).catch(() => undefined);
+    localStorage.removeItem(REFERRAL_CODE_STORAGE_KEY);
+  }, []);
+
   const syncWithBackend = useCallback(async () => {
     try {
       const user = await apiPost<AppUser>('/auth/sync');
       setAppUser(user);
     } catch {
       setAppUser(null);
+      return;
     }
-  }, []);
+    // Ne doit jamais faire échouer la synchronisation du compte : déjà
+    // best-effort en interne (voir redeemPendingReferralCode).
+    await redeemPendingReferralCode();
+  }, [redeemPendingReferralCode]);
 
   const migrateLocalProjects = useCallback(async () => {
     if (typeof window === 'undefined') return;

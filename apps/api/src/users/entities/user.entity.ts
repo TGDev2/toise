@@ -51,6 +51,19 @@ export class User {
   @Column({ type: 'varchar', length: 128, unique: true })
   firebase_uid!: string;
 
+  /** Code de parrainage propre à cet utilisateur, généré paresseusement (cf. ReferralsService). */
+  @Column({ type: 'varchar', length: 10, unique: true, nullable: true })
+  referral_code!: string | null;
+
+  /** Parrain, posé une seule fois à l'inscription (cf. POST /referrals/redeem). */
+  @Index()
+  @Column({ type: 'uuid', nullable: true })
+  referred_by_user_id!: string | null;
+
+  /** Posé une seule fois, au premier paiement réel du filleul (cf. ReferralsService.handleReferredUserConverted). */
+  @Column({ type: 'timestamptz', nullable: true })
+  referral_converted_at!: Date | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   created_at!: Date;
 

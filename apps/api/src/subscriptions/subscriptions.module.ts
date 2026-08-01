@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from '../users/users.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
+import { ReferralsModule } from '../referrals/referrals.module';
 import { Subscription } from './entities/subscription.entity';
 import { StripeEvent } from './entities/stripe-event.entity';
 import { SubscriptionsService } from './subscriptions.service';
@@ -13,6 +14,7 @@ import { SubscriptionsWebhookController } from './subscriptions.webhook.controll
     TypeOrmModule.forFeature([Subscription, StripeEvent]),
     UsersModule,
     AnalyticsModule,
+    ReferralsModule,
   ],
   controllers: [SubscriptionsController, SubscriptionsWebhookController],
   providers: [SubscriptionsService],

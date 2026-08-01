@@ -11,6 +11,7 @@ import { StripeEvent } from './entities/stripe-event.entity';
 import { UsersService } from '../users/users.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
+import { ReferralsService } from '../referrals/referrals.service';
 
 // Mirrors the sharp mock pattern in photos.service.spec.ts: a fake instance
 // exposing the Stripe SDK surface this service actually calls, returned by
@@ -19,6 +20,7 @@ import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 const mockStripeInstance = {
   customers: { create: jest.fn() },
   checkout: { sessions: { create: jest.fn() } },
+  subscriptions: { retrieve: jest.fn() },
 };
 
 jest.mock('stripe', () =>
@@ -41,6 +43,7 @@ const configServiceMock = {
 
 const subscriptionsRepoMock = {
   findOne: jest.fn(),
+  save: jest.fn(),
 };
 
 const stripeEventsRepoMock = {};
@@ -51,6 +54,11 @@ const usersServiceMock = {
 
 const analyticsServiceMock = {
   track: jest.fn(),
+};
+
+const referralsServiceMock = {
+  handleReferredUserConverted: jest.fn(),
+  applyPendingCreditsForNewCustomer: jest.fn(),
 };
 
 describe('SubscriptionsService.createCheckoutSession', () => {
@@ -74,6 +82,7 @@ describe('SubscriptionsService.createCheckoutSession', () => {
         },
         { provide: UsersService, useValue: usersServiceMock },
         { provide: AnalyticsService, useValue: analyticsServiceMock },
+        { provide: ReferralsService, useValue: referralsServiceMock },
         { provide: ConfigService, useValue: configServiceMock },
       ],
     }).compile();
@@ -146,5 +155,129 @@ describe('SubscriptionsService.createCheckoutSession', () => {
       testUser.id,
       { plan: 'contractor_standard', price_id: 'price_contractor_standard' },
     );
+  });
+
+  it('applies pending referral credits when a new Stripe customer is created (BACKLOG COM-3)', async () => {
+    subscriptionsRepoMock.findOne.mockResolvedValue(null);
+    mockStripeInstance.customers.create.mockResolvedValue({ id: 'cus_new' });
+    mockStripeInstance.checkout.sessions.create.mockResolvedValue({
+      url: 'https://checkout.stripe.com/session',
+    });
+
+    await service.createCheckoutSession(testUser);
+
+    expect(
+      referralsServiceMock.applyPendingCreditsForNewCustomer,
+    ).toHaveBeenCalledWith(testUser.id, 'cus_new');
+  });
+
+  it('does not fail checkout when applying pending referral credits throws (BACKLOG COM-3)', async () => {
+    subscriptionsRepoMock.findOne.mockResolvedValue(null);
+    mockStripeInstance.customers.create.mockResolvedValue({ id: 'cus_new' });
+    mockStripeInstance.checkout.sessions.create.mockResolvedValue({
+      url: 'https://checkout.stripe.com/session',
+    });
+    referralsServiceMock.applyPendingCreditsForNewCustomer.mockRejectedValue(
+      new Error('stripe down'),
+    );
+
+    const result = await service.createCheckoutSession(testUser);
+
+    expect(result).toEqual({ url: 'https://checkout.stripe.com/session' });
+  });
+
+  it('does not create Stripe customer side effects for an existing customer (no referral credit flush)', async () => {
+    subscriptionsRepoMock.findOne.mockResolvedValue({
+      status: SubscriptionStatus.CANCELED,
+      stripe_customer_id: 'cus_existing',
+    });
+    mockStripeInstance.checkout.sessions.create.mockResolvedValue({
+      url: 'https://checkout.stripe.com/session',
+    });
+
+    await service.createCheckoutSession(testUser);
+
+    expect(mockStripeInstance.customers.create).not.toHaveBeenCalled();
+    expect(
+      referralsServiceMock.applyPendingCreditsForNewCustomer,
+    ).not.toHaveBeenCalled();
+  });
+});
+
+describe('SubscriptionsService.handleWebhookEvent (invoice.paid)', () => {
+  let service: SubscriptionsService;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        SubscriptionsService,
+        {
+          provide: getRepositoryToken(Subscription),
+          useValue: subscriptionsRepoMock,
+        },
+        {
+          provide: getRepositoryToken(StripeEvent),
+          useValue: stripeEventsRepoMock,
+        },
+        { provide: UsersService, useValue: usersServiceMock },
+        { provide: AnalyticsService, useValue: analyticsServiceMock },
+        { provide: ReferralsService, useValue: referralsServiceMock },
+        { provide: ConfigService, useValue: configServiceMock },
+      ],
+    }).compile();
+
+    service = module.get(SubscriptionsService);
+  });
+
+  function buildInvoicePaidEvent(stripeSubscriptionId: string) {
+    return {
+      type: 'invoice.paid',
+      data: {
+        object: {
+          parent: {
+            subscription_details: { subscription: stripeSubscriptionId },
+          },
+        },
+      },
+    } as unknown as Parameters<SubscriptionsService['handleWebhookEvent']>[0];
+  }
+
+  it('triggers referral conversion handling for the now-paying user (BACKLOG COM-3)', async () => {
+    subscriptionsRepoMock.findOne.mockResolvedValue({
+      user_id: 'user-1',
+      stripe_subscription_id: 'sub_123',
+    });
+    mockStripeInstance.subscriptions.retrieve.mockResolvedValue({
+      status: 'active',
+      trial_end: null,
+      cancel_at_period_end: false,
+      items: {
+        data: [
+          {
+            price: { id: 'price_pro' },
+            current_period_start: 1700000000,
+            current_period_end: 1702592000,
+          },
+        ],
+      },
+    });
+
+    await service.handleWebhookEvent(buildInvoicePaidEvent('sub_123'));
+
+    expect(
+      referralsServiceMock.handleReferredUserConverted,
+    ).toHaveBeenCalledWith('user-1');
+  });
+
+  it('does nothing when the invoice does not match a known subscription', async () => {
+    subscriptionsRepoMock.findOne.mockResolvedValue(null);
+
+    await service.handleWebhookEvent(buildInvoicePaidEvent('sub_unknown'));
+
+    expect(
+      referralsServiceMock.handleReferredUserConverted,
+    ).not.toHaveBeenCalled();
   });
 });

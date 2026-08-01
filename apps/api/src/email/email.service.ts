@@ -12,6 +12,10 @@ import {
   buildQuoteReminderContractorEmail,
   QuoteReminderContractorEmailData,
 } from './templates/quote-reminder-contractor.template';
+import {
+  buildReferralCreditEarnedEmail,
+  ReferralCreditEarnedEmailData,
+} from './templates/referral-credit-earned.template';
 
 @Injectable()
 export class EmailService {
@@ -38,6 +42,14 @@ export class EmailService {
     data: QuoteReminderContractorEmailData,
   ): Promise<void> {
     const { subject, html, text } = buildQuoteReminderContractorEmail(data);
+    await this.brevoClient.sendTransactionalEmail({ to, subject, html, text });
+  }
+
+  async sendReferralCreditEmail(
+    to: string,
+    data: ReferralCreditEarnedEmailData,
+  ): Promise<void> {
+    const { subject, html, text } = buildReferralCreditEarnedEmail(data);
     await this.brevoClient.sendTransactionalEmail({ to, subject, html, text });
   }
 }

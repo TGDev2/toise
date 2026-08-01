@@ -17,6 +17,7 @@ import { UsersService } from '../users/users.service';
 import { SubscriptionTier } from '../users/entities/user.entity';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
+import { ReferralsService } from '../referrals/referrals.service';
 
 @Injectable()
 export class SubscriptionsService {
@@ -36,6 +37,7 @@ export class SubscriptionsService {
     private readonly stripeEventsRepo: Repository<StripeEvent>,
     private readonly usersService: UsersService,
     private readonly analyticsService: AnalyticsService,
+    private readonly referralsService: ReferralsService,
     private readonly config: ConfigService,
   ) {
     const secretKey = this.config.get<string>('stripe.secretKey');
@@ -129,6 +131,20 @@ export class SubscriptionsService {
         metadata: { user_id: user.id },
       });
       customerId = customer.id;
+
+      // COM-3 : ce parrain a peut-être des crédits de parrainage en attente
+      // (accumulés avant d'avoir jamais eu de customer Stripe) — best-effort,
+      // ne doit jamais faire échouer le checkout en cours.
+      try {
+        await this.referralsService.applyPendingCreditsForNewCustomer(
+          user.id,
+          customerId,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Echec de l'application des crédits de parrainage en attente pour ${user.id}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
     }
 
     const session = await this.stripe.checkout.sessions.create({
@@ -331,6 +347,14 @@ export class SubscriptionsService {
     await this.subscriptionsRepo.save(subscription);
 
     await this.syncSubscriptionTier(subscription.user_id, 'active', priceId);
+
+    // COM-3 : premier paiement réel (pas un simple essai) — déclencheur du
+    // crédit de parrainage. Volontairement non catché : la méthode est
+    // idempotente au retry Stripe, une erreur ici doit continuer à déclencher
+    // releaseWebhookEvent + retry plutôt que d'être avalée silencieusement.
+    await this.referralsService.handleReferredUserConverted(
+      subscription.user_id,
+    );
   }
 
   private async handleInvoicePaymentFailed(

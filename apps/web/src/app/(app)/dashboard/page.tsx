@@ -244,6 +244,11 @@ export default function DashboardPage() {
           <Button onClick={() => setIsComposerOpen((v) => !v)}>
             {isComposerOpen ? 'Fermer le formulaire' : 'Créer un projet'}
           </Button>
+          {appUser && (
+            <Button variant="secondary" onClick={() => router.push('/referrals')}>
+              Parrainage
+            </Button>
+          )}
           <Button variant="secondary" onClick={handleLogout}>
             {isGuest ? 'Quitter le mode invité' : 'Déconnexion'}
           </Button>

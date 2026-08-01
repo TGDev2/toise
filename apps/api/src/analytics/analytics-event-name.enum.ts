@@ -15,6 +15,8 @@ export enum AnalyticsEventName {
   PAYMENT_FAILED = 'payment_failed',
   SUBSCRIPTION_CANCELED = 'subscription_canceled',
   BUDGET_TRACKED = 'budget_tracked',
+  REFERRAL_REDEEMED = 'referral_redeemed',
+  REFERRAL_CREDIT_GRANTED = 'referral_credit_granted',
 
   // Événements existants (envoyés uniquement depuis le client, en l'état authentifié)
   PAYWALL_SHOWN = 'paywall_shown',

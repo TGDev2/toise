@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { RegisterForm } from '../RegisterForm';
+import { REFERRAL_CODE_STORAGE_KEY } from '@/lib/referral';
 
 const mockPush = jest.fn();
 jest.mock('next/navigation', () => ({
@@ -30,6 +31,8 @@ jest.mock('@/contexts/AuthContext', () => ({
 describe('RegisterForm', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    localStorage.clear();
+    window.history.pushState({}, '', '/register');
   });
 
   it('renders registration fields', () => {
@@ -92,5 +95,21 @@ describe('RegisterForm', () => {
     expect(
       screen.getByRole('link', { name: /politique de confidentialité/i }),
     ).toHaveAttribute('href', '/privacy');
+  });
+
+  // BACKLOG COM-3 : le lien de parrainage pointe vers /register?ref=CODE — le
+  // code doit survivre jusqu'à la rédemption post-authentification.
+  it('captures a referral code from the URL on mount', () => {
+    window.history.pushState({}, '', '/register?ref=ABCD2345');
+
+    render(<RegisterForm />);
+
+    expect(localStorage.getItem(REFERRAL_CODE_STORAGE_KEY)).toBe('ABCD2345');
+  });
+
+  it('does not touch localStorage when there is no referral code in the URL', () => {
+    render(<RegisterForm />);
+
+    expect(localStorage.getItem(REFERRAL_CODE_STORAGE_KEY)).toBeNull();
   });
 });

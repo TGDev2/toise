@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth, type CompanyProfilePayload } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/lib/errors';
 import { Alert, Button, Input } from '@/components/ui';
 import { OAuthButtons } from './OAuthButtons';
+import { captureReferralCodeFromUrl } from '@/lib/referral';
 
 const SPECIALTIES = [
   'Peinture',
@@ -73,6 +74,10 @@ export function RegisterForm() {
   const [specialties, setSpecialties] = useState<string[]>([]);
 
   const strength = getPasswordStrength(password);
+
+  useEffect(() => {
+    captureReferralCodeFromUrl();
+  }, []);
 
   const toggleSpecialty = (s: string) => {
     setSpecialties((prev) =>
