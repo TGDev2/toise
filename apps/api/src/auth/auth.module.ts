@@ -7,6 +7,7 @@ import { UsersModule } from '../users/users.module';
 import { OrgContextModule } from '../organizations/org-context.module';
 import { CompanyProfilesModule } from '../company-profiles/company-profiles.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
+import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { User } from '../users/entities/user.entity';
 import { OrganizationMembership } from '../organizations/entities/organization-membership.entity';
 import { SsoConnection } from '../enterprise/entities/sso-connection.entity';
@@ -29,6 +30,11 @@ import { SsoSessionService } from './sso-session.service';
     OrgContextModule,
     CompanyProfilesModule,
     AnalyticsModule,
+    // La suppression d'un compte doit résilier l'abonnement Stripe avant
+    // d'effacer quoi que ce soit — cf. `AuthService.deleteAccount`. Le graphe
+    // reste à sens unique : `SubscriptionsModule` n'importe pas `AuthModule`
+    // (global) et se contente de ses guards.
+    SubscriptionsModule,
     TypeOrmModule.forFeature([User, OrganizationMembership, SsoConnection]),
   ],
   controllers: [AuthController],

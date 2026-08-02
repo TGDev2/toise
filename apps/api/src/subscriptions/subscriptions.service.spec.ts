@@ -20,7 +20,7 @@ import { ReferralsService } from '../referrals/referrals.service';
 const mockStripeInstance = {
   customers: { create: jest.fn() },
   checkout: { sessions: { create: jest.fn() } },
-  subscriptions: { retrieve: jest.fn() },
+  subscriptions: { retrieve: jest.fn(), cancel: jest.fn() },
 };
 
 jest.mock('stripe', () =>
@@ -44,6 +44,7 @@ const configServiceMock = {
 const subscriptionsRepoMock = {
   findOne: jest.fn(),
   save: jest.fn(),
+  delete: jest.fn(),
 };
 
 const stripeEventsRepoMock = {};
@@ -279,5 +280,128 @@ describe('SubscriptionsService.handleWebhookEvent (invoice.paid)', () => {
     expect(
       referralsServiceMock.handleReferredUserConverted,
     ).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Non-régression de la facturation lors d'une suppression de compte.
+ *
+ * `FK_subscriptions_user` était en `ON DELETE CASCADE` : effacer l'utilisateur
+ * emportait la ligne — donc le `stripe_subscription_id` et le
+ * `stripe_customer_id` — sans qu'aucune requête ne parte chez Stripe.
+ * L'abonnement continuait de prélever et plus rien en local ne permettait
+ * d'ouvrir le portail. Cf. migration 1711468800061.
+ */
+describe('SubscriptionsService.cancelForAccountDeletion', () => {
+  let service: SubscriptionsService;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        SubscriptionsService,
+        {
+          provide: getRepositoryToken(Subscription),
+          useValue: subscriptionsRepoMock,
+        },
+        {
+          provide: getRepositoryToken(StripeEvent),
+          useValue: stripeEventsRepoMock,
+        },
+        { provide: UsersService, useValue: usersServiceMock },
+        { provide: AnalyticsService, useValue: analyticsServiceMock },
+        { provide: ReferralsService, useValue: referralsServiceMock },
+        { provide: ConfigService, useValue: configServiceMock },
+      ],
+    }).compile();
+
+    service = module.get(SubscriptionsService);
+  });
+
+  const subscription = {
+    id: 'row-1',
+    user_id: 'user-1',
+    stripe_customer_id: 'cus_1',
+    stripe_subscription_id: 'sub_1',
+    status: SubscriptionStatus.ACTIVE,
+  };
+
+  it('résilie chez Stripe avant de supprimer la ligne locale', async () => {
+    subscriptionsRepoMock.findOne.mockResolvedValue(subscription);
+
+    await service.cancelForAccountDeletion('user-1');
+
+    expect(mockStripeInstance.subscriptions.cancel).toHaveBeenCalledWith(
+      'sub_1',
+    );
+    expect(subscriptionsRepoMock.delete).toHaveBeenCalledWith({ id: 'row-1' });
+  });
+
+  it.each([
+    SubscriptionStatus.TRIALING,
+    SubscriptionStatus.PAST_DUE,
+    SubscriptionStatus.INCOMPLETE,
+  ])('résilie aussi un abonnement %s', async (status) => {
+    subscriptionsRepoMock.findOne.mockResolvedValue({
+      ...subscription,
+      status,
+    });
+
+    await service.cancelForAccountDeletion('user-1');
+
+    expect(mockStripeInstance.subscriptions.cancel).toHaveBeenCalledWith(
+      'sub_1',
+    );
+  });
+
+  it('conserve la ligne locale si Stripe refuse la résiliation', async () => {
+    subscriptionsRepoMock.findOne.mockResolvedValue(subscription);
+    mockStripeInstance.subscriptions.cancel.mockRejectedValue(
+      new Error('stripe unavailable'),
+    );
+
+    await expect(service.cancelForAccountDeletion('user-1')).rejects.toThrow(
+      'stripe unavailable',
+    );
+
+    // Le cœur du constat : ne jamais effacer le lien local tant que
+    // l'abonnement externe peut encore prélever.
+    expect(subscriptionsRepoMock.delete).not.toHaveBeenCalled();
+  });
+
+  it('reste idempotent si Stripe ne connaît plus cet abonnement', async () => {
+    subscriptionsRepoMock.findOne.mockResolvedValue(subscription);
+    mockStripeInstance.subscriptions.cancel.mockRejectedValue(
+      Object.assign(new Error('No such subscription'), {
+        type: 'StripeInvalidRequestError',
+        code: 'resource_missing',
+      }),
+    );
+
+    await service.cancelForAccountDeletion('user-1');
+
+    expect(subscriptionsRepoMock.delete).toHaveBeenCalledWith({ id: 'row-1' });
+  });
+
+  it("n'appelle pas Stripe pour un abonnement déjà résilié", async () => {
+    subscriptionsRepoMock.findOne.mockResolvedValue({
+      ...subscription,
+      status: SubscriptionStatus.CANCELED,
+    });
+
+    await service.cancelForAccountDeletion('user-1');
+
+    expect(mockStripeInstance.subscriptions.cancel).not.toHaveBeenCalled();
+    expect(subscriptionsRepoMock.delete).toHaveBeenCalledWith({ id: 'row-1' });
+  });
+
+  it("ne fait rien pour un compte qui n'a jamais souscrit", async () => {
+    subscriptionsRepoMock.findOne.mockResolvedValue(null);
+
+    await service.cancelForAccountDeletion('user-1');
+
+    expect(mockStripeInstance.subscriptions.cancel).not.toHaveBeenCalled();
+    expect(subscriptionsRepoMock.delete).not.toHaveBeenCalled();
   });
 });

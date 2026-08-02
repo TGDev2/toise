@@ -35,10 +35,14 @@ export class Project {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  /** Auteur du projet. La propriété, elle, est portée par `organization_id` (PLAT-4). */
+  /**
+   * Auteur du projet. La propriété, elle, est portée par `organization_id`
+   * (PLAT-4) : `null` quand l'auteur a supprimé son compte, le projet restant
+   * acquis à son organisation.
+   */
   @Index()
-  @Column({ type: 'uuid' })
-  user_id!: string;
+  @Column({ type: 'uuid', nullable: true })
+  user_id!: string | null;
 
   @Index()
   @Column({ type: 'uuid' })
@@ -65,9 +69,9 @@ export class Project {
   @DeleteDateColumn({ type: 'timestamptz', nullable: true })
   deleted_at!: Date | null;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'user_id' })
-  user!: User;
+  user!: User | null;
 
   @OneToMany(() => Room, (r) => r.project, { eager: true })
   rooms!: Room[];

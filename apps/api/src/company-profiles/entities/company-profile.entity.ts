@@ -16,9 +16,13 @@ export class CompanyProfile {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  /** Auteur de la saisie. L'identité légale appartient à `organization_id` (PLAT-4). */
-  @Column({ type: 'uuid' })
-  user_id!: string;
+  /**
+   * Auteur de la saisie. L'identité légale appartient à `organization_id`
+   * (PLAT-4) : `null` quand l'auteur a supprimé son compte, l'identité de
+   * l'entreprise ne dépendant pas de la personne qui l'a renseignée.
+   */
+  @Column({ type: 'uuid', nullable: true })
+  user_id!: string | null;
 
   @Index()
   @Column({ type: 'uuid' })
@@ -112,9 +116,9 @@ export class CompanyProfile {
   @Column({ type: 'integer', nullable: true })
   default_payment_terms_days!: number | null;
 
-  @OneToOne(() => User)
+  @OneToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'user_id' })
-  user!: User;
+  user!: User | null;
 
   @CreateDateColumn({ type: 'timestamptz' })
   created_at!: Date;

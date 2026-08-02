@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
 import { User, AuthProvider, SubscriptionTier } from './entities/user.entity';
 import { Project } from '../projects/entities/project.entity';
+import { Organization } from '../organizations/entities/organization.entity';
 
 @Injectable()
 export class UsersService {
@@ -78,7 +79,32 @@ export class UsersService {
     await this.usersRepo.update(userId, { subscription_tier: tier });
   }
 
-  async deleteUser(id: string): Promise<void> {
-    await this.usersRepo.delete(id);
+  /**
+   * Efface un compte et les seules organisations qui ne concernaient que lui,
+   * en une transaction.
+   *
+   * L'atomicité est ici la propriété qui compte : `FK_organizations_owner` est
+   * passée en `ON DELETE RESTRICT` (migration 1711468800061), donc une
+   * organisation encore possédée bloque la suppression de son propriétaire. En
+   * deux instructions séparées, un échec entre les deux laisserait soit des
+   * organisations sans compte, soit un compte dont on a déjà détruit l'espace
+   * de travail. La liste est calculée en amont par
+   * `OrgContextService.collectOrganizationsRemovableWithOwner`, qui refuse le
+   * cas d'une organisation partagée.
+   *
+   * Les adhésions de l'utilisateur aux organisations **des autres** partent
+   * avec lui (`FK_organization_memberships_user ON DELETE CASCADE`) : il les
+   * quitte, il ne les emporte pas.
+   */
+  async deleteAccountData(
+    userId: string,
+    ownedOrganizationIds: string[],
+  ): Promise<void> {
+    await this.usersRepo.manager.transaction(async (manager) => {
+      if (ownedOrganizationIds.length > 0) {
+        await manager.delete(Organization, ownedOrganizationIds);
+      }
+      await manager.delete(User, userId);
+    });
   }
 }

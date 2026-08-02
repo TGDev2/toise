@@ -8,6 +8,7 @@ import { CompanyProfilesService } from '../company-profiles/company-profiles.ser
 import { AnalyticsService } from '../analytics/analytics.service';
 import { OrgContextService } from '../organizations/org-context.service';
 import { SsoSessionService } from './sso-session.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 import {
   AuthProvider,
@@ -31,7 +32,7 @@ describe('AuthService', () => {
     findByFirebaseUid: jest.fn(),
     upsertFromFirebase: jest.fn(),
     transferProjects: jest.fn(),
-    deleteUser: jest.fn(),
+    deleteAccountData: jest.fn(),
   };
 
   const firebaseConfigMock = {
@@ -52,6 +53,11 @@ describe('AuthService', () => {
     getOrCreatePersonalOrganization: jest
       .fn()
       .mockResolvedValue({ id: 'org-uuid' }),
+    collectOrganizationsRemovableWithOwner: jest.fn().mockResolvedValue([]),
+  };
+
+  const subscriptionsMock = {
+    cancelForAccountDeletion: jest.fn(),
   };
 
   const ssoSessionMock = {
@@ -136,6 +142,10 @@ describe('AuthService', () => {
         {
           provide: SsoSessionService,
           useValue: ssoSessionMock,
+        },
+        {
+          provide: SubscriptionsService,
+          useValue: subscriptionsMock,
         },
       ],
     }).compile();
@@ -365,18 +375,95 @@ describe('AuthService', () => {
     });
   });
 
+  /**
+   * Non-régression du cycle de vie d'une suppression de compte. Chaque test
+   * correspond à un scénario où l'implémentation précédente — Firebase, puis
+   * `DELETE FROM users`, puis les cascades — produisait un résultat faux.
+   */
   describe('deleteAccount', () => {
-    it('should delete user from Firebase and database', async () => {
+    beforeEach(() => {
       usersService.findByFirebaseUid.mockResolvedValue(mockUser);
       mockFirebaseAuth.deleteUser.mockResolvedValue(undefined);
-      usersService.deleteUser.mockResolvedValue(undefined);
+      usersService.deleteAccountData.mockResolvedValue(undefined);
+      orgContextMock.collectOrganizationsRemovableWithOwner.mockResolvedValue([
+        'perso-org-uuid',
+      ]);
+      subscriptionsMock.cancelForAccountDeletion.mockResolvedValue(undefined);
+    });
+
+    it("résilie l'abonnement Stripe avant d'effacer quoi que ce soit", async () => {
+      const order: string[] = [];
+      subscriptionsMock.cancelForAccountDeletion.mockImplementation(() => {
+        order.push('stripe');
+        return Promise.resolve();
+      });
+      usersService.deleteAccountData.mockImplementation(() => {
+        order.push('db');
+        return Promise.resolve();
+      });
+      mockFirebaseAuth.deleteUser.mockImplementation(() => {
+        order.push('firebase');
+        return Promise.resolve();
+      });
 
       await service.deleteAccount('firebase-uid-123');
 
+      expect(subscriptionsMock.cancelForAccountDeletion).toHaveBeenCalledWith(
+        mockUser.id,
+      );
+      // L'identité part en dernier : une panne en cours de route doit laisser un
+      // principal capable de se réauthentifier pour reprendre l'opération.
+      expect(order).toEqual(['stripe', 'db', 'firebase']);
+    });
+
+    it("n'efface rien si la résiliation Stripe échoue", async () => {
+      subscriptionsMock.cancelForAccountDeletion.mockRejectedValue(
+        new Error('stripe down'),
+      );
+
+      await expect(service.deleteAccount('firebase-uid-123')).rejects.toThrow(
+        'stripe down',
+      );
+
+      expect(usersService.deleteAccountData).not.toHaveBeenCalled();
+      expect(mockFirebaseAuth.deleteUser).not.toHaveBeenCalled();
+    });
+
+    it("refuse la suppression quand l'utilisateur possède une organisation partagée", async () => {
+      orgContextMock.collectOrganizationsRemovableWithOwner.mockRejectedValue(
+        new ConflictException('organisation partagée'),
+      );
+
+      await expect(service.deleteAccount('firebase-uid-123')).rejects.toThrow(
+        ConflictException,
+      );
+
+      // Aucune donnée collective touchée, et pas de résiliation d'un abonnement
+      // que l'utilisateur va conserver puisque son compte survit.
+      expect(subscriptionsMock.cancelForAccountDeletion).not.toHaveBeenCalled();
+      expect(usersService.deleteAccountData).not.toHaveBeenCalled();
+      expect(mockFirebaseAuth.deleteUser).not.toHaveBeenCalled();
+    });
+
+    it('supprime explicitement les organisations qui ne concernaient que lui', async () => {
+      await service.deleteAccount('firebase-uid-123');
+
+      expect(usersService.deleteAccountData).toHaveBeenCalledWith(mockUser.id, [
+        'perso-org-uuid',
+      ]);
       expect(mockFirebaseAuth.deleteUser).toHaveBeenCalledWith(
         'firebase-uid-123',
       );
-      expect(usersService.deleteUser).toHaveBeenCalledWith(mockUser.id);
+    });
+
+    it('remonte un échec Firebase survenu après la suppression locale', async () => {
+      mockFirebaseAuth.deleteUser.mockRejectedValue(new Error('firebase down'));
+
+      await expect(service.deleteAccount('firebase-uid-123')).rejects.toThrow(
+        'firebase down',
+      );
+
+      expect(usersService.deleteAccountData).toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if user not found', async () => {
@@ -403,7 +490,10 @@ describe('AuthService', () => {
         .mockResolvedValueOnce(anonymousUser);
       usersService.transferProjects.mockResolvedValue(undefined);
       mockFirebaseAuth.deleteUser.mockResolvedValue(undefined);
-      usersService.deleteUser.mockResolvedValue(undefined);
+      usersService.deleteAccountData.mockResolvedValue(undefined);
+      orgContextMock.collectOrganizationsRemovableWithOwner.mockResolvedValue([
+        'anon-org-uuid',
+      ]);
 
       const result = await service.mergeGuestAccount(
         'firebase-uid-123',
@@ -418,7 +508,12 @@ describe('AuthService', () => {
         mockUser.id,
         'org-uuid',
       );
-      expect(usersService.deleteUser).toHaveBeenCalledWith('anon-db-id');
+      // L'espace personnel de l'invité ne peut plus disparaître en cascade
+      // (`FK_organizations_owner` en RESTRICT) : il est supprimé explicitement.
+      expect(usersService.deleteAccountData).toHaveBeenCalledWith(
+        'anon-db-id',
+        ['anon-org-uuid'],
+      );
     });
 
     it('should throw NotFoundException if target user not found', async () => {

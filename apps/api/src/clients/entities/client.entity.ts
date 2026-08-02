@@ -15,9 +15,13 @@ export class Client {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  /** Auteur de la fiche. La propriété est portée par `organization_id` (PLAT-4). */
-  @Column({ type: 'uuid' })
-  user_id!: string;
+  /**
+   * Auteur de la fiche. La propriété est portée par `organization_id` (PLAT-4) :
+   * `null` quand l'auteur a supprimé son compte, la fiche restant acquise à
+   * l'organisation.
+   */
+  @Column({ type: 'uuid', nullable: true })
+  user_id!: string | null;
 
   @Index()
   @Column({ type: 'uuid' })
@@ -58,9 +62,9 @@ export class Client {
   @Column({ type: 'varchar', length: 2, default: 'FR' })
   country!: string;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'user_id' })
-  user!: User;
+  user!: User | null;
 
   @CreateDateColumn({ type: 'timestamptz' })
   created_at!: Date;

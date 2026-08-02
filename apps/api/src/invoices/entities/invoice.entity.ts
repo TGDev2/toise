@@ -91,9 +91,14 @@ export class Invoice {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  /** Auteur de l'émission. L'émetteur légal, lui, est `organization_id` (PLAT-4). */
-  @Column({ type: 'uuid' })
-  user_id!: string;
+  /**
+   * Auteur de l'émission. L'émetteur légal, lui, est `organization_id`
+   * (PLAT-4) : `null` quand l'auteur a supprimé son compte. La facture, elle,
+   * ne peut pas disparaître avec lui — sa conservation s'impose à l'entreprise
+   * émettrice (art. L102 B LPF, cf. docs/CONFORMITE_FACTURATION.md).
+   */
+  @Column({ type: 'uuid', nullable: true })
+  user_id!: string | null;
 
   @Index()
   @Column({ type: 'uuid' })
@@ -209,9 +214,9 @@ export class Invoice {
   @Column({ type: 'timestamptz', nullable: true })
   paid_at!: Date | null;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'user_id' })
-  user!: User;
+  user!: User | null;
 
   @ManyToOne(() => Quote, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'quote_id' })

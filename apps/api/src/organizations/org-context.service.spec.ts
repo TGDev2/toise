@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { QueryFailedError } from 'typeorm';
+import { Not, QueryFailedError } from 'typeorm';
+import { ConflictException } from '@nestjs/common';
 import {
   AuthProvider,
   SubscriptionTier,
@@ -50,9 +51,15 @@ function makeOrg(overrides: Partial<Organization> = {}): Organization {
 describe('OrgContextService', () => {
   let service: OrgContextService;
   const usersRepo = { findOne: jest.fn() };
-  const orgsRepo = { findOne: jest.fn(), create: jest.fn(), save: jest.fn() };
+  const orgsRepo = {
+    findOne: jest.fn(),
+    find: jest.fn(),
+    create: jest.fn(),
+    save: jest.fn(),
+  };
   const membershipsRepo = {
     findOne: jest.fn(),
+    count: jest.fn(),
     create: jest.fn(),
     save: jest.fn(),
   };
@@ -302,6 +309,78 @@ describe('OrgContextService', () => {
       await expect(service.resolveTierForOrganization('org-x')).resolves.toBe(
         SubscriptionTier.FREE,
       );
+    });
+  });
+
+  /**
+   * Non-régression de la destruction de données collectives.
+   *
+   * `FK_organizations_owner` était en `ON DELETE CASCADE` : supprimer un
+   * propriétaire effaçait son organisation et, par les `FK_<table>_organization`
+   * elles aussi en cascade, les projets, clients, devis, factures et le profil
+   * d'entreprise de tous ses membres. Cf. migration 1711468800061.
+   */
+  describe('collectOrganizationsRemovableWithOwner', () => {
+    it("refuse quand l'organisation possédée compte d'autres membres", async () => {
+      orgsRepo.find.mockResolvedValue([
+        makeOrg({ id: 'org-equipe', name: 'SARL Dupont', is_personal: false }),
+      ]);
+      membershipsRepo.count.mockResolvedValue(3);
+
+      await expect(
+        service.collectOrganizationsRemovableWithOwner('user-1'),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it("nomme l'organisation bloquante pour que l'utilisateur puisse agir", async () => {
+      orgsRepo.find.mockResolvedValue([
+        makeOrg({ id: 'org-equipe', name: 'SARL Dupont', is_personal: false }),
+      ]);
+      membershipsRepo.count.mockResolvedValue(2);
+
+      await expect(
+        service.collectOrganizationsRemovableWithOwner('user-1'),
+      ).rejects.toThrow(/SARL Dupont/);
+    });
+
+    it("rend l'espace personnel supprimable quand il ne concerne que son propriétaire", async () => {
+      orgsRepo.find.mockResolvedValue([makeOrg({ id: 'org-perso' })]);
+      membershipsRepo.count.mockResolvedValue(0);
+
+      await expect(
+        service.collectOrganizationsRemovableWithOwner('user-1'),
+      ).resolves.toEqual(['org-perso']);
+    });
+
+    it('ne compte pas le propriétaire lui-même parmi les autres membres', async () => {
+      orgsRepo.find.mockResolvedValue([makeOrg({ id: 'org-perso' })]);
+      membershipsRepo.count.mockResolvedValue(0);
+
+      await service.collectOrganizationsRemovableWithOwner('user-1');
+
+      expect(membershipsRepo.count).toHaveBeenCalledWith({
+        where: { organization_id: 'org-perso', user_id: Not('user-1') },
+      });
+    });
+
+    it("refuse dès qu'une seule des organisations possédées est partagée", async () => {
+      orgsRepo.find.mockResolvedValue([
+        makeOrg({ id: 'org-perso' }),
+        makeOrg({ id: 'org-equipe', name: 'SARL Dupont', is_personal: false }),
+      ]);
+      membershipsRepo.count.mockResolvedValueOnce(0).mockResolvedValueOnce(1);
+
+      await expect(
+        service.collectOrganizationsRemovableWithOwner('user-1'),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('ne renvoie rien pour un compte qui ne possède aucune organisation', async () => {
+      orgsRepo.find.mockResolvedValue([]);
+
+      await expect(
+        service.collectOrganizationsRemovableWithOwner('user-1'),
+      ).resolves.toEqual([]);
     });
   });
 });

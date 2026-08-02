@@ -1,8 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   LessThanOrEqual,
   MoreThan,
+  Not,
   QueryFailedError,
   Repository,
 } from 'typeorm';
@@ -157,6 +162,51 @@ export class OrgContextService {
       .getRawOne<{ subscription_tier: SubscriptionTier }>();
 
     return row?.subscription_tier ?? SubscriptionTier.FREE;
+  }
+
+  /**
+   * Précondition de suppression d'un compte : renvoie les organisations qui
+   * peuvent disparaître avec leur propriétaire, ou refuse l'opération.
+   *
+   * `FK_organizations_owner` était en `ON DELETE CASCADE` (migration
+   * 1711468800061) : supprimer un propriétaire effaçait son organisation, et
+   * avec elle — par les `FK_<table>_organization`, elles aussi en cascade — les
+   * projets, clients, devis, factures et le profil d'entreprise de **tous** ses
+   * membres. Une décision individuelle détruisait donc des données collectives,
+   * sans que rien ne l'annonce ni ne le trace.
+   *
+   * La règle retenue : une organisation ne se supprime avec son propriétaire
+   * que si elle ne concerne que lui. Dès qu'un autre membre existe, la
+   * suppression est refusée et l'utilisateur doit d'abord transférer la
+   * propriété ou retirer les membres — un geste explicite, réversible, et qui
+   * ne fait rien perdre à personne.
+   */
+  async collectOrganizationsRemovableWithOwner(
+    userId: string,
+  ): Promise<string[]> {
+    const owned = await this.orgsRepo.find({
+      where: { owner_user_id: userId },
+    });
+
+    const removable: string[] = [];
+    for (const organization of owned) {
+      const otherMembers = await this.membershipsRepo.count({
+        where: {
+          organization_id: organization.id,
+          user_id: Not(userId),
+        },
+      });
+      if (otherMembers > 0) {
+        throw new ConflictException(
+          `Vous êtes propriétaire de l'organisation « ${organization.name} », qui compte ` +
+            `encore ${otherMembers} autre(s) membre(s). Transférez la propriété ou retirez ` +
+            `ces membres avant de supprimer votre compte.`,
+        );
+      }
+      removable.push(organization.id);
+    }
+
+    return removable;
   }
 
   async findMembership(

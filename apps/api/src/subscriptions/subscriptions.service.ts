@@ -182,6 +182,65 @@ export class SubscriptionsService {
     return { url: session.url };
   }
 
+  /**
+   * Résilie l'abonnement Stripe puis efface la ligne locale, dans cet ordre —
+   * préalable obligatoire à la suppression d'un compte.
+   *
+   * Jusqu'ici `FK_subscriptions_user ON DELETE CASCADE` faisait disparaître la
+   * ligne avec l'utilisateur : l'abonnement restait actif chez Stripe, et le
+   * `stripe_customer_id` qui aurait permis d'ouvrir le portail partait avec
+   * elle. La facturation continuait donc sans moyen local de l'arrêter. La FK
+   * est passée en `RESTRICT` (migration 1711468800061) : ce chemin est
+   * désormais le seul par lequel un abonné peut être supprimé.
+   *
+   * L'erreur Stripe n'est **pas** avalée. Échouer ici annule toute la
+   * suppression et la laisse rejouable ; la traiter en best-effort rétablirait
+   * exactement le défaut que cette méthode corrige — un compte effacé et un
+   * prélèvement qui continue.
+   */
+  async cancelForAccountDeletion(userId: string): Promise<void> {
+    const subscription = await this.subscriptionsRepo.findOne({
+      where: { user_id: userId },
+    });
+    if (!subscription) return;
+
+    // `canceled`/`incomplete_expired` n'ont plus rien à résilier ; tous les
+    // autres statuts sont facturables ou le redeviennent (`past_due`, `unpaid`).
+    const terminalStatuses: SubscriptionStatus[] = [
+      SubscriptionStatus.CANCELED,
+      SubscriptionStatus.INCOMPLETE_EXPIRED,
+    ];
+    if (!terminalStatuses.includes(subscription.status)) {
+      try {
+        await this.stripe.subscriptions.cancel(
+          subscription.stripe_subscription_id,
+        );
+      } catch (error) {
+        // Déjà résilié côté Stripe (résiliation manuelle, reprise après un
+        // échec partiel) : la postcondition « plus rien n'est facturé » est
+        // atteinte, on peut effacer la ligne. Idempotence du chemin de reprise.
+        //
+        // Reconnu à la forme (`type` + `code`) plutôt qu'avec `instanceof` : la
+        // seconde forme n'est vraie que pour les erreurs issues de l'exemplaire
+        // de SDK effectivement chargé, ce qui en fait un test qui passe en
+        // production et ment partout ailleurs. Les deux champs ensemble sont
+        // assez spécifiques pour ne pas avaler autre chose.
+        const stripeError = error as { type?: string; code?: string };
+        if (
+          stripeError?.type !== 'StripeInvalidRequestError' ||
+          stripeError?.code !== 'resource_missing'
+        ) {
+          throw error;
+        }
+        this.logger.warn(
+          `Abonnement ${subscription.stripe_subscription_id} déjà absent de Stripe — suppression locale poursuivie.`,
+        );
+      }
+    }
+
+    await this.subscriptionsRepo.delete({ id: subscription.id });
+  }
+
   constructWebhookEvent(rawBody: Buffer, signature: string): Stripe.Event {
     return this.stripe.webhooks.constructEvent(
       rawBody,

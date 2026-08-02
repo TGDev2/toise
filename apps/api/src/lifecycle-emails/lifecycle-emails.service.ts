@@ -160,8 +160,13 @@ export class LifecycleEmailsService {
       relations: ['user'],
     });
 
+    // Un projet dont l'auteur a supprimé son compte reste acquis à son
+    // organisation, mais la relance est nominative : il n'y a plus personne à
+    // relancer, ni de `user_id` à horodater dans `lifecycle_email_sends`.
     const candidates = projects.filter(
-      (p) => p.user?.email && p.rooms?.some((r) => r.dimensions !== null),
+      (p): p is Project & { user: User } =>
+        Boolean(p.user?.email) &&
+        Boolean(p.rooms?.some((r) => r.dimensions !== null)),
     );
     if (candidates.length === 0) return;
 
@@ -183,7 +188,9 @@ export class LifecycleEmailsService {
     }
   }
 
-  private async sendProjectAbandonedEmail(project: Project): Promise<void> {
+  private async sendProjectAbandonedEmail(
+    project: Project & { user: User },
+  ): Promise<void> {
     try {
       await this.emailService.sendProjectAbandonedEmail(project.user.email!, {
         projectName: project.name,
@@ -191,7 +198,7 @@ export class LifecycleEmailsService {
       });
       this.analyticsService.track(
         AnalyticsEventName.PROJECT_ABANDONED_EMAIL_SENT,
-        project.user_id,
+        project.user.id,
         { project_id: project.id },
       );
     } catch (error) {
@@ -202,7 +209,7 @@ export class LifecycleEmailsService {
     }
 
     await this.stamp(
-      project.user_id,
+      project.user.id,
       project.id,
       LifecycleEmailType.PROJECT_ABANDONED,
     );

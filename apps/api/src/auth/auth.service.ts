@@ -14,6 +14,7 @@ import { RegisterDto } from './dto/register.dto';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 import { SsoSessionService } from './sso-session.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 
 @Injectable()
 export class AuthService {
@@ -26,6 +27,7 @@ export class AuthService {
     private readonly analyticsService: AnalyticsService,
     private readonly orgContext: OrgContextService,
     private readonly ssoSession: SsoSessionService,
+    private readonly subscriptions: SubscriptionsService,
   ) {}
 
   async register(dto: RegisterDto): Promise<{ user: User; message: string }> {
@@ -132,14 +134,56 @@ export class AuthService {
     return user;
   }
 
+  /**
+   * Suppression d'un compte : identité, facturation et propriété
+   * organisationnelle traitées comme un tout, dans un ordre qui a un sens.
+   *
+   * L'implémentation précédente enchaînait deux suppressions — Firebase, puis
+   * la ligne `users` — et laissait les clés étrangères faire le reste. Trois
+   * conséquences, corrigées ici et verrouillées par la migration
+   * 1711468800061 :
+   *
+   * - **La facturation d'abord.** Rien n'était envoyé à Stripe : l'abonnement
+   *   continuait de prélever, et la ligne locale qui portait le
+   *   `stripe_customer_id` partait en cascade, supprimant le seul moyen
+   *   d'ouvrir le portail. La résiliation est désormais le premier geste, et
+   *   son échec interrompt tout.
+   * - **Les données collectives ensuite.** Supprimer un propriétaire effaçait
+   *   son organisation et, de cascade en cascade, les données de tous ses
+   *   membres. La précondition refuse maintenant le cas d'une organisation
+   *   partagée.
+   * - **L'identité en dernier.** L'ordre était inversé : une panne SQL après
+   *   la suppression Firebase laissait les données locales sans principal pour
+   *   se réauthentifier, donc sans reprise possible. En terminant par
+   *   Firebase, le pire cas est un principal survivant à des données déjà
+   *   effacées — la reconnexion recrée un compte vide et la reprise reste
+   *   ouverte, ce qui est strictement moins grave que l'inverse.
+   */
   async deleteAccount(firebaseUid: string): Promise<void> {
     const user = await this.usersService.findByFirebaseUid(firebaseUid);
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    await this.firebase.getAuth().deleteUser(firebaseUid);
-    await this.usersService.deleteUser(user.id);
+    const ownedOrganizationIds =
+      await this.orgContext.collectOrganizationsRemovableWithOwner(user.id);
+
+    await this.subscriptions.cancelForAccountDeletion(user.id);
+
+    await this.usersService.deleteAccountData(user.id, ownedOrganizationIds);
+
+    try {
+      await this.firebase.getAuth().deleteUser(firebaseUid);
+    } catch (error) {
+      // Les données sont parties, le principal non : l'opération n'est pas
+      // complète et ne doit pas être annoncée comme telle. Le `uid` est journalisé
+      // pour que la reprise soit possible sans avoir à le retrouver.
+      this.logger.error(
+        `Données du compte ${user.id} supprimées mais principal Firebase ${firebaseUid} toujours présent`,
+      );
+      throw error;
+    }
+
     this.logger.log(`Account deleted for user ${user.id}`);
   }
 
@@ -176,7 +220,19 @@ export class AuthService {
       targetOrganization.id,
     );
 
-    // Delete the anonymous user from Firebase and DB
+    // Le compte invité s'efface par le même chemin que n'importe quel compte :
+    // son espace personnel, désormais vide de projets, ne peut plus partir en
+    // cascade depuis `users` (`FK_organizations_owner` est en `RESTRICT` depuis
+    // la migration 1711468800061) et doit donc être supprimé explicitement.
+    const ownedOrganizationIds =
+      await this.orgContext.collectOrganizationsRemovableWithOwner(
+        anonymousUser.id,
+      );
+    await this.usersService.deleteAccountData(
+      anonymousUser.id,
+      ownedOrganizationIds,
+    );
+
     try {
       await this.firebase.getAuth().deleteUser(anonymousFirebaseUid);
     } catch {
@@ -184,7 +240,6 @@ export class AuthService {
         `Failed to delete anonymous Firebase user ${anonymousFirebaseUid}`,
       );
     }
-    await this.usersService.deleteUser(anonymousUser.id);
 
     return targetUser;
   }

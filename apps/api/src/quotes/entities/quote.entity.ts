@@ -44,9 +44,13 @@ export class Quote {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  /** Auteur du devis. La propriété est portée par `organization_id` (PLAT-4). */
-  @Column({ type: 'uuid' })
-  user_id!: string;
+  /**
+   * Auteur du devis. La propriété est portée par `organization_id` (PLAT-4) :
+   * `null` quand l'auteur a supprimé son compte, le devis restant acquis à
+   * l'organisation qui l'a émis.
+   */
+  @Column({ type: 'uuid', nullable: true })
+  user_id!: string | null;
 
   @Index()
   @Column({ type: 'uuid' })
@@ -187,9 +191,9 @@ export class Quote {
   @Column({ type: 'timestamptz', nullable: true })
   reminder_14d_sent_at!: Date | null;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'user_id' })
-  user!: User;
+  user!: User | null;
 
   @ManyToOne(() => Project, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'project_id' })

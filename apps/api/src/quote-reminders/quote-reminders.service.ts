@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { IsNull, LessThanOrEqual, Repository } from 'typeorm';
+import { IsNull, LessThanOrEqual, Not, Repository } from 'typeorm';
 import { Quote, QuoteStatus } from '../quotes/entities/quote.entity';
 import { FeatureGatesService } from '../feature-gates/feature-gates.service';
 import { CompanyProfilesService } from '../company-profiles/company-profiles.service';
@@ -64,6 +64,12 @@ export class QuoteRemindersService {
       where: {
         status: QuoteStatus.SENT,
         sent_at: LessThanOrEqual(cutoff),
+        // La relance est nominative de bout en bout : le palier lu est celui de
+        // l'auteur, l'expéditeur affiché au client est son e-mail, et le second
+        // e-mail lui est adressé. Un devis dont l'auteur a supprimé son compte
+        // reste acquis à son organisation mais sort du balayage — il n'y a plus
+        // personne à relancer.
+        user_id: Not(IsNull()),
         ...(days === 7
           ? { reminder_7d_sent_at: IsNull() }
           : { reminder_14d_sent_at: IsNull() }),
@@ -76,9 +82,16 @@ export class QuoteRemindersService {
     quote: Quote,
     days: ReminderMilestone,
   ): Promise<void> {
+    // `findDueQuotes` écarte déjà les devis sans auteur ; cette garde tient le
+    // même invariant côté type, pour toute autre entrée dans `remindOne`.
+    const author = quote.user;
+    if (!author) {
+      return;
+    }
+
     const allowed = await this.featureGatesService.isFeatureAllowed(
       'quote_reminders',
-      quote.user.subscription_tier,
+      author.subscription_tier,
     );
     if (!allowed) {
       return;
@@ -99,7 +112,7 @@ export class QuoteRemindersService {
             totalTtc,
             daysSinceSent: days,
             companyName: companyProfile?.raison_sociale ?? null,
-            contractorEmail: quote.user.email,
+            contractorEmail: author.email,
             contractorPhone: companyProfile?.phone ?? null,
           },
         );
@@ -111,19 +124,16 @@ export class QuoteRemindersService {
       }
     }
 
-    if (quote.user.email) {
+    if (author.email) {
       try {
         const publicUrl = this.config.get<string>('publicUrl');
-        await this.emailService.sendQuoteReminderContractorEmail(
-          quote.user.email,
-          {
-            quoteNumber: quote.quote_number,
-            totalTtc,
-            daysSinceSent: days,
-            clientName: quote.client?.name ?? null,
-            quoteUrl: `${publicUrl}/quotes/${quote.id}`,
-          },
-        );
+        await this.emailService.sendQuoteReminderContractorEmail(author.email, {
+          quoteNumber: quote.quote_number,
+          totalTtc,
+          daysSinceSent: days,
+          clientName: quote.client?.name ?? null,
+          quoteUrl: `${publicUrl}/quotes/${quote.id}`,
+        });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         this.logger.warn(
