@@ -12,6 +12,7 @@ import { User } from '../../users/entities/user.entity';
 import { MaterialPackaging } from './material-packaging.entity';
 import { WasteFactor } from './waste-factor.entity';
 import { MaterialEcoEquivalence } from './material-eco-equivalence.entity';
+import { numericTransformer } from '../../common/transformers/numeric.transformer';
 
 export enum MaterialCategory {
   PAINTING = 'painting',
@@ -35,7 +36,12 @@ export class MaterialCatalog {
   @Column({ type: 'varchar', length: 20 })
   unit!: string;
 
-  @Column({ type: 'numeric', precision: 10, scale: 4 })
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 4,
+    transformer: numericTransformer,
+  })
   yield_per_unit!: number;
 
   @Column({ type: 'boolean', default: true })

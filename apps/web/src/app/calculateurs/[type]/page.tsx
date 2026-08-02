@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { Logo } from '@/components/Logo';
 import { PublicCalculator } from '@/components/calculators/PublicCalculator';
 import { CALCULATOR_SLUGS, getCalculatorConfig } from '@/lib/calculators';
+import { serializeJsonLd } from '@/lib/json-ld';
 
 export const dynamicParams = false;
 
@@ -69,7 +70,7 @@ export default async function CalculatorPage({ params }: PageProps) {
     <main className="flex-1 px-4 pb-16 sm:px-6 lg:px-8">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
       <div className="mx-auto w-full max-w-6xl">
         <header className="flex items-center justify-between py-6">

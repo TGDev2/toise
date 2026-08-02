@@ -306,10 +306,13 @@ supplier_price_cache   (cache prix fournisseurs)
 | Protection | Implémentation |
 |------------|---------------|
 | Validation entrée | `ValidationPipe` global : `whitelist`, `forbidNonWhitelisted`, `transform` |
-| Rate limiting | `ThrottlerModule` : 100 req/min (général), 5 req/15min (auth) |
+| Rate limiting | `ThrottlerModule` : **un seul** limiteur global (100 req/min). Les plafonds plus stricts (auth : 5 req/15 min, mots de passe oubliés : 3 req/h) sont des surcharges `@Throttle({ default: … })` par route. Ne jamais déclarer un second limiteur nommé : `ThrottlerGuard` les applique **tous** à **toutes** les routes, donc un limiteur strict global devient le plafond du produit entier |
+| IP réelle | `TRUST_PROXY` (`app.set('trust proxy')`). Non renseigné = `req.ip` est l'IP du reverse proxy, et tous les compteurs de rate limiting sont partagés par l'ensemble du trafic |
 | CORS | Origine configurable via `CORS_ORIGIN` |
 | Upload fichiers | JPEG/PNG/HEIC uniquement, max 20 MB, validation MIME type |
 | Path traversal | CV service : validation des chemins d'images (pas de `..`, pas de chemins absolus, vérification `relative_to()`) |
+| Accès au CV service | Isolement réseau (pas de `ports:` en prod, loopback en dev) **et** secret partagé `CV_SERVICE_TOKEN` sur `POST /analyze`. Le service refuse de démarrer sans ce secret dès que `CV_SERVICE_ENV != development` : l'isolement seul est une hypothèse qu'un `ports:` ajouté pour un débogage annule sans bruit |
+| Upload : contenu réel | Octets de signature vérifiés (`detectImageFormat`) **avant** que le fichier n'atteigne sharp/libvips ; le `mime_type` stocké et resservi est celui qu'a constaté le décodage, jamais l'en-tête déclaré par le client |
 | Injection SQL | TypeORM avec requêtes paramétrées |
 | Webhook Stripe | Vérification de signature avec `rawBody` |
 | Stripe Price IDs | Validation du `priceId` checkout contre une liste autorisée |

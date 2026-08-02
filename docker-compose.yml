@@ -19,7 +19,10 @@ services:
       dockerfile: Dockerfile
     container_name: chiffreo-cv
     ports:
-      - '8000:8000'
+      # Lie a la loopback : le service n'a aucune authentification tant
+      # que CV_SERVICE_TOKEN n'est pas renseigne, et '8000:8000' l'aurait
+      # publie sur toutes les interfaces de la machine de developpement.
+      - '127.0.0.1:8000:8000'
     volumes:
       # CV service only reads uploaded images, never writes them.
       # Read-only mount limits blast radius of any future path-traversal bug.

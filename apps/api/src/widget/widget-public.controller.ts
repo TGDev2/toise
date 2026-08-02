@@ -22,16 +22,14 @@ import { WidgetService } from './widget.service';
  * `public/*` (aucune authentification) et de `partner/*` (clé secrète
  * serveur-à-serveur, PLAT-5) : un troisième modèle d'accès, pas une variante.
  *
- * Le `@Throttle` de classe surcharge le plancher global `auth` (5 req/15 min
- * par IP) — sans lui, un seul visiteur épuiserait la limite en un clic. La
- * limite qui a du sens métier reste celle par clé, dans `WidgetOriginGuard`.
+ * Le `@Throttle` de classe relève le plafond global (100/min) : cette surface est
+ * appelée par les visiteurs d'un site tiers, dont beaucoup peuvent partager une
+ * IP de sortie. La limite qui a du sens métier reste celle par clé, dans
+ * `WidgetOriginGuard`.
  */
 @Controller('widget/:widgetKey')
 @UseGuards(WidgetOriginGuard)
-@Throttle({
-  short: { ttl: 60000, limit: 120 },
-  auth: { ttl: 60000, limit: 120 },
-})
+@Throttle({ default: { ttl: 60000, limit: 120 } })
 export class WidgetPublicController {
   constructor(private readonly widgetService: WidgetService) {}
 

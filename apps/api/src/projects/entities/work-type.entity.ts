@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { numericTransformer } from '../../common/transformers/numeric.transformer';
 
 export interface ContextualQuestionOption {
   value: string;
@@ -36,7 +37,13 @@ export class WorkType {
   @Column({ type: 'varchar', length: 20 })
   surface_target!: string;
 
-  @Column({ type: 'numeric', precision: 4, scale: 2, default: 1.1 })
+  @Column({
+    type: 'numeric',
+    precision: 4,
+    scale: 2,
+    default: 1.1,
+    transformer: numericTransformer,
+  })
   waste_factor_base!: number;
 
   @Column({ type: 'jsonb', default: [] })

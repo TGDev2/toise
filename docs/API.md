@@ -118,7 +118,7 @@ Supprimer le compte utilisateur et toutes ses données.
 
 Envoyer un email de réinitialisation de mot de passe.
 
-**Auth :** Non requise | **Rate limit :** 5 req/15min
+**Auth :** Non requise | **Rate limit :** 3 req/h
 
 **Body :**
 ```json

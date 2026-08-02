@@ -27,15 +27,12 @@ import { UpdateWidgetConfigDto } from './dto/update-widget-config.dto';
  * dédié pour l'instant : même choix que les clés d'API (PLAT-5), qui n'en ont
  * pas non plus — cette surface s'utilise directement.
  *
- * Le `@Throttle` de classe est requis : le limiteur `auth` global (5 req/15
- * min par IP) s'appliquerait sinon à toute l'organisation derrière un même NAT.
+ * Le `@Throttle` de classe resserre le plafond global (100/min) à 30/min :
+ * surface de configuration, une poignée d'appels par session.
  */
 @Controller('widget-config')
 @UseGuards(FirebaseAuthGuard, FeatureGateGuard)
-@Throttle({
-  short: { ttl: 60000, limit: 30 },
-  auth: { ttl: 60000, limit: 30 },
-})
+@Throttle({ default: { ttl: 60000, limit: 30 } })
 export class WidgetConfigController {
   constructor(
     private readonly widgetService: WidgetService,

@@ -1,5 +1,22 @@
+/**
+ * `trust proxy` d'Express, d'où `req.ip` — donc le compteur du rate limiting.
+ * Sans lui, derrière un reverse proxy, `req.ip` est l'IP du proxy et **tout le
+ * trafic partage un seul compteur**. Avec lui alors qu'il n'y a pas de proxy,
+ * n'importe qui choisit son compteur via `X-Forwarded-For`. Aucun défaut n'est
+ * bon dans les deux cas : le défaut est donc « pas de proxy » (le plus sûr),
+ * et le déploiement qui en a un le déclare (`TRUST_PROXY=1` dans
+ * `docker-compose.prod.yml`).
+ */
+function parseTrustProxy(raw: string | undefined): boolean | number | string {
+  if (raw === undefined || raw === '' || raw === 'false') return false;
+  if (raw === 'true') return true;
+  if (/^\d+$/.test(raw)) return parseInt(raw, 10);
+  return raw; // 'loopback', 'uniquelocal', une liste de CIDR…
+}
+
 export default () => ({
   port: parseInt(process.env.PORT ?? '3001', 10),
+  trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
   publicUrl: process.env.PUBLIC_URL ?? 'http://localhost:3000',
   corsOrigins: (process.env.CORS_ORIGIN ?? 'http://localhost:3000')
     .split(',')
@@ -19,6 +36,10 @@ export default () => ({
   },
   cvService: {
     url: process.env.CV_SERVICE_URL ?? 'http://localhost:8000',
+    // Secret partagé avec le service d'inférence. Sa protection était jusqu'ici
+    // l'isolement réseau seul — une hypothèse qu'aucune ligne n'énonçait et
+    // qu'un `ports:` ajouté pour un débogage suffisait à annuler.
+    token: process.env.CV_SERVICE_TOKEN ?? '',
     // L'inférence CPU sur 3-5 photos peut dépasser 60 s : défaut à 120 s.
     timeoutMs: parseInt(process.env.CV_SERVICE_TIMEOUT_MS ?? '120000', 10),
   },

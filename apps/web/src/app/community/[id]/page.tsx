@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { apiGet, ApiError } from '@/lib/api';
 import { WORK_TYPE_LABELS } from '@/lib/project-types';
 import type { CommunityProjectDetail } from '@/lib/community-types';
+import { serializeJsonLd } from '@/lib/json-ld';
 import {
   buildCommunityProjectJsonLd,
   buildCommunityProjectMetadata,
@@ -84,7 +85,7 @@ export default async function CommunityDetailPage({
     <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
 
       {/* Back link */}

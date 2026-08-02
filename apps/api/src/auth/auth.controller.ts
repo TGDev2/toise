@@ -29,7 +29,7 @@ export class AuthController {
   ) {}
 
   @Post('register')
-  @Throttle({ auth: { ttl: 900000, limit: 5 } })
+  @Throttle({ default: { ttl: 900000, limit: 5 } })
   async register(@Body() dto: RegisterDto) {
     const result = await this.authService.register(dto);
     return {
@@ -66,7 +66,7 @@ export class AuthController {
   }
 
   @Post('forgot-password')
-  @Throttle({ auth: { ttl: 3600000, limit: 3 } })
+  @Throttle({ default: { ttl: 3600000, limit: 3 } })
   @HttpCode(HttpStatus.OK)
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
     await this.authService.forgotPassword(dto.email);

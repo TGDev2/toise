@@ -12,6 +12,7 @@ import { User } from '../../users/entities/user.entity';
 import { Project } from '../../projects/entities/project.entity';
 import { Client } from '../../clients/entities/client.entity';
 import { Quote } from '../../quotes/entities/quote.entity';
+import { numericTransformer } from '../../common/transformers/numeric.transformer';
 
 export enum InvoiceStatus {
   ISSUED = 'issued',
@@ -163,19 +164,43 @@ export class Invoice {
   @Column({ type: 'jsonb' })
   vat_breakdown!: VatBreakdownEntry[];
 
-  @Column({ type: 'numeric', precision: 10, scale: 2, default: 0 })
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    default: 0,
+    transformer: numericTransformer,
+  })
   total_ht!: number;
 
-  @Column({ type: 'numeric', precision: 10, scale: 2, default: 0 })
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    default: 0,
+    transformer: numericTransformer,
+  })
   total_tva!: number;
 
-  @Column({ type: 'numeric', precision: 10, scale: 2, default: 0 })
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    default: 0,
+    transformer: numericTransformer,
+  })
   total_ttc!: number;
 
   @Column({ type: 'text', nullable: true })
   payment_terms!: string | null;
 
-  @Column({ type: 'numeric', precision: 5, scale: 2, nullable: true })
+  @Column({
+    type: 'numeric',
+    precision: 5,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   late_penalty_rate!: number | null;
 
   @Column({ type: 'text', nullable: true })

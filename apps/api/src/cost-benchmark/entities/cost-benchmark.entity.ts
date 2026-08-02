@@ -6,6 +6,7 @@ import {
   Index,
 } from 'typeorm';
 import type { SurfaceBand } from '../cost-benchmark';
+import { numericTransformer } from '../../common/transformers/numeric.transformer';
 
 /**
  * BACKLOG DATA-4 : une cellule publiable du benchmark de coûts.
@@ -28,7 +29,12 @@ export class CostBenchmark {
   surface_band!: SurfaceBand;
 
   /** Médiane du coût matériaux au m². Lue en `string` (numeric) → coercer. */
-  @Column({ type: 'numeric', precision: 10, scale: 2 })
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    transformer: numericTransformer,
+  })
   median_cost_per_m2!: number;
 
   /** Observations retenues, après plafonnement par organisation. */

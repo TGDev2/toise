@@ -5,18 +5,26 @@ import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 import compression from 'compression';
 import type { Request } from 'express';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { WidgetService } from './widget/widget.service';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     rawBody: true,
     logger: new ConsoleLogger({
       json: process.env.NODE_ENV === 'production',
     }),
   });
   const config = app.get(ConfigService);
+
+  // Doit précéder tout ce qui lit `req.ip` — au premier rang le rate limiting,
+  // dont chaque compteur est indexé par IP. Cf. `parseTrustProxy`.
+  const trustProxy = config.get<boolean | number | string>('trustProxy');
+  if (trustProxy !== false && trustProxy !== undefined) {
+    app.set('trust proxy', trustProxy);
+  }
 
   app.use(helmet());
   app.use(compression());
@@ -42,9 +50,12 @@ async function bootstrap() {
   app.enableCors(
     (
       req: Request,
+      // `options` non optionnel : `NestExpressApplication` type le délégué CORS
+      // plus strictement que `INestApplication`, et tous les chemins ci-dessous
+      // passent bien une valeur.
       callback: (
         err: Error | null,
-        options?: { origin: boolean | string[]; credentials: boolean },
+        options: { origin: boolean | string[]; credentials: boolean },
       ) => void,
     ) => {
       if (!req.path.startsWith('/api/v1/widget/')) {

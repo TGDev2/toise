@@ -623,3 +623,97 @@ describe('ShoppingListsService.finalizeBudgetSummary', () => {
     expect(logbookServiceMock.recordChantierCompletion).not.toHaveBeenCalled();
   });
 });
+
+describe('ShoppingListsService.findByShareToken', () => {
+  let service: ShoppingListsService;
+
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const TOKEN = 'a'.repeat(64);
+
+  function sharedList(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 'shopping-list-1',
+      project_id: 'project-1',
+      share_token: TOKEN,
+      share_token_created_at: new Date(Date.now() - DAY_MS),
+      project: { id: 'project-1', name: 'Salon', rooms: [] },
+      items_json: { material_items: [], complementary_items: [] },
+      ...overrides,
+    };
+  }
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        ShoppingListsService,
+        {
+          provide: getRepositoryToken(ShoppingList),
+          useValue: shoppingListRepoMock,
+        },
+        {
+          provide: getRepositoryToken(ComplementaryMaterial),
+          useValue: complementaryRepoMock,
+        },
+        { provide: getRepositoryToken(WorkType), useValue: workTypeRepoMock },
+        {
+          provide: getRepositoryToken(MaterialCatalog),
+          useValue: materialCatalogRepoMock,
+        },
+        {
+          provide: getRepositoryToken(MaterialEcoEquivalence),
+          useValue: ecoEquivalenceRepoMock,
+        },
+        { provide: EstimationsService, useValue: estimationsServiceMock },
+        { provide: ProjectsService, useValue: projectsServiceMock },
+        { provide: AnalyticsService, useValue: analyticsServiceMock },
+        { provide: LogbookService, useValue: logbookServiceMock },
+      ],
+    }).compile();
+
+    service = module.get(ShoppingListsService);
+  });
+
+  it('sert une liste dont le lien est encore valide', async () => {
+    shoppingListRepoMock.findOne.mockResolvedValue(sharedList());
+
+    await expect(service.findByShareToken(TOKEN)).resolves.toMatchObject({
+      id: 'shopping-list-1',
+    });
+  });
+
+  it('refuse un lien au-delà de sa durée de vie', async () => {
+    shoppingListRepoMock.findOne.mockResolvedValue(
+      sharedList({
+        share_token_created_at: new Date(Date.now() - 400 * DAY_MS),
+      }),
+    );
+
+    await expect(service.findByShareToken(TOKEN)).rejects.toThrow(
+      NotFoundException,
+    );
+  });
+
+  // R7 : `ShoppingList` n'a pas de `@DeleteDateColumn` et la cascade FK ne joue
+  // qu'à la suppression physique — la liste survit donc au soft-delete de son
+  // projet, et la relation revient à `null`. Sans garde, le contrôleur lisait
+  // `project.name` et rendait un 500 générique + une alerte Sentry.
+  it('rend un 404, pas un 500, quand le projet a été supprimé', async () => {
+    shoppingListRepoMock.findOne.mockResolvedValue(
+      sharedList({ project: null }),
+    );
+
+    await expect(service.findByShareToken(TOKEN)).rejects.toThrow(
+      NotFoundException,
+    );
+  });
+
+  it('refuse un jeton inconnu', async () => {
+    shoppingListRepoMock.findOne.mockResolvedValue(null);
+
+    await expect(service.findByShareToken('inconnu')).rejects.toThrow(
+      NotFoundException,
+    );
+  });
+});

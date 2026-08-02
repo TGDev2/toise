@@ -32,15 +32,12 @@ import { ApiUsageService, monthlyQuotaFor } from './api-usage.service';
  * Le `@Throttle` de classe reste un plancher anti-inondation **par IP**, qui
  * protège la recherche de clé elle-même contre un flot de secrets invalides ;
  * la limite qui a du sens métier est celle par clé, appliquée dans `ApiKeyGuard`.
- * Les deux limiteurs nommés doivent être surchargés, sinon le limiteur `auth`
- * global (5 req/15 min) plafonnerait silencieusement cette surface.
+ * Relevé au-dessus du plafond global (100/min) : plusieurs intégrations d'un même
+ * partenaire peuvent sortir par une seule IP.
  */
 @Controller('partner')
 @UseGuards(ApiKeyGuard)
-@Throttle({
-  short: { ttl: 60000, limit: 300 },
-  auth: { ttl: 60000, limit: 300 },
-})
+@Throttle({ default: { ttl: 60000, limit: 300 } })
 export class PartnerApiController {
   constructor(
     private readonly estimationsService: EstimationsService,

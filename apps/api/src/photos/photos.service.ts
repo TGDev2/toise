@@ -17,6 +17,7 @@ import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 import { ProjectPhoto, PhotoStatus } from './entities/project-photo.entity';
 import type { StorageProvider } from './storage/storage.interface';
 import { STORAGE_PROVIDER } from './storage/storage.interface';
+import { detectImageFormat } from './image-signature';
 
 const MAX_PHOTOS_PER_PROJECT = 5;
 
@@ -89,6 +90,15 @@ export class PhotosService {
     if (count >= MAX_PHOTOS_PER_PROJECT) {
       throw new BadRequestException(
         `Maximum ${MAX_PHOTOS_PER_PROJECT} photos par projet`,
+      );
+    }
+
+    // Avant `sharp` : le filtre multer amont ne lit que l'en-tête Content-Type
+    // déclaré par le client. Décoder d'abord reviendrait à laisser une suite
+    // d'octets quelconque atteindre libjpeg/libpng/libheif. Cf. image-signature.ts.
+    if (!detectImageFormat(file.buffer)) {
+      throw new BadRequestException(
+        'Fichier image invalide. Formats acceptes : JPEG, PNG, HEIC',
       );
     }
 

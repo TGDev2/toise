@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { IsNull, Not } from 'typeorm';
+import { DataSource, IsNull, Not } from 'typeorm';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { CostBenchmarkService } from './cost-benchmark.service';
 import { ShoppingList } from '../shopping-lists/entities/shopping-list.entity';
@@ -100,6 +100,18 @@ describe('CostBenchmarkService', () => {
     delete: jest.fn(),
     upsert: jest.fn(),
   };
+  // `persist` ecrit desormais dans une transaction porteuse d'un verrou
+  // consultatif : le retrait et la reecriture sont une seule verite publiee.
+  const transactionManagerMock = {
+    query: jest.fn().mockResolvedValue([]), // pg_advisory_xact_lock
+    getRepository: jest.fn(() => benchmarkRepoMock),
+  };
+  const dataSourceMock = {
+    transaction: jest.fn((cb: (m: typeof transactionManagerMock) => unknown) =>
+      cb(transactionManagerMock),
+    ),
+  };
+
   const projectQueryBuilderMock = {
     select: jest.fn().mockReturnThis(),
     addSelect: jest.fn().mockReturnThis(),
@@ -137,6 +149,7 @@ describe('CostBenchmarkService', () => {
           provide: getRepositoryToken(CostBenchmark),
           useValue: benchmarkRepoMock,
         },
+        { provide: DataSource, useValue: dataSourceMock },
       ],
     }).compile();
 
@@ -345,8 +358,12 @@ describe('CostBenchmarkService', () => {
       id: 'cell-1',
       work_type_code: 'painting',
       surface_band: 'medium',
-      // `numeric` revient en `string` du driver PostgreSQL.
-      median_cost_per_m2: '15.00',
+      // Depuis R6, la conversion `string` -> `number` du driver est faite
+      // par le `numericTransformer` de l'entite, donc en amont d'ici : ce
+      // mock rend ce que le repository rend reellement. L'invariant lui-meme
+      // est couvert par `common/transformers/numeric.transformer.spec.ts`,
+      // qui verifie en plus qu'aucune colonne n'y echappe.
+      median_cost_per_m2: 15,
       sample_size: 12,
       organization_count: 6,
       computed_at: new Date('2026-08-01T00:00:00.000Z'),
@@ -364,7 +381,7 @@ describe('CostBenchmarkService', () => {
       benchmarkRepoMock.find.mockResolvedValue([publishedCell]);
     });
 
-    it('situe le projet sous la médiane et coerce le numeric', async () => {
+    it('situe le projet sous la médiane de sa cohorte', async () => {
       const result = await service.getForProject('proj-1', 'org-mine');
 
       expect(result.comparisons).toHaveLength(1);
@@ -444,6 +461,32 @@ describe('CostBenchmarkService', () => {
     it('avale l’erreur pour ne pas tuer le process du cron', async () => {
       shoppingListRepoMock.find.mockRejectedValue(new Error('db down'));
       await expect(service.runWeekly()).resolves.toBeUndefined();
+    });
+  });
+
+  // R11 : `delete(stale)` puis `upsert(kept)` sans transaction laissait une
+  // fenetre ou la verite publiee etait amputee, et un echec entre les deux la
+  // laissait ouverte jusqu'au run suivant -- une semaine. Le verrou, lui, ecarte
+  // l'entrelacement du @Cron hebdomadaire et d'un declenchement manuel.
+  describe('persistance transactionnelle', () => {
+    it('ecrit dans une transaction, sous verrou consultatif', async () => {
+      await service.run();
+
+      expect(dataSourceMock.transaction).toHaveBeenCalledTimes(1);
+      expect(transactionManagerMock.query).toHaveBeenCalledWith(
+        'SELECT pg_advisory_xact_lock($1)',
+        [4071205004],
+      );
+    });
+
+    it('passe par le manager de la transaction, jamais par le repository nu', async () => {
+      benchmarkRepoMock.delete.mockClear();
+      benchmarkRepoMock.upsert.mockClear();
+      transactionManagerMock.getRepository.mockClear();
+
+      await service.run();
+
+      expect(transactionManagerMock.getRepository).toHaveBeenCalled();
     });
   });
 });

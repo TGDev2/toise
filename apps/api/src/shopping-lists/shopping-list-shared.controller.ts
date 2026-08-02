@@ -2,6 +2,7 @@ import { Controller, Get, Param, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { ShoppingListsService } from './shopping-lists.service';
 import { ShoppingListExportService } from './shopping-list-export.service';
+import { shareTokenExpiry } from './share-token';
 
 @Controller('shared/shopping-list')
 export class ShoppingListSharedController {
@@ -32,6 +33,7 @@ export class ShoppingListSharedController {
       ),
       created_at: shoppingList.created_at.toISOString(),
       updated_at: shoppingList.updated_at.toISOString(),
+      expires_at: shareTokenExpiry(shoppingList)?.toISOString() ?? null,
     };
   }
 

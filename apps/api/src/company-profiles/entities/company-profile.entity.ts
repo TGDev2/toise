@@ -9,6 +9,7 @@ import {
   Index,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { numericTransformer } from '../../common/transformers/numeric.transformer';
 
 @Entity('company_profiles')
 export class CompanyProfile {
@@ -58,7 +59,13 @@ export class CompanyProfile {
   @Column({ type: 'varchar', length: 50, nullable: true })
   legal_form!: string | null;
 
-  @Column({ type: 'numeric', precision: 10, scale: 2, nullable: true })
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   capital_social!: number | null;
 
   @Column({ type: 'varchar', length: 20, nullable: true })
@@ -93,7 +100,13 @@ export class CompanyProfile {
   @Column({ type: 'varchar', length: 255, nullable: true })
   email!: string | null;
 
-  @Column({ type: 'numeric', precision: 5, scale: 2, nullable: true })
+  @Column({
+    type: 'numeric',
+    precision: 5,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   late_penalty_rate!: number | null;
 
   @Column({ type: 'integer', nullable: true })

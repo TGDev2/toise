@@ -40,6 +40,49 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
 
+  widget:
+    name: Widget (lint, tests, build)
+    runs-on: ubuntu-latest
+    # Le widget s'exécute chez des tiers, sur leurs pages : c'est la seule
+    # surface dont une régression est vue par un client avant d'être vue par
+    # nous. `apps/widget/src/widget.spec.ts` existait sans qu'aucun job ne
+    # l'exécute.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @chiffreo/widget lint
+      - run: pnpm --filter @chiffreo/widget test
+      - run: pnpm --filter @chiffreo/widget build
+
+  audit:
+    name: Dépendances (audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Bloquant, sur les seules dépendances qui atteignent la production.
+      # Le seuil est « critique » et pas « high » parce qu'un seuil que la CI
+      # ne peut pas tenir n'est pas une barrière : 41 advisories `high`
+      # transitives sont ouvertes à ce jour. Le rôle de cette étape est
+      # d'empêcher l'**arrivée** d'une nouvelle faille critique dans le code
+      # livré, pas de prétendre que l'arbre est propre.
+      - name: Audit bloquant (prod, critique)
+        run: pnpm audit --prod --audit-level critical
+      # Non bloquant : rend l'état réel visible sur chaque PR, y compris pour
+      # les dépendances de développement, sans faire du rouge permanent.
+      - name: Audit informatif (tout, high)
+        run: pnpm audit --audit-level high || true
+
   cv-service:
     name: CV service (compile check + tests)
     runs-on: ubuntu-latest
@@ -57,6 +100,19 @@ jobs:
         # Le détecteur de référence et le pipeline de dimensions ne dépendent
         # que d'OpenCV/numpy/pydantic/Pillow (pas de torch/transformers),
         # donc on n'installe pas tout requirements.txt (lourd) pour la CI.
-        run: pip install opencv-python-headless numpy pydantic pydantic-settings pillow "pytest>=8.0"
+        #
+        # En revanche les versions sont **extraites de requirements.txt**, pas
+        # ressaisies : une liste allégée qu'on ré-épingle à la main se
+        # désynchronise, et une CI verte atteste alors du comportement d'un
+        # OpenCV qui ne tournera jamais en production. Les seuils de
+        # `HoughLinesP` et consorts bougent entre versions mineures — c'est
+        # exactement l'API dont dépend la détection de lignes du pipeline.
+        run: |
+          set -euo pipefail
+          pins=$(grep -E '^(opencv-python-headless|numpy|pydantic|pydantic-settings|Pillow)==' requirements.txt)
+          test "$(printf '%s\n' "$pins" | wc -l)" -eq 5 \
+            || { echo "requirements.txt a changé : le sous-ensemble CI ne résout plus 5 paquets"; printf '%s\n' "$pins"; exit 1; }
+          printf 'Versions CI (issues de requirements.txt) :\n%s\n' "$pins"
+          printf '%s\n' "$pins" | xargs pip install "pytest==8.3.4"
       - name: Tests CV
         run: pytest tests -q

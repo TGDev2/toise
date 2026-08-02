@@ -29,6 +29,14 @@ import { ProjectPhoto } from './entities/project-photo.entity';
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
 const ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/heic', 'image/heif'];
 
+/**
+ * Premier tri, sur le `Content-Type` **déclaré** par le client dans la partie
+ * multipart. Il ne dit rien du contenu et n'est pas la validation : celle-ci se
+ * fait dans `PhotosService.uploadPhoto`, d'abord par les octets d'en-tête
+ * (`detectImageFormat`), puis par le décodage `sharp` dont le `format` constaté
+ * est ce qui finit en base. Ce filtre ne sert qu'à écarter tôt, et à moindre
+ * coût, ce qui ne prétend même pas être une image.
+ */
 function mimeFilter(
   _req: unknown,
   file: Express.Multer.File,

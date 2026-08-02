@@ -39,10 +39,7 @@ import { CreateSsoConnectionDto } from './dto/create-sso-connection.dto';
  */
 @Controller('admin/enterprise')
 @UseGuards(FirebaseAuthGuard, AdminGuard)
-@Throttle({
-  short: { ttl: 60000, limit: 30 },
-  auth: { ttl: 60000, limit: 30 },
-})
+@Throttle({ default: { ttl: 60000, limit: 30 } })
 export class AdminEnterpriseController {
   constructor(
     private readonly agreementsService: EnterpriseAgreementsService,

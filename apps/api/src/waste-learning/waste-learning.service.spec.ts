@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { IsNull, Not } from 'typeorm';
+import { DataSource, IsNull, Not } from 'typeorm';
 import { WasteLearningService } from './waste-learning.service';
 import { ShoppingList } from '../shopping-lists/entities/shopping-list.entity';
 import { EstimationResult } from '../estimations/entities/estimation-result.entity';
@@ -72,6 +72,18 @@ describe('WasteLearningService', () => {
     delete: jest.fn(),
     upsert: jest.fn(),
   };
+  // `persist` ecrit desormais dans une transaction porteuse d'un verrou
+  // consultatif : le retrait et la reecriture sont une seule verite publiee.
+  const transactionManagerMock = {
+    query: jest.fn().mockResolvedValue([]), // pg_advisory_xact_lock
+    getRepository: jest.fn(() => learnedRepoMock),
+  };
+  const dataSourceMock = {
+    transaction: jest.fn((cb: (m: typeof transactionManagerMock) => unknown) =>
+      cb(transactionManagerMock),
+    ),
+  };
+
   const projectQueryBuilderMock = {
     select: jest.fn().mockReturnThis(),
     addSelect: jest.fn().mockReturnThis(),
@@ -119,6 +131,7 @@ describe('WasteLearningService', () => {
           provide: getRepositoryToken(LearnedWasteFactor),
           useValue: learnedRepoMock,
         },
+        { provide: DataSource, useValue: dataSourceMock },
       ],
     }).compile();
 
@@ -301,5 +314,31 @@ describe('WasteLearningService', () => {
     shoppingListRepoMock.find.mockRejectedValue(new Error('base injoignable'));
 
     await expect(service.runWeekly()).resolves.toBeUndefined();
+  });
+
+  // R11 : `delete(stale)` puis `upsert(kept)` sans transaction laissait une
+  // fenetre ou la verite publiee etait amputee, et un echec entre les deux la
+  // laissait ouverte jusqu'au run suivant -- une semaine. Le verrou, lui, ecarte
+  // l'entrelacement du @Cron hebdomadaire et d'un declenchement manuel.
+  describe('persistance transactionnelle', () => {
+    it('ecrit dans une transaction, sous verrou consultatif', async () => {
+      await service.run();
+
+      expect(dataSourceMock.transaction).toHaveBeenCalledTimes(1);
+      expect(transactionManagerMock.query).toHaveBeenCalledWith(
+        'SELECT pg_advisory_xact_lock($1)',
+        [4071205003],
+      );
+    });
+
+    it('passe par le manager de la transaction, jamais par le repository nu', async () => {
+      learnedRepoMock.delete.mockClear();
+      learnedRepoMock.upsert.mockClear();
+      transactionManagerMock.getRepository.mockClear();
+
+      await service.run();
+
+      expect(transactionManagerMock.getRepository).toHaveBeenCalled();
+    });
   });
 });

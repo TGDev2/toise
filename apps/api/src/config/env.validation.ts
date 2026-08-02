@@ -14,6 +14,10 @@ const PRODUCTION_REQUIRED_VARS = [
   'STRIPE_PRO_PRICE_ID',
   'BREVO_API_KEY',
   'BREVO_SENDER_EMAIL',
+  // Le service CV n'était protégé que par son isolement réseau. Le secret
+  // partagé n'est une garantie que s'il est exigé des deux côtés : ici au
+  // démarrage de l'API, et dans `Settings.validate_runtime()` côté Python.
+  'CV_SERVICE_TOKEN',
 ] as const;
 
 const INTEGER_VARS = [

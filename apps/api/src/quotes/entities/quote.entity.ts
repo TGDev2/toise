@@ -12,6 +12,7 @@ import { User } from '../../users/entities/user.entity';
 import { Project } from '../../projects/entities/project.entity';
 import { Client } from '../../clients/entities/client.entity';
 import { EstimationResult } from '../../estimations/entities/estimation-result.entity';
+import { numericTransformer } from '../../common/transformers/numeric.transformer';
 
 export enum QuoteStatus {
   DRAFT = 'draft',
@@ -69,19 +70,49 @@ export class Quote {
   @Column({ type: 'varchar', length: 10, default: LaborType.HOURLY })
   labor_type!: LaborType;
 
-  @Column({ type: 'numeric', precision: 10, scale: 2, nullable: true })
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   labor_hourly_rate!: number | null;
 
-  @Column({ type: 'numeric', precision: 10, scale: 2, nullable: true })
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   labor_estimated_hours!: number | null;
 
-  @Column({ type: 'numeric', precision: 10, scale: 2, nullable: true })
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   labor_flat_amount!: number | null;
 
-  @Column({ type: 'numeric', precision: 5, scale: 2, default: 0 })
+  @Column({
+    type: 'numeric',
+    precision: 5,
+    scale: 2,
+    default: 0,
+    transformer: numericTransformer,
+  })
   material_margin_percent!: number;
 
-  @Column({ type: 'numeric', precision: 5, scale: 2, default: 0 })
+  @Column({
+    type: 'numeric',
+    precision: 5,
+    scale: 2,
+    default: 0,
+    transformer: numericTransformer,
+  })
   discount_percent!: number;
 
   @Column({ type: 'text', nullable: true })
@@ -96,19 +127,49 @@ export class Quote {
   @Column({ type: 'jsonb' })
   items_json!: QuoteLineItem[];
 
-  @Column({ type: 'numeric', precision: 10, scale: 2, default: 0 })
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    default: 0,
+    transformer: numericTransformer,
+  })
   subtotal_materials_ht!: number;
 
-  @Column({ type: 'numeric', precision: 10, scale: 2, default: 0 })
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    default: 0,
+    transformer: numericTransformer,
+  })
   subtotal_labor_ht!: number;
 
-  @Column({ type: 'numeric', precision: 10, scale: 2, default: 0 })
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    default: 0,
+    transformer: numericTransformer,
+  })
   total_ht!: number;
 
-  @Column({ type: 'numeric', precision: 5, scale: 2, default: 20 })
+  @Column({
+    type: 'numeric',
+    precision: 5,
+    scale: 2,
+    default: 20,
+    transformer: numericTransformer,
+  })
   tva_rate!: number;
 
-  @Column({ type: 'numeric', precision: 10, scale: 2, default: 0 })
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    default: 0,
+    transformer: numericTransformer,
+  })
   total_ttc!: number;
 
   @Column({ type: 'timestamptz', nullable: true })

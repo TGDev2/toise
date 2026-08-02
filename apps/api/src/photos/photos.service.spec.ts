@@ -150,12 +150,36 @@ describe('PhotosService', () => {
   });
 
   describe('uploadPhoto', () => {
+    // En-tete JPEG reelle : depuis R8, `uploadPhoto` verifie les octets de
+    // signature avant de confier quoi que ce soit a sharp/libvips.
+    const jpegBuffer = Buffer.concat([
+      Buffer.from([0xff, 0xd8, 0xff, 0xe0]),
+      Buffer.alloc(1020),
+    ]);
+
     const mockFile = {
-      buffer: Buffer.from('fake-image'),
+      buffer: jpegBuffer,
       originalname: 'room.jpg',
       mimetype: 'image/jpeg',
       size: 1024000,
     } as Express.Multer.File;
+
+    // R8 : le filtre multer amont ne lit que le Content-Type declare par le
+    // client. Sans cette garde, une suite d'octets quelconque atteignait le
+    // decodeur natif (libjpeg/libpng/libheif) avant toute verification.
+    it('refuse un fichier qui n’est pas une image, sans invoquer sharp', async () => {
+      (sharp as unknown as jest.Mock).mockClear();
+
+      await expect(
+        service.uploadPhoto('project-uuid', 'org-uuid', {
+          ...mockFile,
+          buffer: Buffer.from('MZ' + 'A'.repeat(1000), 'latin1'),
+        } as Express.Multer.File),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(sharp).not.toHaveBeenCalled();
+      expect(photoRepoMock.save).not.toHaveBeenCalled();
+    });
 
     it('should upload a photo successfully', async () => {
       const result = await service.uploadPhoto(

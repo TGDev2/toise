@@ -28,17 +28,12 @@ import { PUBLIC_API_FEATURE_KEY } from './guards/api-key.guard';
  * Authentification Firebase classique — c'est la surface *administrative*, pas
  * l'API publique elle-même.
  *
- * Le `@Throttle` de classe est obligatoire, pas décoratif : le limiteur `auth`
- * déclaré globalement (`app.module.ts`) s'applique à toutes les routes et les
- * plafonnerait sinon à 5 requêtes/15 min par IP — un bureau derrière un seul
- * NAT partagerait ce compteur. Même précaution que `public-calculators.controller.ts`.
+ * Le `@Throttle` de classe resserre le plafond global (100/min) : ces routes
+ * créent et révoquent des credentials, une cadence de 30/min y suffit.
  */
 @Controller('api-keys')
 @UseGuards(FirebaseAuthGuard, FeatureGateGuard)
-@Throttle({
-  short: { ttl: 60000, limit: 30 },
-  auth: { ttl: 60000, limit: 30 },
-})
+@Throttle({ default: { ttl: 60000, limit: 30 } })
 export class ApiKeysController {
   constructor(
     private readonly apiKeysService: ApiKeysService,

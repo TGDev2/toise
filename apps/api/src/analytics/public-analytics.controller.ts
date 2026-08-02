@@ -36,12 +36,8 @@ export class PublicAnalyticsController {
   @Post('events')
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(OptionalAuthGuard)
-  // Override both named throttlers: the global 'auth' default (5 req/15 min)
-  // would otherwise cap this public endpoint. Mirrors public-calculators.controller.ts.
-  @Throttle({
-    short: { ttl: 60000, limit: 30 },
-    auth: { ttl: 60000, limit: 30 },
-  })
+  // Plus strict que le plafond global (100/min) : surface publique, écriture.
+  @Throttle({ default: { ttl: 60000, limit: 30 } })
   async trackEvent(
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken | null,
     @Body() dto: TrackPublicEventDto,

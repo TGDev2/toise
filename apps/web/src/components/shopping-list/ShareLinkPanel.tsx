@@ -11,6 +11,7 @@ interface ShareLinkPanelProps {
 
 export function ShareLinkPanel({ projectId, onClose }: ShareLinkPanelProps) {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
@@ -19,10 +20,13 @@ export function ShareLinkPanel({ projectId, onClose }: ShareLinkPanelProps) {
     setLoading(true);
     setError('');
     try {
-      const result = await apiPost<{ share_url: string; share_token: string }>(
-        `/projects/${projectId}/shopping-list/share`,
-      );
+      const result = await apiPost<{
+        share_url: string;
+        share_token: string;
+        expires_at: string;
+      }>(`/projects/${projectId}/shopping-list/share`);
       setShareUrl(result.share_url);
+      setExpiresAt(result.expires_at);
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Impossible de générer le lien'));
     } finally {
@@ -47,6 +51,7 @@ export function ShareLinkPanel({ projectId, onClose }: ShareLinkPanelProps) {
     try {
       await apiDelete(`/projects/${projectId}/shopping-list/share`);
       setShareUrl(null);
+      setExpiresAt(null);
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Impossible de revoquer le lien'));
     } finally {
@@ -112,7 +117,13 @@ export function ShareLinkPanel({ projectId, onClose }: ShareLinkPanelProps) {
       )}
 
       <p className="mt-3 text-xs text-stone-400">
-        Toute personne disposant du lien pourra consulter la liste en lecture seule.
+        Toute personne disposant du lien pourra consulter la liste en lecture
+        seule, prix d’achat et enseignes compris.
+        {expiresAt
+          ? ` Il cesse de fonctionner le ${new Intl.DateTimeFormat('fr-FR', {
+              dateStyle: 'long',
+            }).format(new Date(expiresAt))}.`
+          : ''}
       </p>
     </div>
   );

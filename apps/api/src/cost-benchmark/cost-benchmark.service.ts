@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { In, IsNull, Not, Repository } from 'typeorm';
+import { DataSource, In, IsNull, Not, Repository } from 'typeorm';
 import { ShoppingList } from '../shopping-lists/entities/shopping-list.entity';
 import {
   EstimationLineItem,
@@ -26,6 +26,9 @@ import {
   resolveSurfaceBand,
   rollUpComparisons,
 } from './cost-benchmark';
+
+/** Clé de verrou consultatif propre à ce job (distincte de DATA-3 et des migrations). */
+const COST_BENCHMARK_LOCK_KEY = 4_071_205_004;
 
 export interface CostBenchmarkRunSummary {
   /** Ouvrages exploitables extraits des chantiers terminés. */
@@ -86,6 +89,7 @@ export class CostBenchmarkService {
     private readonly projectRepo: Repository<Project>,
     @InjectRepository(CostBenchmark)
     private readonly benchmarkRepo: Repository<CostBenchmark>,
+    private readonly dataSource: DataSource,
   ) {}
 
   @Cron(CronExpression.EVERY_WEEK, { timeZone: 'Europe/Paris' })
@@ -192,9 +196,10 @@ export class CostBenchmarkService {
         continue;
       }
 
-      // `numeric` revient en `string` du driver : sans coercition, la
-      // comparaison arithmétique produirait une concaténation silencieuse.
-      const median = Number(cell.median_cost_per_m2);
+      // La coercition locale qui vivait ici est devenue inutile : le
+      // `numericTransformer` de l'entité garantit désormais le `number` que le
+      // type déclaré promet, pour cette colonne comme pour les 29 autres.
+      const median = cell.median_cost_per_m2;
       const costPerM2 = entry.cost / entry.surface_m2;
 
       comparisons.push({
@@ -408,29 +413,41 @@ export class CostBenchmarkService {
     const published = cells.filter((c) => c.status === 'published');
     const keptKeys = new Set(published.map(benchmarkCellKey));
 
-    const existing = await this.benchmarkRepo.find();
-    const stale = existing.filter(
-      (row) => !keptKeys.has(benchmarkCellKey(row)),
-    );
-    if (stale.length > 0) {
-      await this.benchmarkRepo.delete(stale.map((row) => row.id));
-    }
+    // Même raisonnement que `WasteLearningService.persist` — et ici l'enjeu est
+    // plus lourd : la fenêtre entre le retrait et la réécriture sert des
+    // médianes dont la cohorte n'a pas été revérifiée, c'est-à-dire exactement
+    // ce que le seuil de k-anonymat existe pour empêcher. Le verrou est
+    // transactionnel, donc relâché quoi qu'il arrive à la transaction.
+    return this.dataSource.transaction(async (manager) => {
+      await manager.query('SELECT pg_advisory_xact_lock($1)', [
+        COST_BENCHMARK_LOCK_KEY,
+      ]);
 
-    if (published.length > 0) {
-      await this.benchmarkRepo.upsert(
-        published.map((c) => ({
-          work_type_code: c.work_type_code,
-          surface_band: c.surface_band,
-          median_cost_per_m2: c.median_cost_per_m2!,
-          sample_size: c.sample_size,
-          organization_count: c.organization_count,
-          computed_at: computedAt,
-        })),
-        ['work_type_code', 'surface_band'],
+      const repo = manager.getRepository(CostBenchmark);
+      const existing = await repo.find();
+      const stale = existing.filter(
+        (row) => !keptKeys.has(benchmarkCellKey(row)),
       );
-    }
+      if (stale.length > 0) {
+        await repo.delete(stale.map((row) => row.id));
+      }
 
-    return stale.length;
+      if (published.length > 0) {
+        await repo.upsert(
+          published.map((c) => ({
+            work_type_code: c.work_type_code,
+            surface_band: c.surface_band,
+            median_cost_per_m2: c.median_cost_per_m2!,
+            sample_size: c.sample_size,
+            organization_count: c.organization_count,
+            computed_at: computedAt,
+          })),
+          ['work_type_code', 'surface_band'],
+        );
+      }
+
+      return stale.length;
+    });
   }
 }
 

@@ -8,6 +8,7 @@ import {
   Unique,
 } from 'typeorm';
 import { MaterialCatalog } from './material-catalog.entity';
+import { numericTransformer } from '../../common/transformers/numeric.transformer';
 
 /**
  * BACKLOG DATA-3 : facteur de perte appris sur les achats réels, superposé au
@@ -38,15 +39,30 @@ export class LearnedWasteFactor {
   skill_level!: string;
 
   /** Valeur retenue, après crédibilité et bornes — celle que le moteur applique. */
-  @Column({ type: 'numeric', precision: 5, scale: 2 })
+  @Column({
+    type: 'numeric',
+    precision: 5,
+    scale: 2,
+    transformer: numericTransformer,
+  })
   factor_percent!: number;
 
   /** Valeur catalogue de référence au moment du calcul (audit). */
-  @Column({ type: 'numeric', precision: 5, scale: 2 })
+  @Column({
+    type: 'numeric',
+    precision: 5,
+    scale: 2,
+    transformer: numericTransformer,
+  })
   baseline_percent!: number;
 
   /** Médiane brute des pertes impliquées, avant crédibilité et bornes (audit). */
-  @Column({ type: 'numeric', precision: 6, scale: 2 })
+  @Column({
+    type: 'numeric',
+    precision: 6,
+    scale: 2,
+    transformer: numericTransformer,
+  })
   observed_percent!: number;
 
   /** Observations retenues, après plafonnement par organisation. */

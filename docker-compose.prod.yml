@@ -43,6 +43,11 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
+      # Un seul saut de proxy (Caddy, cf. l'en-tête de ce fichier). Sans cette
+      # ligne, `req.ip` vaut l'IP du proxy et *tout* le trafic partage un unique
+      # compteur de rate limiting. À ajuster si la chaîne compte d'autres
+      # proxys de confiance en amont.
+      TRUST_PROXY: ${TRUST_PROXY:-1}
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USERNAME: ${DB_USERNAME:-chiffreo}
@@ -63,6 +68,7 @@ services:
       BREVO_SENDER_EMAIL: ${BREVO_SENDER_EMAIL:?}
       BREVO_SENDER_NAME: ${BREVO_SENDER_NAME:-Chiffréo}
       CV_SERVICE_URL: http://cv-service:8000
+      CV_SERVICE_TOKEN: ${CV_SERVICE_TOKEN:?CV_SERVICE_TOKEN requis}
       CV_SERVICE_TIMEOUT_MS: ${CV_SERVICE_TIMEOUT_MS:-120000}
       STORAGE_PROVIDER: local
       STORAGE_LOCAL_PATH: /app/uploads
@@ -122,6 +128,10 @@ services:
       - uploads:/data/uploads:ro
     environment:
       - UPLOADS_PATH=/data/uploads
+      # Isolement reseau + secret partage : la seconde barriere ne
+      # depend pas d'un `ports:` que personne ne relit.
+      - CV_SERVICE_ENV=production
+      - CV_SERVICE_TOKEN=${CV_SERVICE_TOKEN:?CV_SERVICE_TOKEN requis}
     healthcheck:
       test:
         - CMD-SHELL

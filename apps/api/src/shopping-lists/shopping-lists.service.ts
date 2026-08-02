@@ -35,6 +35,7 @@ import {
   computeComplementaryQuantity,
   parseTileFormat,
 } from './complementary-formulas';
+import { isShareTokenExpired, shareTokenExpiry } from './share-token';
 
 @Injectable()
 export class ShoppingListsService {
@@ -593,7 +594,7 @@ export class ShoppingListsService {
   async generateShareToken(
     projectId: string,
     organizationId: string,
-  ): Promise<{ share_token: string }> {
+  ): Promise<{ share_token: string; expires_at: string }> {
     await this.projectsService.findOneForOrg(projectId, organizationId);
 
     const shoppingList = await this.shoppingListRepo.findOne({
@@ -606,8 +607,14 @@ export class ShoppingListsService {
       );
     }
 
-    if (shoppingList.share_token) {
-      return { share_token: shoppingList.share_token };
+    // Un jeton encore valide est réutilisé — le lien déjà transmis au client
+    // continue de fonctionner. Un jeton expiré est remplacé : le renvoyer
+    // produirait une URL morte à l'instant même où on la génère.
+    if (shoppingList.share_token && !isShareTokenExpired(shoppingList)) {
+      return {
+        share_token: shoppingList.share_token,
+        expires_at: shareTokenExpiry(shoppingList)!.toISOString(),
+      };
     }
 
     const token = randomBytes(32).toString('hex');
@@ -615,7 +622,10 @@ export class ShoppingListsService {
     shoppingList.share_token_created_at = new Date();
     await this.shoppingListRepo.save(shoppingList);
 
-    return { share_token: token };
+    return {
+      share_token: token,
+      expires_at: shareTokenExpiry(shoppingList)!.toISOString(),
+    };
   }
 
   async revokeShareToken(
@@ -643,7 +653,23 @@ export class ShoppingListsService {
       relations: ['project', 'project.rooms', 'project.rooms.dimensions'],
     });
 
-    if (!shoppingList) {
+    // Le message parlait déjà d'expiration alors qu'aucune ligne ne la
+    // vérifiait : `share_token_created_at` était écrite puis jamais relue, et un
+    // lien restait valable indéfiniment. Il expose sans authentification les
+    // prix d'achat réels et les enseignes — exactement les données que le module
+    // benchmark protège par ailleurs par k-anonymat.
+    //
+    // Le projet manquant est le second cas : `ShoppingList` n'a pas de
+    // `@DeleteDateColumn`, la cascade FK ne se déclenche qu'à la suppression
+    // physique, donc la liste survit à la suppression logique de son projet et
+    // la relation revient à `null`. Sans cette garde, le contrôleur
+    // déréférençait `project.name` et rendait un 500 là où un 404 est la
+    // réponse juste.
+    if (
+      !shoppingList ||
+      !shoppingList.project ||
+      isShareTokenExpired(shoppingList)
+    ) {
       throw new NotFoundException(
         'Shopping list not found or link has expired.',
       );

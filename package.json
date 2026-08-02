@@ -14,6 +14,13 @@
     "test:widget": "pnpm --filter @chiffreo/widget test",
     "lint": "pnpm --filter @chiffreo/api lint && pnpm --filter @chiffreo/web lint && pnpm --filter @chiffreo/widget lint",
     "dev:cv": "cd apps/cv-service && uvicorn app.main:app --reload --port 8000",
-    "db:migrate": "pnpm --filter @chiffreo/api migration:run"
+    "db:migrate": "pnpm --filter @chiffreo/api migration:run",
+    "audit:ci": "pnpm audit --prod --audit-level critical"
+  },
+  "pnpm": {
+    "overrides": {
+      "protobufjs@<7.5.5": ">=7.5.5",
+      "websocket-driver@<0.7.5": ">=0.7.5"
+    }
   }
 }

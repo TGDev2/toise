@@ -73,6 +73,7 @@ export class CvClientService {
   private readonly logger = new Logger(CvClientService.name);
   private readonly baseUrl: string;
   private readonly timeoutMs: number;
+  private readonly token: string;
 
   constructor(
     private readonly httpService: HttpService,
@@ -86,6 +87,13 @@ export class CvClientService {
       'cvService.timeoutMs',
       60000,
     );
+    this.token = this.configService.get<string>('cvService.token', '');
+  }
+
+  /** En-tête d'authentification, omise tant qu'aucun secret n'est configuré
+   * (développement local — le service accepte alors les appels anonymes). */
+  private authHeaders(): Record<string, string> {
+    return this.token ? { 'X-CV-Token': this.token } : {};
   }
 
   async analyze(request: CvAnalysisRequest): Promise<CvAnalysisResponse> {
@@ -105,7 +113,7 @@ export class CvClientService {
       this.httpService.post<CvAnalysisResponse>(
         `${this.baseUrl}/analyze`,
         request,
-        { timeout: this.timeoutMs },
+        { timeout: this.timeoutMs, headers: this.authHeaders() },
       ),
     );
 

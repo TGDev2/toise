@@ -11,12 +11,8 @@ export class PublicCalculatorsController {
 
   @Post('estimate')
   @HttpCode(HttpStatus.OK)
-  // Override both named throttlers: the global 'auth' default (5 req/15 min)
-  // would otherwise cap this public endpoint.
-  @Throttle({
-    short: { ttl: 60000, limit: 20 },
-    auth: { ttl: 60000, limit: 20 },
-  })
+  // Plus strict que le plafond global (100/min) : calcul non authentifié.
+  @Throttle({ default: { ttl: 60000, limit: 20 } })
   estimate(@Body() dto: PublicEstimateRequestDto) {
     return this.estimationsService.estimatePublic(dto);
   }
@@ -26,7 +22,7 @@ export class PublicCalculatorsController {
   // Tighter than /estimate: this writes to the DB and mails an arbitrary
   // third-party address. Mirrors auth.controller's forgot-password limit
   // rather than the 20/min compute-only rate.
-  @Throttle({ auth: { ttl: 3600000, limit: 3 } })
+  @Throttle({ default: { ttl: 3600000, limit: 3 } })
   emailEstimate(@Body() dto: PublicEstimateEmailDto) {
     return this.estimationsService.emailEstimate(dto);
   }

@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { In, IsNull, Not, Repository } from 'typeorm';
+import { DataSource, In, IsNull, Not, Repository } from 'typeorm';
 import { ShoppingList } from '../shopping-lists/entities/shopping-list.entity';
 import {
   EstimationLineItem,
@@ -21,6 +21,9 @@ import {
   WasteLearningStatus,
   WasteObservation,
 } from './waste-learning';
+
+/** Clé de verrou consultatif propre à ce job (distincte de DATA-4 et des migrations). */
+const WASTE_LEARNING_LOCK_KEY = 4_071_205_003;
 
 export interface WasteLearningRunSummary {
   /** Observations exploitables extraites des chantiers terminés. */
@@ -60,6 +63,7 @@ export class WasteLearningService {
     private readonly wasteFactorRepo: Repository<WasteFactor>,
     @InjectRepository(LearnedWasteFactor)
     private readonly learnedRepo: Repository<LearnedWasteFactor>,
+    private readonly dataSource: DataSource,
   ) {}
 
   @Cron(CronExpression.EVERY_WEEK, { timeZone: 'Europe/Paris' })
@@ -277,28 +281,44 @@ export class WasteLearningService {
     const learned = outcomes.filter((o) => o.status === 'learned');
     const keptKeys = new Set(learned.map(wasteCellKey));
 
-    const existing = await this.learnedRepo.find();
-    const stale = existing.filter((row) => !keptKeys.has(wasteCellKey(row)));
-    if (stale.length > 0) {
-      await this.learnedRepo.delete(stale.map((row) => row.id));
-    }
+    // Le retrait puis la réécriture forment **une seule** vérité publiée. Hors
+    // transaction, la fenêtre entre les deux sert un moteur d'estimation amputé
+    // de ses facteurs appris ; et un échec entre les deux la laisse ouverte
+    // jusqu'au run suivant, soit une semaine.
+    //
+    // Le verrou consultatif ne protège pas de ça : il empêche l'autre cas, deux
+    // exécutions concurrentes (le `@Cron` hebdomadaire et un déclenchement
+    // manuel par l'admin) dont les `delete` et les `upsert` s'entrelacent.
+    // Transactionnel : il tombe avec la transaction, quoi qu'il arrive.
+    return this.dataSource.transaction(async (manager) => {
+      await manager.query('SELECT pg_advisory_xact_lock($1)', [
+        WASTE_LEARNING_LOCK_KEY,
+      ]);
 
-    if (learned.length > 0) {
-      await this.learnedRepo.upsert(
-        learned.map((o) => ({
-          material_id: o.material_id,
-          pose_type: o.pose_type,
-          skill_level: o.skill_level,
-          factor_percent: o.factor_percent!,
-          baseline_percent: o.baseline_percent,
-          observed_percent: o.observed_percent!,
-          sample_size: o.sample_size,
-          computed_at: computedAt,
-        })),
-        ['material_id', 'pose_type', 'skill_level'],
-      );
-    }
+      const repo = manager.getRepository(LearnedWasteFactor);
+      const existing = await repo.find();
+      const stale = existing.filter((row) => !keptKeys.has(wasteCellKey(row)));
+      if (stale.length > 0) {
+        await repo.delete(stale.map((row) => row.id));
+      }
 
-    return stale.length;
+      if (learned.length > 0) {
+        await repo.upsert(
+          learned.map((o) => ({
+            material_id: o.material_id,
+            pose_type: o.pose_type,
+            skill_level: o.skill_level,
+            factor_percent: o.factor_percent!,
+            baseline_percent: o.baseline_percent,
+            observed_percent: o.observed_percent!,
+            sample_size: o.sample_size,
+            computed_at: computedAt,
+          })),
+          ['material_id', 'pose_type', 'skill_level'],
+        );
+      }
+
+      return stale.length;
+    });
   }
 }

@@ -34,7 +34,7 @@ export class AdminCostBenchmarkController {
       benchmarks: benchmarks.map((b) => ({
         work_type_code: b.work_type_code,
         surface_band: b.surface_band,
-        median_cost_per_m2: Number(b.median_cost_per_m2),
+        median_cost_per_m2: b.median_cost_per_m2,
         sample_size: b.sample_size,
         organization_count: b.organization_count,
         computed_at: b.computed_at.toISOString(),

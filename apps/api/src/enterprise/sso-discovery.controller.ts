@@ -19,15 +19,12 @@ import { domainOfEmail } from './public-email-domains';
  *
  * La contrepartie assumée : cette route révèle qu'un domaine est client. Elle est
  * inhérente au flux (l'utilisateur doit être routé vers son IdP avant toute
- * authentification) et bornée par un `@Throttle` explicite — sans lui, le
- * limiteur `auth` global (5 req/15 min par IP) plafonnerait tout un bureau
- * derrière un même NAT.
+ * authentification) et bornée par un `@Throttle` explicite plus strict que le
+ * plafond global (100/min) : c'est un oracle d'existence de domaine, on ne
+ * l'énumère pas à 100 requêtes par minute.
  */
 @Controller('sso')
-@Throttle({
-  short: { ttl: 60000, limit: 20 },
-  auth: { ttl: 60000, limit: 20 },
-})
+@Throttle({ default: { ttl: 60000, limit: 20 } })
 export class SsoDiscoveryController {
   constructor(private readonly ssoConnectionsService: SsoConnectionsService) {}
 

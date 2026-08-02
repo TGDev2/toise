@@ -1,7 +1,8 @@
 import logging
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 
+from app.api.auth import require_service_token
 from app.models.schemas import AnalyzeRequest, AnalyzeResponse
 from app.services.dimension_calculator import DimensionCalculator
 
@@ -10,7 +11,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post("/analyze", response_model=AnalyzeResponse)
+@router.post(
+    "/analyze",
+    response_model=AnalyzeResponse,
+    # `/health` reste ouvert : les healthchecks Docker n'ont pas le secret,
+    # et il n'expose que des booleens de chargement de modele.
+    dependencies=[Depends(require_service_token)],
+)
 async def analyze_images(request: Request, body: AnalyzeRequest):
     """
     Analyze room photos to extract dimensions.

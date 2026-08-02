@@ -39,16 +39,12 @@ import { AddSsoDomainDto } from './dto/add-sso-domain.dto';
  * organisation dont le contrat vient d'expirer doit pouvoir constater pourquoi
  * elle a perdu ses capacités. L'absence de contrat rend un 404, pas un 403.
  *
- * Le `@Throttle` de classe est obligatoire, pas décoratif : le limiteur `auth`
- * global plafonnerait sinon ces routes à 5 requêtes/15 min par IP — un bureau
- * derrière un seul NAT partagerait ce compteur (même précaution qu'en PLAT-5).
+ * Le `@Throttle` de classe resserre le plafond global (100/min) à 30/min :
+ * surface d'administration, jamais appelée en rafale.
  */
 @Controller('enterprise')
 @UseGuards(FirebaseAuthGuard, FeatureGateGuard)
-@Throttle({
-  short: { ttl: 60000, limit: 30 },
-  auth: { ttl: 60000, limit: 30 },
-})
+@Throttle({ default: { ttl: 60000, limit: 30 } })
 export class EnterpriseController {
   constructor(
     private readonly agreementsService: EnterpriseAgreementsService,

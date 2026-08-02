@@ -27,5 +27,10 @@ USER estimate
 
 EXPOSE 3001
 
-# Exécute les migrations puis démarre l'API.
-CMD ["sh", "-c", "node node_modules/typeorm/cli.js migration:run -d dist/config/data-source.js && node dist/main.js"]
+# Exécute les migrations puis démarre l'API. Le passage par `dist/scripts/migrate.js`
+# plutôt que par la CLI TypeORM apporte deux choses que le `CMD` seul ne pouvait
+# pas donner : un verrou consultatif Postgres (plusieurs réplicas qui démarrent
+# ensemble n'appliquent pas deux fois le même ALTER TABLE) et un code de sortie
+# dédié, qui distingue « la migration a échoué » de « l'application a crashé »
+# dans une boucle `restart: unless-stopped`. Cf. src/scripts/migrate.ts.
+CMD ["sh", "-c", "node dist/scripts/migrate.js && node dist/main.js"]

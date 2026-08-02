@@ -8,6 +8,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { MaterialCatalog } from './material-catalog.entity';
+import { numericTransformer } from '../../common/transformers/numeric.transformer';
 
 @Entity('material_packaging')
 export class MaterialPackaging {
@@ -20,7 +21,12 @@ export class MaterialPackaging {
   @Column({ type: 'varchar', length: 255 })
   label!: string;
 
-  @Column({ type: 'numeric', precision: 10, scale: 4 })
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 4,
+    transformer: numericTransformer,
+  })
   quantity_per_unit!: number;
 
   @Column({ type: 'varchar', length: 20 })

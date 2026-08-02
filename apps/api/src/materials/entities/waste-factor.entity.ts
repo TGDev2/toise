@@ -8,6 +8,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { MaterialCatalog } from './material-catalog.entity';
+import { numericTransformer } from '../../common/transformers/numeric.transformer';
 
 @Entity('waste_factors')
 export class WasteFactor {
@@ -23,7 +24,12 @@ export class WasteFactor {
   @Column({ type: 'varchar', length: 20 })
   skill_level!: string;
 
-  @Column({ type: 'numeric', precision: 5, scale: 2 })
+  @Column({
+    type: 'numeric',
+    precision: 5,
+    scale: 2,
+    transformer: numericTransformer,
+  })
   factor_percent!: number;
 
   @CreateDateColumn({ type: 'timestamptz' })

@@ -19,6 +19,7 @@ import type {
   ShoppingListComplementaryItem,
   BudgetSummary,
 } from '../../shopping-lists/entities/shopping-list.entity';
+import { numericTransformer } from '../../common/transformers/numeric.transformer';
 
 export enum ModerationStatus {
   PENDING = 'pending',
@@ -65,13 +66,29 @@ export class CommunityProject {
   @Column({ type: 'integer' })
   duration_days!: number;
 
-  @Column({ type: 'numeric', precision: 10, scale: 2 })
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    transformer: numericTransformer,
+  })
   length_cm!: number;
 
-  @Column({ type: 'numeric', precision: 10, scale: 2 })
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    transformer: numericTransformer,
+  })
   width_cm!: number;
 
-  @Column({ type: 'numeric', precision: 10, scale: 2, nullable: true })
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   height_cm!: number | null;
 
   @Column({ type: 'uuid', array: true, default: '{}' })

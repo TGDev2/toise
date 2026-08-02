@@ -14,6 +14,10 @@ opening_detector: OpeningDetector | None = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Load models on startup, cleanup on shutdown."""
+    # Avant tout chargement de modele : un demarrage sans secret hors
+    # developpement doit echouer bruyamment, pas servir en anonyme.
+    settings.validate_runtime()
+
     global depth_estimator, opening_detector
     depth_estimator = DepthEstimator()
     depth_estimator.load_model()

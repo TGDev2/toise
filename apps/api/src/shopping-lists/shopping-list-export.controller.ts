@@ -78,16 +78,21 @@ export class ShoppingListExportController {
   async createShareLink(
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) projectId: string,
-  ): Promise<{ share_url: string; share_token: string }> {
+  ): Promise<{ share_url: string; share_token: string; expires_at: string }> {
     const scope = await this.resolveScope(firebaseUser);
-    const { share_token } = await this.shoppingListsService.generateShareToken(
-      projectId,
-      scope.organizationId,
-    );
+    // `expires_at` remonte jusqu'à l'interface : un lien qui expire sans que son
+    // émetteur sache quand est un lien qu'on croit fermé ou qu'on croit ouvert,
+    // au hasard.
+    const { share_token, expires_at } =
+      await this.shoppingListsService.generateShareToken(
+        projectId,
+        scope.organizationId,
+      );
     const publicUrl = this.configService.get<string>('publicUrl');
     return {
       share_url: `${publicUrl}/shared/shopping-list/${share_token}`,
       share_token,
+      expires_at,
     };
   }
 

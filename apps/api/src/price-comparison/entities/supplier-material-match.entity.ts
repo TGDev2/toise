@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { MaterialCatalog } from '../../materials/entities/material-catalog.entity';
 import type { FeedAvailability } from '../matching/material-product-matcher';
+import { numericTransformer } from '../../common/transformers/numeric.transformer';
 
 /**
  * Rapprochement retenu entre un matériau du catalogue et un produit du flux
@@ -50,14 +51,24 @@ export class SupplierMaterialMatch {
   brand!: string | null;
 
   /** Prix d'un conditionnement marchand, dans la devise du flux. */
-  @Column({ type: 'numeric', precision: 10, scale: 2 })
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    transformer: numericTransformer,
+  })
   price!: number;
 
   @Column({ type: 'varchar', length: 3 })
   currency!: string;
 
   /** Quantité contenue dans le conditionnement marchand (2.5 pour un pot de 2,5 L). */
-  @Column({ type: 'numeric', precision: 10, scale: 4 })
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 4,
+    transformer: numericTransformer,
+  })
   pack_qty!: number;
 
   @Column({ type: 'varchar', length: 20 })
@@ -67,7 +78,12 @@ export class SupplierMaterialMatch {
   availability!: FeedAvailability;
 
   /** Couverture pondérée obtenue par ce match, conservée pour audit. */
-  @Column({ type: 'numeric', precision: 5, scale: 4 })
+  @Column({
+    type: 'numeric',
+    precision: 5,
+    scale: 4,
+    transformer: numericTransformer,
+  })
   match_score!: number;
 
   /**

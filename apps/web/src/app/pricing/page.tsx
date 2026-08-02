@@ -9,6 +9,7 @@ import {
   PRO_PLAN,
   type PricingPlan,
 } from '@/lib/pricing';
+import { serializeJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title: 'Tarifs',
@@ -108,7 +109,7 @@ export default function PricingPage() {
     <main className="flex-1 px-4 pb-16 sm:px-6 lg:px-8">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(JSON_LD) }}
       />
       <div className="mx-auto w-full max-w-6xl">
         <header className="flex items-center justify-between py-6">

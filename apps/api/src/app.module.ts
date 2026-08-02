@@ -37,6 +37,7 @@ import { WasteLearningModule } from './waste-learning/waste-learning.module';
 import { CostBenchmarkModule } from './cost-benchmark/cost-benchmark.module';
 import configuration from './config/configuration';
 import { validate } from './config/env.validation';
+import { THROTTLER_CONFIG } from './config/throttler.config';
 
 @Module({
   imports: [
@@ -58,10 +59,8 @@ import { validate } from './config/env.validation';
         synchronize: false,
       }),
     }),
-    ThrottlerModule.forRoot([
-      { name: 'short', ttl: 60000, limit: 100 },
-      { name: 'auth', ttl: 900000, limit: 5 },
-    ]),
+    // Un seul limiteur global, volontairement — cf. `THROTTLER_CONFIG`.
+    ThrottlerModule.forRoot(THROTTLER_CONFIG),
     ScheduleModule.forRoot(),
     AuthModule,
     UsersModule,
