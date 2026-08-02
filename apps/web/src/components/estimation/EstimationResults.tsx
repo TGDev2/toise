@@ -118,6 +118,14 @@ export function EstimationResults({ items }: EstimationResultsProps) {
                         generique
                       </span>
                     )}
+                    {item.waste_factor_source === 'learned' && (
+                      <span
+                        className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700"
+                        title="Ajuste sur les achats reels de chantiers termines"
+                      >
+                        appris
+                      </span>
+                    )}
                   </span>
                   <span>
                     Ajuste : {formatQty(item.adjusted_qty, item.material_unit)}

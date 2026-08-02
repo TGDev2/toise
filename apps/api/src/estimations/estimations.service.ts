@@ -13,6 +13,8 @@ import {
 } from './entities/estimation-result.entity';
 import { EmailCapture } from './entities/email-capture.entity';
 import { MaterialCatalog } from '../materials/entities/material-catalog.entity';
+import { LearnedWasteFactor } from '../materials/entities/learned-waste-factor.entity';
+import { overlayLearnedWasteFactors } from '../waste-learning/waste-learning';
 import { ProjectsService } from '../projects/projects.service';
 import {
   EstimationEngine,
@@ -60,6 +62,8 @@ export class EstimationsService {
     private readonly estimationRepo: Repository<EstimationResult>,
     @InjectRepository(MaterialCatalog)
     private readonly materialsRepo: Repository<MaterialCatalog>,
+    @InjectRepository(LearnedWasteFactor)
+    private readonly learnedWasteFactorRepo: Repository<LearnedWasteFactor>,
     @InjectRepository(WorkType)
     private readonly workTypesRepo: Repository<WorkType>,
     @InjectRepository(EmailCapture)
@@ -70,6 +74,14 @@ export class EstimationsService {
     private readonly analyticsService: AnalyticsService,
   ) {}
 
+  /**
+   * Catalogue d'une catégorie, prêt pour le moteur, avec les facteurs de perte
+   * appris (DATA-3) superposés au catalogue DTU. La superposition a lieu ici et
+   * non dans le moteur : tout ce qui chiffre — application, calculateurs
+   * publics, API PLAT-5, widget PLAT-7 — passe par cette méthode, et un moteur
+   * qui resterait une fonction du seul catalogue qu'on lui donne demeure
+   * testable sans base.
+   */
   private async loadMaterialInputs(category: string): Promise<MaterialInput[]> {
     const materials = await this.materialsRepo.find({
       where: {
@@ -86,16 +98,31 @@ export class EstimationsService {
       relations: ['packagings', 'waste_factors'],
     });
 
+    if (materials.length === 0) return [];
+
+    const learned = await this.learnedWasteFactorRepo.find({
+      where: { material_id: In(materials.map((m) => m.id)) },
+    });
+    const learnedByMaterialId = new Map<string, LearnedWasteFactor[]>();
+    for (const lwf of learned) {
+      const group = learnedByMaterialId.get(lwf.material_id);
+      if (group) group.push(lwf);
+      else learnedByMaterialId.set(lwf.material_id, [lwf]);
+    }
+
     return materials.map((m) => ({
       id: m.id,
       name: m.name,
       unit: m.unit,
       yield_per_unit: Number(m.yield_per_unit),
-      waste_factors: m.waste_factors.map((wf) => ({
-        pose_type: wf.pose_type,
-        skill_level: wf.skill_level,
-        factor_percent: Number(wf.factor_percent),
-      })),
+      waste_factors: overlayLearnedWasteFactors(
+        m.waste_factors.map((wf) => ({
+          pose_type: wf.pose_type,
+          skill_level: wf.skill_level,
+          factor_percent: Number(wf.factor_percent),
+        })),
+        learnedByMaterialId.get(m.id) ?? [],
+      ),
       packagings: m.packagings.map((p) => ({
         label: p.label,
         quantity_per_unit: Number(p.quantity_per_unit),

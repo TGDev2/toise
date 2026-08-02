@@ -45,6 +45,7 @@ origine (en-tête `Origin`), cf. [Widget marque blanche](#widget-marque-blanche)
 - [Widget marque blanche](#widget-marque-blanche)
 - [Enterprise — SSO](#enterprise--sso)
 - [Enterprise — contrat et SLA](#enterprise--contrat-et-sla)
+- [Facteurs de perte appris (Admin)](#facteurs-de-perte-appris-admin)
 
 ---
 
@@ -2379,6 +2380,73 @@ l'historique contractuel ne se supprime pas.
 **Auth :** Requise (administrateur plateforme)
 
 **Réponses :** `200 OK` | `404 Not Found`
+
+---
+
+## Facteurs de perte appris (Admin)
+
+DATA-3 : les facteurs de perte du catalogue sont réajustés à partir des écarts
+entre quantité estimée et quantité réellement achetée, relevés sur les
+chantiers dont le budget a été finalisé, par matériau × pose × niveau.
+
+Le catalogue DTU (`waste_factors`, étalonné par ENG-5) n'est **jamais** réécrit :
+les valeurs apprises vivent dans `learned_waste_factors` et sont superposées au
+chargement du catalogue. Une ligne d'estimation issue d'une valeur apprise porte
+`waste_factor_source: "learned"` (au lieu de `"catalog"` ou `"default"`).
+
+Le recalcul tourne chaque semaine (cron). Garde-fous appliqués par cellule :
+minimum 8 observations, maximum 5 par organisation, médiane robuste, rejet
+au-delà d'un écart absolu médian de 15 points, rapprochement par crédibilité
+`n / (n + 12)`, écart borné à ±10 points de la valeur catalogue et à
+l'intervalle `[0 %, 30 %]`.
+
+### `GET /admin/waste-learning`
+
+Facteurs actuellement appris, avec leur référence catalogue et les statistiques
+qui les justifient.
+
+**Auth :** Requise (admin) | **Guard :** `AdminGuard`
+
+**Réponse :** `200 OK`
+```json
+{
+  "factors": [
+    {
+      "material_id": "0253530f-f92a-470c-b201-4e0a46b0f50c",
+      "pose_type": "diagonal",
+      "skill_level": "intermediate",
+      "factor_percent": 18.25,
+      "baseline_percent": 15,
+      "observed_percent": 23.42,
+      "sample_size": 15,
+      "computed_at": "2026-08-02T02:00:00.000Z"
+    }
+  ]
+}
+```
+
+### `POST /admin/waste-learning/run`
+
+Relance le calcul immédiatement (idempotent). Les cellules qui ne remplissent
+plus les critères sont retirées.
+
+**Auth :** Requise (admin) | **Guard :** `AdminGuard`
+
+**Réponse :** `201 Created`
+```json
+{
+  "observations": 412,
+  "cells": 37,
+  "by_status": {
+    "learned": 6,
+    "insufficient_volume": 28,
+    "too_dispersed": 1,
+    "no_change": 2
+  },
+  "removed": 1,
+  "computed_at": "2026-08-02T02:00:00.000Z"
+}
+```
 
 ---
 

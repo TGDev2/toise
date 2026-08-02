@@ -9,7 +9,8 @@ export interface EstimationLineItem {
   surface_m2: number;
   theoretical_qty: number;
   waste_factor_percent: number;
-  waste_factor_source: 'catalog' | 'default';
+  /** `learned` : facteur recalculé sur les achats réels (DATA-3). */
+  waste_factor_source: 'catalog' | 'default' | 'learned';
   adjusted_qty: number;
   packaging_label: string;
   packaging_qty_per_unit: number;

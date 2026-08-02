@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { EstimationResult } from './entities/estimation-result.entity';
 import { EmailCapture } from './entities/email-capture.entity';
 import { MaterialCatalog } from '../materials/entities/material-catalog.entity';
+import { LearnedWasteFactor } from '../materials/entities/learned-waste-factor.entity';
 import { WorkType } from '../projects/entities/work-type.entity';
 import { ProjectsModule } from '../projects/projects.module';
 import { OrgContextModule } from '../organizations/org-context.module';
@@ -18,6 +19,7 @@ import { PublicCalculatorsController } from './public-calculators.controller';
     TypeOrmModule.forFeature([
       EstimationResult,
       MaterialCatalog,
+      LearnedWasteFactor,
       WorkType,
       EmailCapture,
     ]),

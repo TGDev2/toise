@@ -41,8 +41,8 @@
 
 | ID | Item | Description / valeur | Effort | Dépend de |
 |---|---|---|---|---|
-| DATA-1 | Événements funnel complets | Étendre le module analytics existant ([apps/api/src/analytics/](../apps/api/src/analytics/)) : visite calculateur → compte → 1ʳᵉ estimation → liste → checkout. Sans ça, impossible d'arbitrer P1/P2. | M | — |
-| DATA-2 | Tableau de bord North Star | Requêtes/dashboard simple : listes générées/semaine, conversion par marche du funnel, MRR par tier. | M | DATA-1 |
+| DATA-1 | Événements funnel complets | **Livré (commit `54c6aac`).** Module analytics étendu ([apps/api/src/analytics/](../apps/api/src/analytics/)) : visite calculateur → compte → 1ʳᵉ estimation → liste → checkout. | M | — |
+| DATA-2 | Tableau de bord North Star | **Livré (commit `65f884b`).** `GET /admin/analytics/dashboard` : listes générées/semaine, conversion par marche du funnel, MRR par tier. | M | DATA-1 |
 
 ### Epic CV-A : Combler l'écart silencieux
 
@@ -164,7 +164,7 @@ Seuils révisables — ce qui ne l'est pas, c'est qu'ils soient figés avant de 
 
 | ID | Item | Description / valeur | Effort | Dépend de |
 |---|---|---|---|---|
-| DATA-3 | Facteurs de perte appris | Ajuster les facteurs de perte du catalogue à partir des écarts estimé/acheté réels (budget tracking) par matériau × pose × niveau. Le « learns from millions of projects » appliqué au moteur, pas seulement à la CV. | L | DATA-1, ENG-5 |
+| DATA-3 | Facteurs de perte appris | **Livré (02/08/2026).** Recalcul hebdomadaire des facteurs de perte sur les écarts estimé/acheté des chantiers finalisés, par matériau × pose × niveau : médiane robuste, crédibilité `n/(n+12)`, minimum 8 observations dont 5 max par organisation, écart borné à ±10 points du catalogue et à [0 %, 30 %]. Table `learned_waste_factors` **superposée** au catalogue DTU (jamais réécrit) ; source `learned` sur la ligne d'estimation ; inspection via `/admin/waste-learning`. Cf. [tasks/todo.md](../tasks/todo.md). | L | DATA-1, ENG-5 |
 | DATA-4 | Benchmark de coûts anonymisé | « Votre projet coûte X % de moins que la médiane des projets similaires » — valeur ajoutée data impossible à copier sans le volume. | L | COM-1, DATA-3 |
 
 ---

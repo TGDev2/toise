@@ -51,6 +51,12 @@ export interface WasteFactorInput {
   pose_type: string;
   skill_level: string;
   factor_percent: number;
+  /**
+   * Origine de la valeur. Absente = catalogue. `learned` marque une valeur
+   * recalculée sur les achats réels (DATA-3), superposée au catalogue par
+   * `overlayLearnedWasteFactors` avant l'appel au moteur.
+   */
+  source?: 'catalog' | 'learned';
 }
 
 export interface MaterialInput {
@@ -75,7 +81,7 @@ export interface WorkItemInput {
 
 export interface ResolvedWasteFactor {
   percent: number;
-  source: 'catalog' | 'default';
+  source: 'catalog' | 'default' | 'learned';
 }
 
 export interface SelectedPackaging {
@@ -87,6 +93,40 @@ export interface SelectedPackaging {
 const CM2_TO_M2 = 10_000;
 export const DEFAULT_WASTE_PERCENT = 10;
 const DEFAULT_COATS = 2;
+
+/**
+ * Résolution du facteur de perte : exact (pose, niveau) → pose `standard` du
+ * même niveau → défaut générique. Exportée comme fonction pure car DATA-3 doit
+ * résoudre la **même** valeur de référence hors du moteur (calcul des facteurs
+ * appris) : la dupliquer laisserait les deux logiques diverger en silence.
+ */
+export function resolveWasteFactor(
+  wasteFactors: WasteFactorInput[],
+  poseType: string,
+  skillLevel: string,
+): ResolvedWasteFactor {
+  const exact = wasteFactors.find(
+    (wf) => wf.pose_type === poseType && wf.skill_level === skillLevel,
+  );
+  if (exact) {
+    return {
+      percent: Number(exact.factor_percent),
+      source: exact.source ?? 'catalog',
+    };
+  }
+
+  const standard = wasteFactors.find(
+    (wf) => wf.pose_type === 'standard' && wf.skill_level === skillLevel,
+  );
+  if (standard) {
+    return {
+      percent: Number(standard.factor_percent),
+      source: standard.source ?? 'catalog',
+    };
+  }
+
+  return { percent: DEFAULT_WASTE_PERCENT, source: 'default' };
+}
 
 @Injectable()
 export class EstimationEngine {
@@ -188,24 +228,7 @@ export class EstimationEngine {
     poseType: string,
     skillLevel: string,
   ): ResolvedWasteFactor {
-    // Exact match on (pose_type, skill_level)
-    const exact = wasteFactors.find(
-      (wf) => wf.pose_type === poseType && wf.skill_level === skillLevel,
-    );
-    if (exact) {
-      return { percent: Number(exact.factor_percent), source: 'catalog' };
-    }
-
-    // Fallback: standard pose_type with same skill_level
-    const standard = wasteFactors.find(
-      (wf) => wf.pose_type === 'standard' && wf.skill_level === skillLevel,
-    );
-    if (standard) {
-      return { percent: Number(standard.factor_percent), source: 'catalog' };
-    }
-
-    // Default
-    return { percent: DEFAULT_WASTE_PERCENT, source: 'default' };
+    return resolveWasteFactor(wasteFactors, poseType, skillLevel);
   }
 
   computeTheoreticalQty(

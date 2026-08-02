@@ -33,6 +33,7 @@ import { OrganizationsModule } from './organizations/organizations.module';
 import { ApiKeysModule } from './api-keys/api-keys.module';
 import { EnterpriseModule } from './enterprise/enterprise.module';
 import { WidgetModule } from './widget/widget.module';
+import { WasteLearningModule } from './waste-learning/waste-learning.module';
 import configuration from './config/configuration';
 import { validate } from './config/env.validation';
 
@@ -88,6 +89,7 @@ import { validate } from './config/env.validation';
     ApiKeysModule,
     EnterpriseModule,
     WidgetModule,
+    WasteLearningModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
