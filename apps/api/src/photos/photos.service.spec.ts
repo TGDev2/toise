@@ -14,6 +14,8 @@ import {
   WorkType,
 } from '../projects/entities/project.entity';
 import { STORAGE_PROVIDER } from './storage/storage.interface';
+import { AnalyticsService } from '../analytics/analytics.service';
+import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 import sharp from 'sharp';
 
 jest.mock('sharp', () => {
@@ -93,6 +95,10 @@ const storageMock = {
   getAbsolutePath: jest.fn().mockReturnValue('/uploads/project-uuid/abc.jpg'),
 };
 
+const analyticsMock = {
+  track: jest.fn(),
+};
+
 const configMock = {
   get: jest.fn((key: string, defaultValue?: unknown) => {
     const map: Record<string, unknown> = {
@@ -132,6 +138,10 @@ describe('PhotosService', () => {
         {
           provide: ConfigService,
           useValue: configMock,
+        },
+        {
+          provide: AnalyticsService,
+          useValue: analyticsMock,
         },
       ],
     }).compile();
@@ -229,6 +239,76 @@ describe('PhotosService', () => {
       await expect(
         service.uploadPhoto('project-uuid', 'org-uuid', mockFile),
       ).rejects.toThrow(/trop floue/);
+    });
+
+    // MOB-1 : chaque cause de rejet doit être tracée avec son motif. C'est la
+    // mesure qui arbitrera l'argument « caméra » de MOB-2 ; un motif manquant
+    // rendrait le taux de rejet ininterprétable.
+    it.each([
+      [
+        'too_small',
+        () =>
+          mockSharpInstance.metadata.mockResolvedValueOnce({
+            format: 'jpeg',
+            width: 300,
+            height: 200,
+          }),
+      ],
+      [
+        'too_dark',
+        () =>
+          mockSharpInstance.stats.mockResolvedValueOnce({
+            channels: [{ mean: 10 }],
+            sharpness: 2.5,
+          }),
+      ],
+      [
+        'overexposed',
+        () =>
+          mockSharpInstance.stats.mockResolvedValueOnce({
+            channels: [{ mean: 250 }],
+            sharpness: 2.5,
+          }),
+      ],
+      [
+        'too_blurry',
+        () =>
+          mockSharpInstance.stats.mockResolvedValueOnce({
+            channels: [{ mean: 130 }],
+            sharpness: 0.05,
+          }),
+      ],
+    ])(
+      'trace le rejet qualité « %s » avec son motif',
+      async (reason, arrange) => {
+        arrange();
+
+        await expect(
+          service.uploadPhoto(
+            'project-uuid',
+            'org-uuid',
+            mockFile,
+            'user-uuid',
+          ),
+        ).rejects.toThrow(BadRequestException);
+
+        expect(analyticsMock.track).toHaveBeenCalledWith(
+          AnalyticsEventName.PHOTO_QUALITY_REJECTED,
+          'user-uuid',
+          { reason },
+        );
+      },
+    );
+
+    it('ne trace aucun rejet quand la photo passe le contrôle qualité', async () => {
+      await service.uploadPhoto(
+        'project-uuid',
+        'org-uuid',
+        mockFile,
+        'user-uuid',
+      );
+
+      expect(analyticsMock.track).not.toHaveBeenCalled();
     });
 
     it('should fail open (allow upload) when quality analysis throws unexpectedly', async () => {

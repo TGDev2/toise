@@ -98,6 +98,7 @@ export class PhotosController {
       projectId,
       scope.organizationId,
       file,
+      scope.userId,
     );
     return this.toDto(photo);
   }

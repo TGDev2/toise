@@ -12,11 +12,22 @@ import { Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
 import sharp from 'sharp';
 import { Project } from '../projects/entities/project.entity';
+import { AnalyticsService } from '../analytics/analytics.service';
+import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 import { ProjectPhoto, PhotoStatus } from './entities/project-photo.entity';
 import type { StorageProvider } from './storage/storage.interface';
 import { STORAGE_PROVIDER } from './storage/storage.interface';
 
 const MAX_PHOTOS_PER_PROJECT = 5;
+
+// Causes de rejet qualité (CV-4). Tracées pour mesurer le plafond réel de la
+// capture web : c'est le seul argument « caméra » recevable pour arbitrer MOB-2,
+// ces quatre causes étant précisément ce qu'une capture native guidée corrigerait.
+type PhotoRejectionReason =
+  | 'too_small'
+  | 'too_dark'
+  | 'overexposed'
+  | 'too_blurry';
 
 @Injectable()
 export class PhotosService {
@@ -36,6 +47,7 @@ export class PhotosService {
     @Inject(STORAGE_PROVIDER)
     private readonly storage: StorageProvider,
     private readonly configService: ConfigService,
+    private readonly analytics: AnalyticsService,
   ) {
     this.allowedMimeTypes = this.configService.get<string[]>(
       'storage.allowedMimeTypes',
@@ -67,6 +79,7 @@ export class PhotosService {
     projectId: string,
     organizationId: string,
     file: Express.Multer.File,
+    userId: string | null = null,
   ): Promise<ProjectPhoto> {
     await this.assertProjectInOrg(projectId, organizationId);
 
@@ -87,7 +100,7 @@ export class PhotosService {
       );
     }
 
-    await this.assessImageQuality(file.buffer, metadata);
+    await this.assessImageQuality(file.buffer, metadata, userId);
 
     const fileId = randomUUID();
     const ext = this.resolveExtension(detectedMime);
@@ -214,14 +227,30 @@ export class PhotosService {
     return formatMap[format ?? ''] ?? `image/${format}`;
   }
 
+  // Trace la cause puis lève : le message FR rendu à l'utilisateur est inchangé,
+  // seule la mesure est ajoutée.
+  private rejectPhoto(
+    reason: PhotoRejectionReason,
+    message: string,
+    userId: string | null,
+  ): never {
+    this.analytics.track(AnalyticsEventName.PHOTO_QUALITY_REJECTED, userId, {
+      reason,
+    });
+    throw new BadRequestException(message);
+  }
+
   private async assessImageQuality(
     buffer: Buffer,
     metadata: sharp.Metadata,
+    userId: string | null,
   ): Promise<void> {
     const { width = 0, height = 0 } = metadata;
     if (Math.min(width, height) < this.minDimensionPx) {
-      throw new BadRequestException(
+      this.rejectPhoto(
+        'too_small',
         'Photo trop petite ou trop eloignee. Rapprochez-vous ou reprenez la photo en pleine resolution.',
+        userId,
       );
     }
 
@@ -237,21 +266,27 @@ export class PhotosService {
 
     const brightness = stats.channels[0].mean;
     if (brightness < this.minBrightness) {
-      throw new BadRequestException(
+      this.rejectPhoto(
+        'too_dark',
         'Photo trop sombre. Ajoutez de la lumiere ou evitez le contre-jour.',
+        userId,
       );
     }
     if (brightness > this.maxBrightness) {
-      throw new BadRequestException(
+      this.rejectPhoto(
+        'overexposed',
         'Photo surexposee. Evitez le flash direct et la lumiere trop forte.',
+        userId,
       );
     }
 
     // stats.sharpness = metrique de nettete de libvips (Laplacien), documentee comme
     // "experimentale" par sharp -- reetalonner le seuil en cas de montee de version.
     if (stats.sharpness < this.minSharpness) {
-      throw new BadRequestException(
+      this.rejectPhoto(
+        'too_blurry',
         "Photo trop floue. Stabilisez l'appareil et verifiez la mise au point avant de reprendre la photo.",
+        userId,
       );
     }
   }

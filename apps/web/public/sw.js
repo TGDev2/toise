@@ -80,14 +80,31 @@ async function networkFirst(request, cacheName, { fallbackUrl, limit } = {}) {
     return response;
   } catch (err) {
     const cached = await cache.match(request);
-    if (cached) return cached;
+    if (cached) {
+      await reportOfflineView(request.url);
+      return cached;
+    }
 
     if (fallbackUrl) {
       const fallback = await caches.match(fallbackUrl);
-      if (fallback) return fallback;
+      if (fallback) {
+        await reportOfflineView(request.url);
+        return fallback;
+      }
     }
 
     throw err;
+  }
+}
+
+// Signale aux onglets qu'une réponse a été servie hors ligne (MOB-1 : mesurer si le
+// cache offline sert réellement). Le SW ne poste pas l'événement lui-même : il n'a
+// pas de réseau à cet instant. Le client le met en file et l'envoie au retour de la
+// connexion — voir lib/pwa-analytics.ts.
+async function reportOfflineView(url) {
+  const clients = await self.clients.matchAll({ type: 'window' });
+  for (const client of clients) {
+    client.postMessage({ type: 'offline-view', url });
   }
 }
 

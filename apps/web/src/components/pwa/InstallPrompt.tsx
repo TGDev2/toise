@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { CONSENT_EVENT, CONSENT_KEY } from '@/components/CookieConsent';
+import { trackPwaEvent } from '@/lib/pwa-analytics';
 
 const DISMISS_KEY = 'chiffreo_install_dismissed';
 
@@ -40,10 +41,12 @@ export function InstallPrompt() {
     const handleBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
       setDeferredEvent(event as BeforeInstallPromptEvent);
+      trackPwaEvent('pwa_install_prompted');
     };
 
     const handleAppInstalled = () => {
       setDeferredEvent(null);
+      trackPwaEvent('pwa_installed');
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -57,12 +60,19 @@ export function InstallPrompt() {
   const install = useCallback(async () => {
     if (!deferredEvent) return;
     await deferredEvent.prompt();
-    await deferredEvent.userChoice;
+    // `outcome` est le seul signal d'acceptation réelle : `appinstalled` peut ne
+    // jamais suivre (installation annulée par l'OS, app déjà présente).
+    const { outcome } = await deferredEvent.userChoice;
+    trackPwaEvent(
+      outcome === 'accepted' ? 'pwa_install_accepted' : 'pwa_install_dismissed',
+      outcome === 'accepted' ? {} : { surface: 'native' },
+    );
     setDeferredEvent(null);
   }, [deferredEvent]);
 
   const dismiss = useCallback(() => {
     localStorage.setItem(DISMISS_KEY, '1');
+    trackPwaEvent('pwa_install_dismissed', { surface: 'banner' });
     setDeferredEvent(null);
   }, []);
 

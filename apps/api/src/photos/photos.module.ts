@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Project } from '../projects/entities/project.entity';
+import { AnalyticsModule } from '../analytics/analytics.module';
 import { OrgContextModule } from '../organizations/org-context.module';
 import { ProjectPhoto } from './entities/project-photo.entity';
 import { PhotosController } from './photos.controller';
@@ -12,6 +13,7 @@ import { LocalStorageService } from './storage/local-storage.service';
   imports: [
     TypeOrmModule.forFeature([ProjectPhoto, Project]),
     OrgContextModule,
+    AnalyticsModule,
   ],
   controllers: [PhotosController],
   providers: [

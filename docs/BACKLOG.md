@@ -137,8 +137,21 @@
 
 | ID | Item | Description / valeur | Effort | Dépend de |
 |---|---|---|---|---|
-| MOB-1 | Service worker PWA | Installation réelle + cache offline des projets consultés (le manifest existe déjà, sans SW). Mesurer l'adoption avant d'envisager du natif. | M | — |
-| MOB-2 | App native (React Native/Expo) | Uniquement si les métriques PWA montrent une limite réelle (caméra avancée, LiDAR, stores comme canal). Réutilise l'API telle quelle. | XL | MOB-1, DATA-2 |
+| MOB-1 | Service worker PWA | **Livré (02/08/2026).** Service worker écrit à la main (3 stratégies de cache, repli `offline.html`), bandeau d'installation, purge des caches à la déconnexion. **Volet mesure livré séparément le 02/08/2026** : 6 événements PWA (`pwa_session_start` avec plateforme et mode d'affichage, entonnoir d'installation, vues hors ligne) + `photo_quality_rejected`, agrégés dans un bloc `pwa` de `GET /admin/analytics/dashboard`. Les événements passent par un tampon `localStorage` ([lib/pwa-analytics.ts](../apps/web/src/lib/pwa-analytics.ts)) : émis en mode standalone ou hors ligne, ils seraient sinon perdus précisément pour la population mesurée. Cf. [tasks/todo.md](../tasks/todo.md). | M | — |
+| MOB-2 | App native (React Native/Expo) | **Parké — en attente de données (arbitrage du 02/08/2026).** Uniquement si les métriques PWA montrent une limite réelle (caméra avancée, LiDAR, stores comme canal). Réutilise l'API telle quelle. Règle de décision ci-dessous. | XL | MOB-1, DATA-2 |
+
+#### Règle de décision MOB-2
+
+Écrite **avant** toute collecte, pour qu'un XL de plus de 3 semaines ne se justifie pas après coup. Lecture dans le bloc `pwa` de `GET /admin/analytics/dashboard`.
+
+- **Volume minimum** : ≥ 200 sessions (`sufficient_data`) sur ≥ 30 jours **après mise en production**. En dessous, aucune décision — MOB-1 a été livré le jour même où MOB-2 a été proposé, sans un seul utilisateur réel.
+- **Go — un seul signal suffit** :
+  - `photo_quality.rejection_rate` ≥ 15 % → le plafond est la capture web ; une capture native guidée (retour flou/exposition en direct) est une réponse crédible ;
+  - part de sessions mobiles ≥ 40 % **et** `sessions.standalone_share` < 10 % malgré une éligibilité au prompt → l'installation PWA ne prend pas, les stores sont le canal ;
+  - iOS ≥ 50 % des sessions mobiles → jamais promptables (`beforeinstallprompt` n'existe pas sur iOS), le store est la seule voie d'installation.
+- **No-go** : `standalone_share` ≥ 25 % **et** `rejection_rate` < 10 % → la PWA fait le travail, MOB-2 reste parké et le budget va à P0/P1.
+
+Seuils révisables — ce qui ne l'est pas, c'est qu'ils soient figés avant de voir les chiffres.
 
 ### Epic INTL-A : International
 

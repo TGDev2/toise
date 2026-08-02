@@ -24,6 +24,23 @@ export enum AnalyticsEventName {
   PROJECT_ABANDONED_EMAIL_SENT = 'project_abandoned_email_sent',
   TRIAL_ENDING_EMAIL_SENT = 'trial_ending_email_sent',
 
+  // MOB-1 : mesure de l'adoption PWA, préalable à l'arbitrage MOB-2 (app native).
+  // `pwa_session_start` porte à lui seul la part de sessions standalone et la
+  // répartition par plateforme : sur iOS `beforeinstallprompt` n'existe pas, donc
+  // sans cet événement les utilisateurs iOS seraient absents des mesures au lieu
+  // d'être comptés comme non-promptables — ce qui est précisément le signal qui
+  // ferait pencher MOB-2 vers les stores.
+  PWA_SESSION_START = 'pwa_session_start',
+  PWA_INSTALL_PROMPTED = 'pwa_install_prompted',
+  PWA_INSTALL_ACCEPTED = 'pwa_install_accepted',
+  PWA_INSTALL_DISMISSED = 'pwa_install_dismissed',
+  PWA_INSTALLED = 'pwa_installed',
+  PWA_OFFLINE_VIEW = 'pwa_offline_view',
+
+  // Rejet qualité CV-4 (photos.service.ts) : mesure le plafond réel de la capture
+  // web, seul argument « caméra » recevable pour MOB-2. Émis côté serveur uniquement.
+  PHOTO_QUALITY_REJECTED = 'photo_quality_rejected',
+
   // Événements existants (envoyés uniquement depuis le client, en l'état authentifié)
   PAYWALL_SHOWN = 'paywall_shown',
   PAYWALL_CLICKED = 'paywall_clicked',
