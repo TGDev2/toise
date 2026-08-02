@@ -106,15 +106,15 @@
 
 | ID | Item | Description / valeur | Effort | Dépend de |
 |---|---|---|---|---|
-| COM-1 | Coûts réels sur les projets partagés | Attacher la liste d'achats (quantités + coût final réel) aux partages communauté. L'angle « exact material costs » de la vision, absent aujourd'hui. | M | — |
-| COM-2 | Pages communauté publiques et indexables | Rendre la galerie approuvée accessible sans compte + SEO (« coût réel carrelage salle de bain 8 m² »). UGC = acquisition gratuite à forte intention. | M | COM-1 |
-| COM-3 | Parrainage | Offre « 1 mois Pro offert par filleul abonné ». Mécanique simple sur la base Stripe existante. | M | OPS-2 |
+| COM-1 | Coûts réels sur les projets partagés | **Livré (01/08/2026).** Instantané de la liste d'achats et du budget finalisé attaché au partage (`purchase_list_json`, `budget_summary_json`, `total_cost_cents`). L'angle « exact material costs » de la vision. | M | — |
+| COM-2 | Pages communauté publiques et indexables | **Livré (01/08/2026).** Galerie approuvée accessible sans compte + SEO. | M | COM-1 |
+| COM-3 | Parrainage | **Livré (01/08/2026).** Offre « 1 mois Pro offert par filleul abonné » sur la base Stripe existante. | M | OPS-2 |
 
 ### Epic PLAT-A : Rétention
 
 | ID | Item | Description / valeur | Effort | Dépend de |
 |---|---|---|---|---|
-| PLAT-1 | Carnet du logement | Historique persistant par pièce (dimensions validées, teintes/matériaux utilisés, dates). Raison de rester abonné entre deux chantiers — antidote au churn structurel du DIY (cf. stratégie §7.5). | L | ENG-2 |
+| PLAT-1 | Carnet du logement | **Livré (01/08/2026).** Historique persistant par pièce (dimensions validées, matériaux réellement achetés, dates), alimenté à la finalisation du budget. Antidote au churn structurel du DIY (cf. stratégie §7.5). | L | ENG-2 |
 | PLAT-2 | E-mails de cycle de vie | **Livré (01/08/2026).** Sweep quotidien (`@nestjs/schedule`) : onboarding J+1/J+3, projet abandonné à mi-parcours, fin d'essai Pro (J-3), via le provider GTM-5. Aucune feature gate, tous paliers. | M | GTM-5, DATA-1 |
 | PLAT-3 | Module éco-matériaux | **Livré (01/08/2026).** Badge + filtre + équivalences éco sur la liste de courses, gate `eco_materials` (Pro). | L | — |
 
@@ -165,7 +165,7 @@ Seuils révisables — ce qui ne l'est pas, c'est qu'ils soient figés avant de 
 | ID | Item | Description / valeur | Effort | Dépend de |
 |---|---|---|---|---|
 | DATA-3 | Facteurs de perte appris | **Livré (02/08/2026).** Recalcul hebdomadaire des facteurs de perte sur les écarts estimé/acheté des chantiers finalisés, par matériau × pose × niveau : médiane robuste, crédibilité `n/(n+12)`, minimum 8 observations dont 5 max par organisation, écart borné à ±10 points du catalogue et à [0 %, 30 %]. Table `learned_waste_factors` **superposée** au catalogue DTU (jamais réécrit) ; source `learned` sur la ligne d'estimation ; inspection via `/admin/waste-learning`. Cf. [tasks/todo.md](../tasks/todo.md). | L | DATA-1, ENG-5 |
-| DATA-4 | Benchmark de coûts anonymisé | « Votre projet coûte X % de moins que la médiane des projets similaires » — valeur ajoutée data impossible à copier sans le volume. | L | COM-1, DATA-3 |
+| DATA-4 | Benchmark de coûts anonymisé | **Livré (02/08/2026).** Médianes de coût matériaux au m², par type d'ouvrage × bande de surface (`<10` / `10–30` / `≥30` m²), recalculées chaque semaine sur les budgets finalisés. K-anonymat **écrit avant toute collecte** : ≥ 5 organisations distinctes, ≥ 10 chantiers, ≤ 3 par organisation, médiane seule publiée (un quartile est une dépense individuelle). Une cellule sous les seuils n'est pas masquée, elle n'est **pas écrite** — invariant verrouillé par une contrainte `CHECK` en base. Un projet supprimé sort de la cohorte au recalcul suivant. Gate `cost_benchmark` (Pro) seedée activée ; panneau sur la liste de courses. Cf. [tasks/todo.md](../tasks/todo.md). | L | COM-1, DATA-3 |
 
 ---
 
