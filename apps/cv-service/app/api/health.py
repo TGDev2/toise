@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Request
 
+from app.services.image_loader import HEIF_SUPPORTED
+
 router = APIRouter()
 
 
@@ -15,5 +17,11 @@ async def health_check(request: Request):
             "depth": bool(depth is not None and depth.model is not None),
             # YOLO : optionnel — repli sur l'heuristique OpenCV si absent.
             "yolo": bool(opening is not None and opening.model is not None),
+        },
+        "formats": {
+            # L'API accepte le HEIC à l'ingestion sans condition : si ce champ
+            # est faux, l'image déployée a perdu son décodeur et tout projet
+            # iPhone échouera à l'analyse, pas à l'upload.
+            "heif": HEIF_SUPPORTED,
         },
     }

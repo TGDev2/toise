@@ -13,10 +13,15 @@ from dataclasses import dataclass, field
 
 from app.services.opening_detector import DetectedOpening
 
-# Sémantique historique de _merge_openings / _group_openings (inchangée) :
-# deux détections de même type sont des doublons inter-images si leurs
+# Deux détections de même type sont des doublons **inter-images** si leurs
 # dimensions cm concordent à > 70 % ; deux groupes sont identiques si leurs
 # dimensions concordent à ±10 cm.
+#
+# « Inter-images » est une contrainte, pas une description : la concordance
+# dimensionnelle ne prouve pas l'identité d'objet (deux portes standard font
+# toutes deux 90×204). Elle n'est utilisable comme critère d'identité que
+# bornée par l'invariant ci-dessous — un même objet physique ne peut pas
+# apparaître deux fois dans la même photo.
 MERGE_DIM_RATIO = 0.7
 GROUP_DIM_TOL_CM = 10
 
@@ -66,14 +71,22 @@ def merge_and_group(
     """
     Fusionne les détections de plusieurs images en groupes consolidés.
 
-    Deux étages, comportement identique à l'ancien
-    _merge_openings + _group_openings de DimensionCalculator :
+    Deux étages :
 
-    1. Déduplication inter-images : tri par confiance décroissante, une
-       détection est absorbée par la première retenue de même type dont les
-       dimensions concordent (ratio > MERGE_DIM_RATIO sur les deux axes).
+    1. Déduplication **inter-images** : tri par confiance décroissante, une
+       détection est absorbée par le premier représentant de même type dont
+       les dimensions concordent (ratio > MERGE_DIM_RATIO sur les deux axes)
+       **et qui n'a pas déjà absorbé une détection de la même image**.
     2. Groupement : les représentants restants de même type et de dimensions
        à ±GROUP_DIM_TOL_CM sont groupés (count cumulés, confiance max).
+
+    L'invariant « au plus une boîte par image et par représentant » est ce
+    qui distingue *le même objet vu deux fois* de *deux objets distincts* :
+    le NMS intra-image (`OpeningDetector._nms`) a déjà supprimé les
+    recouvrements IoU > 0.5, donc deux détections survivantes dans une même
+    photo sont deux ouvertures différentes — même si elles font toutes deux
+    90×204. Sans cet invariant, deux portes standard d'une même pièce
+    remontaient en `count=1` (avec pourtant leurs deux boîtes en provenance).
 
     Chaque groupe conserve toutes les boîtes contributrices (représentants
     et absorbées) avec leur image d'origine.
@@ -85,22 +98,28 @@ def merge_and_group(
     ]
     flat.sort(key=lambda item: item[1].confidence, reverse=True)
 
-    # Étage 1 — déduplication, en mémorisant les boîtes absorbées.
-    representatives: list[tuple[DetectedOpening, list[dict]]] = []
+    # Étage 1 — déduplication, en mémorisant les boîtes absorbées et les
+    # images déjà représentées (cf. invariant du docstring).
+    representatives: list[tuple[DetectedOpening, list[dict], set[str]]] = []
     for image_path, opening in flat:
         box = serialize_box(image_path, opening)
         absorbed = False
-        for kept, boxes in representatives:
-            if opening.type == kept.type and _dims_match_ratio(opening, kept):
+        for kept, boxes, source_images in representatives:
+            if (
+                opening.type == kept.type
+                and image_path not in source_images
+                and _dims_match_ratio(opening, kept)
+            ):
                 boxes.append(box)
+                source_images.add(image_path)
                 absorbed = True
                 break
         if not absorbed:
-            representatives.append((opening, [box]))
+            representatives.append((opening, [box], {image_path}))
 
     # Étage 2 — groupement des représentants.
     groups: list[OpeningGroup] = []
-    for opening, boxes in representatives:
+    for opening, boxes, _source_images in representatives:
         matched = False
         for group in groups:
             if (

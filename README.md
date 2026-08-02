@@ -96,7 +96,8 @@ pnpm dev:cv     # CV service sur http://localhost:8000
 | `pnpm dev:cv` | Lance le CV service Python (uvicorn) |
 | `pnpm build:api` | Build de production de l'API |
 | `pnpm build:web` | Build de production du frontend |
-| `pnpm test:api` | Tests unitaires + e2e de l'API |
+| `pnpm test:api` | Tests unitaires + contrat HTTP de l'API |
+| `pnpm test:api:integration` | Tests d'intégration API (PostgreSQL réel) |
 | `pnpm test:web` | Tests du frontend |
 | `pnpm lint` | Lint de l'API et du frontend |
 | `pnpm db:migrate` | Exécute les migrations TypeORM |

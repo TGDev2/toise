@@ -168,10 +168,15 @@ pnpm test:web
 ### API (Jest)
 
 ```bash
-pnpm --filter @chiffreo/api test          # Unitaires
-pnpm --filter @chiffreo/api test:cov      # Avec couverture
-pnpm --filter @chiffreo/api test:e2e      # End-to-end
+pnpm --filter @chiffreo/api test              # Unitaires
+pnpm --filter @chiffreo/api test:cov          # Avec couverture
+pnpm --filter @chiffreo/api test:e2e          # Contrat HTTP (services mockés)
+pnpm --filter @chiffreo/api test:integration  # PostgreSQL réel (docker compose up postgres)
 ```
+
+Les suffixes ne suffisent pas à savoir ce qu'un vert atteste : `apps/api/test/README.md`
+détaille la portée de chaque étage, et surtout ce qu'aucun ne couvre. `test:integration`
+**supprime et recrée** la base `chiffreo_integration_test`.
 
 ### Web (Jest)
 

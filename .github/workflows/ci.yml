@@ -20,8 +20,51 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @chiffreo/api lint
       - run: pnpm --filter @chiffreo/api build
-      - run: pnpm --filter @chiffreo/api test
-      - run: pnpm --filter @chiffreo/api test:e2e
+      - name: Tests unitaires
+        run: pnpm --filter @chiffreo/api test
+      # Nom explicite : ces suites montent des contrôleurs avec services mockés
+      # et guards surchargés. Elles vérifient le contrat HTTP (DTO, pipes, codes
+      # de statut) — pas l'intégration. Ce que le vert ici ne dit pas est couvert
+      # par le job `api-integration`. Cf. apps/api/test/README.md.
+      - name: Tests de contrat HTTP (services mockés)
+        run: pnpm --filter @chiffreo/api test:e2e
+
+  api-integration:
+    name: API (intégration, PostgreSQL réel)
+    runs-on: ubuntu-latest
+    # Ce que le job `api` ne peut pas voir, faute de base : validité et
+    # réversibilité des migrations, dérive entités ↔ schéma, portée réelle des
+    # cascades de suppression, contraintes d'unicité, écritures concurrentes.
+    # Deux défauts de production sont nés précisément dans cet angle mort
+    # (idempotence des webhooks Stripe, perte de mise à jour JSONB).
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: chiffreo
+          POSTGRES_USER: chiffreo
+          POSTGRES_PASSWORD: chiffreo_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U chiffreo"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @chiffreo/api test:integration
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USERNAME: chiffreo
+          DB_PASSWORD: chiffreo_dev
 
   web:
     name: Web (lint, build, tests)
@@ -98,8 +141,11 @@ jobs:
         run: python -m compileall app training tests
       - name: Installe cv2/numpy + pytest
         # Le détecteur de référence et le pipeline de dimensions ne dépendent
-        # que d'OpenCV/numpy/pydantic/Pillow (pas de torch/transformers),
-        # donc on n'installe pas tout requirements.txt (lourd) pour la CI.
+        # que d'OpenCV/numpy/pydantic/Pillow/pillow-heif (pas de
+        # torch/transformers), donc on n'installe pas tout requirements.txt
+        # (lourd) pour la CI. `pillow-heif` en fait partie parce que le
+        # chargement d'image HEIC est justement ce qui manquait sans qu'aucun
+        # test ne puisse le voir.
         #
         # En revanche les versions sont **extraites de requirements.txt**, pas
         # ressaisies : une liste allégée qu'on ré-épingle à la main se
@@ -109,9 +155,9 @@ jobs:
         # exactement l'API dont dépend la détection de lignes du pipeline.
         run: |
           set -euo pipefail
-          pins=$(grep -E '^(opencv-python-headless|numpy|pydantic|pydantic-settings|Pillow)==' requirements.txt)
-          test "$(printf '%s\n' "$pins" | wc -l)" -eq 5 \
-            || { echo "requirements.txt a changé : le sous-ensemble CI ne résout plus 5 paquets"; printf '%s\n' "$pins"; exit 1; }
+          pins=$(grep -E '^(opencv-python-headless|numpy|pydantic|pydantic-settings|Pillow|pillow-heif)==' requirements.txt)
+          test "$(printf '%s\n' "$pins" | wc -l)" -eq 6 \
+            || { echo "requirements.txt a changé : le sous-ensemble CI ne résout plus 6 paquets"; printf '%s\n' "$pins"; exit 1; }
           printf 'Versions CI (issues de requirements.txt) :\n%s\n' "$pins"
           printf '%s\n' "$pins" | xargs pip install "pytest==8.3.4"
       - name: Tests CV

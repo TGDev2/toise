@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { EntityManager, In, Repository } from 'typeorm';
 import { randomBytes } from 'crypto';
 import {
   ShoppingList,
@@ -222,8 +222,33 @@ export class ShoppingListsService {
   ): Promise<{ shoppingList: ShoppingList; latestEstimationId: string }> {
     await this.projectsService.findOneForOrg(projectId, organizationId);
 
-    const shoppingList = await this.shoppingListRepo.findOne({
+    // `items_json` est **une seule colonne** : toute correction de ligne est une
+    // lecture-modification-écriture du blob entier. Sans verrou, deux PATCH
+    // simultanés sur deux lignes différentes (deux onglets, ou deux compagnons
+    // sur le même chantier) relisent la même version et le second écrase la
+    // correction du premier — sans erreur, sans trace. Le verrou de ligne
+    // sérialise les deux : le second repart de ce que le premier a écrit.
+    // Couvert par `test/integration/persistence.int-spec.ts`.
+    const saved = await this.shoppingListRepo.manager.transaction((manager) =>
+      this.applyUpdateLocked(manager, projectId, dto),
+    );
+
+    const latest = await this.estimationsService.getLatest(
+      projectId,
+      organizationId,
+    );
+    return { shoppingList: saved, latestEstimationId: latest.id };
+  }
+
+  /** Corps transactionnel de `update` : la liste est verrouillée le temps du merge. */
+  private async applyUpdateLocked(
+    manager: EntityManager,
+    projectId: string,
+    dto: UpdateShoppingListDto,
+  ): Promise<ShoppingList> {
+    const shoppingList = await manager.findOne(ShoppingList, {
       where: { project_id: projectId },
+      lock: { mode: 'pessimistic_write' },
     });
 
     if (!shoppingList) {
@@ -279,13 +304,7 @@ export class ShoppingListsService {
     }
 
     shoppingList.items_json = data;
-    const saved = await this.shoppingListRepo.save(shoppingList);
-
-    const latest = await this.estimationsService.getLatest(
-      projectId,
-      organizationId,
-    );
-    return { shoppingList: saved, latestEstimationId: latest.id };
+    return manager.save(shoppingList);
   }
 
   async regenerate(

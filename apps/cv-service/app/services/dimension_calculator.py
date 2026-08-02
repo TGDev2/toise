@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Optional
 
 import cv2
 import numpy as np
-from PIL import Image
 
 from app.config import settings
 from app.models.schemas import (
@@ -15,6 +14,7 @@ from app.models.schemas import (
     ReferenceObject,
 )
 from app.services.contour_detector import ContourDetector
+from app.services.image_loader import load_rgb
 from app.services.opening_detector import DetectedOpening, OpeningDetector
 from app.services.opening_merge import (
     OpeningGroup,
@@ -208,7 +208,9 @@ class DimensionCalculator:
         logger.info(f"Processing image: {full_path}")
 
         try:
-            pil_image = Image.open(full_path).convert("RGB")
+            # `load_rgb` et pas `Image.open` : c'est lui qui garantit que le
+            # décodeur HEIF est enregistré (l'API accepte et stocke du HEIC).
+            pil_image = load_rgb(full_path)
         except Exception as e:
             logger.warning(f"Failed to load image {full_path}: {e}")
             return None

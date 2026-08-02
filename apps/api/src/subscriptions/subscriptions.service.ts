@@ -193,6 +193,19 @@ export class SubscriptionsService {
   /**
    * Réserve un event Stripe pour traitement. Renvoie false si l'event a déjà
    * été traité (retry Stripe) : il doit alors être ignoré.
+   *
+   * La réponse se lit dans `raw` (le `RETURNING` de PostgreSQL, vide quand le
+   * `ON CONFLICT DO NOTHING` n'a rien inséré) et **pas** dans `identifiers` :
+   * `event_id` étant fourni par l'appelant et non généré, TypeORM garnit
+   * `identifiers` depuis les valeurs d'entrée sans jamais consulter la base.
+   * Le test s'y fiant était donc toujours vrai — tout retry Stripe repassait
+   * dans le traitement (surclassement rejoué, crédit de parrainage compté
+   * deux fois). Couvert par `test/integration/persistence.int-spec.ts`.
+   *
+   * Le `RETURNING` est demandé explicitement : sans lui, il ne tient qu'à la
+   * présence fortuite d'une colonne générée (`processed_at`) — la faire
+   * disparaître retournerait la panne dans l'autre sens, en ignorant *tous*
+   * les events.
    */
   async claimWebhookEvent(event: Stripe.Event): Promise<boolean> {
     const result = await this.stripeEventsRepo
@@ -200,8 +213,9 @@ export class SubscriptionsService {
       .insert()
       .values({ event_id: event.id, event_type: event.type })
       .orIgnore()
+      .returning('event_id')
       .execute();
-    return result.identifiers.length > 0;
+    return (result.raw as unknown[]).length > 0;
   }
 
   /**

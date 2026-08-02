@@ -240,6 +240,11 @@ def main() -> None:
 
     import cv2  # dispo partout (dépendance runtime du service)
 
+    # Les photos utilisateur peuvent être en HEIC (défaut iOS, accepté à
+    # l'ingestion) : `cv2.imread` rend None dessus, et chaque label associé
+    # partait silencieusement en `image_unreadable`.
+    from app.services.image_loader import is_heif, load_bgr
+
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from prepare_dataset import build_preview
 
@@ -324,7 +329,7 @@ def main() -> None:
     images_manifest: list[dict] = []
     class_counts = {"door": 0, "window": 0}
     for digest, item in sorted(selected.items()):
-        img = cv2.imread(str(item["src"]))
+        img = load_bgr(item["src"])
         if img is None:
             skipped["image_unreadable"] += 1
             continue
@@ -342,9 +347,17 @@ def main() -> None:
             continue
         split = "valid" if item["project_id"] in val_projects else "train"
         stem = f"user_{digest[:12]}"
-        suffix = item["src"].suffix.lower() or ".jpg"
-        dest = out / split / "images" / (stem + suffix)
-        dest.write_bytes(item["src"].read_bytes())
+        # Recopie des octets d'origine par défaut (aucune perte de qualité) —
+        # sauf en HEIC/HEIF, qu'ultralytics ne sait pas lire davantage : le
+        # dataset contiendrait des images mortes. Transcodage JPEG dans ce cas.
+        if is_heif(item["src"]):
+            suffix = ".jpg"
+            dest = out / split / "images" / (stem + suffix)
+            cv2.imwrite(str(dest), img)
+        else:
+            suffix = item["src"].suffix.lower() or ".jpg"
+            dest = out / split / "images" / (stem + suffix)
+            dest.write_bytes(item["src"].read_bytes())
         (out / split / "labels" / (stem + ".txt")).write_text(
             "\n".join(lines) + "\n", encoding="utf-8")
         images_manifest.append({
