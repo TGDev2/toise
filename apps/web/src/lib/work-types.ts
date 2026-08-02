@@ -61,3 +61,42 @@ export const WORK_TYPE_ICONS: Record<string, string> = {
   drywall: '\u{1F9F1}',
   wall_covering: '\u{1F5BC}\u{FE0F}',
 };
+
+/** Code de `work_types`, tel que seedé par la migration `...003`. */
+export type WorkTypeCode = keyof typeof WORK_TYPE_ICONS;
+
+/**
+ * Les métiers que le moteur sait réellement chiffrer, et eux seuls.
+ *
+ * Cette table existe parce que les surfaces artisan vendaient « les artisans du
+ * bâtiment » alors que les sept ouvrages seedés sont tous de finition : un plombier
+ * ou un électricien ne peut produire aucun devis réel avec ce catalogue. Annoncer
+ * le périmètre est la contrepartie honnête d'un prix, pas une réserve juridique.
+ *
+ * `workTypes` est adossé aux codes de `work_types` : le test du catalogue d'offre
+ * échoue si un ouvrage seedé n'est rattaché à aucun métier.
+ */
+export interface CoveredTrade {
+  label: string;
+  workTypes: WorkTypeCode[];
+}
+
+export const COVERED_TRADES: CoveredTrade[] = [
+  { label: 'Peintre', workTypes: ['wall_painting', 'ceiling_painting'] },
+  { label: 'Carreleur', workTypes: ['floor_tiling', 'wall_tiling'] },
+  { label: 'Solier, poseur de parquet', workTypes: ['parquet_flooring'] },
+  { label: 'Plaquiste', workTypes: ['drywall'] },
+  { label: 'Poseur de revêtement mural', workTypes: ['wall_covering'] },
+];
+
+/**
+ * Les corps d'état hors périmètre, nommés. Les taire reviendrait à laisser un
+ * artisan souscrire pour découvrir après coup que son métier n'est pas chiffrable.
+ */
+export const TRADES_NOT_COVERED = [
+  'Plomberie',
+  'Électricité',
+  'Isolation',
+  'Maçonnerie',
+  'Menuiserie',
+] as const;

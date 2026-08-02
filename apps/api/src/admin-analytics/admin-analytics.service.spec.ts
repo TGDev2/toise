@@ -5,7 +5,20 @@ import { AdminAnalyticsService } from './admin-analytics.service';
 import { AnalyticsEvent } from '../analytics/entities/analytics-event.entity';
 import { ProjectPhoto } from '../photos/entities/project-photo.entity';
 import { Subscription } from '../subscriptions/entities/subscription.entity';
+import { PLANS } from '../subscriptions/plans.constants';
 import { User } from '../users/entities/user.entity';
+
+/**
+ * Les montants attendus se déduisent du catalogue de plans plutôt que d'être
+ * recopiés : ce test porte sur la résolution `price_id` → palier, pas sur la
+ * grille tarifaire. Recopiés, ils tombaient au premier réalignement de prix
+ * (GTM-8 : 50/100/200 € → 19/29/49 €) sans rien signaler d'utile.
+ */
+const planPrice = (key: string): number => {
+  const plan = PLANS.find((candidate) => candidate.key === key);
+  if (!plan) throw new Error(`Plan inconnu dans le test : ${key}`);
+  return plan.price;
+};
 
 const CONFIG_VALUES: Record<string, string> = {
   'stripe.proPriceId': 'price_pro',
@@ -318,14 +331,26 @@ describe('AdminAnalyticsService', () => {
 
       const result = await service.getDashboard(4, 30);
 
+      const proMrr = 3 * planPrice('pro');
+      const essentielMrr = 2 * planPrice('contractor_essentiel');
+      const standardMrr = 1 * planPrice('contractor_standard');
+
       expect(result.mrr).toEqual({
         statuses_included: ['active', 'past_due'],
         currency: 'EUR',
-        total_mrr: 229.97,
+        total_mrr: proMrr + essentielMrr + standardMrr,
         by_tier: [
-          { tier: 'pro', subscriber_count: 3, mrr: 29.97 },
-          { tier: 'contractor_essentiel', subscriber_count: 2, mrr: 100 },
-          { tier: 'contractor_standard', subscriber_count: 1, mrr: 100 },
+          { tier: 'pro', subscriber_count: 3, mrr: proMrr },
+          {
+            tier: 'contractor_essentiel',
+            subscriber_count: 2,
+            mrr: essentielMrr,
+          },
+          {
+            tier: 'contractor_standard',
+            subscriber_count: 1,
+            mrr: standardMrr,
+          },
           { tier: 'contractor_premium', subscriber_count: 0, mrr: 0 },
         ],
         free_users_count: 512,

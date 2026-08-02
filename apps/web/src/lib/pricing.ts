@@ -43,9 +43,12 @@ export const AUDIENCE_DEFINITIONS: Record<Audience, AudienceDefinition> = {
   },
   artisan: {
     landingPath: '/artisans',
-    title: 'Vous êtes du métier',
+    // « Vous êtes du métier » laissait entendre tous les métiers. Le moteur ne
+    // chiffre que la finition (voir COVERED_TRADES) : l'accroche doit le dire
+    // avant le prix, pas après la souscription.
+    title: 'Vous êtes des métiers de finition',
     tagline:
-      'Chiffrez et envoyez un devis conforme depuis le chantier, pas le soir au bureau.',
+      'Peintre, carreleur, plaquiste, solier : chiffrez et envoyez un devis conforme depuis le chantier, pas le soir au bureau.',
     switchLabel: 'Vous êtes artisan ?',
   },
   enterprise: {
@@ -115,6 +118,19 @@ export interface OfferPlan {
   trialDays?: number;
   ctaLabel: string;
 }
+
+/**
+ * Plafond du marché français du devis-facture artisan, relevé en août 2026 :
+ * Boby 14,99 €, Tolteck 19 €, Obat 29 €, EBP Bâtiment 29,25 €, Costructor gratuit,
+ * BatiChiffrage 30 €+ (et 80 000 travaux unitaires en bibliothèque).
+ *
+ * Chiffréo couvre sept ouvrages de finition et un bloc de main-d'œuvre : une
+ * couverture partielle n'autorise pas un premium de prix. Le palier d'entrée doit
+ * rester sous ce plafond ; il valait 50 € avant GTM-8. Les paliers supérieurs
+ * peuvent le dépasser, mais seulement en portant des capacités que ces outils ne
+ * vendent pas à ce prix (multi-utilisateurs, API, widget).
+ */
+export const GENERALIST_MARKET_CEILING_EUR = 30;
 
 export const OFFER_PLANS: OfferPlan[] = [
   {
@@ -194,10 +210,11 @@ export const OFFER_PLANS: OfferPlan[] = [
     tier: 'contractor_essentiel',
     audience: 'artisan',
     name: 'Essentiel',
-    priceLabel: '50 €',
-    priceNumber: 50,
+    priceLabel: '19 €',
+    priceNumber: 19,
     period: '/mois',
-    description: 'Les indispensables du devis professionnel.',
+    description:
+      'Les indispensables du devis professionnel, sur les ouvrages de finition.',
     features: [
       {
         label: 'Tout Pro, projets illimités compris',
@@ -225,8 +242,8 @@ export const OFFER_PLANS: OfferPlan[] = [
     tier: 'contractor_standard',
     audience: 'artisan',
     name: 'Standard',
-    priceLabel: '100 €',
-    priceNumber: 100,
+    priceLabel: '29 €',
+    priceNumber: 29,
     period: '/mois',
     description: 'Le quotidien d’un artisan organisé.',
     features: [
@@ -250,8 +267,8 @@ export const OFFER_PLANS: OfferPlan[] = [
     tier: 'contractor_premium',
     audience: 'artisan',
     name: 'Premium',
-    priceLabel: '200 €',
-    priceNumber: 200,
+    priceLabel: '49 €',
+    priceNumber: 49,
     period: '/mois',
     description: 'Pour les équipes et les gros volumes.',
     features: [

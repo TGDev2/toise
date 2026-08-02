@@ -162,4 +162,4 @@ Copier `.env.example` vers `.env` et renseigner les valeurs :
 |------|----------------|
 | **Free** | 2 projets actifs, saisie manuelle, estimation basique, export PDF |
 | **Pro** (9,99 €/mois) | Projets illimités, analyse CV, facteurs de perte avancés, suivi budgétaire |
-| **Contractor** (50-200 €/mois) | Gestion clients, génération de devis, outils de chiffrage pro |
+| **Contractor** (19-49 €/mois) | Métiers de finition : gestion clients, devis conformes, suivi de chantier, facturation |

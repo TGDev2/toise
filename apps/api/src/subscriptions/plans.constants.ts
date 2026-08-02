@@ -9,6 +9,13 @@ export interface PlanDefinition {
   priceIdConfigKey: string;
 }
 
+/**
+ * Grille artisan alignée sur le marché français du devis-facture (GTM-8, août 2026) :
+ * Boby 14,99 €, Tolteck 19 €, Obat 29 €, EBP Bâtiment 29,25 €, BatiChiffrage 30 €+.
+ * Les paliers valaient 50/100/200 € — 2 à 10× le marché — pour une couverture de sept
+ * ouvrages de finition et un seul bloc de main-d'œuvre. Toute hausse doit être précédée
+ * d'une extension réelle du périmètre chiffrable, pas l'inverse.
+ */
 export const PLANS: PlanDefinition[] = [
   {
     key: 'pro',
@@ -22,7 +29,7 @@ export const PLANS: PlanDefinition[] = [
   {
     key: 'contractor_essentiel',
     label: 'Contractor Essentiel',
-    price: 50,
+    price: 19,
     currency: 'EUR',
     interval: 'month',
     trial_days: 0,
@@ -31,7 +38,7 @@ export const PLANS: PlanDefinition[] = [
   {
     key: 'contractor_standard',
     label: 'Contractor Standard',
-    price: 100,
+    price: 29,
     currency: 'EUR',
     interval: 'month',
     trial_days: 0,
@@ -40,7 +47,7 @@ export const PLANS: PlanDefinition[] = [
   {
     key: 'contractor_premium',
     label: 'Contractor Premium',
-    price: 200,
+    price: 49,
     currency: 'EUR',
     interval: 'month',
     trial_days: 0,

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { apiGet, apiPost } from '@/lib/api';
+import { plansForAudience } from '@/lib/pricing';
 
 interface ContractorPricingModalProps {
   onClose: () => void;
@@ -18,41 +19,14 @@ interface ApiPlan {
   price_id: string | null;
 }
 
-const CONTRACTOR_PLANS = [
-  {
-    key: 'contractor_essentiel',
-    label: 'Essentiel',
-    fallbackPrice: 50,
-    features: [
-      'Projets illimités',
-      'Export de devis PDF',
-      'Gestion de clients',
-      'Toutes les fonctionnalités Pro',
-    ],
-  },
-  {
-    key: 'contractor_standard',
-    label: 'Standard',
-    fallbackPrice: 100,
-    features: [
-      'Tout Essentiel +',
-      'Modèles de devis personnalisés',
-      'Historique clients avancé',
-      'Support prioritaire',
-    ],
-  },
-  {
-    key: 'contractor_premium',
-    label: 'Premium',
-    fallbackPrice: 200,
-    features: [
-      'Tout Standard +',
-      'Multi-utilisateurs',
-      "API d'intégration",
-      'Accompagnement dédié',
-    ],
-  },
-];
+/**
+ * Dérivé du catalogue d'offre, jamais redéclaré. La liste vivait ici en dur et avait
+ * dérivé : prix périmés (50/100/200 €) et deux fonctionnalités qui n'ont jamais
+ * existé (« Modèles de devis personnalisés », « Historique clients avancé »). Le
+ * garde-fou `offer-catalogue.spec.ts` ne couvre que `lib/pricing.ts` — la seule
+ * façon d'en bénéficier ici est d'y puiser.
+ */
+const CONTRACTOR_PLANS = plansForAudience('artisan');
 
 const DEFAULT_RECOMMENDED_PLAN = 'contractor_standard';
 
@@ -138,7 +112,7 @@ export function ContractorPricingModal({
           Chiffréo Contractor
         </h2>
         <p className="mb-6 text-center text-sm text-stone-500">
-          Des outils professionnels pour les artisans
+          Devis, clients et facturation pour les métiers de finition
         </p>
 
         {error && (
@@ -165,17 +139,20 @@ export function ContractorPricingModal({
                 </span>
               )}
               <h3 className="text-lg font-semibold text-stone-900">
-                {plan.label}
+                {plan.name}
               </h3>
               <p className="mt-2">
                 <span className="text-2xl font-bold text-stone-900">
-                  {apiPlans[plan.key]?.price ?? plan.fallbackPrice} &euro;
+                  {apiPlans[plan.key]?.price ?? plan.priceNumber} &euro;
                 </span>
                 <span className="text-sm text-stone-500"> /mois</span>
               </p>
               <ul className="mt-4 space-y-2">
                 {plan.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-stone-600">
+                  <li
+                    key={f.label}
+                    className="flex items-start gap-2 text-sm text-stone-600"
+                  >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       viewBox="0 0 20 20"
@@ -189,7 +166,7 @@ export function ContractorPricingModal({
                         clipRule="evenodd"
                       />
                     </svg>
-                    {f}
+                    {f.label}
                   </li>
                 ))}
               </ul>

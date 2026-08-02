@@ -8,6 +8,7 @@
  * pas à une règle inventée après coup.
  */
 import {
+  GENERALIST_MARKET_CEILING_EUR,
   OFFER_PLANS,
   AUDIENCES,
   plansForAudience,
@@ -20,6 +21,11 @@ import {
   getKnownGate,
   tierRank,
 } from '@/lib/feature-gates-catalogue';
+import {
+  COVERED_TRADES,
+  TRADES_NOT_COVERED,
+  WORK_TYPE_ICONS,
+} from '@/lib/work-types';
 
 describe("catalogue d'offre", () => {
   describe('1. aucune fonctionnalité annoncée sans contrepartie réelle', () => {
@@ -154,6 +160,88 @@ describe("catalogue d'offre", () => {
     it('ne déclare pas deux fois la même clé', () => {
       const keys = KNOWN_FEATURE_GATES.map((gate) => gate.key);
       expect(keys).toHaveLength(new Set(keys).size);
+    });
+  });
+
+  /**
+   * L'offre artisan a été vendue 50-200 €/mois — 2 à 10× le marché français du
+   * devis-facture (Boby 14,99 €, Tolteck 19 €, Obat 29 €, EBP 29,25 €) — sous le
+   * récit « artisans du bâtiment », alors que les sept ouvrages seedés sont tous
+   * de finition. Rien dans le code ne pouvait le signaler : ni le prix ni le
+   * périmètre annoncé n'étaient adossés à quoi que ce soit.
+   */
+  describe('6. le prix artisan reste tenable face au marché', () => {
+    it("garde le palier d'entrée sous le plafond du marché généraliste", () => {
+      const [entry] = plansForAudience('artisan');
+
+      expect(entry.priceNumber).not.toBeNull();
+      expect(entry.priceNumber!).toBeLessThan(GENERALIST_MARKET_CEILING_EUR);
+    });
+
+    it('ne laisse aucun palier artisan dépasser le marché sans capacité propre', () => {
+      // Au-dessus du plafond, un palier doit porter une gate que les suites
+      // généralistes ne vendent pas à ce prix — pas seulement l'héritage du
+      // palier inférieur.
+      const DIFFERENTIATORS = ['multi_user', 'public_api', 'enterprise_sso'];
+
+      const unjustified = plansForAudience('artisan')
+        .filter(
+          (plan) =>
+            plan.priceNumber !== null &&
+            plan.priceNumber > GENERALIST_MARKET_CEILING_EUR,
+        )
+        .filter(
+          (plan) =>
+            !plan.features.some(
+              (feature) =>
+                feature.gateKey !== null &&
+                DIFFERENTIATORS.includes(feature.gateKey),
+            ),
+        )
+        .map((plan) => `${plan.key} à ${plan.priceNumber} €`);
+
+      expect(unjustified).toEqual([]);
+    });
+  });
+
+  describe('7. le périmètre métier annoncé correspond aux ouvrages réels', () => {
+    it('rattache chaque ouvrage connu à un métier couvert', () => {
+      // Un ouvrage seedé sans métier le porte est invendable : personne ne sait
+      // à qui il s'adresse.
+      const claimed = new Set(
+        COVERED_TRADES.flatMap((trade) => trade.workTypes),
+      );
+      const orphans = Object.keys(WORK_TYPE_ICONS).filter(
+        (code) => !claimed.has(code),
+      );
+
+      expect(orphans).toEqual([]);
+    });
+
+    it("n'annonce aucun métier adossé à un ouvrage inexistant", () => {
+      const known = Object.keys(WORK_TYPE_ICONS);
+      const overreach = COVERED_TRADES.flatMap((trade) =>
+        trade.workTypes
+          .filter((code) => !known.includes(code))
+          .map((code) => `${trade.label} → ${code}`),
+      );
+
+      expect(overreach).toEqual([]);
+    });
+
+    it('ne déclare pas un même corps d’état couvert et hors périmètre', () => {
+      const covered = COVERED_TRADES.map((trade) => trade.label.toLowerCase());
+      const contradictory = TRADES_NOT_COVERED.filter((trade) =>
+        covered.some((label) => label.includes(trade.toLowerCase())),
+      );
+
+      expect(contradictory).toEqual([]);
+    });
+
+    it('nomme explicitement les corps d’état hors périmètre', () => {
+      // Taire ce que le produit ne fait pas est ce qui a permis de vendre
+      // « les artisans du bâtiment » sur un catalogue de finition.
+      expect(TRADES_NOT_COVERED.length).toBeGreaterThan(0);
     });
   });
 });

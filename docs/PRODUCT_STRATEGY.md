@@ -8,7 +8,7 @@
 
 ## 1. Résumé exécutif
 
-La vision produit (estimation de matériaux par vision par ordinateur, freemium 9,99 €/mois, montée en gamme artisans 50-200 €/mois, value ladder jusqu'à l'enterprise) est **déjà réalisée à environ 70 % pour les étages « frontend offer » et « core offer »**. Le codebase n'est pas un début d'idée : c'est un produit fonctionnel, durci pour la production, avec un moteur d'estimation testé, une analyse photo par IA en bêta, des abonnements Stripe câblés et des outils artisans complets.
+La vision produit (estimation de matériaux par vision par ordinateur, freemium 9,99 €/mois, montée en gamme artisans, value ladder jusqu'à l'enterprise) est **déjà réalisée à environ 70 % pour les étages « frontend offer » et « core offer »**. Le codebase n'est pas un début d'idée : c'est un produit fonctionnel, durci pour la production, avec un moteur d'estimation testé, une analyse photo par IA en bêta, des abonnements Stripe câblés et des outils artisans complets.
 
 Les écarts réels ne sont pas là où la vision les situe. Par ordre d'importance :
 
@@ -37,7 +37,7 @@ Monorepo pnpm à trois applications : `apps/api` (NestJS 11 + PostgreSQL/TypeORM
 | Parcours d'estimation web | `apps/web/src/app/(app)/projects/[id]/` | Photos → dimensions → type de travaux/niveau → estimation → liste d'achats. Complet et soigné. |
 | Listes d'achats | `apps/api/src/shopping-lists/` | Génération, suivi budget avec prix réels, export PDF, partage public par token. |
 | Auth | Firebase : email, Google, Apple, **invité anonyme** avec conversion invité→compte | Point fort sous-exploité pour l'acquisition. |
-| Monétisation | `apps/api/src/subscriptions/` + `feature-gates/` | Free (2 projets) / Pro 9,99 € (essai 7 j) / Contractor 50-100-200 €. Checkout, portail, webhooks idempotents, gates en base fail-closed. |
+| Monétisation | `apps/api/src/subscriptions/` + `feature-gates/` | Free (2 projets) / Pro 9,99 € (essai 7 j) / Contractor 19-29-49 € (§4.5). Checkout, portail, webhooks idempotents, gates en base fail-closed. |
 | Outils artisans | `apps/api/src/clients/`, `quotes/`, `company-profiles/` | CRM clients, devis français complets (TVA, HT/TTC, marge matériaux, workflow de statut, PDF), profil SIRET. |
 | Communauté | `apps/api/src/community/` | Galerie avant/après modérée, likes, commentaires, consentement RGPD. |
 | Infra | `docker-compose.prod.yml`, [DEPLOY.md](DEPLOY.md) | 4 services, healthchecks, migrations auto, cible VPS + Caddy. |
@@ -73,7 +73,7 @@ Monorepo pnpm à trois applications : `apps/api` (NestJS 11 + PostgreSQL/TypeORM
 | 6 | Checkout Home Depot/Lowe's | 🔴 Mock désactivé | Contradiction de marché (voir §4.1). Structure d'adaptateurs prête pour de vraies intégrations. |
 | 7 | Croissance (YouTube DIY, partenariats) | 🔴 Absent | Aucune surface d'acquisition : ni landing vendeuse, ni pricing public, ni lead magnet, ni programme de parrainage. |
 | 8 | Communauté avec coûts réels partagés | 🟡 Partiel | La galerie existe ; le partage des **coûts matériaux réels** (l'angle différenciant de la vision) n'y est pas. |
-| 9 | Artisans 50-200 €/mois | 🟢 Cœur fait | Devis + CRM solides. Manquent : suivi de chantier, timeline, relances, facturation — ce qui justifierait les paliers 100/200 € (aujourd'hui les 3 paliers Contractor donnent les mêmes features). |
+| 9 | Artisans 50-200 €/mois | 🔴 Thèse invalidée | Le prix était 2 à 10× le marché FR (15-30 €) pour 7 ouvrages de finition et 1 bloc de main-d'œuvre. Repositionné en outil de chiffrage pour les métiers de finition à 19/29/49 € — voir §4.5. |
 | 10 | Cost tracking | 🟢 Fait | Suivi budget sur la liste d'achats. |
 | 11 | Project timelines | 🔴 Absent | — |
 | 12 | Comparaison prix fournisseurs | 🟡 Structurel | Voir #6. |
@@ -101,8 +101,8 @@ La vision cite Home Depot et Lowe's ; le produit réel est intégralement franç
 
 Les deux segments sont construits. Plutôt que d'en choisir un :
 - **DIY = moteur d'acquisition et de données** (volume, SEO, communauté, corrections CV). Conversion Pro 9,99 € opportuniste.
-- **Artisan = moteur de revenu** (ARPU 5-20× supérieur, churn plus faible, besoin réel : chiffrer vite un devis). Le parcours « photo → estimation → devis PDF en 10 minutes chez le client » est un pitch différenciant qu'aucun concurrent français grand public ne tient.
-- Conséquence pricing : **différencier réellement les paliers Contractor 50/100/200 €** (aujourd'hui identiques). Proposition : Essentiel = devis+clients ; Standard = + suivi chantier + relances ; Premium = + multi-utilisateurs + API.
+- **Artisan = moteur de revenu** (ARPU 2-5× supérieur après le réalignement §4.5, churn plus faible, besoin réel : chiffrer vite un devis). Le parcours « photo → estimation → devis PDF en 10 minutes chez le client » est un pitch différenciant qu'aucun concurrent français grand public ne tient.
+- Conséquence pricing : **différencier réellement les paliers Contractor** (alors identiques). Proposition : Essentiel = devis+clients ; Standard = + suivi chantier + relances ; Premium = + multi-utilisateurs + API. *Fait ; les montants ont ensuite été réalignés sur le marché en §4.5.*
 
 #### 4.2.1 Traduction en architecture de l'information (GTM-7, août 2026)
 
@@ -148,6 +148,38 @@ La promesse « exact quantities, down to the last tile » est le cœur de la mar
 ### 4.4 Value ladder : simplifier
 
 Les add-ons à 4,99 €/feature (éco, expert) fragmentent l'offre pour un revenu marginal et ajoutent une mécanique de billing à l'unité. **Recommandation** : les intégrer comme différenciateurs des tiers existants (éco-matériaux → Pro ; conseils avancés → contenu communauté/SEO), et ne les extraire en add-ons payants que si la demande le prouve. L'enterprise reste une vision long terme : ne poser que les fondations réutilisables (organisations/rôles, nécessaires de toute façon pour Contractor Premium).
+
+### 4.5 Thèse artisan « suite généraliste » : invalidée (GTM-8, août 2026)
+
+La montée en gamme artisan était vendue 50/100/200 €/mois. Le marché français du devis-facture artisan se situe entre 15 et 30 € :
+
+| Outil | Prix mensuel | Périmètre |
+|---|---|---|
+| Costructor | gratuit | Devis-facture tous corps d'état |
+| Boby | 14,99 € | Devis-facture tous corps d'état |
+| Tolteck | 19 € | Devis-facture tous corps d'état |
+| Obat | 29 € | Devis-facture tous corps d'état |
+| EBP Bâtiment | 29,25 € | Devis-facture tous corps d'état |
+| BatiChiffrage | à partir de 30 € | + bibliothèque de 80 000 travaux unitaires |
+| **Chiffréo (avant)** | **50 à 200 €** | **7 ouvrages de finition, 1 bloc de main-d'œuvre** |
+
+En face de ces prix, le produit porte :
+
+- **Sept types d'ouvrage, tous de finition** ([migration `...003`](../apps/api/src/migrations/1711468800003-CreateWorkTypesAndProjectWorkItems.ts)) : `wall_painting`, `ceiling_painting`, `floor_tiling`, `wall_tiling`, `parquet_flooring`, `drywall`, `wall_covering`. Ni plomberie, ni électricité, ni isolation, ni maçonnerie, ni menuiserie.
+- **Un seul bloc de main-d'œuvre** ([`quote.entity.ts`](../apps/api/src/quotes/entities/quote.entity.ts)) : `labor_type` horaire ou forfait, taux × heures estimées, ou montant forfaitaire. Aucune ligne de MO par corps d'état, aucun déboursé sec.
+
+Un artisan ne peut pas produire un devis réel de rénovation avec ce périmètre. Demander 2 à 10 fois le prix du marché pour une couverture partielle n'est pas une erreur de packaging : c'est la thèse « Chiffréo est une suite devis-facture pour artisans » qui est invalidée.
+
+**Décision** : rétrécir la promesse *et* réaligner le prix, plutôt que baisser le prix en gardant le récit généraliste.
+
+- Chiffréo artisan n'est pas un concurrent d'Obat ou d'EBP. C'est un **outil de chiffrage pour les métiers de finition** : peintre, carreleur, plaquiste, solier, poseur de revêtement mural.
+- Grille : **Essentiel 19 € · Standard 29 € · Premium 49 €**. Le palier d'entrée passe sous Obat et EBP ; le Premium dépasse le marché généraliste mais porte le multi-utilisateurs et l'API/widget, que ces outils ne vendent pas à ce prix.
+- Les trois paliers et leur échelle de gates sont **conservés** : aucune migration, l'écart était dans les montants et le récit, pas dans la structure.
+- Le périmètre couvert **et non couvert** est nommé sur `/artisans`, `/pricing` et dans la FAQ. Une couverture partielle annoncée coûte des inscriptions ; une couverture partielle découverte après paiement coûte la confiance et le remboursement.
+
+**Conséquence sur la feuille de route** : toute hausse de prix doit être précédée d'une extension réelle du périmètre chiffrable (corps d'état supplémentaires, lignes de main-d'œuvre par ouvrage), jamais l'inverse. C'est le seul chemin qui rouvre le segment généraliste.
+
+**Garde-fous** : `GENERALIST_MARKET_CEILING_EUR` et `COVERED_TRADES` / `TRADES_NOT_COVERED` ([`work-types.ts`](../apps/web/src/lib/work-types.ts)), vérifiés par [offer-catalogue.spec.ts](../apps/web/src/__tests__/offer-catalogue.spec.ts) §6 et §7 : un ouvrage seedé sans métier porteur, ou un palier d'entrée repassant au-dessus du marché, fait rougir la suite.
 
 ---
 
@@ -221,7 +253,7 @@ Principes :
 ## 7. Nouvelles pistes (suggestions au-delà de la vision)
 
 1. **« Garantie quantité »** : engagement marketing mesurable (« si notre estimation dévie de plus de X %, un mois offert »). Possible uniquement une fois la précision mesurée (§4.3) — transforme la fiabilité du moteur en argument commercial chiffré.
-2. **Devis-minute artisan comme wedge B2B** : positionner le parcours mobile « photo chez le client → devis PDF envoyé avant de partir » comme LE pitch Contractor. C'est un gain de temps quantifiable (vs 2-3 h de chiffrage) qui justifie 50 €/mois à lui seul.
+2. **Devis-minute artisan comme wedge B2B** : positionner le parcours mobile « photo chez le client → devis PDF envoyé avant de partir » comme LE pitch Contractor. C'est le seul angle où Chiffréo bat les suites généralistes, qui font saisir les quantités à la main — et il ne vaut que sur les ouvrages de finition (§4.5).
 3. **Widget/API d'estimation embarquable** : les sites de contenu bricolage et les marchands pourraient embarquer le calculateur (marque blanche légère). Pont naturel vers l'offre enterprise et canal d'acquisition gratuit.
 4. **Coûts réels dans la communauté** : chaque projet partagé avec sa liste d'achats et son coût final réel devient une page SEO à très forte intention (« coût réel carrelage salle de bain 8 m² »). L'UGC est le flywheel d'acquisition le moins cher.
 5. **Récurrence par le foyer, pas par le projet** : la rénovation est épisodique (churn structurel du tier Pro). Piste : « carnet du logement » (historique des pièces mesurées, peintures utilisées, teintes) qui donne une raison de garder l'abonnement entre deux chantiers.

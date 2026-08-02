@@ -7,7 +7,7 @@
 
 - **Priorités** — **P0** : lancer ce qui existe (semaines 1-4) · **P1** : crédibiliser la promesse de précision · **P2** : monétiser et fidéliser · **P3** : étendre (conditionné aux données post-lancement).
 - **Effort** — S : ≤ 1 jour · M : 2-5 jours · L : 1-3 semaines · XL : > 3 semaines.
-- **Ladder** — étage de la value ladder servi : Lead magnet · Pro (9,99 €) · Contractor (50-200 €) · Continuité · Enterprise.
+- **Ladder** — étage de la value ladder servi : Lead magnet · Pro (9,99 €) · Contractor (19-49 €) · Continuité · Enterprise.
 - Préfixes d'ID : GTM (go-to-market), OPS (infra/exploitation), ENG (moteur d'estimation), CV (vision par ordinateur), BUY (achat/prix), PRO (artisans), COM (communauté), PLAT (plateforme), DATA (données/flywheel), MOB (mobile), INTL (international).
 
 ---
@@ -26,6 +26,7 @@
 | GTM-4 | Lead magnet : calculateurs publics sans compte | 3-5 pages `/calculateurs/[type]` (peinture, carrelage, sol) : formulaire dimensions → estimation immédiate via le moteur existant, sans inscription. CTA « sauvegarder mon projet » → conversion invité→compte (flux déjà construit). Étage 0 de la value ladder + actif SEO. | L | — |
 | GTM-5 | Capture e-mail sur le lead magnet | Envoi du résultat par e-mail (constitution de la liste, objectif affiché du lead magnet). Nécessite un provider d'e-mail transactionnel (Brevo/Resend). | M | GTM-4 |
 | GTM-7 | Une audience par surface | **Livré (02/08/2026).** La proposition de valeur se lisait comme quatre produits concurrents, et `/` basculait du DIY à l'artisan en milieu de page. L'audience devient une donnée du catalogue d'offre ([lib/pricing.ts](../apps/web/src/lib/pricing.ts)) au lieu d'une intention réécrite page par page : `/` au particulier, `/artisans` (nouvelle) à l'artisan, `/pricing` groupée par audience avec bandeau Enterprise sur devis. Chaque ligne d'offre est adossée à sa `feature_key` réelle, gardée par [offer-catalogue.spec.ts](../apps/web/src/__tests__/offer-catalogue.spec.ts). Corrige au passage : 2 fonctionnalités vendues sans exister (palier Standard), 9 gates livrées jamais annoncées, palier `enterprise` appliqué mais injoignable. Cf. [PRODUCT_STRATEGY §4.2.1](PRODUCT_STRATEGY.md). | M | GTM-2, GTM-3 |
+| GTM-8 | Réalignement de l'offre artisan | **Livré (02/08/2026).** Contractor demandait 50/100/200 €/mois face à un marché FR à 15-30 € (Boby 14,99 €, Tolteck 19 €, Obat 29 €, EBP 29,25 €, BatiChiffrage 30 €+ et 80 000 travaux unitaires), pour sept ouvrages de finition et un seul bloc de main-d'œuvre : ni plomberie, ni électricité, ni isolation, ni maçonnerie, ni menuiserie. Thèse « suite artisan généraliste » invalidée. Promesse rétrécie aux **métiers de finition** et grille ramenée à **19/29/49 €** ; périmètre couvert et hors périmètre nommés sur `/artisans`, `/pricing` et en FAQ. Paliers et gates inchangés — aucune migration. Gardé par [offer-catalogue.spec.ts](../apps/web/src/__tests__/offer-catalogue.spec.ts) §6-§7. Cf. [PRODUCT_STRATEGY §4.5](PRODUCT_STRATEGY.md). | M | GTM-7 |
 | GTM-6 | CGU / CGV / mentions légales | La page confidentialité existe ([privacy/page.tsx](../apps/web/src/app/privacy/page.tsx)) ; il manque CGU, CGV (obligatoires pour vendre un abonnement en France) et mentions légales. | M | — |
 
 ### Epic OPS-A : Mise en production

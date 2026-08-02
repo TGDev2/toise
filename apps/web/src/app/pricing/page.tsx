@@ -14,12 +14,12 @@ import { serializeJsonLd } from '@/lib/json-ld';
 export const metadata: Metadata = {
   title: 'Tarifs',
   description:
-    'Comparez les offres Chiffréo : Gratuit, Pro à 9,99 €/mois avec 7 jours d’essai, Contractor dès 50 €/mois pour les artisans, Enterprise sur devis.',
+    'Comparez les offres Chiffréo : Gratuit, Pro à 9,99 €/mois avec 7 jours d’essai, Contractor dès 19 €/mois pour les métiers de finition, Enterprise sur devis.',
   alternates: { canonical: '/pricing' },
   openGraph: {
     title: 'Tarifs Chiffréo',
     description:
-      'Gratuit, Pro à 9,99 €/mois avec essai de 7 jours, Contractor dès 50 €/mois, Enterprise sur devis.',
+      'Gratuit, Pro à 9,99 €/mois avec essai de 7 jours, Contractor dès 19 €/mois, Enterprise sur devis.',
     url: '/pricing',
   },
 };
@@ -80,6 +80,11 @@ const FAQ_ITEMS = [
     question: 'Quelle offre choisir : Pro ou Contractor ?',
     answer:
       'Pro s’adresse aux particuliers qui rénovent chez eux : estimation, liste d’achats, budget. Contractor ajoute ce dont un professionnel a besoin pour facturer son client — devis conformes, fichier clients, suivi de chantier et factures.',
+  },
+  {
+    question: 'Contractor couvre-t-il tous les corps d’état ?',
+    answer:
+      'Non, et c’est assumé. Le moteur calcule des quantités à partir de surfaces : il couvre les ouvrages de finition (peinture, carrelage, parquet, cloison sèche, revêtement mural). La plomberie, l’électricité, l’isolation, la maçonnerie et la menuiserie ne sont pas chiffrables. Le devis porte par ailleurs un seul bloc de main-d’œuvre, pas un déboursé par corps d’état. Le détail figure sur la page artisans.',
   },
   {
     question: 'Comment se passe le paiement ?',
@@ -166,7 +171,13 @@ export default function PricingPage() {
               />
             ))}
           </div>
-          <p className="mt-4 text-sm text-stone-600">
+          <p className="mt-4 max-w-2xl text-sm leading-6 text-stone-600">
+            Périmètre chiffrable : ouvrages de finition uniquement (peinture,
+            carrelage, parquet, cloison sèche, revêtement mural). Plomberie,
+            électricité, isolation, maçonnerie et menuiserie sont hors
+            périmètre.
+          </p>
+          <p className="mt-3 text-sm text-stone-600">
             <Link
               href={AUDIENCE_DEFINITIONS.artisan.landingPath}
               className="font-semibold text-[var(--accent)] hover:text-[var(--accent-strong)]"
