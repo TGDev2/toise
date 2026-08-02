@@ -75,6 +75,16 @@ export class CommunityService {
         "Finalisez d'abord le budget reel (liste d'achats) de ce projet avant de le partager dans la communaute",
       );
     }
+    // La seule présence du résumé ne suffit pas : un résumé partiel publiait un
+    // total sous-évalué, que les autres utilisateurs lisent ensuite comme une
+    // référence de coût. La finalisation refuse désormais d'en produire un
+    // (`finalizeBudgetSummary`), mais les projets finalisés avant ce correctif
+    // en portent encore.
+    if (!shoppingList.budget_summary_json.is_complete) {
+      throw new BadRequestException(
+        "Le budget reel de ce projet est incomplet : renseignez le prix de chaque article (ou retirez ceux que vous n'avez pas achetes) avant de le partager",
+      );
+    }
 
     const existing = await this.communityRepo.findOne({
       where: { project_id: dto.project_id },

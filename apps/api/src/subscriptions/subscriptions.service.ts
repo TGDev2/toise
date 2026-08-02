@@ -19,6 +19,17 @@ import { AnalyticsService } from '../analytics/analytics.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 import { ReferralsService } from '../referrals/referrals.service';
 
+/**
+ * Au-delà de ce délai, une réservation d'event Stripe sans traitement abouti est
+ * tenue pour abandonnée et redevient reprenable (cf. `claimWebhookEvent`).
+ *
+ * Le seuil doit dépasser largement la durée d'un handler — quelques appels
+ * Stripe et quelques écritures, de l'ordre de la seconde — sans quoi une
+ * livraison lente serait traitée deux fois. Même fenêtre que la reprise des
+ * analyses CV abandonnées (`reclaimStaleJobs`), par cohérence de lecture.
+ */
+const STALE_CLAIM_INTERVAL = '15 minutes';
+
 @Injectable()
 export class SubscriptionsService {
   private readonly stripeClient: Stripe | null;
@@ -250,36 +261,69 @@ export class SubscriptionsService {
   }
 
   /**
-   * Réserve un event Stripe pour traitement. Renvoie false si l'event a déjà
-   * été traité (retry Stripe) : il doit alors être ignoré.
+   * Réserve un event Stripe pour traitement. Renvoie false si l'event est déjà
+   * traité, ou si une autre livraison est en train de le traiter : il doit
+   * alors être ignoré.
    *
-   * La réponse se lit dans `raw` (le `RETURNING` de PostgreSQL, vide quand le
-   * `ON CONFLICT DO NOTHING` n'a rien inséré) et **pas** dans `identifiers` :
-   * `event_id` étant fourni par l'appelant et non généré, TypeORM garnit
-   * `identifiers` depuis les valeurs d'entrée sans jamais consulter la base.
-   * Le test s'y fiant était donc toujours vrai — tout retry Stripe repassait
-   * dans le traitement (surclassement rejoué, crédit de parrainage compté
-   * deux fois). Couvert par `test/integration/persistence.int-spec.ts`.
+   * `INSERT … ON CONFLICT DO UPDATE` en **une seule instruction**, donc sous le
+   * verrou de ligne de PostgreSQL — deux livraisons simultanées ne peuvent pas
+   * réserver ensemble. Quatre cas, dans l'ordre où la base les tranche :
    *
-   * Le `RETURNING` est demandé explicitement : sans lui, il ne tient qu'à la
-   * présence fortuite d'une colonne générée (`processed_at`) — la faire
-   * disparaître retournerait la panne dans l'autre sens, en ignorant *tous*
-   * les events.
+   * 1. aucune ligne → insertion, réservé ;
+   * 2. ligne déjà traitée (`processed_at` non nul) → le `WHERE` du `DO UPDATE`
+   *    est faux, rien n'est retourné → doublon, ignoré. C'est l'idempotence
+   *    que la table existe pour garantir ;
+   * 3. réservation **périmée** et jamais menée à terme → reprise. Sans ce cas,
+   *    un arrêt du processus entre la réservation et le traitement gelait
+   *    l'event pour toujours : tous les retries Stripe recevaient
+   *    `200 duplicate` alors que l'effet métier n'avait pas eu lieu ;
+   * 4. réservation fraîche → doublon, ignoré. Le retry Stripe suivant retombera
+   *    sur le cas 2 (traité) ou le cas 3 (abandonné), jamais entre les deux.
+   *
+   * La réponse se lit dans `raw` (le `RETURNING` de PostgreSQL) et **pas** dans
+   * `identifiers` : `event_id` étant fourni par l'appelant et non généré,
+   * TypeORM garnit `identifiers` depuis les valeurs d'entrée sans jamais
+   * consulter la base. Le test s'y fiant était donc toujours vrai — tout retry
+   * repassait dans le traitement (surclassement rejoué, crédit de parrainage
+   * compté deux fois). Couvert par `test/integration/persistence.int-spec.ts`.
+   *
+   * Résidu assumé : un arrêt du processus entre le commit de l'effet métier et
+   * `markWebhookEventProcessed` fait rejouer cet effet à l'expiration du délai.
+   * C'est le sens de la garantie Stripe (*at-least-once*), et l'inverse exact du
+   * défaut corrigé ici — une perte définitive. L'annuler demanderait de marquer
+   * l'event dans la transaction de chaque handler.
    */
   async claimWebhookEvent(event: Stripe.Event): Promise<boolean> {
-    const result = await this.stripeEventsRepo
-      .createQueryBuilder()
-      .insert()
-      .values({ event_id: event.id, event_type: event.type })
-      .orIgnore()
-      .returning('event_id')
-      .execute();
-    return (result.raw as unknown[]).length > 0;
+    const rows: unknown[] = await this.stripeEventsRepo.query(
+      `
+      INSERT INTO "stripe_events" ("event_id", "event_type", "claimed_at")
+      VALUES ($1, $2, now())
+      ON CONFLICT ("event_id") DO UPDATE
+        SET "claimed_at" = now()
+        WHERE "stripe_events"."processed_at" IS NULL
+          AND "stripe_events"."claimed_at" < now() - $3::interval
+      RETURNING "event_id"
+      `,
+      [event.id, event.type, STALE_CLAIM_INTERVAL],
+    );
+    return rows.length > 0;
+  }
+
+  /**
+   * Acte la réussite du traitement. Tant que ce marquage n'a pas eu lieu, la
+   * réservation reste reprenable — c'est ce qui distingue « en cours » de
+   * « terminé ».
+   */
+  async markWebhookEventProcessed(eventId: string): Promise<void> {
+    await this.stripeEventsRepo.update(
+      { event_id: eventId },
+      { processed_at: new Date() },
+    );
   }
 
   /**
    * Libère un event dont le traitement a échoué, pour que le retry Stripe
-   * puisse le rejouer.
+   * puisse le rejouer sans attendre l'expiration de la réservation.
    */
   async releaseWebhookEvent(eventId: string): Promise<void> {
     await this.stripeEventsRepo.delete({ event_id: eventId });

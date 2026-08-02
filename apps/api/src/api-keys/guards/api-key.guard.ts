@@ -190,18 +190,21 @@ export class ApiKeyGuard implements CanActivate {
     }
   }
 
+  /**
+   * Refus en amont d'un client **déjà** au plafond : lecture seule, donc une
+   * requête invalide ne consomme plus rien. La consommation atomique a lieu
+   * après le handler (`QuotaConsumptionInterceptor`) — elle avait lieu ici,
+   * avant le `ValidationPipe`, et facturait donc les corps rejetés en 400.
+   */
   private async enforceMonthlyQuota(
     organizationId: string,
     effectiveTier: SubscriptionTier,
     response: Response,
   ): Promise<void> {
     const limit = monthlyQuotaFor(effectiveTier);
-    // L'incrément et la valeur sur laquelle on décide sont la même opération
-    // atomique : deux requêtes simultanées ne peuvent pas franchir la limite
-    // ensemble.
-    const usage = await this.apiUsageService.consume(organizationId);
+    const usage = await this.apiUsageService.peek(organizationId);
 
-    if (usage.count > limit) {
+    if (usage.count >= limit) {
       const retryAfter = Math.max(
         1,
         Math.ceil((usage.reset_at.getTime() - Date.now()) / 1000),

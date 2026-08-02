@@ -40,6 +40,24 @@ const shoppingListRepoMock = {
   delete: jest.fn(),
   create: jest.fn(),
   save: jest.fn(),
+  manager: {
+    transaction: <T>(runInTransaction: (manager: unknown) => Promise<T>) =>
+      runInTransaction(transactionManagerMock),
+  },
+};
+
+/**
+ * Le manager de transaction délègue au dépôt mocké. Une spec unitaire n'a rien
+ * à dire des verrous PostgreSQL — c'est le rôle de `persistence.int-spec.ts` —
+ * mais tout à dire de ce qui est lu et écrit sous ce verrou.
+ */
+const transactionManagerMock = {
+  findOne: (_entity: unknown, options: unknown): unknown =>
+    shoppingListRepoMock.findOne(options) as unknown,
+  create: (_entity: unknown, data: unknown): unknown =>
+    shoppingListRepoMock.create(data) as unknown,
+  save: (entity: unknown): unknown =>
+    shoppingListRepoMock.save(entity) as unknown,
 };
 
 const complementaryRepoMock = {
@@ -134,9 +152,9 @@ describe('ShoppingListsService.generate', () => {
   it('builds material items from the latest estimation and persists them', async () => {
     const result = await service.generate('project-1', 'org-1', 'user-1');
 
-    expect(shoppingListRepoMock.delete).toHaveBeenCalledWith({
-      project_id: 'project-1',
-    });
+    // La liste n'est plus détruite puis recréée : une panne entre les deux
+    // n'en laissait aucune. Elle est écrite en une fois, sous verrou.
+    expect(shoppingListRepoMock.delete).not.toHaveBeenCalled();
     expect(result.items_json.material_items).toHaveLength(1);
     expect(result.items_json.material_items[0]).toMatchObject({
       material_id: 'mat-paint',
@@ -251,6 +269,70 @@ describe('ShoppingListsService.generate', () => {
     expect(
       result.items_json.material_items[0].units_needed_high,
     ).toBeUndefined();
+  });
+
+  /**
+   * Prix payés et enseignes sont les seules données saisies à la main : elles
+   * ne se recalculent pas. Les compléments n'étaient pas repris, ce qui devient
+   * intenable maintenant que la finalisation exige un prix sur chacun d'eux.
+   */
+  it('reporte les prix relevés — matériaux ET compléments — lors d’une régénération', async () => {
+    complementaryRepoMock.find.mockResolvedValue([
+      {
+        id: 'comp-1',
+        name: 'Colle',
+        description_fr: '',
+        category: 'painting',
+        unit_label: 'sac',
+        default_quantity: 2,
+        display_order: 1,
+      },
+    ]);
+    shoppingListRepoMock.findOne.mockResolvedValue({
+      id: 'shopping-list-1',
+      project_id: 'project-1',
+      estimation_id: 'estimation-0',
+      share_token: 'jeton-deja-transmis',
+      budget_summary_json: { is_complete: true },
+      items_json: {
+        material_items: [
+          {
+            material_id: 'mat-paint',
+            real_unit_price: 45.5,
+            store_name: 'Leroy',
+          },
+        ],
+        complementary_items: [
+          {
+            complementary_material_id: 'comp-1',
+            real_unit_price: 12.9,
+            store_name: 'Castorama',
+          },
+        ],
+      },
+    });
+
+    const { shoppingList } = await service.regenerate(
+      'project-1',
+      'org-1',
+      'user-1',
+    );
+
+    expect(shoppingList.items_json.material_items[0]).toMatchObject({
+      real_unit_price: 45.5,
+      store_name: 'Leroy',
+    });
+    expect(shoppingList.items_json.complementary_items[0]).toMatchObject({
+      real_unit_price: 12.9,
+      store_name: 'Castorama',
+    });
+    // Une seule écriture : les prix ne sont plus restaurés dans un second
+    // `save` qu'une panne pouvait manquer.
+    expect(shoppingListRepoMock.save).toHaveBeenCalledTimes(1);
+    // Le résumé ne décrit plus cette liste (COM-1), mais le lien déjà transmis
+    // au client continue de fonctionner.
+    expect(shoppingList.budget_summary_json).toBeNull();
+    expect(shoppingList.share_token).toBe('jeton-deja-transmis');
   });
 });
 
@@ -592,10 +674,14 @@ describe('ShoppingListsService.finalizeBudgetSummary', () => {
 
     await service.finalizeBudgetSummary('project-1', 'org-1', 'user-1');
 
-    expect(projectsServiceMock.updateStatus).toHaveBeenCalledWith(
-      'project-1',
-      ProjectStatus.COMPLETED,
-    );
+    // Le manager passé en 3e argument inscrit le changement de statut dans la
+    // transaction du résumé : « budget finalisé » et « projet terminé » ne
+    // peuvent plus aboutir l'un sans l'autre.
+    const [projectId, status, manager] = projectsServiceMock.updateStatus.mock
+      .calls[0] as [string, ProjectStatus, { save?: unknown }];
+    expect(projectId).toBe('project-1');
+    expect(status).toBe(ProjectStatus.COMPLETED);
+    expect(typeof manager?.save).toBe('function');
     expect(logbookServiceMock.recordChantierCompletion).toHaveBeenCalledWith(
       'project-1',
       'org-1',
@@ -621,6 +707,119 @@ describe('ShoppingListsService.finalizeBudgetSummary', () => {
 
     expect(projectsServiceMock.updateStatus).not.toHaveBeenCalled();
     expect(logbookServiceMock.recordChantierCompletion).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Le cœur du constat 2.7 : le contrôle ne regardait que `material_items`. Un
+   * complémentaire non tarifé produisait un résumé `is_complete: false`, qui
+   * était persisté quand même — le projet passait `COMPLETED` et la communauté
+   * publiait un total sous-évalué.
+   */
+  it('refuse de finaliser quand un complémentaire n’a pas de prix', async () => {
+    shoppingListRepoMock.findOne.mockResolvedValue({
+      id: 'shopping-list-1',
+      estimation_id: 'estimation-1',
+      items_json: {
+        material_items: [
+          {
+            material_id: 'mat-paint',
+            material_category: 'painting',
+            units_needed: 1,
+            real_unit_price: 45.5,
+          },
+        ],
+        complementary_items: [
+          {
+            complementary_material_id: 'comp-1',
+            quantity: 2,
+            is_removed: false,
+            real_unit_price: null,
+          },
+        ],
+      },
+      budget_summary_json: null,
+    });
+
+    await expect(
+      service.finalizeBudgetSummary('project-1', 'org-1', 'user-1'),
+    ).rejects.toThrow(/1 article/);
+
+    expect(shoppingListRepoMock.save).not.toHaveBeenCalled();
+    expect(projectsServiceMock.updateStatus).not.toHaveBeenCalled();
+    expect(logbookServiceMock.recordChantierCompletion).not.toHaveBeenCalled();
+  });
+
+  /** L'échappatoire : ce qu'on n'a pas acheté sort du décompte. */
+  it('finalise malgré un complémentaire non tarifé mais retiré', async () => {
+    shoppingListRepoMock.findOne.mockResolvedValue({
+      id: 'shopping-list-1',
+      estimation_id: 'estimation-1',
+      items_json: {
+        material_items: [
+          {
+            material_id: 'mat-paint',
+            material_category: 'painting',
+            units_needed: 1,
+            real_unit_price: 45.5,
+          },
+        ],
+        complementary_items: [
+          {
+            complementary_material_id: 'comp-1',
+            quantity: 2,
+            is_removed: true,
+            real_unit_price: null,
+          },
+        ],
+      },
+      budget_summary_json: null,
+    });
+
+    const summary = await service.finalizeBudgetSummary(
+      'project-1',
+      'org-1',
+      'user-1',
+    );
+
+    expect(summary.is_complete).toBe(true);
+    expect(projectsServiceMock.updateStatus).toHaveBeenCalled();
+  });
+
+  /**
+   * Postcondition explicite : un résumé persisté ne peut plus être partiel.
+   * C'est ce que la communauté lit pour décider si un budget est publiable.
+   */
+  it('ne persiste jamais un résumé incomplet', async () => {
+    shoppingListRepoMock.findOne.mockResolvedValue({
+      id: 'shopping-list-1',
+      estimation_id: 'estimation-1',
+      items_json: {
+        material_items: [
+          {
+            material_id: 'mat-paint',
+            material_category: 'painting',
+            units_needed: 1,
+            real_unit_price: 45.5,
+          },
+        ],
+        complementary_items: [
+          {
+            complementary_material_id: 'comp-1',
+            quantity: 2,
+            is_removed: false,
+            real_unit_price: 12,
+          },
+        ],
+      },
+      budget_summary_json: null,
+    });
+
+    await service.finalizeBudgetSummary('project-1', 'org-1', 'user-1');
+
+    const [persisted] = shoppingListRepoMock.save.mock.calls[0] as [
+      { budget_summary_json: { is_complete: boolean } },
+    ];
+    expect(persisted.budget_summary_json.is_complete).toBe(true);
   });
 });
 

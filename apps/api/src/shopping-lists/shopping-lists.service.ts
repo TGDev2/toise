@@ -37,6 +37,52 @@ import {
 } from './complementary-formulas';
 import { isShareTokenExpired, shareTokenExpiry } from './share-token';
 
+/**
+ * Reporte les relevés de terrain — prix payé, enseigne — de l'ancienne liste
+ * vers celle qui la remplace. Ce sont les seules données que l'utilisateur a
+ * saisies lui-même : les recalculer est impossible, les perdre est définitif.
+ *
+ * Les compléments sont repris au même titre que les matériaux. Ils ne l'étaient
+ * pas, ce qui devient intenable dès lors que la finalisation exige un prix sur
+ * chacun d'eux (cf. `finalizeBudgetSummary`) : une régénération aurait imposé de
+ * ressaisir tout le second bloc.
+ */
+function carryOverRealPrices(
+  previous: ShoppingListData,
+  next: ShoppingListData,
+): void {
+  const materialsById = new Map(
+    previous.material_items.map((item) => [item.material_id, item]),
+  );
+  for (const item of next.material_items) {
+    const before = materialsById.get(item.material_id);
+    if (!before) continue;
+    if (before.real_unit_price != null) {
+      item.real_unit_price = before.real_unit_price;
+    }
+    if (before.store_name != null) {
+      item.store_name = before.store_name;
+    }
+  }
+
+  const complementsById = new Map(
+    previous.complementary_items.map((item) => [
+      item.complementary_material_id,
+      item,
+    ]),
+  );
+  for (const item of next.complementary_items) {
+    const before = complementsById.get(item.complementary_material_id);
+    if (!before) continue;
+    if (before.real_unit_price != null) {
+      item.real_unit_price = before.real_unit_price;
+    }
+    if (before.store_name != null) {
+      item.store_name = before.store_name;
+    }
+  }
+}
+
 @Injectable()
 export class ShoppingListsService {
   constructor(
@@ -84,6 +130,21 @@ export class ShoppingListsService {
     projectId: string,
     organizationId: string,
     userId: string,
+  ): Promise<ShoppingList> {
+    return this.buildAndPersist(projectId, organizationId, userId, false);
+  }
+
+  /**
+   * Construit la liste depuis la dernière estimation, puis l'écrit.
+   *
+   * Les lectures (estimation, types de travaux, compléments, contexte carrelage)
+   * restent hors transaction : seule la persistance a besoin d'être atomique.
+   */
+  private async buildAndPersist(
+    projectId: string,
+    organizationId: string,
+    userId: string,
+    preserveRealPrices: boolean,
   ): Promise<ShoppingList> {
     const latest = await this.estimationsService.getLatest(
       projectId,
@@ -190,16 +251,15 @@ export class ShoppingListsService {
       complementary_items: complementaryItems,
     };
 
-    // Upsert: delete existing then insert
-    await this.shoppingListRepo.delete({ project_id: projectId });
-
-    const entity = this.shoppingListRepo.create({
-      project_id: projectId,
-      estimation_id: latest.id,
-      items_json: data,
-    });
-
-    const saved = await this.shoppingListRepo.save(entity);
+    const saved = await this.shoppingListRepo.manager.transaction((manager) =>
+      this.persistGeneratedLocked(
+        manager,
+        projectId,
+        latest.id,
+        data,
+        preserveRealPrices,
+      ),
+    );
 
     // Se déclenche aussi depuis regenerate() (régénération manuelle) : c'est
     // volontaire, le funnel agrège en aval sur la première occurrence par projet.
@@ -213,6 +273,55 @@ export class ShoppingListsService {
     );
 
     return saved;
+  }
+
+  /**
+   * Écrit la liste régénérée **en place**, sous le verrou de la ligne existante.
+   *
+   * C'était un `DELETE` suivi d'un `INSERT`, hors transaction : une panne entre
+   * les deux ne laissait plus de liste du tout, et la régénération manuelle
+   * restaurait ensuite les prix dans une *troisième* écriture, elle aussi
+   * perdable. Trois écritures pour un seul fait.
+   *
+   * Conserver la ligne plutôt que la remplacer donne en prime la sérialisation
+   * face à `update()` : les deux chemins verrouillent désormais la même ligne.
+   * Détruire puis recréer laissait `update()` verrouiller une ligne condamnée —
+   * un verrou qui ne protégeait rien. Le jeton de partage survit du même coup à
+   * une régénération : un lien déjà transmis au client cessait de fonctionner
+   * sans que personne ne l'ait demandé.
+   */
+  private async persistGeneratedLocked(
+    manager: EntityManager,
+    projectId: string,
+    estimationId: string,
+    data: ShoppingListData,
+    preserveRealPrices: boolean,
+  ): Promise<ShoppingList> {
+    const existing = await manager.findOne(ShoppingList, {
+      where: { project_id: projectId },
+      lock: { mode: 'pessimistic_write' },
+    });
+
+    if (!existing) {
+      return manager.save(
+        manager.create(ShoppingList, {
+          project_id: projectId,
+          estimation_id: estimationId,
+          items_json: data,
+        }),
+      );
+    }
+
+    if (preserveRealPrices) {
+      carryOverRealPrices(existing.items_json, data);
+    }
+
+    existing.estimation_id = estimationId;
+    existing.items_json = data;
+    // Le résumé finalisé décrivait l'ancienne liste : il ne décrit plus
+    // celle-ci. `getBudgetSummary` s'appuie sur cette remise à zéro (COM-1).
+    existing.budget_summary_json = null;
+    return manager.save(existing);
   }
 
   async update(
@@ -314,43 +423,14 @@ export class ShoppingListsService {
   ): Promise<{ shoppingList: ShoppingList; latestEstimationId: string }> {
     await this.projectsService.findOneForOrg(projectId, organizationId);
 
-    // Preserve existing prices before regeneration
-    const existing = await this.shoppingListRepo.findOne({
-      where: { project_id: projectId },
-    });
-
-    const priceMap = new Map<
-      string,
-      { real_unit_price?: number | null; store_name?: string | null }
-    >();
-    if (existing) {
-      for (const item of existing.items_json.material_items) {
-        if (item.real_unit_price != null || item.store_name != null) {
-          priceMap.set(item.material_id, {
-            real_unit_price: item.real_unit_price,
-            store_name: item.store_name,
-          });
-        }
-      }
-    }
-
-    const shoppingList = await this.generate(projectId, organizationId, userId);
-
-    // Restore prices on matching items
-    if (priceMap.size > 0) {
-      let changed = false;
-      for (const item of shoppingList.items_json.material_items) {
-        const saved = priceMap.get(item.material_id);
-        if (saved) {
-          item.real_unit_price = saved.real_unit_price;
-          item.store_name = saved.store_name;
-          changed = true;
-        }
-      }
-      if (changed) {
-        await this.shoppingListRepo.save(shoppingList);
-      }
-    }
+    // Relevés de prix et régénération dans la même écriture verrouillée :
+    // cf. `persistGeneratedLocked`.
+    const shoppingList = await this.buildAndPersist(
+      projectId,
+      organizationId,
+      userId,
+      true,
+    );
 
     return { shoppingList, latestEstimationId: shoppingList.estimation_id };
   }
@@ -442,6 +522,23 @@ export class ShoppingListsService {
     return { eco_items, suggestions };
   }
 
+  /**
+   * Fige le budget réel et déclare le chantier terminé.
+   *
+   * Lecture verrouillée, validation, résumé et passage `COMPLETED` sont **une
+   * seule transaction** : « le budget est finalisé » et « le projet est
+   * terminé » sont deux façons de dire le même fait, et le partage communauté
+   * les lit ensemble. C'étaient deux écritures indépendantes, dont l'une
+   * pouvait aboutir sans l'autre. Le verrou ferme la seconde fenêtre : sans
+   * lui, un `PATCH` concurrent pouvait glisser une ligne non tarifée entre la
+   * validation et l'écriture du résumé.
+   *
+   * Le carnet du logement reste **hors** transaction : il fait ses propres
+   * lectures (pièces, dimensions) et son écriture est un upsert sur
+   * `(project_id, room_id)` — une ré-finalisation le rejoue sans doublon. Le
+   * faire entrer dans la transaction demanderait de propager le manager dans
+   * `LogbookService` et `ProjectsService.getRooms` pour un gain nul.
+   */
   async finalizeBudgetSummary(
     projectId: string,
     organizationId: string,
@@ -449,37 +546,54 @@ export class ShoppingListsService {
   ): Promise<BudgetSummary> {
     await this.projectsService.findOneForOrg(projectId, organizationId);
 
-    const shoppingList = await this.shoppingListRepo.findOne({
-      where: { project_id: projectId },
-    });
+    const { summary, shoppingList, estimation } =
+      await this.shoppingListRepo.manager.transaction(async (manager) => {
+        const shoppingList = await manager.findOne(ShoppingList, {
+          where: { project_id: projectId },
+          lock: { mode: 'pessimistic_write' },
+        });
 
-    if (!shoppingList) {
-      throw new NotFoundException('No shopping list found for this project.');
-    }
+        if (!shoppingList) {
+          throw new NotFoundException(
+            'No shopping list found for this project.',
+          );
+        }
 
-    // Validate all material items have prices
-    const unpricedMaterials = shoppingList.items_json.material_items.filter(
-      (item) => item.real_unit_price == null,
-    );
-    if (unpricedMaterials.length > 0) {
-      throw new BadRequestException(
-        `${unpricedMaterials.length} article(s) n'ont pas encore de prix reel.`,
-      );
-    }
+        const estimation = await this.estimationsService.findById(
+          shoppingList.estimation_id,
+        );
 
-    const estimation = await this.estimationsService.findById(
-      shoppingList.estimation_id,
-    );
+        const summary = this.computeBudgetSummary(
+          shoppingList,
+          estimation.items_json,
+        );
 
-    const summary = this.computeBudgetSummary(
-      shoppingList,
-      estimation.items_json,
-    );
+        // La postcondition **est** le contrôle. Le contrôle d'avant ne
+        // regardait que `material_items` : un complément non tarifé produisait
+        // un résumé `is_complete: false` qui était persisté quand même, le
+        // projet passait `COMPLETED` et la communauté publiait un total
+        // sous-évalué. Décider sur `computeBudgetSummary` — la même fonction
+        // qui compte — rend cette divergence impossible à réintroduire.
+        // L'utilisateur qui n'a pas acheté un complément le marque
+        // `is_removed`, ce qui le sort du décompte.
+        if (!summary.is_complete) {
+          const missing = summary.items_total - summary.items_priced;
+          throw new BadRequestException(
+            `${missing} article(s) n'ont pas encore de prix reel.`,
+          );
+        }
 
-    shoppingList.budget_summary_json = summary;
-    await this.shoppingListRepo.save(shoppingList);
+        shoppingList.budget_summary_json = summary;
+        await manager.save(shoppingList);
 
-    await this.projectsService.updateStatus(projectId, ProjectStatus.COMPLETED);
+        await this.projectsService.updateStatus(
+          projectId,
+          ProjectStatus.COMPLETED,
+          manager,
+        );
+
+        return { summary, shoppingList, estimation };
+      });
 
     // PLAT-1 : instantané par pièce (dimensions validées, matériaux
     // réellement achetés) — même point d'ancrage que le partage communauté

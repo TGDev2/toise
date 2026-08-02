@@ -57,11 +57,17 @@ export class SubscriptionsWebhookController {
       // scanners attendu sur un endpoint public) : ceci est un event validé
       // et réclamé dont le traitement métier a réellement échoué.
       Sentry.captureException(err, { tags: { component: 'stripe-webhook' } });
-      // Libère l'event pour que le retry Stripe puisse le rejouer.
+      // Libère l'event pour que le retry Stripe puisse le rejouer sans attendre
+      // l'expiration de la réservation.
       await this.subscriptionsService.releaseWebhookEvent(event.id);
       res.status(500).json({ error: 'Webhook processing failed' });
       return;
     }
+
+    // Ne marquer qu'ici : jusqu'à ce point, l'event n'est que *réservé*. Un
+    // arrêt du processus avant cette ligne le laisse reprenable, au lieu de le
+    // geler définitivement en « traité » comme le faisait la réservation seule.
+    await this.subscriptionsService.markWebhookEventProcessed(event.id);
 
     res.status(200).json({ received: true });
   }

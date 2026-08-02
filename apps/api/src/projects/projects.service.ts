@@ -5,7 +5,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, FindOptionsWhere, In, IsNull, Repository } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  FindOptionsWhere,
+  In,
+  IsNull,
+  Repository,
+} from 'typeorm';
 import { Project, ProjectStatus } from './entities/project.entity';
 import { Room } from './entities/room.entity';
 import {
@@ -710,7 +717,17 @@ export class ProjectsService {
     await this.projectsRepo.softDelete(projectId);
   }
 
-  async updateStatus(projectId: string, status: ProjectStatus): Promise<void> {
-    await this.projectsRepo.update(projectId, { status });
+  /**
+   * `manager` permet à l'appelant d'inscrire le changement de statut dans **sa**
+   * transaction. `finalizeBudgetSummary` s'en sert pour que « budget finalisé »
+   * et « projet terminé » soient un seul fait, indivisible.
+   */
+  async updateStatus(
+    projectId: string,
+    status: ProjectStatus,
+    manager?: EntityManager,
+  ): Promise<void> {
+    const repo = manager ? manager.getRepository(Project) : this.projectsRepo;
+    await repo.update(projectId, { status });
   }
 }

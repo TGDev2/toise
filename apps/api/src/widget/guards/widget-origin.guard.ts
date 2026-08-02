@@ -44,8 +44,13 @@ const BURST_THROTTLER_NAME = 'widget-key';
  *
  * `Origin` n'est vérifié qu'au sens du navigateur : un appelant scripté qui
  * détient déjà la clé peut forger cet en-tête. Acceptable ici parce que
- * l'endpoint ne fait que du calcul de quantités, sans persistance ni prix —
- * le pire cas est une consommation de quota, pas une fuite de données.
+ * l'endpoint ne fait que du calcul de quantités, sans persistance ni prix.
+ *
+ * Cette origine déclarative ne peut donc pas servir de barrière à une ressource
+ * facturée. Elle ne l'est plus : le quota n'est débité qu'après un calcul
+ * réellement produit (`QuotaConsumptionInterceptor`), là où le guard le débitait
+ * avant même la validation du corps. Un émetteur qui forge l'origine consomme
+ * désormais exactement ce qu'il obtient, et rien pour ce qu'on lui refuse.
  */
 @Injectable()
 export class WidgetOriginGuard implements CanActivate {
@@ -165,15 +170,22 @@ export class WidgetOriginGuard implements CanActivate {
     }
   }
 
+  /**
+   * Refus en amont d'un client **déjà** au plafond : lecture seule, donc une
+   * requête invalide ne consomme plus rien. La consommation elle-même a lieu
+   * après le handler (`QuotaConsumptionInterceptor`) — elle avait lieu ici,
+   * avant même que le `ValidationPipe` n'ait vu le corps, ce qui laissait
+   * n'importe qui vider le quota d'une organisation avec des corps vides.
+   */
   private async enforceMonthlyQuota(
     organizationId: string,
     effectiveTier: SubscriptionTier,
     response: Response,
   ): Promise<void> {
     const limit = monthlyQuotaFor(effectiveTier);
-    const usage = await this.apiUsageService.consume(organizationId);
+    const usage = await this.apiUsageService.peek(organizationId);
 
-    if (usage.count > limit) {
+    if (usage.count >= limit) {
       const retryAfter = Math.max(
         1,
         Math.ceil((usage.reset_at.getTime() - Date.now()) / 1000),

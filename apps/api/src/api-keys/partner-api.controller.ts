@@ -6,11 +6,13 @@ import {
   HttpStatus,
   Post,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { EstimationsService } from '../estimations/estimations.service';
 import { ApiEstimateRequestDto } from '../estimations/dto/api-estimate-request.dto';
 import { ApiKeyGuard } from './guards/api-key.guard';
+import { QuotaConsumptionInterceptor } from './interceptors/quota-consumption.interceptor';
 import { CountsAgainstQuota } from './decorators/counts-against-quota.decorator';
 import { CurrentApiKey } from './decorators/current-api-key.decorator';
 import type { ApiKeyScope } from './api-key-scope';
@@ -37,6 +39,7 @@ import { ApiUsageService, monthlyQuotaFor } from './api-usage.service';
  */
 @Controller('partner')
 @UseGuards(ApiKeyGuard)
+@UseInterceptors(QuotaConsumptionInterceptor)
 @Throttle({ default: { ttl: 60000, limit: 300 } })
 export class PartnerApiController {
   constructor(

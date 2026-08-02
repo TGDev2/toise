@@ -13,6 +13,7 @@ import { PartnerApiController } from '../src/api-keys/partner-api.controller';
 import { ApiKeysService } from '../src/api-keys/api-keys.service';
 import { ApiUsageService } from '../src/api-keys/api-usage.service';
 import { ApiKeyGuard } from '../src/api-keys/guards/api-key.guard';
+import { QuotaConsumptionInterceptor } from '../src/api-keys/interceptors/quota-consumption.interceptor';
 import { EstimationsService } from '../src/estimations/estimations.service';
 import { OrgContextService } from '../src/organizations/org-context.service';
 import { FeatureGatesService } from '../src/feature-gates/feature-gates.service';
@@ -157,8 +158,11 @@ describe('API publique et clés (e2e)', () => {
       controllers: [ApiKeysController, PartnerApiController],
       providers: [
         // ApiKeyGuard est laissé RÉEL : c'est la pièce que ce ticket doit
-        // prouver. Seules ses dépendances sont doublées.
+        // prouver. Seules ses dépendances sont doublées. Idem pour
+        // l'intercepteur de quota, dont tout l'intérêt tient à sa **position**
+        // dans le cycle Nest — un double le ferait disparaître.
         ApiKeyGuard,
+        QuotaConsumptionInterceptor,
         { provide: ApiKeysService, useValue: apiKeysServiceMock },
         { provide: ApiUsageService, useValue: apiUsageServiceMock },
         { provide: EstimationsService, useValue: estimationsServiceMock },
@@ -277,10 +281,15 @@ describe('API publique et clés (e2e)', () => {
       expect(apiUsageServiceMock.consume).not.toHaveBeenCalled();
     });
 
-    it('refuse en 429 quand le quota mensuel est dépassé', async () => {
-      apiUsageServiceMock.consume.mockResolvedValue({
+    /**
+     * Première barrière, dans le garde : un appelant **déjà** au plafond est
+     * refusé en lecture seule, sans faire tourner le moteur ni toucher au
+     * compteur.
+     */
+    it('refuse en 429 un appelant déjà au plafond, sans faire travailler le moteur', async () => {
+      apiUsageServiceMock.peek.mockResolvedValue({
         period: '2026-08',
-        count: 10_001,
+        count: 10_000,
         reset_at: new Date(Date.now() + 86_400_000),
       });
 
@@ -295,6 +304,32 @@ describe('API publique et clés (e2e)', () => {
           expect(res.headers['retry-after']).toBeDefined();
         });
       expect(estimationsServiceMock.estimatePublicMulti).not.toHaveBeenCalled();
+      expect(apiUsageServiceMock.consume).not.toHaveBeenCalled();
+    });
+
+    /**
+     * Seconde barrière, dans l'intercepteur : `consume()` reste l'incrément et
+     * la décision dans la même instruction, donc deux appels simultanés ne
+     * peuvent pas franchir la limite ensemble. Le perdant a bien fait
+     * travailler le moteur, mais son résultat n'est pas servi.
+     */
+    it('refuse en 429 le dépassement constaté à la consommation', async () => {
+      apiUsageServiceMock.consume.mockResolvedValue({
+        period: '2026-08',
+        count: 10_001,
+        reset_at: new Date(Date.now() + 86_400_000),
+      });
+
+      await request(app.getHttpServer())
+        .post('/partner/estimate')
+        .set('Authorization', `Bearer ${validSecret}`)
+        .send(validEstimateBody)
+        .expect(429)
+        .expect((res: request.Response) => {
+          expect((res.body as { error: string }).error).toBe('QUOTA_EXCEEDED');
+          expect((res.body as { current: number }).current).toBe(10_001);
+          expect(res.headers['retry-after']).toBeDefined();
+        });
     });
 
     it('refuse en 429 sur dépassement de rafale, sans consommer de quota', async () => {
@@ -347,6 +382,36 @@ describe('API publique et clés (e2e)', () => {
         .set('Authorization', `Bearer ${validSecret}`)
         .send({ ...validEstimateBody, budget_max: 5000 })
         .expect(400);
+    });
+
+    /**
+     * Le constat 2.9, sur la vraie pile Nest : le `ValidationPipe` s'exécute
+     * **après** les gardes. Tant que le quota était débité dans le garde,
+     * chaque 400 coûtait une unité du compteur mensuel — 10 000 corps vides
+     * suffisaient à couper la surface jusqu'au mois suivant.
+     */
+    it('ne consomme aucun quota sur un corps invalide', async () => {
+      await request(app.getHttpServer())
+        .post('/partner/estimate')
+        .set('Authorization', `Bearer ${validSecret}`)
+        .send({})
+        .expect(400);
+
+      expect(apiUsageServiceMock.consume).not.toHaveBeenCalled();
+    });
+
+    it('ne consomme aucun quota quand le moteur échoue', async () => {
+      estimationsServiceMock.estimatePublicMulti.mockRejectedValue(
+        new Error('engine down'),
+      );
+
+      await request(app.getHttpServer())
+        .post('/partner/estimate')
+        .set('Authorization', `Bearer ${validSecret}`)
+        .send(validEstimateBody)
+        .expect(500);
+
+      expect(apiUsageServiceMock.consume).not.toHaveBeenCalled();
     });
   });
 

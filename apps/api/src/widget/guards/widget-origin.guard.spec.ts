@@ -34,7 +34,7 @@ describe('WidgetOriginGuard', () => {
   const widgetService = {
     findActiveByKey: jest.fn(),
   };
-  const apiUsage = { consume: jest.fn() };
+  const apiUsage = { consume: jest.fn(), peek: jest.fn() };
   const orgContext = { resolveTierForOrganization: jest.fn() };
   const featureGates = {
     isFeatureAllowed: jest.fn(),
@@ -77,7 +77,7 @@ describe('WidgetOriginGuard', () => {
       isBlocked: false,
       timeToBlockExpire: 0,
     });
-    apiUsage.consume.mockResolvedValue({
+    apiUsage.peek.mockResolvedValue({
       period: '2026-08',
       count: 1,
       reset_at: new Date(Date.now() + 86_400_000),
@@ -153,7 +153,7 @@ describe('WidgetOriginGuard', () => {
           current_tier: SubscriptionTier.PRO,
         },
       });
-      expect(apiUsage.consume).not.toHaveBeenCalled();
+      expect(apiUsage.peek).not.toHaveBeenCalled();
     });
   });
 
@@ -175,27 +175,50 @@ describe('WidgetOriginGuard', () => {
       await expect(guard.canActivate(context)).rejects.toMatchObject({
         response: { error: 'RATE_LIMIT_EXCEEDED' },
       });
-      expect(apiUsage.consume).not.toHaveBeenCalled();
+      expect(apiUsage.peek).not.toHaveBeenCalled();
       expect(response.setHeader).toHaveBeenCalledWith('Retry-After', 30);
     });
   });
 
   describe('quota mensuel', () => {
-    it('rejette en 429 au-delà de la limite du palier', async () => {
-      apiUsage.consume.mockResolvedValue({
+    /**
+     * Le cœur du constat : la clé `wgt_…` est publique et l'`Origin` est
+     * forgeable. Tant que le garde débitait, un script pouvait vider le quota
+     * mensuel d'une organisation avec des corps vides — le garde s'exécute
+     * avant le `ValidationPipe`, donc chaque 400 était déjà facturé. Il ne fait
+     * plus que lire ; le débit est déplacé après le handler.
+     */
+    it('ne consomme jamais le quota, quel que soit le verdict', async () => {
+      await expect(guard.canActivate(context)).resolves.toBe(true);
+      expect(apiUsage.consume).not.toHaveBeenCalled();
+      expect(apiUsage.peek).toHaveBeenCalledWith(ORG_ID);
+    });
+
+    it('rejette en 429 un widget déjà au plafond du palier', async () => {
+      apiUsage.peek.mockResolvedValue({
         period: '2026-08',
-        count: 10_001,
+        count: 10_000,
         reset_at: new Date(Date.now() + 86_400_000),
       });
 
       await expect(guard.canActivate(context)).rejects.toMatchObject({
-        response: { error: 'QUOTA_EXCEEDED', limit: 10_000, current: 10_001 },
+        response: { error: 'QUOTA_EXCEEDED', limit: 10_000, current: 10_000 },
       });
     });
 
-    it('ne consomme rien sur une route non marquée @CountsAgainstQuota', async () => {
+    it('laisse passer la requête qui atteindra exactement la limite', async () => {
+      apiUsage.peek.mockResolvedValue({
+        period: '2026-08',
+        count: 9_999,
+        reset_at: new Date(Date.now() + 86_400_000),
+      });
+      await expect(guard.canActivate(context)).resolves.toBe(true);
+    });
+
+    it('ne lit rien sur une route non marquée @CountsAgainstQuota', async () => {
       (reflector.get as jest.Mock).mockReturnValue(undefined);
       await expect(guard.canActivate(context)).resolves.toBe(true);
+      expect(apiUsage.peek).not.toHaveBeenCalled();
       expect(apiUsage.consume).not.toHaveBeenCalled();
     });
   });

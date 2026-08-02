@@ -8,6 +8,7 @@ import { ApiUsageCounter } from './entities/api-usage-counter.entity';
 import { ApiKeysService } from './api-keys.service';
 import { ApiUsageService } from './api-usage.service';
 import { ApiKeyGuard } from './guards/api-key.guard';
+import { QuotaConsumptionInterceptor } from './interceptors/quota-consumption.interceptor';
 import { ApiKeysController } from './api-keys.controller';
 import { PartnerApiController } from './partner-api.controller';
 
@@ -27,9 +28,15 @@ import { PartnerApiController } from './partner-api.controller';
     EstimationsModule,
   ],
   controllers: [ApiKeysController, PartnerApiController],
-  providers: [ApiKeysService, ApiUsageService, ApiKeyGuard],
+  providers: [
+    ApiKeysService,
+    ApiUsageService,
+    ApiKeyGuard,
+    QuotaConsumptionInterceptor,
+  ],
   // `ApiUsageService` est aussi exporté : le widget (PLAT-7) partage ce même
-  // compteur de quota mensuel plutôt que d'en dupliquer un second.
-  exports: [ApiKeysService, ApiUsageService],
+  // compteur de quota mensuel plutôt que d'en dupliquer un second — et donc
+  // aussi l'intercepteur qui le débite.
+  exports: [ApiKeysService, ApiUsageService, QuotaConsumptionInterceptor],
 })
 export class ApiKeysModule {}

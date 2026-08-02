@@ -198,6 +198,31 @@ describe('CommunityService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
+    /**
+     * La seule présence du résumé ne prouvait rien : la finalisation acceptait
+     * jusqu'ici de persister un résumé partiel, publié tel quel comme référence
+     * de coût pour les autres utilisateurs. Elle ne le fait plus, mais les
+     * projets finalisés avant ce correctif en portent encore.
+     */
+    it('rejette un budget finalise mais incomplet', async () => {
+      const shoppingList = makeShoppingList();
+      projectRepoMock.findOne.mockResolvedValue(makeProject());
+      shoppingListRepoMock.findOne.mockResolvedValue({
+        ...shoppingList,
+        budget_summary_json: {
+          ...shoppingList.budget_summary_json,
+          items_priced: 1,
+          items_total: 3,
+          is_complete: false,
+        },
+      });
+
+      await expect(
+        service.submitProject(mockUserId, makeDto()),
+      ).rejects.toThrow(BadRequestException);
+      expect(communityRepoMock.create).not.toHaveBeenCalled();
+    });
+
     it('rejette si le projet a deja ete soumis a la communaute', async () => {
       projectRepoMock.findOne.mockResolvedValue(makeProject());
       shoppingListRepoMock.findOne.mockResolvedValue(makeShoppingList());

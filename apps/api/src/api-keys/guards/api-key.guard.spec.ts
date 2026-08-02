@@ -34,7 +34,7 @@ describe('ApiKeyGuard', () => {
     matchesRotatedHash: jest.fn(),
     touchLastUsed: jest.fn(),
   };
-  const apiUsage = { consume: jest.fn() };
+  const apiUsage = { consume: jest.fn(), peek: jest.fn() };
   const orgContext = { resolveTierForOrganization: jest.fn() };
   const featureGates = {
     isFeatureAllowed: jest.fn(),
@@ -75,7 +75,7 @@ describe('ApiKeyGuard', () => {
       isBlocked: false,
       timeToBlockExpire: 0,
     });
-    apiUsage.consume.mockResolvedValue({
+    apiUsage.peek.mockResolvedValue({
       period: '2026-08',
       count: 1,
       reset_at: new Date(Date.now() + 86_400_000),
@@ -223,17 +223,29 @@ describe('ApiKeyGuard', () => {
         response: { error: 'RATE_LIMIT_EXCEEDED' },
       });
       // La rafale est vérifiée AVANT le quota : sinon une requête rejetée pour
-      // rafale aurait déjà consommé du quota facturable.
-      expect(apiUsage.consume).not.toHaveBeenCalled();
+      // rafale aurait déjà interrogé le compteur facturable.
+      expect(apiUsage.peek).not.toHaveBeenCalled();
       expect(response.setHeader).toHaveBeenCalledWith('Retry-After', 30);
     });
   });
 
   describe('quota mensuel', () => {
-    it('rejette en 429 au-delà de la limite du palier', async () => {
-      apiUsage.consume.mockResolvedValue({
+    /**
+     * Le garde ne fait plus que **lire** : il s'exécute avant le
+     * `ValidationPipe`, donc tout ce qu'il débiterait serait facturé y compris
+     * aux corps rejetés en 400. Le débit a lieu après le handler
+     * (`QuotaConsumptionInterceptor`).
+     */
+    it('ne consomme jamais le quota, quel que soit le verdict', async () => {
+      await expect(guard.canActivate(context)).resolves.toBe(true);
+      expect(apiUsage.consume).not.toHaveBeenCalled();
+      expect(apiUsage.peek).toHaveBeenCalledWith(ORG_ID);
+    });
+
+    it('rejette en 429 un appelant déjà au plafond du palier', async () => {
+      apiUsage.peek.mockResolvedValue({
         period: '2026-08',
-        count: 10_001,
+        count: 10_000,
         reset_at: new Date(Date.now() + 86_400_000),
       });
 
@@ -241,7 +253,7 @@ describe('ApiKeyGuard', () => {
         response: {
           error: 'QUOTA_EXCEEDED',
           limit: 10_000,
-          current: 10_001,
+          current: 10_000,
           period: '2026-08',
         },
       });
@@ -251,18 +263,19 @@ describe('ApiKeyGuard', () => {
       );
     });
 
-    it('laisse passer la requête qui atteint exactement la limite', async () => {
-      apiUsage.consume.mockResolvedValue({
+    it('laisse passer la requête qui atteindra exactement la limite', async () => {
+      apiUsage.peek.mockResolvedValue({
         period: '2026-08',
-        count: 10_000,
+        count: 9_999,
         reset_at: new Date(Date.now() + 86_400_000),
       });
       await expect(guard.canActivate(context)).resolves.toBe(true);
     });
 
-    it('ne consomme rien sur une route non marquée @CountsAgainstQuota', async () => {
+    it('ne lit rien sur une route non marquée @CountsAgainstQuota', async () => {
       (reflector.get as jest.Mock).mockReturnValue(undefined);
       await expect(guard.canActivate(context)).resolves.toBe(true);
+      expect(apiUsage.peek).not.toHaveBeenCalled();
       expect(apiUsage.consume).not.toHaveBeenCalled();
     });
   });

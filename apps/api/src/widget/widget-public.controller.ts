@@ -6,10 +6,12 @@ import {
   HttpStatus,
   Post,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ApiEstimateRequestDto } from '../estimations/dto/api-estimate-request.dto';
 import { CountsAgainstQuota } from '../api-keys/decorators/counts-against-quota.decorator';
+import { QuotaConsumptionInterceptor } from '../api-keys/interceptors/quota-consumption.interceptor';
 import { CurrentWidgetConfig } from './decorators/current-widget-config.decorator';
 import type { WidgetConfig } from './entities/widget-config.entity';
 import { WidgetOriginGuard } from './guards/widget-origin.guard';
@@ -29,6 +31,7 @@ import { WidgetService } from './widget.service';
  */
 @Controller('widget/:widgetKey')
 @UseGuards(WidgetOriginGuard)
+@UseInterceptors(QuotaConsumptionInterceptor)
 @Throttle({ default: { ttl: 60000, limit: 120 } })
 export class WidgetPublicController {
   constructor(private readonly widgetService: WidgetService) {}

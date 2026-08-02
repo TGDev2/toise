@@ -325,10 +325,50 @@ describe('Persistance (intégration, PostgreSQL réel)', () => {
 
       expect(await service.claimWebhookEvent(event('evt_failed'))).toBe(true);
     });
+
+    /**
+     * Le scénario que la réservation seule ne couvrait pas : le processus meurt
+     * entre `claimWebhookEvent` et la fin du traitement. Aucun `catch` ne
+     * s'exécute, donc rien n'est libéré — l'event doit malgré tout redevenir
+     * reprenable, sans quoi l'abonnement reste désynchronisé pour de bon.
+     */
+    it('reprend une réservation abandonnée par un processus mort', async () => {
+      const service = buildService();
+
+      expect(await service.claimWebhookEvent(event('evt_orphan'))).toBe(true);
+      // Fraîche : une autre livraison en vol ne doit pas doubler le traitement.
+      expect(await service.claimWebhookEvent(event('evt_orphan'))).toBe(false);
+
+      await dataSource.query(
+        `UPDATE stripe_events SET claimed_at = now() - interval '1 hour' WHERE event_id = $1`,
+        ['evt_orphan'],
+      );
+
+      expect(await service.claimWebhookEvent(event('evt_orphan'))).toBe(true);
+    });
+
+    it('ne reprend jamais un event dont le traitement a abouti', async () => {
+      const service = buildService();
+
+      await service.claimWebhookEvent(event('evt_done'));
+      await service.markWebhookEventProcessed('evt_done');
+
+      // Même vieille, une réservation menée à terme reste close : c'est
+      // l'idempotence pour laquelle la table existe.
+      await dataSource.query(
+        `UPDATE stripe_events SET claimed_at = now() - interval '1 hour' WHERE event_id = $1`,
+        ['evt_done'],
+      );
+
+      expect(await service.claimWebhookEvent(event('evt_done'))).toBe(false);
+    });
   });
 
   describe('Écritures concurrentes sur un blob JSONB', () => {
-    function buildService(fixture: Fixture): ShoppingListsService {
+    function buildService(
+      fixture: Fixture,
+      estimationItems: unknown[] = [],
+    ): ShoppingListsService {
       return new ShoppingListsService(
         dataSource.getRepository(ShoppingList),
         dataSource.getRepository(ComplementaryMaterial),
@@ -336,14 +376,37 @@ describe('Persistance (intégration, PostgreSQL réel)', () => {
         dataSource.getRepository(MaterialCatalog),
         dataSource.getRepository(MaterialEcoEquivalence),
         {
-          getLatest: () => Promise.resolve({ id: fixture.estimationId }),
+          getLatest: () =>
+            Promise.resolve({
+              id: fixture.estimationId,
+              items_json: estimationItems,
+              aggregated_json: null,
+            }),
         } as unknown as EstimationsService,
         {
           findOneForOrg: () => Promise.resolve({ id: fixture.projectId }),
         } as unknown as ProjectsService,
-        {} as AnalyticsService,
+        { track: () => undefined } as unknown as AnalyticsService,
         {} as LogbookService,
       );
+    }
+
+    /** Ligne d'estimation minimale, telle que `generate` la consomme. */
+    function estimationLine(materialId: string, name: string) {
+      return {
+        work_item_id: `wi-${materialId}`,
+        work_type_code: 'painting_walls',
+        work_type_label: 'Peinture murs',
+        material_id: materialId,
+        material_name: name,
+        material_unit: 'L',
+        surface_m2: 12,
+        theoretical_qty: 3.6,
+        adjusted_qty: 3.96,
+        packaging_label: 'Pot 3L',
+        packaging_qty_per_unit: 3,
+        units_needed: 2,
+      };
     }
 
     /**
@@ -377,6 +440,61 @@ describe('Persistance (intégration, PostgreSQL réel)', () => {
 
       expect(units[PEINTURE]).toBe(7);
       expect(units[ENDUIT]).toBe(9);
+    });
+
+    /**
+     * La régénération détruisait la ligne puis en insérait une autre. Le verrou
+     * de `update()` portait donc sur une ligne condamnée : il ne protégeait
+     * rien, et le `PATCH` concurrent finissait sur un 404 ou dans le vide.
+     * Écrite en place, la liste garde son identité — les deux chemins prennent
+     * le même verrou et se sérialisent.
+     */
+    it('sérialise une régénération et une correction concurrentes', async () => {
+      const fixture = await seedProject(dataSource, 'regen-race');
+      const service = buildService(fixture, [
+        estimationLine(PEINTURE, 'Peinture acrylique'),
+        estimationLine(ENDUIT, 'Enduit de rebouchage'),
+      ]);
+      const repo = dataSource.getRepository(ShoppingList);
+      const before = await repo.findOneByOrFail({
+        project_id: fixture.projectId,
+      });
+
+      await Promise.all([
+        service.regenerate(
+          fixture.projectId,
+          fixture.organizationId,
+          fixture.userId,
+        ),
+        service.update(fixture.projectId, fixture.organizationId, {
+          material_items: [
+            { material_id: PEINTURE, units_needed: 4, real_unit_price: 31.5 },
+          ],
+        }),
+      ]);
+
+      const after = await repo.findOneByOrFail({
+        project_id: fixture.projectId,
+      });
+
+      // Une seule ligne, la même qu'au départ : rien n'a été détruit puis
+      // recréé, donc aucune fenêtre où le projet n'a pas de liste.
+      expect(after.id).toBe(before.id);
+      expect(
+        await countWhere(
+          dataSource,
+          'shopping_lists',
+          'project_id',
+          fixture.projectId,
+        ),
+      ).toBe(1);
+
+      // Le prix relevé survit dans les deux ordonnancements : soit la
+      // correction a suivi la régénération, soit la régénération l'a reportée.
+      const peinture = after.items_json.material_items.find(
+        (item) => item.material_id === PEINTURE,
+      );
+      expect(peinture?.real_unit_price).toBe(31.5);
     });
   });
 });

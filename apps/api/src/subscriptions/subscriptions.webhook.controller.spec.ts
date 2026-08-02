@@ -24,6 +24,7 @@ describe('SubscriptionsWebhookController', () => {
     claimWebhookEvent: jest.Mock;
     handleWebhookEvent: jest.Mock;
     releaseWebhookEvent: jest.Mock;
+    markWebhookEventProcessed: jest.Mock;
   };
 
   beforeEach(() => {
@@ -33,6 +34,7 @@ describe('SubscriptionsWebhookController', () => {
       claimWebhookEvent: jest.fn(),
       handleWebhookEvent: jest.fn(),
       releaseWebhookEvent: jest.fn(),
+      markWebhookEventProcessed: jest.fn(),
     };
     controller = new SubscriptionsWebhookController(
       service as unknown as SubscriptionsService,
@@ -98,5 +100,52 @@ describe('SubscriptionsWebhookController', () => {
     expect(Sentry.captureException).toHaveBeenCalledWith(processingError, {
       tags: { component: 'stripe-webhook' },
     });
+  });
+
+  /**
+   * Le marquage est ce qui rend l'event définitivement non rejouable. Le poser
+   * avant le traitement (ce que faisait la réservation seule) gelait tout event
+   * dont le processus mourait en cours de route.
+   */
+  it('ne marque l’event traité qu’après le succès du traitement', async () => {
+    const event = { id: 'evt_3', type: 'invoice.paid' };
+    service.constructWebhookEvent.mockReturnValue(event);
+    service.claimWebhookEvent.mockResolvedValue(true);
+    const order: string[] = [];
+    service.handleWebhookEvent.mockImplementation(() => {
+      order.push('handle');
+      return Promise.resolve();
+    });
+    service.markWebhookEventProcessed.mockImplementation(() => {
+      order.push('mark');
+      return Promise.resolve();
+    });
+    const res = createResponse();
+
+    await controller.handleWebhook(
+      Buffer.from(''),
+      'sig',
+      res as unknown as Response,
+    );
+
+    expect(order).toEqual(['handle', 'mark']);
+    expect(service.markWebhookEventProcessed).toHaveBeenCalledWith('evt_3');
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it('ne marque rien quand le traitement échoue', async () => {
+    const event = { id: 'evt_4', type: 'invoice.paid' };
+    service.constructWebhookEvent.mockReturnValue(event);
+    service.claimWebhookEvent.mockResolvedValue(true);
+    service.handleWebhookEvent.mockRejectedValue(new Error('boom'));
+    const res = createResponse();
+
+    await controller.handleWebhook(
+      Buffer.from(''),
+      'sig',
+      res as unknown as Response,
+    );
+
+    expect(service.markWebhookEventProcessed).not.toHaveBeenCalled();
   });
 });
