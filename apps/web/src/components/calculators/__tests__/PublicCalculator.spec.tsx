@@ -222,6 +222,47 @@ describe('PublicCalculator', () => {
     expect(screen.getByText(/sauvegarder mon projet/i)).toBeInTheDocument();
   });
 
+  it('forwards the surface exclusions the visitor declared (GTM-9)', async () => {
+    // Le formulaire déduit déjà la crédence dans son aperçu en direct. Si elle
+    // ne part pas dans la requête, la page chiffre une surface plus grande que
+    // celle qu'elle vient d'afficher.
+    mockApiPost.mockResolvedValue(estimateResponse);
+    render(<PublicCalculator config={config} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /\+ crédence/i }));
+    await fillAndCompute();
+
+    await waitFor(() => {
+      expect(mockApiPost).toHaveBeenCalledWith(
+        '/public/calculators/estimate',
+        expect.objectContaining({
+          exclusions: [
+            { surface_target: 'wall', type: 'credence', area_m2: 2 },
+          ],
+        }),
+      );
+    });
+  });
+
+  it('omits the exclusions key entirely when none was declared (GTM-9)', async () => {
+    mockApiPost.mockResolvedValue(estimateResponse);
+    render(<PublicCalculator config={config} />);
+
+    await fillAndCompute();
+
+    await waitFor(() => {
+      expect(mockApiPost).toHaveBeenCalledWith('/public/calculators/estimate', {
+        length_cm: 400,
+        width_cm: 300,
+        height_cm: 250,
+        openings: [],
+        work_type_code: 'wall_painting',
+        skill_level: 'intermediate',
+        custom_params: { number_of_coats: 2 },
+      });
+    });
+  });
+
   it('saves a guest draft, starts a guest session and redirects to the dashboard', async () => {
     mockApiPost.mockResolvedValue(estimateResponse);
     mockAuth.startGuestSession.mockResolvedValue(undefined);

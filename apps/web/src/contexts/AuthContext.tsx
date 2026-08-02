@@ -28,6 +28,7 @@ import { apiDelete, apiPost, apiPut } from '@/lib/api';
 import { errorHasCode } from '@/lib/errors';
 import { getFirebaseAuth } from '@/lib/firebase';
 import { REFERRAL_CODE_STORAGE_KEY } from '@/lib/referral';
+import type { RectSegment, SurfaceExclusion } from '@/lib/surface';
 
 const LOCAL_PROJECTS_KEY = 'chiffreo_local_projects';
 
@@ -109,6 +110,14 @@ interface LocalProjectDraft {
     height_cm: number;
     count: number;
   }>;
+  /**
+   * Décrochés et zones exclues saisis en mode invité. Le brouillon les portait
+   * déjà (`dimensions/page.tsx` les relit) mais la migration vers un compte les
+   * laissait tomber : un invité qui s'inscrivait perdait sa pièce en L et ses
+   * exclusions, donc sa surface nette (GTM-9).
+   */
+  segments?: RectSegment[];
+  exclusions?: SurfaceExclusion[];
 }
 
 export interface CompanyProfilePayload {
@@ -225,6 +234,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             length_cm: Math.round(draft.length_m * 100),
             width_cm: Math.round(draft.width_m * 100),
             height_cm: Math.round(draft.height_m * 100),
+            segments: draft.segments?.length ? draft.segments : undefined,
+            exclusions: draft.exclusions?.length ? draft.exclusions : undefined,
           });
         }
 

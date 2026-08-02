@@ -5,14 +5,14 @@ import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 import { CALCULATOR_SLUGS, getCalculatorConfig } from '@/lib/calculators';
 
 export const metadata: Metadata = {
-  title: 'Calculateurs travaux gratuits',
+  title: 'Calculateurs travaux : combien acheter, pas combien de m²',
   description:
-    'Calculateurs gratuits pour vos travaux de rénovation : peinture, carrelage, parquet. Estimez vos quantités de matériaux en quelques secondes, sans inscription.',
+    'Peinture, carrelage, parquet : des calculateurs gratuits qui déduisent ce que vous ne traitez pas, suivent les pièces en L et ajustent la marge de perte à votre niveau. Sans inscription.',
   alternates: { canonical: '/calculateurs' },
   openGraph: {
-    title: 'Calculateurs travaux gratuits | Chiffréo',
+    title: 'Calculateurs travaux : combien acheter, pas combien de m² | Chiffréo',
     description:
-      'Estimez vos quantités de matériaux (peinture, carrelage, parquet) en quelques secondes, sans inscription.',
+      'Surface nette, pièces en L et marge de perte selon votre niveau — pour peinture, carrelage et parquet. Sans inscription.',
     url: '/calculateurs',
   },
 };
@@ -33,12 +33,14 @@ export default function CalculatorsHubPage() {
 
         <section className="mt-6 text-center">
           <h1 className="mx-auto max-w-2xl text-4xl font-semibold leading-tight text-stone-950 sm:text-5xl">
-            Calculateurs travaux gratuits
+            Combien acheter, pas combien de m²
           </h1>
-          <p className="mx-auto mt-5 max-w-xl text-lg leading-8 text-stone-700">
-            Estimez les quantités de matériaux de votre chantier en quelques
-            secondes : dimensions de la pièce, ouvertures, et c’est calculé.
-            Sans inscription.
+          <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-stone-700">
+            Le mètre carré, tout le monde sait le calculer. Ces calculateurs
+            retirent ce que vous ne traitez pas, suivent les pièces en L et
+            ajustent la marge de perte à votre niveau et à votre pose — puis
+            convertissent le tout en pots et en paquets. Gratuit, sans
+            inscription.
           </p>
         </section>
 

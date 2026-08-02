@@ -13,7 +13,7 @@ import { apiPost, apiPut } from '@/lib/api';
 import type { CalculatorConfig, CalculatorVariant } from '@/lib/calculators';
 import { getErrorMessage } from '@/lib/errors';
 import type { EstimationLineItem } from '@/lib/estimation-types';
-import type { Opening, RectSegment } from '@/lib/surface';
+import type { Opening, RectSegment, SurfaceExclusion } from '@/lib/surface';
 
 interface PublicCalculatorProps {
   config: CalculatorConfig;
@@ -33,6 +33,7 @@ interface SavedDimensions {
   heightCm: number;
   openings: Opening[];
   segments: RectSegment[];
+  exclusions: SurfaceExclusion[];
 }
 
 const LOCAL_PROJECTS_KEY = 'chiffreo_local_projects';
@@ -76,6 +77,10 @@ function buildEstimateBasePayload(
       count: o.count,
     })),
     segments: dims.segments.length > 0 ? dims.segments : undefined,
+    // GTM-9 : `DimensionsForm` déduit déjà ces aires dans son aperçu ; les
+    // laisser au bord du formulaire faisait chiffrer une surface plus grande
+    // que celle affichée juste au-dessus du bouton.
+    exclusions: dims.exclusions.length > 0 ? dims.exclusions : undefined,
     work_type_code: variant.code,
     skill_level: skillLevel,
     custom_params: buildCustomParams(variant, paramValues),
@@ -125,21 +130,25 @@ export function PublicCalculator({ config }: PublicCalculatorProps) {
     heightCm: number,
     openings: Opening[],
     segments: RectSegment[],
+    exclusions: SurfaceExclusion[],
   ) => {
     setError('');
     setIsComputing(true);
+    const dims = {
+      lengthCm,
+      widthCm,
+      heightCm,
+      openings,
+      segments,
+      exclusions,
+    };
     try {
       const response = await apiPost<PublicEstimateResponse>(
         '/public/calculators/estimate',
-        buildEstimateBasePayload(
-          { lengthCm, widthCm, heightCm, openings, segments },
-          variant,
-          skillLevel,
-          paramValues,
-        ),
+        buildEstimateBasePayload(dims, variant, skillLevel, paramValues),
       );
       setItems(response.items);
-      setSavedDims({ lengthCm, widthCm, heightCm, openings, segments });
+      setSavedDims(dims);
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Impossible de calculer l’estimation'));
     } finally {
@@ -184,6 +193,8 @@ export function PublicCalculator({ config }: PublicCalculatorProps) {
           height_cm: savedDims.heightCm,
           segments:
             savedDims.segments.length > 0 ? savedDims.segments : undefined,
+          exclusions:
+            savedDims.exclusions.length > 0 ? savedDims.exclusions : undefined,
         });
         for (const opening of savedDims.openings) {
           await apiPost(`/projects/${created.id}/openings`, {
@@ -210,6 +221,8 @@ export function PublicCalculator({ config }: PublicCalculatorProps) {
         height_m: savedDims.heightCm / 100,
         openings: savedDims.openings,
         segments: savedDims.segments.length > 0 ? savedDims.segments : undefined,
+        exclusions:
+          savedDims.exclusions.length > 0 ? savedDims.exclusions : undefined,
         updated_at: new Date().toISOString(),
       };
 

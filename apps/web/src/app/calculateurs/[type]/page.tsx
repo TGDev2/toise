@@ -3,7 +3,11 @@ import { notFound } from 'next/navigation';
 import { MarketingHeader } from '@/components/marketing/MarketingHeader';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 import { PublicCalculator } from '@/components/calculators/PublicCalculator';
-import { CALCULATOR_SLUGS, getCalculatorConfig } from '@/lib/calculators';
+import {
+  CALCULATOR_DIFFERENTIATORS,
+  CALCULATOR_SLUGS,
+  getCalculatorConfig,
+} from '@/lib/calculators';
 import { serializeJsonLd } from '@/lib/json-ld';
 
 export const dynamicParams = false;
@@ -35,14 +39,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 const HOW_IT_WORKS = [
   {
-    title: '1. Mesurez votre pièce',
+    title: '1. Décrivez la pièce telle qu’elle est',
     description:
-      'Longueur, largeur, hauteur — en mètres ou en pieds. Ajoutez portes et fenêtres pour un calcul au plus juste.',
+      'Longueur, largeur, hauteur — en mètres ou en pieds. Décomposez les pièces en L, ajoutez les ouvertures et les zones que vous ne traitez pas.',
   },
   {
-    title: '2. Obtenez vos quantités',
+    title: '2. Obtenez la quantité à acheter',
     description:
-      'Surface exacte, marge de perte adaptée à votre niveau, et conditionnements à acheter : le calcul est immédiat.',
+      'Surface nette, marge de perte adaptée à votre niveau et à la pose, puis conversion en pots ou en paquets : le calcul est immédiat.',
   },
   {
     title: '3. Sauvegardez votre projet',
@@ -89,6 +93,36 @@ export default async function CalculatorPage({ params }: PageProps) {
 
         <section className="mt-12 rounded-[2rem] border border-amber-950/10 bg-[var(--surface)] p-6 sm:p-8">
           <PublicCalculator config={config} />
+        </section>
+
+        <section className="mt-24">
+          <h2 className="text-3xl font-semibold text-stone-950">
+            Ce que ce calculateur fait de plus
+          </h2>
+          <p className="mt-3 max-w-2xl text-base leading-7 text-stone-700">
+            Le mètre carré, tout le monde sait le calculer. L’écart se joue sur
+            ce qu’on retire, sur la géométrie réelle de la pièce et sur la marge
+            de perte — c’est là que se trouvent les 15 à 25 % de matériaux
+            achetés pour rien.
+          </p>
+          <div className="mt-8 grid gap-5 md:grid-cols-2">
+            {config.differentiators.map((key) => {
+              const item = CALCULATOR_DIFFERENTIATORS[key];
+              return (
+                <div
+                  key={item.key}
+                  className="rounded-2xl border border-stone-200/80 bg-white/80 p-5"
+                >
+                  <h3 className="text-base font-semibold text-stone-950">
+                    {item.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-stone-700">
+                    {item.description}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
         </section>
 
         <section className="mt-24">

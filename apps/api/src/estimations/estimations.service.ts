@@ -284,6 +284,14 @@ export class EstimationsService {
         length_cm: s.length_cm,
         width_cm: s.width_cm,
       })),
+      // GTM-9 : le formulaire public déduit déjà ces aires dans son aperçu en
+      // direct. Les omettre ici ferait chiffrer une surface plus grande que
+      // celle que la page vient d'afficher — le moteur les filtre ensuite par
+      // `surface_target`, une exclusion de sol ne touche pas un mur.
+      exclusions: dto.exclusions?.map((e) => ({
+        surface_target: e.surface_target,
+        area_m2: e.area_m2,
+      })),
     };
 
     const skillLevel = dto.skill_level || SkillLevel.INTERMEDIATE;

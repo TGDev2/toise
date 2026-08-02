@@ -203,6 +203,38 @@ describe('EstimationsService.estimatePublic', () => {
     );
   });
 
+  it('deducts surface exclusions from the wall surface (GTM-9)', async () => {
+    // Le formulaire public rend `ExclusionsSection` et déduit déjà l'aire dans
+    // son aperçu en direct. Si le chemin public jette les exclusions, la page
+    // affiche une surface et en chiffre une autre, plus grande.
+    const withExclusion = await service.estimatePublic(
+      makeDto({
+        exclusions: [{ surface_target: 'wall', type: 'credence', area_m2: 3 }],
+      } as Partial<PublicEstimateRequestDto>),
+    );
+    const withoutExclusion = await service.estimatePublic(makeDto());
+
+    expect(withExclusion.items[0].surface_m2).toBeCloseTo(
+      withoutExclusion.items[0].surface_m2 - 3,
+      5,
+    );
+  });
+
+  it('ignores an exclusion that targets another surface (GTM-9)', async () => {
+    // `wall_painting` cible le mur : une exclusion de sol ne doit rien retirer.
+    const withFloorExclusion = await service.estimatePublic(
+      makeDto({
+        exclusions: [{ surface_target: 'floor', type: 'other', area_m2: 3 }],
+      } as Partial<PublicEstimateRequestDto>),
+    );
+    const withoutExclusion = await service.estimatePublic(makeDto());
+
+    expect(withFloorExclusion.items[0].surface_m2).toBeCloseTo(
+      withoutExclusion.items[0].surface_m2,
+      5,
+    );
+  });
+
   it('excludes eco-alternative materials from the automatic estimation loop', async () => {
     // PLAT-3 : le repo n'est qu'un mock, donc il ne filtre pas vraiment sur
     // `where` — on simule ici le comportement réel de Postgres pour prouver

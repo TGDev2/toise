@@ -77,7 +77,7 @@ Monorepo pnpm à trois applications : `apps/api` (NestJS 11 + PostgreSQL/TypeORM
 | 10 | Cost tracking | 🟢 Fait | Suivi budget sur la liste d'achats. |
 | 11 | Project timelines | 🔴 Absent | — |
 | 12 | Comparaison prix fournisseurs | 🟡 Structurel | Voir #6. |
-| 13 | Lead magnet gratuit (value ladder) | 🔴 Absent | Le mode invité existe mais exige d'entrer dans l'app ; pas de calculateur public indexable. |
+| 13 | Lead magnet gratuit (value ladder) | 🟢 Fait, repositionné | Trois calculateurs publics indexables (GTM-4) avec capture e-mail (GTM-5). Positionnés d'abord sur le terme de tête des calculettes d'enseigne, où nous n'apportions rien ; recentrés sur la surface nette et la marge par niveau — voir §4.6. |
 | 14 | Add-ons 4,99 € (éco, expert) | 🔴 Absent | Aucune mécanique d'achat à l'unité (Stripe ne gère que les abonnements). |
 | 15 | Enterprise 10 k€+/an | 🔴 Absent | Pas de multi-utilisateurs, pas d'orgs, pas d'API, pas de SSO. |
 | 16 | Mobile (« scan your room ») | 🟡 Web mobile-first | Capture caméra via navigateur OK ; pas de service worker, pas d'app native. |
@@ -180,6 +180,30 @@ Un artisan ne peut pas produire un devis réel de rénovation avec ce périmètr
 **Conséquence sur la feuille de route** : toute hausse de prix doit être précédée d'une extension réelle du périmètre chiffrable (corps d'état supplémentaires, lignes de main-d'œuvre par ouvrage), jamais l'inverse. C'est le seul chemin qui rouvre le segment généraliste.
 
 **Garde-fous** : `GENERALIST_MARKET_CEILING_EUR` et `COVERED_TRADES` / `TRADES_NOT_COVERED` ([`work-types.ts`](../apps/web/src/lib/work-types.ts)), vérifiés par [offer-catalogue.spec.ts](../apps/web/src/__tests__/offer-catalogue.spec.ts) §6 et §7 : un ouvrage seedé sans métier porteur, ou un palier d'entrée repassant au-dessus du marché, fait rougir la suite.
+
+### 4.6 Lead magnet : sortir du terme de tête (GTM-9, août 2026)
+
+Les calculateurs publics attaquaient le concurrent sur son point le plus fort. `title` et `h1` visaient « calculateur peinture », « calculateur de carrelage gratuit », « quantité au m² » — exactement les termes que possèdent les calculettes de Leroy Merlin et de Castorama : gratuites, indexées depuis des années, adossées à l'autorité de domaine d'une enseigne et à un stock réel derrière le bouton. Ce SEO-là se gagne, mais c'est un combat long sur un mot-clé où nous n'apportons rien : le mètre carré de peinture, tout le monde sait le calculer.
+
+Et le déséquilibre était pire que le mot-clé, parce que **la page libre n'exposait que la brique commune**. Les trois atouts du produit sont derrière le compte :
+
+| Atout | Où il vit | Sur la page publique |
+|---|---|---|
+| Photo → dimensions (CV) | `POST /projects/:id/analyze`, sous `FirebaseAuthGuard` + `FeatureGateGuard` | absent — la page n'a qu'un formulaire de saisie, comme une GSB |
+| Prix et liens d'achat | `price_comparison`, liste d'achats | absent — la page annonce elle-même « hors prix » |
+| Liste d'achats et matériaux complémentaires | `shopping_lists`, `complementary_materials` | absent de `estimatePublic` |
+
+Chiffréo entrait donc dans le combat avec la seule fonctionnalité que tout le monde a, amputée de ses propres différenciateurs. **Et un défaut le retournait contre lui** : `DimensionsForm` propose les surfaces à exclure et les déduit dans son aperçu en direct, mais `handleCompute` ne recevait pas le 6ᵉ argument et le DTO public ne portait pas le champ. Un visiteur qui déclarait une crédence voyait l'aperçu la retirer et recevait une estimation qui l'ignorait — sur la page dont la promesse est « n'achetez pas 15 à 25 % en trop ».
+
+**Décision** : garder le lead magnet, arrêter de le positionner sur le terme de tête.
+
+- Le récit passe de « combien de m² » à **« combien acheter »** sur les quatre surfaces. Ce que nous tenons et qu'une calculette d'enseigne ne tient pas : la **surface nette** (ouvertures, exclusions, pièces en L/T/U) et la **marge de perte selon le niveau et la pose** (5 à 20 % réellement seedés, contre un forfait unique).
+- Les promesses deviennent des **données**, pas de la prose : `CALCULATOR_DIFFERENTIATORS` ([`calculators.ts`](../apps/web/src/lib/calculators.ts)) est un ensemble fermé de clés, chacune portant le `proof` du mécanisme qui l'exécute **sur le chemin public**. C'est le motif de §4.2.1 appliqué au lead magnet.
+- Ce qui n'existe pas sur ce chemin n'a pas de clé pour être annoncé : il n'y a ni `price` ni `photo` dans l'ensemble fermé, et en ajouter une casse le test.
+
+**Conséquence sur la feuille de route** : le jour où la CV ou les prix deviendront accessibles sans compte, ce sera une clé de plus adossée à son mécanisme — pas une réécriture de page. Et toute nouvelle page de calculateur doit déclarer ses différenciateurs, sinon la suite rougit.
+
+**Garde-fous** : [calculators-positioning.spec.ts](../apps/web/src/__tests__/calculators-positioning.spec.ts) pour le catalogue de promesses ; `estimations.service.spec.ts` (déduction des exclusions, filtrage par `surface_target`) et `PublicCalculator.spec.tsx` (transmission des exclusions saisies) pour l'exécution.
 
 ---
 

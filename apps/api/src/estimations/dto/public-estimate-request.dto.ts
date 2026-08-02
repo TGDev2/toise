@@ -5,12 +5,16 @@ import {
   IsEnum,
   IsIn,
   IsInt,
+  IsNumber,
   IsOptional,
+  IsString,
   Max,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
 import { SkillLevel } from '../../projects/entities/project-work-item.entity';
+import { ExclusionType } from '../../projects/entities/room-dimensions.entity';
 
 export const PUBLIC_WORK_TYPE_CODES = [
   'wall_painting',
@@ -63,6 +67,33 @@ export class RectSegmentDto {
   width_cm!: number;
 }
 
+/**
+ * Zone non traitée à déduire d'une surface (ENG-3) : crédence, demi-mur,
+ * plinthes… Miroir public de `RoomExclusionDto`, bornes resserrées comme
+ * `RectSegmentDto` l'est vis-à-vis de `RoomSegmentDto`.
+ *
+ * `label` est accepté mais inutilisé par le calcul : le formulaire l'envoie
+ * pour le type `other`, et `forbidNonWhitelisted` rejetterait la requête
+ * entière si le champ n'était pas déclaré ici.
+ */
+export class PublicExclusionDto {
+  @IsIn(['wall', 'floor', 'ceiling'])
+  surface_target!: 'wall' | 'floor' | 'ceiling';
+
+  @IsEnum(ExclusionType)
+  type!: ExclusionType;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  label?: string;
+
+  @IsNumber()
+  @Min(0)
+  @Max(500)
+  area_m2!: number;
+}
+
 export class PublicCustomParamsDto {
   @IsOptional()
   @IsInt()
@@ -112,6 +143,18 @@ export class PublicEstimateRequestDto {
   @ValidateNested({ each: true })
   @Type(() => RectSegmentDto)
   segments?: RectSegmentDto[];
+
+  /**
+   * Zones à retirer de la surface calculée. Le formulaire public les déduit
+   * déjà dans son aperçu en direct : ne pas les transmettre au moteur ferait
+   * chiffrer une surface plus grande que celle affichée (GTM-9).
+   */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @ValidateNested({ each: true })
+  @Type(() => PublicExclusionDto)
+  exclusions?: PublicExclusionDto[];
 
   @IsIn(PUBLIC_WORK_TYPE_CODES)
   work_type_code!: string;
