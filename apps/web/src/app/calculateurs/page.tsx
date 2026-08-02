@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Logo } from '@/components/Logo';
+import { MarketingHeader } from '@/components/marketing/MarketingHeader';
+import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 import { CALCULATOR_SLUGS, getCalculatorConfig } from '@/lib/calculators';
 
 export const metadata: Metadata = {
@@ -28,25 +29,7 @@ export default function CalculatorsHubPage() {
   return (
     <main className="flex-1 px-4 pb-16 sm:px-6 lg:px-8">
       <div className="mx-auto w-full max-w-6xl">
-        <header className="flex items-center justify-between py-6">
-          <Link href="/">
-            <Logo height={30} />
-          </Link>
-          <nav className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="rounded-full border border-stone-300 px-5 py-2 text-sm font-semibold text-stone-800 hover:border-stone-500 hover:bg-white"
-            >
-              Se connecter
-            </Link>
-            <Link
-              href="/register"
-              className="hidden rounded-full px-4 py-2 text-sm font-semibold text-stone-700 hover:text-stone-950 sm:block"
-            >
-              Créer un compte
-            </Link>
-          </nav>
-        </header>
+        <MarketingHeader audience="diy" />
 
         <section className="mt-6 text-center">
           <h1 className="mx-auto max-w-2xl text-4xl font-semibold leading-tight text-stone-950 sm:text-5xl">
@@ -87,9 +70,9 @@ export default function CalculatorsHubPage() {
             Besoin de plus qu’un calcul ?
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-base text-stone-700">
-            Chiffréo transforme votre estimation en projet complet : liste de
-            courses, suivi de chantier et devis. Deux projets offerts, sans
-            carte bancaire.
+            Chiffréo transforme votre estimation en projet complet : liste
+            d’achats optimisée par conditionnement, budget suivi en temps réel et
+            carnet de vos pièces. Deux projets offerts, sans carte bancaire.
           </p>
           <div className="mt-7 flex justify-center gap-3">
             <Link
@@ -107,29 +90,7 @@ export default function CalculatorsHubPage() {
           </div>
         </section>
 
-        <footer className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-stone-300/60 pt-8 text-sm text-stone-600 sm:flex-row">
-          <p>© {new Date().getFullYear()} Chiffréo</p>
-          <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2">
-            <Link href="/" className="hover:text-stone-950">
-              Accueil
-            </Link>
-            <Link href="/pricing" className="hover:text-stone-950">
-              Tarifs
-            </Link>
-            <Link href="/cgu" className="hover:text-stone-950">
-              CGU
-            </Link>
-            <Link href="/cgv" className="hover:text-stone-950">
-              CGV
-            </Link>
-            <Link href="/privacy" className="hover:text-stone-950">
-              Confidentialité
-            </Link>
-            <Link href="/mentions-legales" className="hover:text-stone-950">
-              Mentions légales
-            </Link>
-          </nav>
-        </footer>
+        <MarketingFooter currentPath="/calculateurs" />
       </div>
     </main>
   );

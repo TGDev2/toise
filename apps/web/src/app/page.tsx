@@ -5,8 +5,18 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/lib/errors';
-import { Logo } from '@/components/Logo';
-import { LANDING_PLANS } from '@/lib/pricing';
+import { MarketingHeader } from '@/components/marketing/MarketingHeader';
+import { MarketingFooter } from '@/components/marketing/MarketingFooter';
+import { PlanCard } from '@/components/marketing/PlanCard';
+import { AUDIENCE_DEFINITIONS, plansForAudience } from '@/lib/pricing';
+
+// Cette page sert une seule audience : le particulier qui rénove chez lui.
+// L'offre artisan a sa propre surface (/artisans) — elle occupait auparavant une
+// section au milieu de ce récit, ce qui faisait passer la page du « votre niveau
+// de bricolage » au « devis PDF envoyé sur place » sans que personne ne sache
+// plus à qui elle s'adressait.
+const AUDIENCE = 'diy' as const;
+const DIY_PLANS = plansForAudience(AUDIENCE);
 
 const demoListItems = [
   { label: 'Peinture murale mate blanche', detail: '1 pot 10 L + 1 pot 2,5 L' },
@@ -106,25 +116,7 @@ export default function HomePage() {
   return (
     <main className="flex-1 px-4 pb-16 sm:px-6 lg:px-8">
       <div className="mx-auto w-full max-w-6xl">
-        <header className="flex items-center justify-between py-6">
-          <Logo height={30} />
-          <nav className="flex items-center gap-3">
-            <Link
-              href={hasSession ? '/dashboard' : '/login'}
-              className="rounded-full border border-stone-300 px-5 py-2 text-sm font-semibold text-stone-800 hover:border-stone-500 hover:bg-white"
-            >
-              {hasSession ? 'Mon dashboard' : 'Se connecter'}
-            </Link>
-            {!hasSession && (
-              <Link
-                href="/register"
-                className="hidden rounded-full px-4 py-2 text-sm font-semibold text-stone-700 hover:text-stone-950 sm:block"
-              >
-                Créer un compte
-              </Link>
-            )}
-          </nav>
-        </header>
+        <MarketingHeader audience={AUDIENCE} switchTo="artisan" />
 
         {/* Hero */}
         <section className="mt-6 grid items-center gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:gap-14">
@@ -257,84 +249,41 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Artisans */}
-        <section className="mt-24 rounded-[2rem] bg-stone-950 p-8 text-stone-50 shadow-[0_25px_80px_rgba(26,15,7,0.28)] sm:p-10">
-          <div className="grid items-center gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-amber-200/80">
-                Artisans
-              </p>
-              <h2 className="mt-4 text-3xl font-semibold text-white">
-                Chiffrez chez le client, pas le soir au bureau
-              </h2>
-              <p className="mt-4 max-w-xl text-base leading-7 text-stone-300">
-                Photo de la pièce, estimation des matériaux, devis PDF conforme
-                (TVA, HT/TTC, mentions) envoyé avant de repartir. Fichier
-                clients et suivi des devis inclus dans le tier Contractor.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-              <p className="text-sm font-semibold text-white">
-                Le parcours devis-minute
-              </p>
-              <ol className="mt-3 space-y-2 text-sm leading-6 text-stone-300">
-                <li>1. Photo de la pièce chez le client</li>
-                <li>2. Quantités et marge matériaux calculées</li>
-                <li>3. Devis PDF envoyé sur place</li>
-              </ol>
-            </div>
-          </div>
-        </section>
-
         {/* Tarifs */}
         <section className="mt-24">
           <h2 className="text-3xl font-semibold text-stone-950">
             Des tarifs simples
           </h2>
           <p className="mt-3 max-w-xl text-base text-stone-700">
-            Commencez gratuitement, passez à Pro quand vous multipliez les
-            projets, Contractor si vous êtes du métier.
+            Commencez gratuitement, passez à Pro quand vous enchaînez les
+            chantiers. Sans engagement, annulable à tout moment.
           </p>
-          <div className="mt-8 grid gap-5 md:grid-cols-3">
-            {LANDING_PLANS.map((plan) => (
-              <div
-                key={plan.name}
-                className={
-                  plan.highlighted
-                    ? 'rounded-[2rem] border-2 border-[var(--accent)] bg-white p-7 shadow-[0_15px_50px_rgba(29,107,87,0.15)]'
-                    : 'rounded-[2rem] border border-amber-950/10 bg-[var(--surface)] p-7'
+          <div className="mt-8 grid gap-5 sm:grid-cols-2">
+            {DIY_PLANS.map((plan) => (
+              <PlanCard
+                key={plan.key}
+                plan={plan}
+                tone={plan.highlighted ? 'highlighted' : 'surface'}
+                badge={
+                  plan.trialDays ? `Essai gratuit ${plan.trialDays} jours` : undefined
                 }
-              >
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-stone-600">
-                  {plan.name}
-                </p>
-                <p className="mt-3 text-3xl font-semibold text-stone-950">
-                  {plan.price}
-                  {plan.period && (
-                    <span className="text-base font-normal text-stone-600">
-                      {plan.period}
-                    </span>
-                  )}
-                </p>
-                <ul className="mt-5 space-y-2 text-sm leading-6 text-stone-700">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex gap-2">
-                      <span aria-hidden className="text-[var(--accent)]">
-                        ✓
-                      </span>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                maxFeatures={4}
+              />
             ))}
           </div>
-          <div className="mt-6">
+          <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2">
             <Link
               href="/pricing"
               className="text-sm font-semibold text-[var(--accent)] hover:text-[var(--accent-strong)]"
             >
               Voir le détail des tarifs →
+            </Link>
+            <Link
+              href={AUDIENCE_DEFINITIONS.artisan.landingPath}
+              className="text-sm font-semibold text-stone-700 hover:text-stone-950"
+            >
+              {AUDIENCE_DEFINITIONS.artisan.switchLabel} Voir les offres
+              Contractor →
             </Link>
           </div>
         </section>
@@ -351,32 +300,7 @@ export default function HomePage() {
           <div className="mt-7 flex justify-center">{primaryCta()}</div>
         </section>
 
-        <footer className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-stone-300/60 pt-8 text-sm text-stone-600 sm:flex-row">
-          <p>© {new Date().getFullYear()} Chiffréo</p>
-          <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2">
-            <Link href="/pricing" className="hover:text-stone-950">
-              Tarifs
-            </Link>
-            <Link href="/calculateurs" className="hover:text-stone-950">
-              Calculateurs gratuits
-            </Link>
-            <Link href="/cgu" className="hover:text-stone-950">
-              CGU
-            </Link>
-            <Link href="/cgv" className="hover:text-stone-950">
-              CGV
-            </Link>
-            <Link href="/privacy" className="hover:text-stone-950">
-              Confidentialité
-            </Link>
-            <Link href="/mentions-legales" className="hover:text-stone-950">
-              Mentions légales
-            </Link>
-            <Link href="/login" className="hover:text-stone-950">
-              Se connecter
-            </Link>
-          </nav>
-        </footer>
+        <MarketingFooter currentPath="/" />
       </div>
     </main>
   );

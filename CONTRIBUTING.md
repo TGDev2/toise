@@ -147,6 +147,24 @@ pnpm test:web
 6. Importer le module dans `app.module.ts`
 7. Écrire les tests
 
+### Ajouter ou déplacer une feature gate
+
+Toute migration qui touche `feature_gates` (INSERT, changement de `min_tier`,
+activation) doit mettre à jour **dans le même lot** le miroir web
+`apps/web/src/lib/feature-gates-catalogue.ts`, puis décider de l'offre :
+
+1. Ajouter la gate à `KNOWN_FEATURE_GATES` avec son `min_tier` effectif.
+2. Soit la vendre — une ligne `{ label, gateKey }` dans le plan correspondant de
+   `apps/web/src/lib/pricing.ts` — soit l'écarter explicitement en la déclarant
+   dans `GATES_NOT_MARKETED` **avec sa raison**.
+3. `pnpm --filter web test` : `offer-catalogue.spec.ts` échoue tant qu'une gate
+   connue n'est ni vendue ni écartée, et tant qu'une ligne annoncée ne correspond
+   à aucune gate réelle.
+
+Cette contrainte existe parce que les trois descriptions de l'offre (prose
+marketing, prix Stripe, gates en base) avaient divergé au point de vendre deux
+fonctionnalités inexistantes tout en cachant neuf fonctionnalités livrées.
+
 ### Nouvelle page frontend
 
 1. Créer le fichier `page.tsx` dans le bon groupe de routes (`(app)/`, `(auth)/`, `(admin)/`)

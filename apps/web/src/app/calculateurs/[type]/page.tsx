@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Logo } from '@/components/Logo';
+import { MarketingHeader } from '@/components/marketing/MarketingHeader';
+import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 import { PublicCalculator } from '@/components/calculators/PublicCalculator';
 import { CALCULATOR_SLUGS, getCalculatorConfig } from '@/lib/calculators';
 import { serializeJsonLd } from '@/lib/json-ld';
@@ -47,7 +47,7 @@ const HOW_IT_WORKS = [
   {
     title: '3. Sauvegardez votre projet',
     description:
-      'En un clic, transformez votre calcul en projet Chiffréo : liste de courses complète et suivi de chantier.',
+      'En un clic, transformez votre calcul en projet Chiffréo : liste d’achats complète, budget suivi et export PDF.',
   },
 ];
 
@@ -73,25 +73,10 @@ export default async function CalculatorPage({ params }: PageProps) {
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
       <div className="mx-auto w-full max-w-6xl">
-        <header className="flex items-center justify-between py-6">
-          <Link href="/">
-            <Logo height={30} />
-          </Link>
-          <nav className="flex items-center gap-3">
-            <Link
-              href="/calculateurs"
-              className="hidden rounded-full px-4 py-2 text-sm font-semibold text-stone-700 hover:text-stone-950 sm:block"
-            >
-              Tous les calculateurs
-            </Link>
-            <Link
-              href="/login"
-              className="rounded-full border border-stone-300 px-5 py-2 text-sm font-semibold text-stone-800 hover:border-stone-500 hover:bg-white"
-            >
-              Se connecter
-            </Link>
-          </nav>
-        </header>
+        <MarketingHeader
+          audience="diy"
+          extraLink={{ href: '/calculateurs', label: 'Tous les calculateurs' }}
+        />
 
         <section className="mt-6 text-center">
           <h1 className="mx-auto max-w-2xl text-4xl font-semibold leading-tight text-stone-950 sm:text-5xl">
@@ -148,23 +133,7 @@ export default async function CalculatorPage({ params }: PageProps) {
           </div>
         </section>
 
-        <footer className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-stone-300/60 pt-8 text-sm text-stone-600 sm:flex-row">
-          <p>© {new Date().getFullYear()} Chiffréo</p>
-          <nav className="flex gap-6">
-            <Link href="/" className="hover:text-stone-950">
-              Accueil
-            </Link>
-            <Link href="/calculateurs" className="hover:text-stone-950">
-              Calculateurs
-            </Link>
-            <Link href="/pricing" className="hover:text-stone-950">
-              Tarifs
-            </Link>
-            <Link href="/privacy" className="hover:text-stone-950">
-              Confidentialité
-            </Link>
-          </nav>
-        </footer>
+        <MarketingFooter />
       </div>
     </main>
   );

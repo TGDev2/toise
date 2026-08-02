@@ -1,0 +1,226 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { MarketingHeader } from '@/components/marketing/MarketingHeader';
+import { MarketingFooter } from '@/components/marketing/MarketingFooter';
+import { PlanCard } from '@/components/marketing/PlanCard';
+import { AUDIENCE_DEFINITIONS, plansForAudience } from '@/lib/pricing';
+
+export const metadata: Metadata = {
+  title: 'Chiffréo pour les artisans',
+  description:
+    'Photo de la pièce chez le client, quantités calculées, devis PDF conforme envoyé sur place. Suivi de chantier, relances et facturation. Contractor dès 50 €/mois.',
+  alternates: { canonical: '/artisans' },
+  openGraph: {
+    title: 'Chiffréo pour les artisans',
+    description:
+      'Chiffrez et envoyez un devis conforme depuis le chantier, pas le soir au bureau.',
+    url: '/artisans',
+  },
+};
+
+// Cette page porte le récit artisan, et elle seule. Il occupait auparavant une
+// section au milieu de la landing particulier : la page d'accueil passait du
+// « votre niveau de bricolage » au « devis PDF envoyé sur place » sans que
+// personne ne sache plus à qui elle parlait.
+const AUDIENCE = 'artisan' as const;
+const CONTRACTOR_PLANS = plansForAudience(AUDIENCE);
+
+const QUOTE_FLOW = [
+  {
+    title: 'Photo de la pièce chez le client',
+    description:
+      'L’analyse photo (bêta) pré-remplit murs, sol, plafond et ouvertures. Chaque mesure reste corrigeable en un geste, sur place.',
+  },
+  {
+    title: 'Quantités et marge matériaux calculées',
+    description:
+      'Ouvertures déduites, pertes de coupe réelles selon le type de pose, conditionnements du marché français. Votre marge matériaux s’applique automatiquement.',
+  },
+  {
+    title: 'Devis PDF conforme envoyé sur place',
+    description:
+      'TVA, HT/TTC, mentions légales obligatoires, numérotation. Le client repart avec son devis avant que vous ayez rangé le mètre.',
+  },
+];
+
+const PRO_PROOF = [
+  {
+    title: 'Le chiffrage ne se fait plus le soir',
+    description:
+      'Un chiffrage de rénovation prend deux à trois heures au bureau. Ici il tient dans la visite : c’est la journée facturable que vous récupérez.',
+  },
+  {
+    title: 'Des devis qui tiennent la route',
+    description:
+      'Mentions obligatoires, TVA, HT/TTC, conditions : le PDF généré est conforme, pas un tableur exporté.',
+  },
+  {
+    title: 'Le chantier suivi jusqu’à la facture',
+    description:
+      'Jalons et statuts d’avancement, relances automatiques des devis sans réponse, puis passage du devis accepté à la facture numérotée.',
+  },
+  {
+    title: 'Vos clients au même endroit',
+    description:
+      'Fichier clients, historique des chantiers et des devis par client. Pas de second outil à tenir à jour.',
+  },
+];
+
+export default function ArtisansPage() {
+  const diy = AUDIENCE_DEFINITIONS.diy;
+
+  return (
+    <main className="flex-1 px-4 pb-16 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-6xl">
+        <MarketingHeader audience={AUDIENCE} switchTo="diy" />
+
+        {/* Hero */}
+        <section className="mt-6 grid items-center gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:gap-14">
+          <div>
+            <p className="inline-flex items-center rounded-full border border-emerald-900/10 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-900">
+              Artisans du bâtiment
+            </p>
+
+            <h1 className="mt-6 text-4xl font-semibold leading-tight text-stone-950 sm:text-5xl">
+              Chiffrez chez le client, pas le soir au bureau.
+            </h1>
+
+            <p className="mt-5 max-w-xl text-lg leading-8 text-stone-700">
+              Photo de la pièce, estimation des matériaux, devis PDF conforme
+              (TVA, HT/TTC, mentions) envoyé avant de repartir. Fichier clients,
+              suivi de chantier et facturation suivent derrière.
+            </p>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link
+                href="/register"
+                className="rounded-full bg-[var(--accent)] px-6 py-3 text-center text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-[var(--accent-strong)]"
+              >
+                Créer un compte
+              </Link>
+              <Link
+                href="#offres"
+                className="rounded-full border border-stone-300 px-6 py-3 text-center text-sm font-semibold text-stone-800 hover:-translate-y-0.5 hover:border-stone-500 hover:bg-white"
+              >
+                Voir les offres Contractor
+              </Link>
+            </div>
+
+            <p className="mt-4 text-sm text-stone-600">
+              Sans engagement, annulable à tout moment.
+            </p>
+          </div>
+
+          {/* Parcours devis-minute */}
+          <div className="rounded-[2rem] bg-stone-950 p-7 text-stone-50 shadow-[0_25px_80px_rgba(26,15,7,0.28)] sm:p-8">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-amber-200/80">
+              Le parcours devis-minute
+            </p>
+            <ol className="mt-5 space-y-4">
+              {QUOTE_FLOW.map((step, index) => (
+                <li
+                  key={step.title}
+                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4"
+                >
+                  <div className="flex items-baseline gap-3">
+                    <span className="shrink-0 text-sm font-semibold text-amber-200">
+                      {index + 1}.
+                    </span>
+                    <div>
+                      <p className="text-sm font-medium text-white">
+                        {step.title}
+                      </p>
+                      <p className="mt-1 text-sm leading-6 text-stone-300">
+                        {step.description}
+                      </p>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        {/* Preuve */}
+        <section className="mt-24 rounded-[2rem] border border-amber-950/10 bg-[var(--surface)] p-8 shadow-[0_25px_80px_rgba(67,39,15,0.10)] sm:p-10">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-900">
+            Ce que ça change dans la semaine
+          </p>
+          <h2 className="mt-4 max-w-2xl text-3xl font-semibold text-stone-950">
+            Le temps que vous ne passez plus à chiffrer
+          </h2>
+          <div className="mt-8 grid gap-5 sm:grid-cols-2">
+            {PRO_PROOF.map((point) => (
+              <div
+                key={point.title}
+                className="rounded-2xl border border-stone-200/80 bg-white/80 p-5"
+              >
+                <h3 className="text-base font-semibold text-stone-950">
+                  {point.title}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-stone-700">
+                  {point.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Offres Contractor */}
+        <section id="offres" className="mt-24 scroll-mt-8">
+          <h2 className="text-3xl font-semibold text-stone-950">
+            Trois niveaux selon votre activité
+          </h2>
+          <p className="mt-3 max-w-xl text-base text-stone-700">
+            Les paliers se distinguent par ce qu&apos;ils débloquent réellement,
+            pas par le volume : suivi de chantier et relances au Standard,
+            équipe et intégrations au Premium.
+          </p>
+          <div className="mt-8 grid gap-5 md:grid-cols-3">
+            {CONTRACTOR_PLANS.map((plan) => (
+              <PlanCard
+                key={plan.key}
+                plan={plan}
+                tone={plan.highlighted ? 'highlighted' : 'surface'}
+                badge={plan.highlighted ? 'Populaire' : undefined}
+              />
+            ))}
+          </div>
+          <p className="mt-4 text-center text-xs text-stone-500">
+            Sans engagement. Annulable à tout moment.{' '}
+            <Link href="/pricing" className="underline hover:text-stone-800">
+              Comparer avec les offres particuliers
+            </Link>
+          </p>
+        </section>
+
+        {/* CTA final */}
+        <section className="mt-24 rounded-[2rem] border border-amber-950/10 bg-[var(--surface)] p-10 text-center shadow-[0_25px_80px_rgba(67,39,15,0.10)]">
+          <h2 className="mx-auto max-w-2xl text-3xl font-semibold text-stone-950">
+            Votre prochain devis, envoyé depuis le chantier
+          </h2>
+          <p className="mx-auto mt-3 max-w-xl text-base text-stone-700">
+            Créez votre compte, renseignez votre profil (SIRET, TVA, mentions) et
+            chiffrez votre première visite.
+          </p>
+          <div className="mt-7 flex flex-wrap justify-center gap-3">
+            <Link
+              href="/register"
+              className="rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-[var(--accent-strong)]"
+            >
+              Créer un compte
+            </Link>
+            <Link
+              href={diy.landingPath}
+              className="rounded-full border border-stone-300 px-6 py-3 text-sm font-semibold text-stone-800 hover:-translate-y-0.5 hover:border-stone-500 hover:bg-white"
+            >
+              {diy.switchLabel}
+            </Link>
+          </div>
+        </section>
+
+        <MarketingFooter currentPath="/artisans" />
+      </div>
+    </main>
+  );
+}

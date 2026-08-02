@@ -34,6 +34,8 @@ function fetchPlans(): Promise<Record<string, ApiPlan>> {
 const VARIANT_CLASSES = {
   accent: 'bg-[var(--accent)] text-white hover:bg-[var(--accent-strong)]',
   dark: 'bg-stone-900 text-white hover:bg-stone-800',
+  /** Pour les cartes à fond `stone-950`, où `dark` serait invisible. */
+  light: 'bg-white text-stone-950 hover:bg-stone-100',
   outline:
     'border border-stone-300 text-stone-800 hover:border-stone-500 hover:bg-white',
 } as const;

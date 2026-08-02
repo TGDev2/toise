@@ -104,6 +104,41 @@ Les deux segments sont construits. Plutôt que d'en choisir un :
 - **Artisan = moteur de revenu** (ARPU 5-20× supérieur, churn plus faible, besoin réel : chiffrer vite un devis). Le parcours « photo → estimation → devis PDF en 10 minutes chez le client » est un pitch différenciant qu'aucun concurrent français grand public ne tient.
 - Conséquence pricing : **différencier réellement les paliers Contractor 50/100/200 €** (aujourd'hui identiques). Proposition : Essentiel = devis+clients ; Standard = + suivi chantier + relances ; Premium = + multi-utilisateurs + API.
 
+#### 4.2.1 Traduction en architecture de l'information (GTM-7, août 2026)
+
+Cette décision est restée en prose pendant des mois et n'était traduite nulle part : la
+page d'accueil ouvrait sur le bricoleur (« votre niveau de bricolage ») puis basculait en
+milieu de page sur le tunnel artisan (« Photo de la pièce chez le client → Devis PDF envoyé
+sur place »). Quatre offres — calculateurs, Pro, Contractor, Enterprise — se lisaient comme
+quatre produits concurrents plutôt que comme les étages d'une échelle.
+
+**Règle : une audience, une surface.**
+
+| Surface | Audience | Récit qu'elle porte |
+|---|---|---|
+| `/` | particulier | « Arrêtez d'acheter 15 à 25 % de matériaux en trop » — photo → liste, mode invité |
+| `/artisans` | artisan | « Chiffrez chez le client, pas le soir au bureau » — devis-minute, TVA/HT/TTC, fichier clients |
+| `/calculateurs`, `/calculateurs/[type]` | particulier | lead magnet SEO — ne vend que des gates `free`/`pro` |
+| `/pricing` | les trois | l'échelle complète, groupée par audience, Enterprise sur devis |
+
+Aucune page ne consacre de section à une autre audience que la sienne : elle lui offre un
+lien de bascule dans l'en-tête, et rien de plus.
+
+L'audience est désormais une **donnée** portée par le catalogue d'offre
+([apps/web/src/lib/pricing.ts](../apps/web/src/lib/pricing.ts), champ `audience` et table
+`AUDIENCE_DEFINITIONS`), pas une intention réécrite page par page. Chaque ligne de
+fonctionnalité annoncée est adossée à sa `feature_key` réelle ; les lignes qui n'en sont pas
+(quota, héritage, support, clause contractuelle) doivent déclarer laquelle de ces catégories
+elles sont. Ce que cela a corrigé : le palier Standard vendait deux fonctionnalités qui
+n'ont jamais existé, neuf gates livrées et actives n'étaient annoncées nulle part, et le
+palier `enterprise` était appliqué en base sans être joignable depuis aucune surface
+publique.
+
+Le garde-fou est [apps/web/src/\_\_tests\_\_/offer-catalogue.spec.ts](../apps/web/src/__tests__/offer-catalogue.spec.ts),
+adossé au miroir de gates [feature-gates-catalogue.ts](../apps/web/src/lib/feature-gates-catalogue.ts) :
+une gate ajoutée en base sans décision d'offre fait rougir la suite. **Toute migration
+touchant `feature_gates` doit mettre ce miroir à jour dans le même lot.**
+
 ### 4.3 Honnêteté sur la précision CV
 
 La promesse « exact quantities, down to the last tile » est le cœur de la marque ; la CV est en bêta avec fallback heuristique. Deux garde-fous :

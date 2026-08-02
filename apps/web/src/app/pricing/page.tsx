@@ -1,30 +1,42 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Logo } from '@/components/Logo';
-import { PlanCtaButton } from '@/components/pricing/PlanCtaButton';
+import { MarketingHeader } from '@/components/marketing/MarketingHeader';
+import { MarketingFooter } from '@/components/marketing/MarketingFooter';
+import { PlanCard } from '@/components/marketing/PlanCard';
 import {
-  ALL_PAID_PLANS,
-  CONTRACTOR_PLANS,
-  FREE_PLAN,
-  PRO_PLAN,
-  type PricingPlan,
+  AUDIENCE_DEFINITIONS,
+  ENTERPRISE_CONTACT_EMAIL,
+  OFFER_PLANS,
+  plansForAudience,
 } from '@/lib/pricing';
 import { serializeJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title: 'Tarifs',
   description:
-    'Comparez les offres Chiffréo : Gratuit, Pro à 9,99 €/mois avec 7 jours d’essai, et Contractor dès 50 €/mois pour les artisans.',
+    'Comparez les offres Chiffréo : Gratuit, Pro à 9,99 €/mois avec 7 jours d’essai, Contractor dès 50 €/mois pour les artisans, Enterprise sur devis.',
   alternates: { canonical: '/pricing' },
   openGraph: {
     title: 'Tarifs Chiffréo',
     description:
-      'Gratuit, Pro à 9,99 €/mois avec essai de 7 jours, Contractor dès 50 €/mois pour les artisans.',
+      'Gratuit, Pro à 9,99 €/mois avec essai de 7 jours, Contractor dès 50 €/mois, Enterprise sur devis.',
     url: '/pricing',
   },
 };
 
-const ALL_PLANS = [FREE_PLAN, ...ALL_PAID_PLANS];
+const DIY_PLANS = plansForAudience('diy');
+const ARTISAN_PLANS = plansForAudience('artisan');
+const [ENTERPRISE_PLAN] = plansForAudience('enterprise');
+
+/**
+ * L'offre Enterprise est portée par un contrat annuel (`enterprise_agreements`),
+ * pas par un prix Stripe : elle n'a pas de montant public et reste donc hors des
+ * agrégats. Les inclure avec un `priceNumber` fictif fausserait `lowPrice`.
+ */
+const PRICED_PLANS = OFFER_PLANS.filter(
+  (plan): plan is typeof plan & { priceNumber: number } =>
+    plan.priceNumber !== null,
+);
 
 const JSON_LD = {
   '@context': 'https://schema.org',
@@ -35,12 +47,13 @@ const JSON_LD = {
   offers: {
     '@type': 'AggregateOffer',
     priceCurrency: 'EUR',
-    lowPrice: String(Math.min(...ALL_PLANS.map((plan) => plan.priceNumber))),
-    highPrice: String(Math.max(...ALL_PLANS.map((plan) => plan.priceNumber))),
-    offerCount: ALL_PLANS.length,
-    offers: ALL_PLANS.map((plan) => ({
+    lowPrice: String(Math.min(...PRICED_PLANS.map((plan) => plan.priceNumber))),
+    highPrice: String(Math.max(...PRICED_PLANS.map((plan) => plan.priceNumber))),
+    offerCount: PRICED_PLANS.length,
+    offers: PRICED_PLANS.map((plan) => ({
       '@type': 'Offer',
-      name: plan.tier === 'contractor' ? `Contractor ${plan.name}` : plan.name,
+      name:
+        plan.audience === 'artisan' ? `Contractor ${plan.name}` : plan.name,
       price: String(plan.priceNumber),
       priceCurrency: 'EUR',
     })),
@@ -64,42 +77,36 @@ const FAQ_ITEMS = [
       'Oui. Vous pouvez passer d’une offre à l’autre depuis votre espace abonnement, la facturation s’ajuste automatiquement.',
   },
   {
+    question: 'Quelle offre choisir : Pro ou Contractor ?',
+    answer:
+      'Pro s’adresse aux particuliers qui rénovent chez eux : estimation, liste d’achats, budget. Contractor ajoute ce dont un professionnel a besoin pour facturer son client — devis conformes, fichier clients, suivi de chantier et factures.',
+  },
+  {
     question: 'Comment se passe le paiement ?',
     answer:
       'Le paiement est géré par Stripe, par carte bancaire, en toute sécurité. Nous ne stockons jamais vos données de paiement.',
   },
+  {
+    question: 'Comment fonctionne l’offre Enterprise ?',
+    answer:
+      'Elle repose sur un contrat annuel rattaché à votre organisation, et non sur un abonnement individuel : SSO avec votre annuaire, API et widget embarquable, engagements de SLA. Elle se met en place après échange avec nous.',
+  },
 ];
 
-function FeatureList({ features }: { features: string[] }) {
-  return (
-    <ul className="mt-5 space-y-2 text-sm leading-6 text-stone-700">
-      {features.map((feature) => (
-        <li key={feature} className="flex gap-2">
-          <span aria-hidden className="text-[var(--accent)]">
-            ✓
-          </span>
-          {feature}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function PlanHeader({ plan }: { plan: PricingPlan }) {
+function AudienceHeading({
+  audience,
+}: {
+  audience: keyof typeof AUDIENCE_DEFINITIONS;
+}) {
+  const definition = AUDIENCE_DEFINITIONS[audience];
   return (
     <>
-      <p className="text-sm font-semibold uppercase tracking-[0.18em] text-stone-600">
-        {plan.name}
+      <h2 className="text-3xl font-semibold text-stone-950">
+        {definition.title}
+      </h2>
+      <p className="mt-3 max-w-xl text-base text-stone-700">
+        {definition.tagline}
       </p>
-      <p className="mt-3 text-3xl font-semibold text-stone-950">
-        {plan.priceLabel}
-        {plan.period && (
-          <span className="text-base font-normal text-stone-600">
-            {plan.period}
-          </span>
-        )}
-      </p>
-      <p className="mt-2 text-sm leading-6 text-stone-600">{plan.description}</p>
     </>
   );
 }
@@ -112,145 +119,106 @@ export default function PricingPage() {
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(JSON_LD) }}
       />
       <div className="mx-auto w-full max-w-6xl">
-        <header className="flex items-center justify-between py-6">
-          <Link href="/">
-            <Logo height={30} />
-          </Link>
-          <nav className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="rounded-full border border-stone-300 px-5 py-2 text-sm font-semibold text-stone-800 hover:border-stone-500 hover:bg-white"
-            >
-              Se connecter
-            </Link>
-            <Link
-              href="/register"
-              className="hidden rounded-full px-4 py-2 text-sm font-semibold text-stone-700 hover:text-stone-950 sm:block"
-            >
-              Créer un compte
-            </Link>
-          </nav>
-        </header>
+        <MarketingHeader />
 
         {/* Hero */}
         <section className="mt-6 text-center">
           <h1 className="mx-auto max-w-2xl text-4xl font-semibold leading-tight text-stone-950 sm:text-5xl">
-            Des tarifs simples et transparents
+            Une échelle, trois publics
           </h1>
-          <p className="mx-auto mt-5 max-w-xl text-lg leading-8 text-stone-700">
-            Commencez gratuitement, passez à Pro quand vous multipliez les
-            projets, Contractor si vous êtes du métier. Sans engagement,
-            annulable à tout moment.
+          <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-stone-700">
+            Le même moteur d&apos;estimation pour tout le monde. Ce qui change
+            d&apos;un palier à l&apos;autre, c&apos;est ce que vous en faites
+            ensuite : une liste d&apos;achats, un devis client, ou une
+            intégration à vos propres outils.
           </p>
         </section>
 
-        {/* Gratuit / Pro / Contractor */}
-        <section className="mt-14 grid gap-5 md:grid-cols-3">
-          <div className="rounded-[2rem] border border-amber-950/10 bg-[var(--surface)] p-7">
-            <PlanHeader plan={FREE_PLAN} />
-            <FeatureList features={FREE_PLAN.features} />
-            <div className="mt-6">
-              <PlanCtaButton
-                planKey={FREE_PLAN.key}
-                label={FREE_PLAN.ctaLabel}
-                variant="outline"
+        {/* Particuliers */}
+        <section id="particuliers" className="mt-20 scroll-mt-8">
+          <AudienceHeading audience="diy" />
+          <div className="mt-8 grid gap-5 md:grid-cols-2 lg:max-w-3xl">
+            {DIY_PLANS.map((plan) => (
+              <PlanCard
+                key={plan.key}
+                plan={plan}
+                tone={plan.highlighted ? 'highlighted' : 'surface'}
+                badge={
+                  plan.trialDays
+                    ? `Essai gratuit ${plan.trialDays} jours`
+                    : undefined
+                }
               />
-            </div>
+            ))}
           </div>
+        </section>
 
-          <div className="relative rounded-[2rem] border-2 border-[var(--accent)] bg-white p-7 shadow-[0_15px_50px_rgba(29,107,87,0.15)]">
-            <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[var(--accent)] px-3 py-0.5 text-xs font-medium text-white">
-              Essai gratuit 7 jours
-            </span>
-            <PlanHeader plan={PRO_PLAN} />
-            <FeatureList features={PRO_PLAN.features} />
-            <div className="mt-6">
-              <PlanCtaButton
-                planKey={PRO_PLAN.key}
-                apiPlanKey={PRO_PLAN.apiPlanKey}
-                label={PRO_PLAN.ctaLabel}
-                variant="accent"
+        {/* Artisans */}
+        <section id="artisans" className="mt-24 scroll-mt-8">
+          <AudienceHeading audience="artisan" />
+          <div className="mt-8 grid gap-5 md:grid-cols-3">
+            {ARTISAN_PLANS.map((plan) => (
+              <PlanCard
+                key={plan.key}
+                plan={plan}
+                tone={plan.highlighted ? 'highlighted' : 'surface'}
+                badge={plan.highlighted ? 'Populaire' : undefined}
               />
-            </div>
+            ))}
           </div>
+          <p className="mt-4 text-sm text-stone-600">
+            <Link
+              href={AUDIENCE_DEFINITIONS.artisan.landingPath}
+              className="font-semibold text-[var(--accent)] hover:text-[var(--accent-strong)]"
+            >
+              Voir la page artisans →
+            </Link>
+          </p>
+        </section>
 
-          <div className="rounded-[2rem] bg-stone-950 p-7 text-stone-50 shadow-[0_25px_80px_rgba(26,15,7,0.28)]">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-amber-200/80">
-              Contractor
-            </p>
-            <p className="mt-3 text-3xl font-semibold text-white">
-              dès 50 €
-              <span className="text-base font-normal text-stone-300">
-                /mois
-              </span>
-            </p>
-            <p className="mt-2 text-sm leading-6 text-stone-300">
-              Des outils professionnels pour les artisans : devis PDF conformes,
-              fichier clients, chiffrage chez le client.
-            </p>
-            <ul className="mt-5 space-y-2 text-sm leading-6 text-stone-300">
-              {['Devis PDF conformes (TVA, mentions)', 'Fichier clients intégré', 'Trois niveaux selon votre volume'].map(
-                (feature) => (
-                  <li key={feature} className="flex gap-2">
+        {/* Enterprise */}
+        {ENTERPRISE_PLAN && (
+          <section
+            id="enterprise"
+            className="mt-24 scroll-mt-8 rounded-[2rem] bg-stone-950 p-8 text-stone-50 shadow-[0_25px_80px_rgba(26,15,7,0.28)] sm:p-10"
+          >
+            <div className="grid items-center gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-amber-200/80">
+                  {AUDIENCE_DEFINITIONS.enterprise.title}
+                </p>
+                <h2 className="mt-4 text-3xl font-semibold text-white">
+                  {ENTERPRISE_PLAN.name} — {ENTERPRISE_PLAN.priceLabel}
+                </h2>
+                <p className="mt-4 max-w-xl text-base leading-7 text-stone-300">
+                  {AUDIENCE_DEFINITIONS.enterprise.tagline}{' '}
+                  {ENTERPRISE_PLAN.description}
+                </p>
+                <a
+                  href={`mailto:${ENTERPRISE_CONTACT_EMAIL}?subject=${encodeURIComponent(
+                    'Offre Enterprise Chiffréo',
+                  )}`}
+                  className="mt-7 inline-block rounded-full bg-white px-6 py-3 text-sm font-semibold text-stone-950 transition-all hover:-translate-y-0.5 hover:bg-stone-100 hover:shadow-md"
+                >
+                  {ENTERPRISE_PLAN.ctaLabel}
+                </a>
+                <p className="mt-3 text-xs text-stone-400">
+                  {ENTERPRISE_CONTACT_EMAIL}
+                </p>
+              </div>
+              <ul className="space-y-2 rounded-2xl border border-white/10 bg-white/5 p-6 text-sm leading-6 text-stone-300">
+                {ENTERPRISE_PLAN.features.map((feature) => (
+                  <li key={feature.label} className="flex gap-2">
                     <span aria-hidden className="text-amber-200">
                       ✓
                     </span>
-                    {feature}
+                    {feature.label}
                   </li>
-                ),
-              )}
-            </ul>
-            <a
-              href="#contractor"
-              className="mt-6 block w-full rounded-full bg-white px-4 py-2.5 text-center text-sm font-semibold text-stone-950 transition-all hover:-translate-y-0.5 hover:bg-stone-100 hover:shadow-md"
-            >
-              Voir les offres Contractor
-            </a>
-          </div>
-        </section>
-
-        {/* Détail Contractor */}
-        <section id="contractor" className="mt-24 scroll-mt-8">
-          <h2 className="text-3xl font-semibold text-stone-950">
-            Contractor : pour les artisans
-          </h2>
-          <p className="mt-3 max-w-xl text-base text-stone-700">
-            Photo de la pièce, estimation des matériaux, devis PDF conforme
-            envoyé avant de repartir. Trois niveaux selon la taille de votre
-            activité.
-          </p>
-          <div className="mt-8 grid gap-5 md:grid-cols-3">
-            {CONTRACTOR_PLANS.map((plan) => (
-              <div
-                key={plan.key}
-                className={
-                  plan.highlighted
-                    ? 'relative rounded-[2rem] border-2 border-[var(--accent)] bg-white p-7 shadow-[0_15px_50px_rgba(29,107,87,0.15)]'
-                    : 'rounded-[2rem] border border-amber-950/10 bg-[var(--surface)] p-7'
-                }
-              >
-                {plan.highlighted && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[var(--accent)] px-3 py-0.5 text-xs font-medium text-white">
-                    Populaire
-                  </span>
-                )}
-                <PlanHeader plan={plan} />
-                <FeatureList features={plan.features} />
-                <div className="mt-6">
-                  <PlanCtaButton
-                    planKey={plan.key}
-                    apiPlanKey={plan.apiPlanKey}
-                    label={plan.ctaLabel}
-                    variant={plan.highlighted ? 'accent' : 'dark'}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="mt-4 text-center text-xs text-stone-500">
-            Sans engagement. Annulable à tout moment.
-          </p>
-        </section>
+                ))}
+              </ul>
+            </div>
+          </section>
+        )}
 
         {/* FAQ */}
         <section className="mt-24">
@@ -293,32 +261,7 @@ export default function PricingPage() {
           </div>
         </section>
 
-        <footer className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-stone-300/60 pt-8 text-sm text-stone-600 sm:flex-row">
-          <p>© {new Date().getFullYear()} Chiffréo</p>
-          <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2">
-            <Link href="/" className="hover:text-stone-950">
-              Accueil
-            </Link>
-            <Link href="/calculateurs" className="hover:text-stone-950">
-              Calculateurs gratuits
-            </Link>
-            <Link href="/cgu" className="hover:text-stone-950">
-              CGU
-            </Link>
-            <Link href="/cgv" className="hover:text-stone-950">
-              CGV
-            </Link>
-            <Link href="/privacy" className="hover:text-stone-950">
-              Confidentialité
-            </Link>
-            <Link href="/mentions-legales" className="hover:text-stone-950">
-              Mentions légales
-            </Link>
-            <Link href="/login" className="hover:text-stone-950">
-              Se connecter
-            </Link>
-          </nav>
-        </footer>
+        <MarketingFooter currentPath="/pricing" />
       </div>
     </main>
   );
