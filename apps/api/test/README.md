@@ -2,13 +2,17 @@
 
 Trois suites, trois portées. Elles ne sont **pas** interchangeables, et le nom de
 fichier ne suffit pas à savoir ce qu'un vert atteste. Ce document existe parce
-que l'inverse a coûté deux défauts de production.
+que l'inverse a coûté trois défauts de production.
 
 | Suite | Commande | Portée |
 | --- | --- | --- |
 | `src/**/*.spec.ts` | `pnpm test` | Unitaire : une classe, collaborateurs mockés. |
 | `test/*.e2e-spec.ts` | `pnpm test:e2e` | **Contrat HTTP**, pas end-to-end. |
-| `test/integration/*.int-spec.ts` | `pnpm test:integration` | PostgreSQL réel, migrations réelles. |
+| `test/integration/*.int-spec.ts` | `pnpm test:integration` | PostgreSQL réel, migrations réelles, **et la résolution du graphe d'injection**. |
+
+Aucune de ces commandes ne prouvait, jusqu'à `module-graph.int-spec.ts`, que
+l'application démarre. Un vert complet est compatible avec un `AppModule` qui ne
+se monte pas.
 
 ## `*.e2e-spec.ts` — contrat HTTP
 
@@ -31,14 +35,29 @@ Ce qu'elles ne peuvent pas prouver, par construction :
 
 ## `*.int-spec.ts` — intégration
 
-Ciblent exactement cette liste, contre un vrai PostgreSQL. Pas de NestJS : les
-services concernés sont instanciés directement avec de vrais dépôts, parce que
-ce qui est testé relève de la base et non du conteneur d'injection. Monter
-`AppModule` exigerait des credentials Firebase et Stripe qu'une CI ne devrait pas
-détenir, sans rien ajouter à ces vérifications.
+Ciblent exactement cette liste, contre un vrai PostgreSQL. La plupart n'utilisent
+pas NestJS : les services concernés sont instanciés directement avec de vrais
+dépôts, parce que ce qui est testé relève de la base et non du conteneur
+d'injection.
 
-Deux défauts que seul cet étage pouvait voir, tous deux invisibles aux deux
+**Exception assumée — `module-graph.int-spec.ts`.** Ce fichier monte, lui,
+`AppModule` en entier. Il existe parce que l'affirmation ci-dessus, longtemps
+vraie, cachait un angle mort : 1 025 tests unitaires et 186 tests e2e étaient
+verts pendant que `node dist/main.js` refusait de démarrer, sur deux
+`UnknownDependenciesException`. Aucun étage ne montait l'assemblage, donc aucun
+ne pouvait le voir. La résolution du graphe ne demande ni Firebase ni Stripe
+réels — seulement la base, que cette suite a déjà.
+
+Trois défauts que seul cet étage pouvait voir, tous invisibles aux deux
 autres :
+
+- **L'application ne démarrait pas.** Un guard appliqué par `@UseGuards` est
+  instancié dans l'injecteur du module **appelant**, pas dans celui qui le
+  fournit : chaque module devait donc réimporter les dépendances du guard
+  (`OrgContextModule` pour `FeatureGateGuard`, `UsersModule` pour `AdminGuard`).
+  Douze modules portaient la première parade, trois la seconde ; le premier oubli
+  tuait l'application entière. Les deux modules fournisseurs ré-exportent
+  désormais ces dépendances, et l'oubli est devenu sans conséquence.
 
 - **Idempotence des webhooks Stripe.** `claimWebhookEvent` lisait
   `InsertResult.identifiers`, que TypeORM garnit depuis les valeurs d'entrée

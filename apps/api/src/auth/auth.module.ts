@@ -52,6 +52,14 @@ import { SsoSessionService } from './sso-session.service';
     OptionalAuthGuard,
     AdminGuard,
     SsoSessionService,
+    // `AdminGuard` dépend de `UsersService`, et un guard appliqué par
+    // `@UseGuards` est instancié dans l'injecteur du module **appelant**, pas
+    // dans celui qui le fournit. Chaque module protégeant une route admin devait
+    // donc importer `UsersModule` en plus des guards — trois le faisaient avec le
+    // commentaire qui va bien, les autres non, et l'application entière refusait
+    // de démarrer sur le premier oubli. Ce module étant `@Global`, le ré-export
+    // rend la dépendance disponible partout et l'oubli sans conséquence.
+    UsersModule,
   ],
 })
 export class AuthModule {}
