@@ -4,7 +4,9 @@
 
 **Authentification :** Firebase ID Token dans le header `Authorization: Bearer <token>`.
 Les routes `/partner/*` s'authentifient à la place avec une **clé d'API**
-(`Authorization: Bearer chf_…`), cf. [API publique (clés)](#api-publique-clés).
+(`Authorization: Bearer chf_…`), cf. [API publique (clés)](#api-publique-clés). Les routes
+`/widget/:widgetKey/*` s'authentifient par une clé non secrète dans l'URL, restreinte par
+origine (en-tête `Origin`), cf. [Widget marque blanche](#widget-marque-blanche).
 
 **Rate limiting :**
 - Général : 100 requêtes/minute
@@ -40,6 +42,7 @@ Les routes `/partner/*` s'authentifient à la place avec une **clé d'API**
 - [Organisations](#organisations)
 - [API publique (clés)](#api-publique-clés)
 - [Clés d'API (gestion)](#clés-dapi-gestion)
+- [Widget marque blanche](#widget-marque-blanche)
 - [Enterprise — SSO](#enterprise--sso)
 - [Enterprise — contrat et SLA](#enterprise--contrat-et-sla)
 
@@ -1988,6 +1991,119 @@ valide est effacée en même temps.
 **Auth :** Requise (propriétaire ou administrateur) | **Feature gate :** `public_api`
 
 **Réponses :** `204 No Content` | `404 Not Found`
+
+---
+
+## Widget marque blanche
+
+Calculateur embarquable chez des médias bricolage ou des marchands, brandé « Propulsé par
+Chiffréo » (BACKLOG PLAT-7). Il s'appuie sur le même moteur d'estimation que
+[l'API publique (clés)](#api-publique-clés), mais avec un modèle de credential différent :
+la clé de widget (`wgt_...`) **n'est pas un secret**. Elle est faite pour être collée dans le
+HTML statique d'un site tiers, donc visible de quiconque ouvre les outils de développement de
+son navigateur. Son autorisation repose sur une liste blanche d'origines (`allowed_origins`)
+configurée par l'organisation, pas sur la confidentialité de la clé.
+
+> **`Origin` n'est vérifié qu'au sens du navigateur.** Un appelant scripté qui détient déjà la
+> clé peut forger cet en-tête et appeler l'API directement — la liste blanche empêche une page
+> non autorisée d'utiliser la clé d'une autre organisation, pas un script qui la possède déjà.
+> Acceptable ici : l'endpoint ne fait que du calcul de quantités, sans persistance ni prix.
+
+**Base publique :** `http://localhost:3001/api/v1/widget/:widgetKey`
+**Base d'administration :** `http://localhost:3001/api/v1/widget-config`
+
+**Feature gate :** `public_api` (Contractor Premium) — la même que l'API partenaire. Le quota
+mensuel est également **le même compteur** que celui de l'API partenaire : un widget très
+fréquenté et des appels directs à `/partner` consomment un seul budget par organisation.
+
+**Limites (surface publique) :**
+
+| Limite | Valeur | Portée |
+|--------|--------|--------|
+| Rafale | 120 requêtes/minute | par widget (plus haute que les 60/min de l'API partenaire : un widget est appelé par de nombreux visiteurs indépendants, pas par une seule intégration serveur-à-serveur) |
+| Quota mensuel | partagé avec l'API partenaire | par organisation, mois calendaire Europe/Paris |
+
+Seul `POST /widget/:widgetKey/estimate` est décompté du quota. Erreurs propres à cette surface
+(en plus des codes communs) : `WIDGET_NOT_FOUND` (404, clé inconnue ou widget désactivé),
+`ORIGIN_REQUIRED` / `ORIGIN_NOT_ALLOWED` (403, en-tête `Origin` absent ou hors liste blanche).
+
+### Intégration
+
+```html
+<div data-chiffreo-widget
+     data-widget-key="wgt_..."
+     data-api-base="https://api.votre-domaine.example"></div>
+<script src="https://votre-site-chiffreo.example/chiffreo-widget.js" defer></script>
+```
+
+Le script scanne la page à son chargement pour tout conteneur `[data-chiffreo-widget]`, et
+monte le formulaire dans une **Shadow DOM** (`attachShadow`) : les styles de la page hôte ne
+peuvent pas entrer, ceux du widget ne peuvent pas en sortir — aucune feuille de style ni
+aucune variable JS partagée avec la page qui l'embarque. Le widget ne prend qu'une seule pièce
+et un seul ouvrage par estimation en v1 ; le multi-pièces reste porté par l'API partenaire.
+
+### `GET /widget/:widgetKey/branding`
+
+Informations de marque affichées dans le widget.
+
+**Auth :** clé de widget + origine autorisée | **Quota :** non décompté
+
+**Réponses :** `200 OK` — `{ display_name, accent_color, powered_by: "Chiffréo" }`
+
+---
+
+### `GET /widget/:widgetKey/work-types`
+
+Identique à [`GET /partner/work-types`](#get-partnerwork-types).
+
+**Auth :** clé de widget + origine autorisée | **Quota :** non décompté
+
+---
+
+### `POST /widget/:widgetKey/estimate`
+
+Identique à [`POST /partner/estimate`](#post-partnerestimate) (même DTO, mêmes bornes), mais
+authentifié par clé de widget + origine plutôt que par clé secrète.
+
+**Auth :** clé de widget + origine autorisée | **Quota :** décompté (partagé avec l'API partenaire)
+
+**Réponses :** `200 OK` — `{ rooms_count, total_items, items[], aggregated[] }` | `400 Bad Request`
+| `403` `ORIGIN_REQUIRED` / `ORIGIN_NOT_ALLOWED` / `FEATURE_GATED` | `404 Not Found`
+(`WIDGET_NOT_FOUND` ou `work_type_code` inconnu) | `429`
+
+---
+
+### Configuration (gestion)
+
+Authentifiée par jeton Firebase — surface *administrative*, pas le widget lui-même. Une seule
+configuration par organisation. Pas d'écran de tableau de bord dédié pour l'instant, même choix
+que pour [les clés d'API](#clés-dapi-gestion) : cette surface s'utilise directement.
+
+#### `GET /widget-config`
+
+Récupère la configuration de l'organisation, la crée si elle n'existe pas encore
+(`widget_key` générée à la volée, `allowed_origins` vide, `enabled: true`).
+
+**Auth :** Requise (propriétaire ou administrateur) | **Feature gate :** `public_api`
+
+**Réponses :** `200 OK` — `{ widget_key, allowed_origins, enabled, display_name, accent_color }`
+
+#### `PATCH /widget-config`
+
+Met à jour uniquement les champs fournis : `allowed_origins` (origines exactes
+`scheme://host[:port]`, sans chemin ni slash final, max 10), `display_name`, `accent_color`
+(hex `#rrggbb`), `enabled`.
+
+**Auth :** Requise (propriétaire ou administrateur) | **Feature gate :** `public_api`
+
+#### `POST /widget-config/regenerate-key`
+
+Régénère `widget_key` **immédiatement, sans fenêtre de grâce** (contrairement à la rotation des
+clés d'API) : la clé n'étant pas secrète, régénérer répond à un widget compromis ou mal
+configuré, pas à une fuite à couvrir en douceur. Toute page qui embarque déjà l'ancienne clé
+cesse de fonctionner aussitôt.
+
+**Auth :** Requise (propriétaire ou administrateur) | **Feature gate :** `public_api`
 
 ---
 

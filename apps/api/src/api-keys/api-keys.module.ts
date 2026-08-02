@@ -28,6 +28,8 @@ import { PartnerApiController } from './partner-api.controller';
   ],
   controllers: [ApiKeysController, PartnerApiController],
   providers: [ApiKeysService, ApiUsageService, ApiKeyGuard],
-  exports: [ApiKeysService],
+  // `ApiUsageService` est aussi exporté : le widget (PLAT-7) partage ce même
+  // compteur de quota mensuel plutôt que d'en dupliquer un second.
+  exports: [ApiKeysService, ApiUsageService],
 })
 export class ApiKeysModule {}

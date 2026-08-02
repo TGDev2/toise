@@ -32,6 +32,7 @@ import { LifecycleEmailsModule } from './lifecycle-emails/lifecycle-emails.modul
 import { OrganizationsModule } from './organizations/organizations.module';
 import { ApiKeysModule } from './api-keys/api-keys.module';
 import { EnterpriseModule } from './enterprise/enterprise.module';
+import { WidgetModule } from './widget/widget.module';
 import configuration from './config/configuration';
 import { validate } from './config/env.validation';
 
@@ -86,6 +87,7 @@ import { validate } from './config/env.validation';
     OrganizationsModule,
     ApiKeysModule,
     EnterpriseModule,
+    WidgetModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

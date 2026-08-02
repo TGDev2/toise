@@ -8,9 +8,11 @@
     "dev:web": "pnpm --filter @chiffreo/web dev",
     "build:api": "pnpm --filter @chiffreo/api build",
     "build:web": "pnpm --filter @chiffreo/web build",
+    "build:widget": "pnpm --filter @chiffreo/widget build",
     "test:api": "pnpm --filter @chiffreo/api test && pnpm --filter @chiffreo/api test:e2e",
     "test:web": "pnpm --filter @chiffreo/web test",
-    "lint": "pnpm --filter @chiffreo/api lint && pnpm --filter @chiffreo/web lint",
+    "test:widget": "pnpm --filter @chiffreo/widget test",
+    "lint": "pnpm --filter @chiffreo/api lint && pnpm --filter @chiffreo/web lint && pnpm --filter @chiffreo/widget lint",
     "dev:cv": "cd apps/cv-service && uvicorn app.main:app --reload --port 8000",
     "db:migrate": "pnpm --filter @chiffreo/api migration:run"
   }
