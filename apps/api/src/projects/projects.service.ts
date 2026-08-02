@@ -4,8 +4,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, In, IsNull, Repository } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, FindOptionsWhere, In, IsNull, Repository } from 'typeorm';
 import { Project, ProjectStatus } from './entities/project.entity';
 import { Room } from './entities/room.entity';
 import {
@@ -45,6 +45,8 @@ export class ProjectsService {
     @InjectRepository(ProjectWorkItem)
     private readonly workItemsRepo: Repository<ProjectWorkItem>,
     private readonly featureGatesService: FeatureGatesService,
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
   ) {}
 
   /**
@@ -366,14 +368,37 @@ export class ProjectsService {
     await this.findOneForOrg(projectId, organizationId);
     const room = await this.resolveRoomForWrite(projectId, roomId);
 
+    return this.writeDimensions(this.dimensionsRepo, room.id, dto, overrides);
+  }
+
+  /**
+   * Cœur d'écriture de `updateDimensions`, isolé pour pouvoir être rejoué sur
+   * un dépôt transactionnel (cf. `applyCvAnalysis`). Ne fait aucun contrôle de
+   * propriété : les appelants l'ont déjà fait en résolvant la pièce.
+   */
+  private async writeDimensions(
+    dimensionsRepo: Repository<RoomDimensions>,
+    roomId: string,
+    dto: UpdateDimensionsDto,
+    overrides?: {
+      source?: DimensionSource;
+      confidence_score?: ConfidenceScore;
+      raw_cv_output_json?: Record<string, unknown> | null;
+      uncertainty?: {
+        length_cm?: number;
+        width_cm?: number;
+        height_cm?: number;
+      };
+    },
+  ): Promise<RoomDimensions> {
     const source = overrides?.source ?? DimensionSource.MANUAL;
     const confidence = overrides?.confidence_score ?? ConfidenceScore.HIGH;
     const lengthUncertainty = overrides?.uncertainty?.length_cm ?? null;
     const widthUncertainty = overrides?.uncertainty?.width_cm ?? null;
     const heightUncertainty = overrides?.uncertainty?.height_cm ?? null;
 
-    let dimensions = await this.dimensionsRepo.findOne({
-      where: { room_id: room.id },
+    let dimensions = await dimensionsRepo.findOne({
+      where: { room_id: roomId },
     });
 
     if (dimensions) {
@@ -393,8 +418,8 @@ export class ProjectsService {
         dimensions.raw_cv_output_json = overrides.raw_cv_output_json;
       }
     } else {
-      dimensions = this.dimensionsRepo.create({
-        room_id: room.id,
+      dimensions = dimensionsRepo.create({
+        room_id: roomId,
         length_cm: dto.length_cm,
         width_cm: dto.width_cm,
         height_cm: dto.height_cm,
@@ -409,7 +434,80 @@ export class ProjectsService {
       });
     }
 
-    return this.dimensionsRepo.save(dimensions);
+    return dimensionsRepo.save(dimensions);
+  }
+
+  /**
+   * Applique le résultat d'une analyse CV : dimensions **et** remplacement
+   * intégral des ouvertures d'origine CV, en une seule transaction.
+   *
+   * Les deux écritures forment un seul fait métier. Séparées, un échec au
+   * milieu laissait le projet dans un état que rien ne décrit : des dimensions
+   * fraîches à côté d'ouvertures périmées, sous un job marqué en échec. Le
+   * remplacement des ouvertures est inconditionnel — une analyse qui n'en
+   * détecte aucune doit effacer celles de l'analyse précédente, sans quoi le
+   * chiffrage déduit des surfaces qui n'existent plus.
+   *
+   * Les ouvertures saisies à la main ne sont jamais touchées.
+   */
+  async applyCvAnalysis(
+    projectId: string,
+    organizationId: string,
+    result: {
+      dimensions: UpdateDimensionsDto;
+      confidence_score: ConfidenceScore;
+      raw_cv_output_json?: Record<string, unknown> | null;
+      uncertainty?: {
+        length_cm?: number;
+        width_cm?: number;
+        height_cm?: number;
+      };
+      openings: Array<CreateOpeningDto & { cv_confidence?: number }>;
+    },
+    roomId?: string,
+  ): Promise<void> {
+    await this.findOneForOrg(projectId, organizationId);
+    const room = await this.resolveRoomForWrite(projectId, roomId);
+    const rooms = await this.roomsRepo.find({
+      where: { project_id: projectId },
+      select: ['id'],
+    });
+
+    await this.dataSource.transaction(async (manager) => {
+      await this.writeDimensions(
+        manager.getRepository(RoomDimensions),
+        room.id,
+        result.dimensions,
+        {
+          source: DimensionSource.CV,
+          confidence_score: result.confidence_score,
+          raw_cv_output_json: result.raw_cv_output_json,
+          uncertainty: result.uncertainty,
+        },
+      );
+
+      const openingsRepo = manager.getRepository(Opening);
+      if (rooms.length > 0) {
+        await openingsRepo.delete({
+          room_id: In(rooms.map((r) => r.id)),
+          source: OpeningSource.CV,
+        });
+      }
+
+      for (const detected of result.openings) {
+        await openingsRepo.save(
+          openingsRepo.create({
+            room_id: room.id,
+            type: detected.type,
+            width_cm: detected.width_cm,
+            height_cm: detected.height_cm,
+            count: detected.count ?? 1,
+            source: OpeningSource.CV,
+            cv_confidence: detected.cv_confidence ?? null,
+          }),
+        );
+      }
+    });
   }
 
   async getDimensions(
@@ -448,19 +546,6 @@ export class ProjectsService {
     });
 
     return this.openingsRepo.save(opening);
-  }
-
-  async removeCvOpenings(projectId: string): Promise<void> {
-    const rooms = await this.roomsRepo.find({
-      where: { project_id: projectId },
-      select: ['id'],
-    });
-    if (rooms.length === 0) return;
-
-    await this.openingsRepo.delete({
-      room_id: In(rooms.map((r) => r.id)),
-      source: OpeningSource.CV,
-    });
   }
 
   async findOpeningForOrg(

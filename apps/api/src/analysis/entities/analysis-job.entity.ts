@@ -1,5 +1,6 @@
 import {
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
@@ -16,6 +17,16 @@ export enum AnalysisJobStatus {
   FAILED = 'failed',
 }
 
+/**
+ * Une seule analyse active par projet, garantie par la base et non par un
+ * contrôle d'absence applicatif : deux appels simultanés franchissent tous
+ * les deux un `SELECT` avant que l'un ait inséré sa ligne. L'index est
+ * partiel — l'historique des analyses terminées reste libre.
+ */
+@Index('UQ_analysis_jobs_active_per_project', ['project_id'], {
+  unique: true,
+  where: "status IN ('pending', 'processing')",
+})
 @Entity('analysis_jobs')
 export class AnalysisJob {
   @PrimaryGeneratedColumn('uuid')

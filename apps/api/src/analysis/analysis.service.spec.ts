@@ -60,10 +60,8 @@ const jobRepoMock = { findOne: jest.fn(), update: jest.fn() };
 const cvClientMock = { analyze: jest.fn() };
 const projectsServiceMock = {
   findOneForOrg: jest.fn(),
-  updateDimensions: jest.fn(),
+  applyCvAnalysis: jest.fn(),
   getDimensions: jest.fn(),
-  removeCvOpenings: jest.fn(),
-  addOpening: jest.fn(),
 };
 const photosServiceMock = { getProjectPhotos: jest.fn() };
 const cvAccuracyServiceMock = { getReport: jest.fn() };
@@ -75,9 +73,7 @@ describe('AnalysisService', () => {
     jest.clearAllMocks();
     jobRepoMock.update.mockResolvedValue({});
     projectsServiceMock.findOneForOrg.mockResolvedValue({ id: 'project-uuid' });
-    projectsServiceMock.updateDimensions.mockResolvedValue({});
-    projectsServiceMock.removeCvOpenings.mockResolvedValue(undefined);
-    projectsServiceMock.addOpening.mockResolvedValue({});
+    projectsServiceMock.applyCvAnalysis.mockResolvedValue(undefined);
     cvAccuracyServiceMock.getReport.mockResolvedValue(makeReport());
 
     const module: TestingModule = await Test.createTestingModule({
@@ -117,12 +113,11 @@ describe('AnalysisService', () => {
       );
 
       expect(cvAccuracyServiceMock.getReport).toHaveBeenCalled();
-      expect(projectsServiceMock.updateDimensions).toHaveBeenCalledWith(
+      expect(projectsServiceMock.applyCvAnalysis).toHaveBeenCalledWith(
         'project-uuid',
         'user-uuid',
-        { length_cm: 420, width_cm: 310, height_cm: 250 },
         expect.objectContaining({
-          source: DimensionSource.CV,
+          dimensions: { length_cm: 420, width_cm: 310, height_cm: 250 },
           confidence_score: ConfidenceScore.MEDIUM,
           // Aucune donnée cv-accuracy suffisante dans ce test → repli
           // heuristique MEDIUM = ±8 cm (cf. dimension-uncertainty.ts).
@@ -164,17 +159,16 @@ describe('AnalysisService', () => {
         imagePaths,
       );
 
-      expect(projectsServiceMock.updateDimensions).toHaveBeenCalledWith(
+      expect(projectsServiceMock.applyCvAnalysis).toHaveBeenCalledWith(
         'project-uuid',
         'user-uuid',
-        expect.anything(),
         expect.objectContaining({
           uncertainty: { length_cm: 3.5, width_cm: 2, height_cm: 2 },
         }),
       );
     });
 
-    it('does not call updateDimensions when the CV service found no dimensions', async () => {
+    it('does not touch the project when the CV service found no dimensions', async () => {
       cvClientMock.analyze.mockResolvedValue({
         status: 'no_reference',
         reference_detected: false,
@@ -190,8 +184,69 @@ describe('AnalysisService', () => {
         imagePaths,
       );
 
-      expect(projectsServiceMock.updateDimensions).not.toHaveBeenCalled();
+      expect(projectsServiceMock.applyCvAnalysis).not.toHaveBeenCalled();
       expect(cvAccuracyServiceMock.getReport).not.toHaveBeenCalled();
+    });
+
+    it('transmet une liste d’ouvertures vide plutôt que de sauter le remplacement', async () => {
+      cvClientMock.analyze.mockResolvedValue({
+        status: 'success',
+        dimensions: { length_cm: 420, width_cm: 310, height_cm: 250 },
+        confidence: 'medium',
+        confidence_score: 0.6,
+        reference_detected: true,
+        openings: [],
+        raw_output: {},
+      });
+
+      await callProcessAnalysis(
+        service,
+        'job-1',
+        'project-uuid',
+        'user-uuid',
+        imagePaths,
+      );
+
+      // Une analyse qui ne détecte rien doit effacer les ouvertures de la
+      // précédente : c'est `applyCvAnalysis` qui remplace, encore faut-il
+      // qu'on l'appelle.
+      expect(projectsServiceMock.applyCvAnalysis).toHaveBeenCalledWith(
+        'project-uuid',
+        'user-uuid',
+        expect.objectContaining({ openings: [] }),
+      );
+    });
+
+    it('ne marque COMPLETED qu’après avoir écrit le projet', async () => {
+      cvClientMock.analyze.mockResolvedValue({
+        status: 'success',
+        dimensions: { length_cm: 420, width_cm: 310, height_cm: 250 },
+        confidence: 'medium',
+        confidence_score: 0.6,
+        reference_detected: true,
+        openings: [],
+        raw_output: {},
+      });
+      projectsServiceMock.applyCvAnalysis.mockRejectedValueOnce(
+        new Error('écriture refusée'),
+      );
+
+      await callProcessAnalysis(
+        service,
+        'job-1',
+        'project-uuid',
+        'user-uuid',
+        imagePaths,
+      );
+
+      expect(jobRepoMock.update).toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({ status: AnalysisJobStatus.FAILED }),
+      );
+      expect(jobRepoMock.update).not.toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({ status: AnalysisJobStatus.COMPLETED }),
+      );
     });
   });
 

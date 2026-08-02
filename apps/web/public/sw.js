@@ -5,15 +5,20 @@
 // main plutôt qu'avec workbox/serwist : ce fichier est petit, s'audite d'un coup d'œil, et évite
 // une étape de génération au build pour un premier périmètre PWA.
 //
-// Les noms de caches ci-dessous sont dupliqués en dur dans AuthContext.tsx (`clearOfflineCaches`)
-// car ce fichier n'est pas un module TS importable par l'app. Si `SW_VERSION` change ici, mettre
-// à jour AuthContext.tsx en conséquence.
+// Les préfixes de caches ci-dessous sont dupliqués en dur dans AuthContext.tsx
+// (`clearOfflineCaches`) car ce fichier n'est pas un module TS importable par l'app. Si
+// `SW_VERSION` change ici, mettre à jour AuthContext.tsx en conséquence.
 const SW_VERSION = 'v1';
 const SHELL_CACHE = `chiffreo-shell-${SW_VERSION}`;
 const STATIC_CACHE = `chiffreo-static-${SW_VERSION}`;
 const PAGES_CACHE = `chiffreo-pages-${SW_VERSION}`;
-const API_CACHE = `chiffreo-api-${SW_VERSION}`;
-const CURRENT_CACHES = [SHELL_CACHE, STATIC_CACHE, PAGES_CACHE, API_CACHE];
+// Le cache des réponses API est partitionné par identité : son nom porte l'uid du porteur
+// du jeton (cf. `apiCacheName`). Un cache indexé par la seule URL resservirait hors ligne
+// la réponse d'un compte à un autre sur un appareil partagé, puisqu'un hit de cache ne
+// passe par aucune vérification d'authentification. La purge à la déconnexion ne suffit
+// pas : rien n'oblige à se déconnecter avant que le compte suivant se connecte.
+const API_CACHE_PREFIX = `chiffreo-api-${SW_VERSION}-`;
+const CURRENT_CACHES = [SHELL_CACHE, STATIC_CACHE, PAGES_CACHE];
 
 const OFFLINE_URL = '/offline.html';
 const API_CACHE_LIMIT = 80;
@@ -29,7 +34,11 @@ self.addEventListener('activate', (event) => {
     caches
       .keys()
       .then((names) =>
-        Promise.all(names.filter((name) => !CURRENT_CACHES.includes(name)).map((name) => caches.delete(name))),
+        Promise.all(
+          names
+            .filter((name) => !CURRENT_CACHES.includes(name) && !name.startsWith(API_CACHE_PREFIX))
+            .map((name) => caches.delete(name)),
+        ),
       )
       .then(() => self.clients.claim()),
   );
@@ -60,13 +69,41 @@ self.addEventListener('fetch', (event) => {
   // same-origin vers /projects/... (navigations internes Next / flight fetches), qui ne sont pas
   // des appels API et suivent une autre branche (navigate ci-dessus, ou passthrough plus bas).
   if (!sameOrigin && url.pathname.includes('/projects')) {
-    event.respondWith(networkFirst(request, API_CACHE, { limit: API_CACHE_LIMIT }));
+    const cacheName = apiCacheName(request);
+    // Sans jeton exploitable, la réponse n'est attribuable à aucun compte : elle ne peut
+    // donc être rangée dans aucune partition. Réseau direct, ni lecture ni écriture.
+    if (!cacheName) return;
+    event.respondWith(networkFirst(request, cacheName, { limit: API_CACHE_LIMIT }));
     return;
   }
 
   // Tout le reste (auth, Sentry, Firebase, autres endpoints API, /_next/image, polices...) :
   // aucune interception, réseau natif, jamais mis en cache.
 });
+
+// Partition de cache de la requête, ou `null` si elle n'est attribuable à personne.
+function apiCacheName(request) {
+  const header = request.headers.get('authorization');
+  if (!header || !header.startsWith('Bearer ')) return null;
+  const uid = subjectFromJwt(header.slice('Bearer '.length));
+  return uid ? API_CACHE_PREFIX + uid : null;
+}
+
+// Identité du porteur du jeton, lue dans la charge utile du JWT Firebase. La signature
+// n'est volontairement pas vérifiée : cette valeur ne sert qu'à choisir une partition de
+// cache, jamais à autoriser quoi que ce soit — l'API reste seule juge de la validité du
+// jeton, et un jeton forgé n'ouvre que sa propre partition, vide.
+function subjectFromJwt(token) {
+  const payload = token.split('.')[1];
+  if (!payload) return null;
+  try {
+    const claims = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+    if (typeof claims.user_id === 'string') return claims.user_id;
+    return typeof claims.sub === 'string' ? claims.sub : null;
+  } catch {
+    return null;
+  }
+}
 
 async function networkFirst(request, cacheName, { fallbackUrl, limit } = {}) {
   const cache = await caches.open(cacheName);

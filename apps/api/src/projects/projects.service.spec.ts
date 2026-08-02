@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import {
   BadRequestException,
   ForbiddenException,
@@ -193,6 +193,13 @@ const featureGatesServiceMock = {
   isFeatureAllowed: jest.fn().mockResolvedValue(true),
 };
 
+// Seul `applyCvAnalysis` s'en sert, et ce qu'il garantit ne s'observe que
+// contre une vraie base (cf. le commentaire plus bas) : ici, de quoi satisfaire
+// l'injection, rien de plus.
+const dataSourceMock = {
+  transaction: jest.fn(),
+};
+
 describe('ProjectsService', () => {
   let service: ProjectsService;
 
@@ -221,6 +228,7 @@ describe('ProjectsService', () => {
           provide: FeatureGatesService,
           useValue: featureGatesServiceMock,
         },
+        { provide: getDataSourceToken(), useValue: dataSourceMock },
       ],
     }).compile();
 
@@ -796,25 +804,10 @@ describe('ProjectsService', () => {
     });
   });
 
-  describe('removeCvOpenings', () => {
-    it('deletes CV openings across all rooms of the project', async () => {
-      roomsRepoMock.find.mockResolvedValueOnce([mockRoom]);
-
-      await service.removeCvOpenings('project-uuid');
-
-      expect(openingsRepoMock.delete).toHaveBeenCalledWith(
-        expect.objectContaining({ source: OpeningSource.CV }),
-      );
-    });
-
-    it('is a no-op when the project has no room', async () => {
-      roomsRepoMock.find.mockResolvedValueOnce([]);
-
-      await service.removeCvOpenings('project-uuid');
-
-      expect(openingsRepoMock.delete).not.toHaveBeenCalled();
-    });
-  });
+  // `applyCvAnalysis` (dimensions + remplacement des ouvertures CV en une
+  // transaction) est couvert par `test/integration/analysis-jobs.int-spec.ts` :
+  // ce qu'il garantit — le rollback d'une écriture partielle — n'est
+  // observable que contre un vrai PostgreSQL.
 
   describe('getWorkTypes', () => {
     it('returns work types ordered by display_order', async () => {

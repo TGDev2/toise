@@ -33,6 +33,15 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Fenêtres de plausibilité, en cm, par axe. Elles servent à *valider* une
+# mesure, jamais à l'écrêter : une valeur hors fenêtre invalide le triplet
+# entier. La ramener à la borne la plus proche produirait un nombre que rien
+# n'a observé, indiscernable en aval d'une vraie mesure — c'est exactement ce
+# que le reste de ce module s'interdit (cf. `_calculate_dimensions`).
+PLAUSIBLE_WIDTH_CM = (100, 2000)
+PLAUSIBLE_LENGTH_CM = (100, 2000)
+PLAUSIBLE_HEIGHT_CM = (200, 400)
+
 
 def _resolve_upload_path(image_path: str) -> Path:
     """
@@ -268,62 +277,72 @@ class DimensionCalculator:
         depth_map: np.ndarray,
         contours,
         px_per_cm: float,
-    ) -> Dimensions:
+    ) -> Optional[Dimensions]:
         """
         Calculate room dimensions using depth map, detected contours,
         and the reference-derived scale (pixels per cm).
+
+        Chaque axe est mesuré sur une géométrie réellement observée : étendue
+        du sol pour la largeur, amplitude de profondeur du sol pour la
+        longueur, écart des frontières horizontales pour la hauteur. Si l'une
+        d'elles manque, ou si le résultat sort de sa fenêtre de plausibilité,
+        la méthode renvoie `None` — il n'y a pas de mesure.
+
+        Aucune constante ne remplace une observation manquante : un tel repli
+        traverse ensuite tout le système (statut `success`, écriture en base,
+        métrés, chiffrage) sans plus rien qui le distingue d'une mesure.
+        `None` remonte au contraire jusqu'au statut d'erreur, qui bascule
+        l'utilisateur sur la saisie manuelle.
         """
-        h, w = depth_map.shape
-
-        # Estimate room width from horizontal extent of floor region
+        h, _w = depth_map.shape
         floor_mask = contours.floor_mask
-        floor_rows = np.any(floor_mask > 0, axis=0)
-        if np.any(floor_rows):
-            floor_cols = np.where(floor_rows)[0]
-            room_width_px = floor_cols[-1] - floor_cols[0]
-        else:
-            room_width_px = int(w * 0.8)
 
-        # Estimate room length from depth range in floor region
-        if np.any(floor_mask > 0):
-            floor_depths = depth_map[floor_mask > 0]
-            depth_range = np.max(floor_depths) - np.min(floor_depths)
-            room_length_px = depth_range * (
-                h / (np.max(depth_map) - np.min(depth_map) + 1e-6)
+        # Largeur : étendue horizontale du sol détecté.
+        floor_cols = np.where(np.any(floor_mask > 0, axis=0))[0]
+        if floor_cols.size == 0:
+            logger.info("Dimensions non mesurables : aucun sol détecté")
+            return None
+        room_width_px = float(floor_cols[-1] - floor_cols[0])
+
+        # Longueur : amplitude de profondeur du sol, rapportée à celle de la
+        # scène. Une profondeur constante ne porte aucune information de
+        # distance — le rapport ne serait pas défini.
+        depth_span = float(np.max(depth_map) - np.min(depth_map))
+        if depth_span <= 0:
+            logger.info("Dimensions non mesurables : profondeur constante")
+            return None
+        floor_depths = depth_map[floor_mask > 0]
+        floor_depth_range = float(np.max(floor_depths) - np.min(floor_depths))
+        room_length_px = floor_depth_range * (h / depth_span)
+
+        # Hauteur : écart entre les frontières horizontales (plafond/mur et
+        # mur/sol). Sans ligne horizontale, rien ne borne la hauteur.
+        horizontal_lines = [
+            (x1, y1, x2, y2)
+            for x1, y1, x2, y2 in contours.wall_lines
+            if abs(y2 - y1) < abs(x2 - x1)
+        ]
+        if not horizontal_lines:
+            logger.info(
+                "Dimensions non mesurables : aucune ligne de mur horizontale"
             )
-        else:
-            room_length_px = int(h * 0.7)
+            return None
+        y_values = [y1 for _, y1, _, _ in horizontal_lines] + [
+            y2 for _, _, _, y2 in horizontal_lines
+        ]
+        room_height_px = float(max(y_values) - min(y_values))
 
-        # Estimate height from vertical extent of wall regions
-        wall_top = 0
-        wall_bottom = h
-        if contours.wall_lines:
-            horizontal_lines = [
-                (x1, y1, x2, y2)
-                for x1, y1, x2, y2 in contours.wall_lines
-                if abs(y2 - y1) < abs(x2 - x1)
-            ]
-            if horizontal_lines:
-                y_values = [y1 for _, y1, _, _ in horizontal_lines] + [
-                    y2 for _, _, _, y2 in horizontal_lines
-                ]
-                wall_top = min(y_values)
-                wall_bottom = max(y_values)
-
-        room_height_px = max(wall_bottom - wall_top, int(h * 0.6))
-
-        # Convert to cm
-        width_cm = max(int(room_width_px / px_per_cm), 100)
-        length_cm = max(int(room_length_px / px_per_cm), 100)
-        height_cm = max(int(room_height_px / px_per_cm), 200)
-
-        # Sanity checks
-        width_cm = min(width_cm, 2000)
-        length_cm = min(length_cm, 2000)
-        height_cm = min(height_cm, 500)
-
-        if height_cm < 200 or height_cm > 400:
-            height_cm = 250
+        width_cm = self._to_plausible_cm(
+            room_width_px, px_per_cm, PLAUSIBLE_WIDTH_CM, "width"
+        )
+        length_cm = self._to_plausible_cm(
+            room_length_px, px_per_cm, PLAUSIBLE_LENGTH_CM, "length"
+        )
+        height_cm = self._to_plausible_cm(
+            room_height_px, px_per_cm, PLAUSIBLE_HEIGHT_CM, "height"
+        )
+        if width_cm is None or length_cm is None or height_cm is None:
+            return None
 
         logger.info(
             f"Calculated dimensions: {length_cm}cm x {width_cm}cm x {height_cm}cm"
@@ -334,6 +353,25 @@ class DimensionCalculator:
             width_cm=width_cm,
             height_cm=height_cm,
         )
+
+    @staticmethod
+    def _to_plausible_cm(
+        value_px: float,
+        px_per_cm: float,
+        window: tuple[int, int],
+        label: str,
+    ) -> Optional[int]:
+        """Convertit une longueur en pixels en cm, ou `None` si le résultat
+        sort de sa fenêtre de plausibilité (cf. commentaire des constantes)."""
+        value_cm = int(value_px / px_per_cm)
+        min_cm, max_cm = window
+        if not min_cm <= value_cm <= max_cm:
+            logger.info(
+                f"Mesure {label} invraisemblable : {value_cm}cm hors "
+                f"[{min_cm}, {max_cm}] — dimensions rejetées"
+            )
+            return None
+        return value_cm
 
     def _fuse_dimensions(
         self, results: list[PerImageResult]

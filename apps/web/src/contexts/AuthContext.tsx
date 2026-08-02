@@ -31,16 +31,68 @@ import { REFERRAL_CODE_STORAGE_KEY } from '@/lib/referral';
 
 const LOCAL_PROJECTS_KEY = 'chiffreo_local_projects';
 
-// Noms de caches dupliqués depuis public/sw.js (SW_VERSION) — ce fichier n'est pas importable
-// par un module TS. Sur un appareil partagé, un cache non vidé à la déconnexion resterait lisible
-// hors connexion par le prochain utilisateur connecté, sans aucune vérification d'auth (un hit de
-// cache ne passe jamais par le réseau). `chiffreo-shell`/`chiffreo-static` ne contiennent aucune
-// donnée liée à un compte et n'ont pas besoin d'être vidés.
-const OFFLINE_CACHE_NAMES = ['chiffreo-pages-v1', 'chiffreo-api-v1'];
+// Préfixes de caches dupliqués depuis public/sw.js (SW_VERSION) — ce fichier n'est pas importable
+// par un module TS. Sur un appareil partagé, un cache non vidé resterait lisible hors connexion
+// par le prochain utilisateur connecté, sans aucune vérification d'auth (un hit de cache ne passe
+// jamais par le réseau). `chiffreo-shell`/`chiffreo-static` ne contiennent aucune donnée liée à un
+// compte et n'ont pas besoin d'être vidés. Le cache API étant partitionné par uid, ses noms ne
+// sont pas énumérables en dur : on les retrouve par préfixe.
+const OFFLINE_CACHE_PREFIXES = ['chiffreo-pages-v1', 'chiffreo-api-v1'];
+
+// Dernière identité vue par cet appareil. En `localStorage` et pas en mémoire : un onglet
+// fermé sans déconnexion ne doit pas faire oublier à qui appartiennent les caches.
+const LAST_IDENTITY_KEY = 'chiffreo_last_uid';
 
 async function clearOfflineCaches(): Promise<void> {
   if (typeof caches === 'undefined') return;
-  await Promise.all(OFFLINE_CACHE_NAMES.map((name) => caches.delete(name))).catch(() => undefined);
+  try {
+    const names = await caches.keys();
+    await Promise.all(
+      names
+        .filter((name) => OFFLINE_CACHE_PREFIXES.some((prefix) => name.startsWith(prefix)))
+        .map((name) => caches.delete(name)),
+    );
+  } catch {
+    // Le stockage peut être indisponible (navigation privée, quota) : ne jamais
+    // faire échouer une connexion ou une déconnexion pour autant.
+  }
+}
+
+function readLastIdentity(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return localStorage.getItem(LAST_IDENTITY_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeLastIdentity(uid: string | null): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (uid) localStorage.setItem(LAST_IDENTITY_KEY, uid);
+    else localStorage.removeItem(LAST_IDENTITY_KEY);
+  } catch {
+    // Idem : la mémoire de l'identité précédente est un confort, pas un prérequis.
+  }
+}
+
+/**
+ * Purge les caches hors ligne dès que l'identité de l'appareil change.
+ *
+ * `logout` le faisait déjà, mais rien n'impose de se déconnecter : le cas courant sur un
+ * appareil partagé est une connexion par-dessus la session précédente. Le changement
+ * d'identité, lui, est toujours observé — c'est donc à lui qu'on accroche la purge.
+ * Un simple rafraîchissement de jeton (même uid) ne purge rien, sans quoi le cache hors
+ * ligne ne survivrait jamais assez longtemps pour servir.
+ *
+ * Une identité inconnue purge aussi : sans mémoire de qui a rempli les caches présents,
+ * les garder reviendrait à parier qu'ils appartiennent à l'arrivant.
+ */
+async function syncOfflineCachesWithIdentity(uid: string | null): Promise<void> {
+  if (readLastIdentity() === uid) return;
+  await clearOfflineCaches();
+  writeLastIdentity(uid);
 }
 
 interface LocalProjectDraft {
@@ -197,6 +249,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = onIdTokenChanged(getFirebaseAuth(), async (user) => {
       setFirebaseUser(user);
+      // Avant toute lecture de données : le compte qui arrive ne doit pas pouvoir lire
+      // hors ligne ce que le précédent a laissé en cache.
+      await syncOfflineCachesWithIdentity(user?.uid ?? null);
       // Cookie non sensible lu par le middleware pour éviter le flash de
       // contenu protégé. Ce n'est PAS une barrière de sécurité : l'API
       // vérifie le token Firebase sur chaque requête.
