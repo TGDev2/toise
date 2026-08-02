@@ -3,6 +3,8 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { FeatureGateProvider } from '@/contexts/FeatureGateContext';
 import { PaywallModal } from '@/components/paywall/PaywallModal';
 import { CookieConsent } from '@/components/CookieConsent';
+import { ServiceWorkerRegister } from '@/components/pwa/ServiceWorkerRegister';
+import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { ToastProvider } from '@/components/ui/Toast';
 import './globals.css';
 
@@ -51,6 +53,8 @@ export default function RootLayout({
               {children}
               <PaywallModal />
               <CookieConsent />
+              <InstallPrompt />
+              <ServiceWorkerRegister />
             </FeatureGateProvider>
           </AuthProvider>
         </ToastProvider>

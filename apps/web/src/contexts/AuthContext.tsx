@@ -31,6 +31,18 @@ import { REFERRAL_CODE_STORAGE_KEY } from '@/lib/referral';
 
 const LOCAL_PROJECTS_KEY = 'chiffreo_local_projects';
 
+// Noms de caches dupliqués depuis public/sw.js (SW_VERSION) — ce fichier n'est pas importable
+// par un module TS. Sur un appareil partagé, un cache non vidé à la déconnexion resterait lisible
+// hors connexion par le prochain utilisateur connecté, sans aucune vérification d'auth (un hit de
+// cache ne passe jamais par le réseau). `chiffreo-shell`/`chiffreo-static` ne contiennent aucune
+// donnée liée à un compte et n'ont pas besoin d'être vidés.
+const OFFLINE_CACHE_NAMES = ['chiffreo-pages-v1', 'chiffreo-api-v1'];
+
+async function clearOfflineCaches(): Promise<void> {
+  if (typeof caches === 'undefined') return;
+  await Promise.all(OFFLINE_CACHE_NAMES.map((name) => caches.delete(name))).catch(() => undefined);
+}
+
 interface LocalProjectDraft {
   id: string;
   name: string;
@@ -340,7 +352,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [syncWithBackend, migrateLocalProjects]);
 
   const logout = useCallback(async () => {
-    await signOut(getFirebaseAuth());
+    await Promise.all([signOut(getFirebaseAuth()), clearOfflineCaches()]);
     setAppUser(null);
   }, []);
 
@@ -349,7 +361,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (typeof window !== 'undefined') {
       localStorage.removeItem(LOCAL_PROJECTS_KEY);
     }
-    await signOut(getFirebaseAuth()).catch(() => undefined);
+    await Promise.all([signOut(getFirebaseAuth()).catch(() => undefined), clearOfflineCaches()]);
     setFirebaseUser(null);
     setAppUser(null);
   }, []);

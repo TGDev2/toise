@@ -3,8 +3,10 @@
 import Link from 'next/link';
 import { useSyncExternalStore } from 'react';
 
-const CONSENT_KEY = 'chiffreo_cookie_consent';
-const CONSENT_EVENT = 'chiffreo-cookie-consent-change';
+// Exportées pour InstallPrompt.tsx, qui attend la résolution du consentement cookies avant de
+// s'afficher (deux bandeaux `fixed bottom-0` ne peuvent pas se superposer).
+export const CONSENT_KEY = 'chiffreo_cookie_consent';
+export const CONSENT_EVENT = 'chiffreo-cookie-consent-change';
 
 function subscribe(onStoreChange: () => void) {
   if (typeof window === 'undefined') {

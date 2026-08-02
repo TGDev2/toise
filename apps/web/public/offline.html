@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Hors connexion — Chiffréo</title>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <style>
+      :root {
+        color-scheme: light;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+        background: #efe7d6;
+        color: #18130d;
+        font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
+        text-align: center;
+      }
+
+      .card {
+        max-width: 26rem;
+      }
+
+      img {
+        width: 64px;
+        height: 64px;
+        margin-bottom: 1.25rem;
+      }
+
+      h1 {
+        font-size: 1.25rem;
+        margin: 0 0 0.75rem;
+      }
+
+      p {
+        margin: 0 0 1.5rem;
+        color: #4a4436;
+        line-height: 1.5;
+      }
+
+      button {
+        min-height: 44px;
+        padding: 0.625rem 1.5rem;
+        border-radius: 999px;
+        border: none;
+        background: #1d6b57;
+        color: #fff;
+        font-size: 0.9375rem;
+        font-weight: 500;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: #13473a;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <img src="/icons/icon-192.png" alt="" />
+      <h1>Vous êtes hors connexion</h1>
+      <p>
+        Cette page n'a pas encore été consultée hors connexion. Les projets déjà ouverts
+        récemment restent disponibles ; reconnectez-vous pour accéder au reste.
+      </p>
+      <button type="button" onclick="location.reload()">Réessayer</button>
+    </div>
+    <script>
+      window.addEventListener('online', () => location.reload());
+    </script>
+  </body>
+</html>
