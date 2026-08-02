@@ -1,7 +1,7 @@
 import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { InstallPrompt } from '../InstallPrompt';
-import { CONSENT_KEY } from '@/components/CookieConsent';
+import { CONSENT_KEY } from '@/lib/analytics-consent';
 import { trackPwaEvent } from '@/lib/pwa-analytics';
 
 jest.mock('@/lib/pwa-analytics', () => ({

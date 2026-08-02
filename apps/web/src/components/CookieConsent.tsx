@@ -2,45 +2,27 @@
 
 import Link from 'next/link';
 import { useSyncExternalStore } from 'react';
+import {
+  hasChosenConsent,
+  setConsent,
+  subscribeToConsent,
+} from '@/lib/analytics-consent';
 
-// Exportées pour InstallPrompt.tsx, qui attend la résolution du consentement cookies avant de
-// s'afficher (deux bandeaux `fixed bottom-0` ne peuvent pas se superposer).
-export const CONSENT_KEY = 'chiffreo_cookie_consent';
-export const CONSENT_EVENT = 'chiffreo-cookie-consent-change';
-
-function subscribe(onStoreChange: () => void) {
-  if (typeof window === 'undefined') {
-    return () => {};
-  }
-
-  const handleChange = () => {
-    onStoreChange();
-  };
-
-  window.addEventListener('storage', handleChange);
-  window.addEventListener(CONSENT_EVENT, handleChange);
-
-  return () => {
-    window.removeEventListener('storage', handleChange);
-    window.removeEventListener(CONSENT_EVENT, handleChange);
-  };
-}
+// Ce composant ne fait plus que rendre le bandeau : la valeur du consentement,
+// sa lecture et sa portée appartiennent à `lib/analytics-consent`, qui est aussi
+// ce que consultent les émetteurs de télémétrie. Tant que la règle vivait ici,
+// personne d'autre ne la lisait et « Refuser » n'arrêtait rien.
 
 function getSnapshot() {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-
-  return localStorage.getItem(CONSENT_KEY) === null;
-}
-
-function setConsent(value: 'accepted' | 'declined') {
-  localStorage.setItem(CONSENT_KEY, value);
-  window.dispatchEvent(new Event(CONSENT_EVENT));
+  return !hasChosenConsent();
 }
 
 export function CookieConsent() {
-  const visible = useSyncExternalStore(subscribe, getSnapshot, () => false);
+  const visible = useSyncExternalStore(
+    subscribeToConsent,
+    getSnapshot,
+    () => false,
+  );
 
   if (!visible) return null;
 

@@ -161,6 +161,41 @@ export async function apiDownload(path: string, filename: string): Promise<void>
   triggerBlobDownload(await res.blob(), filename);
 }
 
+/**
+ * Récupère une ressource protégée et la publie comme `blob:` URL utilisable par
+ * une balise `<img>` (PHOTO-*).
+ *
+ * Une balise image n'envoie jamais d'en-tête `Authorization` : poser une URL
+ * d'API privée dans son `src` donne un 401, quoi qu'on écrive dans le chemin.
+ * L'alternative — une URL signée côté serveur — demanderait un secret, une
+ * expiration et une exemption de guard, soit une nouvelle surface d'attaque pour
+ * un problème d'affichage. Ici on réutilise le chemin d'authentification déjà en
+ * place (cf. `apiDownload`), et le `Cache-Control: private` posé par l'API
+ * continue de jouer puisque `fetch` passe par le cache HTTP.
+ *
+ * **L'appelant est responsable du `URL.revokeObjectURL`** : sans quoi le blob
+ * reste en mémoire jusqu'au rechargement de la page.
+ */
+export async function apiObjectUrl(path: string): Promise<string> {
+  const user =
+    typeof window !== 'undefined' ? getFirebaseAuth().currentUser : null;
+  const headers: HeadersInit = {};
+  if (user) {
+    headers['Authorization'] = `Bearer ${await user.getIdToken()}`;
+  }
+
+  const res = await fetch(`${API_URL}${path}`, { headers });
+
+  if (!res.ok) {
+    const error = await res
+      .json()
+      .catch(() => ({ message: 'Ressource indisponible' }));
+    throwApiError(error, res.status);
+  }
+
+  return URL.createObjectURL(await res.blob());
+}
+
 /** Résultat d'`apiShareOrDownload`, pour que l'appelant adapte son message. */
 export type ShareOutcome = 'shared' | 'downloaded' | 'cancelled';
 

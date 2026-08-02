@@ -4,6 +4,7 @@ import {
   learnWasteFactors,
   median,
   medianAbsoluteDeviation,
+  organizationObservationCap,
   overlayLearnedWasteFactors,
   WasteObservation,
 } from './waste-learning';
@@ -100,8 +101,53 @@ describe('learnWasteFactors — garde-fous', () => {
     expect(outcome.factor_percent).toBeNull();
   });
 
+  // Le cas déterminant : une organisation majoritaire dans une cellule choisit la
+  // médiane, et son unanimité rend le MAD nul — le test de dispersion, seul autre
+  // garde-fou, ne peut donc pas la rattraper.
+  it('refuses to let one organisation hold the majority of a cell', () => {
+    const observations = [
+      // 5 chantiers d'une même organisation déclarant une consommation extrême.
+      ...Array.from({ length: 5 }, (_, i) =>
+        makeObservation({
+          organization_id: 'org-dominante',
+          estimated_units: 10,
+          actual_units: 30, // perte impliquée : 1,10 × 3 − 1 = 230 %
+          observed_at: new Date(2026, 0, i + 1),
+        }),
+      ),
+      // 3 observations honnêtes d'organisations distinctes : achat = estimation.
+      ...spread(3, { estimated_units: 10, actual_units: 10 }),
+    ];
+
+    const [outcome] = learnWasteFactors(observations, baselineResolver);
+
+    expect(outcome.status).toBe('insufficient_volume');
+    expect(outcome.factor_percent).toBeNull();
+  });
+
+  it('keeps the median inside the honest range when one organisation is loud', () => {
+    const observations = [
+      ...Array.from({ length: 5 }, (_, i) =>
+        makeObservation({
+          organization_id: 'org-dominante',
+          estimated_units: 10,
+          actual_units: 30,
+          observed_at: new Date(2026, 0, i + 1),
+        }),
+      ),
+      ...spread(5, { estimated_units: 10, actual_units: 10 }),
+    ];
+
+    const [outcome] = learnWasteFactors(observations, baselineResolver);
+
+    // 3 retenus pour l'organisation bruyante contre 5 honnêtes : la médiane des 8
+    // tombe entre deux observations honnêtes, donc sur la valeur catalogue.
+    expect(outcome.observed_percent).toBeCloseTo(BASELINE);
+    expect(outcome.status).toBe('no_change');
+  });
+
   it('caps how much a single organisation weighs in a cell', () => {
-    // 20 chantiers d'une seule organisation → 5 retenus, sous le minimum de 8.
+    // 20 chantiers d'une seule organisation → 3 retenus, sous le minimum de 8.
     const observations = Array.from({ length: 20 }, (_, i) =>
       makeObservation({
         organization_id: 'org-dominante',
@@ -113,9 +159,25 @@ describe('learnWasteFactors — garde-fous', () => {
     const [outcome] = learnWasteFactors(observations, baselineResolver);
 
     expect(outcome.sample_size).toBe(
-      DEFAULT_WASTE_LEARNING_OPTIONS.maxObservationsPerOrg,
+      organizationObservationCap(DEFAULT_WASTE_LEARNING_OPTIONS),
     );
     expect(outcome.status).toBe('insufficient_volume');
+  });
+
+  it('never lets one organisation reach half of the minimum sample', () => {
+    // L'invariant qui porte le garde-fou, énoncé sur les options elles-mêmes :
+    // le régler par deux constantes indépendantes est ce qui avait ouvert le trou.
+    expect(
+      organizationObservationCap(DEFAULT_WASTE_LEARNING_OPTIONS),
+    ).toBeLessThan(DEFAULT_WASTE_LEARNING_OPTIONS.minObservations / 2);
+
+    // Y compris si quelqu'un desserre le minimum sans toucher au reste.
+    for (const minObservations of [1, 2, 3, 5, 8, 9, 20, 41]) {
+      const options = { ...DEFAULT_WASTE_LEARNING_OPTIONS, minObservations };
+      expect(organizationObservationCap(options)).toBeLessThan(
+        minObservations / 2,
+      );
+    }
   });
 
   it('keeps the most recent observations when capping', () => {
@@ -144,9 +206,11 @@ describe('learnWasteFactors — garde-fous', () => {
 
     const [outcome] = learnWasteFactors(observations, baselineResolver);
 
-    // Les 6 achats récents (11) sont conservés, les 6 anciens (20) écartés :
-    // la médiane vaut 21 % et non une valeur tirée vers le haut.
-    expect(outcome.sample_size).toBe(11);
+    // Les 3 achats récents (11) d'`org-1` sont conservés, les anciens (20)
+    // écartés : la médiane vaut 21 % et non une valeur tirée vers le haut.
+    expect(outcome.sample_size).toBe(
+      organizationObservationCap(DEFAULT_WASTE_LEARNING_OPTIONS) + 6,
+    );
     expect(outcome.observed_percent).toBeCloseTo(21);
   });
 

@@ -30,6 +30,29 @@ const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
 const ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/heic', 'image/heif'];
 
 /**
+ * Motifs de route, partagés entre les décorateurs et la sérialisation du DTO.
+ *
+ * Le DTO annonçait `/photos/file/<projet>/<photo>`, un chemin qui n'a jamais
+ * existé côté serveur : les routes vivent sous le préfixe `projects`. Recopier
+ * l'URL à la main dans le DTO, c'est accepter qu'elle diverge au premier
+ * renommage — et personne ne le voit, puisque rien ne relie les deux chaînes.
+ * Ici, un renommage de route change l'URL sérialisée par construction.
+ */
+const PHOTOS_ROUTE_PREFIX = 'projects';
+const PHOTO_FILE_ROUTE = ':projectId/photos/:photoId/file';
+const PHOTO_THUMBNAIL_ROUTE = ':projectId/photos/:photoId/thumbnail';
+
+function buildPhotoUrl(
+  route: string,
+  projectId: string,
+  photoId: string,
+): string {
+  return `/${PHOTOS_ROUTE_PREFIX}/${route}`
+    .replace(':projectId', projectId)
+    .replace(':photoId', photoId);
+}
+
+/**
  * Premier tri, sur le `Content-Type` **déclaré** par le client dans la partie
  * multipart. Il ne dit rien du contenu et n'est pas la validation : celle-ci se
  * fait dans `PhotosService.uploadPhoto`, d'abord par les octets d'en-tête
@@ -54,7 +77,7 @@ function mimeFilter(
   }
 }
 
-@Controller('projects')
+@Controller(PHOTOS_ROUTE_PREFIX)
 @UseGuards(FirebaseAuthGuard)
 export class PhotosController {
   constructor(
@@ -78,9 +101,9 @@ export class PhotosController {
       size_bytes: photo.size_bytes,
       status: photo.status,
       sort_order: photo.sort_order,
-      url: `/photos/file/${photo.project_id}/${photo.id}`,
+      url: buildPhotoUrl(PHOTO_FILE_ROUTE, photo.project_id, photo.id),
       thumbnail_url: photo.thumbnail_url
-        ? `/photos/file/${photo.project_id}/${photo.id}/thumbnail`
+        ? buildPhotoUrl(PHOTO_THUMBNAIL_ROUTE, photo.project_id, photo.id)
         : null,
       created_at: photo.created_at,
     };
@@ -139,7 +162,7 @@ export class PhotosController {
     );
   }
 
-  @Get(':projectId/photos/:photoId/file')
+  @Get(PHOTO_FILE_ROUTE)
   async servePhoto(
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('projectId', ParseUUIDPipe) projectId: string,
@@ -164,7 +187,7 @@ export class PhotosController {
     createReadStream(filePath).pipe(res);
   }
 
-  @Get(':projectId/photos/:photoId/thumbnail')
+  @Get(PHOTO_THUMBNAIL_ROUTE)
   async serveThumbnail(
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('projectId', ParseUUIDPipe) projectId: string,

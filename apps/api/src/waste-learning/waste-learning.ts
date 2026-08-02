@@ -66,7 +66,11 @@ export interface WasteLearningOutcome {
 export interface WasteLearningOptions {
   /** En deçà, aucune valeur apprise : le catalogue DTU reste seul maître. */
   minObservations: number;
-  /** Observations retenues par organisation et par cellule (les plus récentes). */
+  /**
+   * Plafond de politique par organisation et par cellule (les plus récentes).
+   * Le plafond réellement appliqué est `organizationObservationCap`, qui ne
+   * dépasse jamais celui-ci mais peut le resserrer.
+   */
   maxObservationsPerOrg: number;
   /** Constante de crédibilité (Bühlmann) : poids = n / (n + K). */
   credibilityK: number;
@@ -123,6 +127,28 @@ export function medianAbsoluteDeviation(
 export function impliedWastePercent(observation: WasteObservation): number {
   const ratio = observation.actual_units / observation.estimated_units;
   return ((1 + observation.applied_percent / 100) * ratio - 1) * 100;
+}
+
+/**
+ * Poids maximal d'une organisation dans une cellule, **dérivé** de
+ * `minObservations` et non réglé indépendamment.
+ *
+ * La médiane ne protège que tant qu'aucun contributeur ne détient la moitié de
+ * l'échantillon : au-delà, il la place où il veut, et son unanimité annule au
+ * passage le MAD — le test de dispersion, seul autre garde-fou, laisse alors
+ * tout passer. Deux constantes indépendantes (`minObservations: 8`,
+ * `maxObservationsPerOrg: 5`) laissaient précisément un tenant peser 62,5 %.
+ *
+ * Dériver la valeur plutôt que la choisir petite est ce qui rend l'oubli sûr :
+ * régler `minObservations` ne peut plus rouvrir le trou en silence. Un minimum
+ * fixé sous 3 donne un plafond nul et rend la cellule inapprenable — la panne
+ * va dans le bon sens, celui du catalogue DTU inchangé.
+ */
+export function organizationObservationCap(
+  options: WasteLearningOptions,
+): number {
+  const strictMinority = Math.ceil(options.minObservations / 2) - 1;
+  return Math.max(0, Math.min(options.maxObservationsPerOrg, strictMinority));
 }
 
 /**
@@ -185,7 +211,10 @@ export function learnWasteFactors(
   for (const group of cells.values()) {
     const { material_id, pose_type, skill_level } = group[0];
     const baseline = resolveBaseline({ material_id, pose_type, skill_level });
-    const retained = capPerOrganization(group, options.maxObservationsPerOrg);
+    const retained = capPerOrganization(
+      group,
+      organizationObservationCap(options),
+    );
     const n = retained.length;
 
     const cell = { material_id, pose_type, skill_level, sample_size: n };

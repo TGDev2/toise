@@ -1,50 +1,66 @@
 'use client';
 
 import type { PhotoEntry } from '@/hooks/usePhotoUpload';
+import { AuthenticatedImage } from './AuthenticatedImage';
+
+/** Vignette neutre : avant chargement, après échec, ou sans photo du tout. */
+function PhotoPlaceholder() {
+  return (
+    <div className="flex h-full w-full items-center justify-center">
+      <svg
+        className="h-8 w-8 text-stone-300"
+        fill="none"
+        viewBox="0 0 24 24"
+        strokeWidth={1.5}
+        stroke="currentColor"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z"
+        />
+      </svg>
+    </div>
+  );
+}
 
 interface PhotoUploadItemProps {
   photo: PhotoEntry;
-  apiUrl: string;
   onRemove: () => void;
   onRetry: () => void;
 }
 
 export function PhotoUploadItem({
   photo,
-  apiUrl,
   onRemove,
   onRetry,
 }: PhotoUploadItemProps) {
-  const thumbnailSrc = photo.previewUrl
-    ?? (photo.serverPhoto?.thumbnail_url
-      ? `${apiUrl}${photo.serverPhoto.thumbnail_url}`
-      : null);
+  const label =
+    photo.file?.name ?? photo.serverPhoto?.original_filename ?? 'Photo';
+  // Après un rechargement, `previewUrl` est nul et seule la photo serveur reste :
+  // elle est derrière le guard, donc elle passe par un fetch authentifié.
+  const serverPath =
+    photo.serverPhoto?.thumbnail_url ?? photo.serverPhoto?.url ?? null;
 
   return (
     <div className="group relative overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
       <div className="relative aspect-[4/3] bg-stone-100">
-        {thumbnailSrc ? (
+        {photo.previewUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- object URL local
           <img
-            src={thumbnailSrc}
-            alt={photo.file?.name ?? photo.serverPhoto?.original_filename ?? 'Photo'}
+            src={photo.previewUrl}
+            alt={label}
             className="h-full w-full object-cover"
           />
+        ) : serverPath ? (
+          <AuthenticatedImage
+            path={serverPath}
+            alt={label}
+            className="h-full w-full object-cover"
+            fallback={<PhotoPlaceholder />}
+          />
         ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <svg
-              className="h-8 w-8 text-stone-300"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z"
-              />
-            </svg>
-          </div>
+          <PhotoPlaceholder />
         )}
 
         {/* Progress overlay */}

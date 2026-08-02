@@ -1,6 +1,11 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { PhotoUploadPanel } from '../PhotoUploadPanel';
+import { apiObjectUrl } from '@/lib/api';
 import type { PhotoEntry } from '@/hooks/usePhotoUpload';
+
+jest.mock('@/lib/api', () => ({ apiObjectUrl: jest.fn() }));
+
+const mockedObjectUrl = apiObjectUrl as jest.MockedFunction<typeof apiObjectUrl>;
 
 const noop = () => {};
 
@@ -18,8 +23,10 @@ const mockReadyPhoto: PhotoEntry = {
     size_bytes: 1024000,
     status: 'ready',
     sort_order: 0,
-    url: '/photos/file/proj/server-1',
-    thumbnail_url: '/photos/file/proj/server-1/thumbnail',
+    // Les chemins réellement servis par l'API : `/projects/...`, pas la racine
+    // `/photos/file/...` qui n'a jamais existé côté serveur.
+    url: '/projects/proj/photos/server-1/file',
+    thumbnail_url: '/projects/proj/photos/server-1/thumbnail',
     created_at: '2026-03-29T00:00:00Z',
   },
   retryCount: 0,
@@ -48,6 +55,55 @@ const mockErrorPhoto: PhotoEntry = {
 };
 
 describe('PhotoUploadPanel', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockedObjectUrl.mockResolvedValue('blob:thumb');
+  });
+
+  // Après un rechargement, `previewUrl` est nul : la miniature ne peut venir que
+  // du serveur, derrière le guard. Un `src` direct y récoltait un 401 — d'où le
+  // passage par un fetch porteur du jeton.
+  it('charge la miniature d’une photo serveur par un appel authentifié', async () => {
+    render(
+      <PhotoUploadPanel
+        photos={[mockReadyPhoto]}
+        canAddMore={true}
+        readyCount={1}
+        maxPhotos={5}
+        onFiles={noop}
+        onRemove={noop}
+        onRetry={noop}
+      />,
+    );
+
+    expect(mockedObjectUrl).toHaveBeenCalledWith(
+      '/projects/proj/photos/server-1/thumbnail',
+    );
+    await waitFor(() =>
+      expect(screen.getByAltText('room.jpg')).toHaveAttribute(
+        'src',
+        'blob:thumb',
+      ),
+    );
+  });
+
+  it('affiche l’aperçu local sans rien demander au serveur', () => {
+    render(
+      <PhotoUploadPanel
+        photos={[mockUploadingPhoto]}
+        canAddMore={true}
+        readyCount={0}
+        maxPhotos={5}
+        onFiles={noop}
+        onRemove={noop}
+        onRetry={noop}
+      />,
+    );
+
+    expect(mockedObjectUrl).not.toHaveBeenCalled();
+    expect(screen.getByAltText('test.jpg')).toHaveAttribute('src', 'blob:test');
+  });
+
   it('renders title and instructions', () => {
     render(
       <PhotoUploadPanel

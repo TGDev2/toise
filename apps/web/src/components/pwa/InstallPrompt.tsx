@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { CONSENT_EVENT, CONSENT_KEY } from '@/components/CookieConsent';
+import { hasChosenConsent, subscribeToConsent } from '@/lib/analytics-consent';
 import { trackPwaEvent } from '@/lib/pwa-analytics';
 
 const DISMISS_KEY = 'chiffreo_install_dismissed';
@@ -25,14 +25,9 @@ export function InstallPrompt() {
   const [consentResolved, setConsentResolved] = useState(false);
 
   useEffect(() => {
-    const checkConsent = () => setConsentResolved(localStorage.getItem(CONSENT_KEY) !== null);
+    const checkConsent = () => setConsentResolved(hasChosenConsent());
     checkConsent();
-    window.addEventListener(CONSENT_EVENT, checkConsent);
-    window.addEventListener('storage', checkConsent);
-    return () => {
-      window.removeEventListener(CONSENT_EVENT, checkConsent);
-      window.removeEventListener('storage', checkConsent);
-    };
+    return subscribeToConsent(checkConsent);
   }, []);
 
   useEffect(() => {

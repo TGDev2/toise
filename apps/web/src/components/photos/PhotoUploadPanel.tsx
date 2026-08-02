@@ -6,8 +6,6 @@ import { PhotoDropzone } from './PhotoDropzone';
 import { PhotoUploadItem } from './PhotoUploadItem';
 import { CAPTURE_TIPS, PhotoCaptureGuidance } from './PhotoCaptureGuidance';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
-
 interface PhotoUploadPanelProps {
   photos: PhotoEntry[];
   canAddMore: boolean;
@@ -78,7 +76,6 @@ export function PhotoUploadPanel({
                 <PhotoUploadItem
                   key={photo.localId}
                   photo={photo}
-                  apiUrl={API_URL}
                   onRemove={() => onRemove(photo.localId)}
                   onRetry={() => onRetry(photo.localId)}
                 />

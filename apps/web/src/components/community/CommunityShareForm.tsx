@@ -1,11 +1,10 @@
 'use client';
 
-import Image from 'next/image';
-
 import { useState } from 'react';
 import { apiPost } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import type { BudgetSummary } from '@/lib/shopping-list-types';
+import { AuthenticatedImage } from '@/components/photos/AuthenticatedImage';
 
 interface PhotoOption {
   id: string;
@@ -37,9 +36,6 @@ export function CommunityShareForm({
   const [gdprConsent, setGdprConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-
-  const API_URL =
-    process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
   const togglePhoto = (
     photoId: string,
@@ -182,12 +178,10 @@ export function CommunityShareForm({
                       : 'border-transparent'
                   }`}
                 >
-                  <Image
-                    src={`${API_URL}${photo.thumbnail_url ?? photo.url}`}
+                  <AuthenticatedImage
+                    path={photo.thumbnail_url ?? photo.url}
                     alt="Photo du projet"
-                    fill
-                    sizes="(max-width: 640px) 33vw, 20vw"
-                    className="object-cover"
+                    className="absolute inset-0 h-full w-full object-cover"
                   />
                   {beforePhotoIds.includes(photo.id) && (
                     <div className="absolute inset-0 flex items-center justify-center bg-[var(--accent)]/20">
@@ -223,12 +217,10 @@ export function CommunityShareForm({
                       : 'border-transparent'
                   }`}
                 >
-                  <Image
-                    src={`${API_URL}${photo.thumbnail_url ?? photo.url}`}
+                  <AuthenticatedImage
+                    path={photo.thumbnail_url ?? photo.url}
                     alt="Photo du projet"
-                    fill
-                    sizes="(max-width: 640px) 33vw, 20vw"
-                    className="object-cover"
+                    className="absolute inset-0 h-full w-full object-cover"
                   />
                   {afterPhotoIds.includes(photo.id) && (
                     <div className="absolute inset-0 flex items-center justify-center bg-emerald-500/20">

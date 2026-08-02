@@ -4,6 +4,7 @@ import {
   trackPwaEvent,
 } from '../pwa-analytics';
 import { apiPost, ApiError } from '@/lib/api';
+import { CONSENT_EVENT, CONSENT_KEY } from '@/lib/analytics-consent';
 
 jest.mock('@/lib/api', () => {
   class MockApiError extends Error {
@@ -43,8 +44,65 @@ describe('pwa-analytics', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     localStorage.clear();
+    localStorage.setItem(CONSENT_KEY, 'accepted');
     setOnline(true);
     mockedApiPost.mockResolvedValue(undefined as never);
+  });
+
+  describe('consentement', () => {
+    it("n'envoie et n'empile rien tant que le choix n'est pas exprimé", async () => {
+      localStorage.removeItem(CONSENT_KEY);
+
+      trackPwaEvent('pwa_session_start', { platform: 'ios' });
+      await Promise.resolve();
+
+      expect(mockedApiPost).not.toHaveBeenCalled();
+      expect(localStorage.getItem(QUEUE_KEY)).toBeNull();
+    });
+
+    it("n'envoie et n'empile rien après un refus, en ligne comme hors ligne", async () => {
+      localStorage.setItem(CONSENT_KEY, 'declined');
+
+      trackPwaEvent('pwa_installed');
+      setOnline(false);
+      trackPwaEvent('pwa_offline_view', { url: '/projects/1' });
+      await Promise.resolve();
+
+      expect(mockedApiPost).not.toHaveBeenCalled();
+      expect(localStorage.getItem(QUEUE_KEY)).toBeNull();
+    });
+
+    it('purge la file héritée d\'une session consentante quand le refus arrive', async () => {
+      setOnline(false);
+      trackPwaEvent('pwa_offline_view', { url: '/projects/1' });
+      expect(queued()).toHaveLength(1);
+
+      localStorage.setItem(CONSENT_KEY, 'declined');
+      setOnline(true);
+      await flushPwaEvents();
+
+      expect(mockedApiPost).not.toHaveBeenCalled();
+      expect(localStorage.getItem(QUEUE_KEY)).toBeNull();
+    });
+
+    it('rejoue la file dès que le consentement est accordé', async () => {
+      setOnline(false);
+      trackPwaEvent('pwa_installed');
+      setOnline(true);
+
+      // `finally` : un échec ici laisserait sinon l'écouteur sur `window` et
+      // ferait tomber les tests suivants pour une raison sans rapport.
+      const unregister = registerPwaEventFlush();
+      try {
+        window.dispatchEvent(new Event(CONSENT_EVENT));
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(mockedApiPost).toHaveBeenCalledTimes(1);
+      } finally {
+        unregister();
+      }
+    });
   });
 
   it("envoie directement quand le réseau répond et n'empile rien", async () => {

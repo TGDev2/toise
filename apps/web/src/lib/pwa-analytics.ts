@@ -1,6 +1,11 @@
 import { ApiError, apiPost } from './api';
+import { isAnalyticsAllowed, subscribeToConsent } from './analytics-consent';
 
 // Télémétrie d'adoption PWA (MOB-1), préalable à l'arbitrage MOB-2.
+//
+// Tout ce qui suit est subordonné à `isAnalyticsAllowed()` : sans consentement
+// accordé, rien n'est envoyé et rien n'est écrit dans `localStorage`. Le tampon
+// ci-dessous n'existe qu'à l'intérieur du périmètre consenti.
 //
 // Pourquoi ne pas réutiliser `useAnalytics` : son `track` est un
 // `apiPost(...).catch(() => {})`, l'événement est perdu en silence en cas
@@ -92,9 +97,18 @@ async function send(event: QueuedEvent): Promise<boolean> {
 /**
  * Vide la file, dans l'ordre d'émission. S'arrête au premier échec réessayable
  * pour ne pas marteler un réseau absent et préserver la chronologie.
+ *
+ * Sans consentement accordé, la file est **purgée** au lieu d'être envoyée :
+ * elle peut dater d'une session où le consentement l'était, et la laisser
+ * dormir sur l'appareil reviendrait à conserver la télémétrie qu'on vient de
+ * refuser. C'est aussi ce qui donne son effet immédiat au bouton « Refuser ».
  */
 export async function flushPwaEvents(): Promise<void> {
   if (flushing || typeof window === 'undefined') return;
+  if (!isAnalyticsAllowed()) {
+    writeQueue([]);
+    return;
+  }
   flushing = true;
   try {
     let queue = readQueue();
@@ -119,6 +133,9 @@ export function trackPwaEvent(
   properties: Record<string, unknown> = {},
 ): void {
   if (typeof window === 'undefined') return;
+  // Avant toute chose : ni envoi, ni écriture. Empiler « en attendant le choix »
+  // serait déjà déposer de la télémétrie sur l'appareil.
+  if (!isAnalyticsAllowed()) return;
 
   const event: QueuedEvent = {
     event_name: eventName,
@@ -137,12 +154,18 @@ export function trackPwaEvent(
 }
 
 /**
- * Rejoue la file au retour du réseau. Retourne une fonction de désinscription.
+ * Réconcilie la file avec la réalité au retour du réseau **et** à chaque
+ * changement de consentement : `flushPwaEvents` envoie si le consentement est
+ * accordé, purge sinon. Retourne une fonction de désinscription.
  */
 export function registerPwaEventFlush(): () => void {
-  const onOnline = () => {
+  const reconcile = () => {
     void flushPwaEvents();
   };
-  window.addEventListener('online', onOnline);
-  return () => window.removeEventListener('online', onOnline);
+  window.addEventListener('online', reconcile);
+  const unsubscribeConsent = subscribeToConsent(reconcile);
+  return () => {
+    window.removeEventListener('online', reconcile);
+    unsubscribeConsent();
+  };
 }

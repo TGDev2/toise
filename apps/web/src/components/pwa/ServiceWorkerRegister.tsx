@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { isAnalyticsAllowed, subscribeToConsent } from '@/lib/analytics-consent';
 import {
   flushPwaEvents,
   registerPwaEventFlush,
@@ -34,6 +35,13 @@ function isStandalone(): boolean {
 // tiers refusés). Sans cette garde, une exception ici priverait l'utilisateur du
 // service worker — on sacrifie la mesure, jamais la fonctionnalité.
 function trackSessionOnce(): void {
+  // Le consentement se teste **avant** de poser la marque de session, pas
+  // seulement dans `trackPwaEvent` : au montage le bandeau vient d'apparaître et
+  // le choix n'est pas encore fait. Poser la clé maintenant condamnerait la
+  // session à ne jamais être comptée, même si l'utilisateur accepte deux
+  // secondes plus tard — et c'est cet appel-là qui est rejoué à l'acceptation.
+  if (!isAnalyticsAllowed()) return;
+
   try {
     if (sessionStorage.getItem(SESSION_KEY)) return;
     sessionStorage.setItem(SESSION_KEY, '1');
@@ -75,7 +83,15 @@ export function ServiceWorkerRegister() {
     const unregisterFlush = registerPwaEventFlush();
     trackSessionOnce();
 
+    // Au montage, le bandeau de consentement vient d'apparaître : la session
+    // n'est donc pas encore comptable. On la compte au moment du choix, sans
+    // quoi accepter n'aurait d'effet qu'à la visite suivante.
+    const unsubscribeConsent = subscribeToConsent(() => {
+      trackSessionOnce();
+    });
+
     return () => {
+      unsubscribeConsent();
       unregisterFlush();
       if (hasServiceWorker) {
         navigator.serviceWorker.removeEventListener('message', onMessage);
