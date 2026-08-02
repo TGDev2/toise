@@ -1,4 +1,5 @@
 import {
+  benchmarkShortfall,
   buildCostBenchmarks,
   compareToReference,
   DEFAULT_COST_BENCHMARK_OPTIONS,
@@ -257,5 +258,27 @@ describe('rollUpComparisons', () => {
     expect(
       rollUpComparisons([comparison({ median_cost_per_m2: 0 })]),
     ).toBeNull();
+  });
+});
+
+describe('benchmarkShortfall', () => {
+  it('réclame les organisations du k-anonymat, plus exigeant que le volume', () => {
+    // 10 observations à 3 par organisation n'en réclament que 4 ; le k en
+    // réclame 5. C'est le plus exigeant des deux qui commande.
+    expect(
+      benchmarkShortfall({ sample_size: 10, organization_count: 4 }),
+    ).toEqual({ missing_observations: 0, missing_organizations: 1 });
+  });
+
+  it("rapporte les deux manques d'une cohorte naissante", () => {
+    expect(
+      benchmarkShortfall({ sample_size: 3, organization_count: 2 }),
+    ).toEqual({ missing_observations: 7, missing_organizations: 3 });
+  });
+
+  it('ne réclame plus rien à une cohorte publiable', () => {
+    expect(
+      benchmarkShortfall({ sample_size: 10, organization_count: 5 }),
+    ).toEqual({ missing_observations: 0, missing_organizations: 0 });
   });
 });

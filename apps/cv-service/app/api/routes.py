@@ -88,4 +88,8 @@ async def analyze_images(request: Request, body: AnalyzeRequest):
             return AnalyzeResponse(
                 status="error",
                 error=str(e),
+                # Une panne survenue en repli heuristique et une panne survenue
+                # sous le modele n'ont pas la meme portee : la premiere se
+                # repare en deployant les poids.
+                opening_detector=calculator.opening_detector_mode(),
             )

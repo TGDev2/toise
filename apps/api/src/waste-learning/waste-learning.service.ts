@@ -17,6 +17,7 @@ import {
 import {
   learnWasteFactors,
   wasteCellKey,
+  wasteLearningShortfall,
   WasteLearningOutcome,
   WasteLearningStatus,
   WasteObservation,
@@ -24,6 +25,29 @@ import {
 
 /** Clé de verrou consultatif propre à ce job (distincte de DATA-4 et des migrations). */
 const WASTE_LEARNING_LOCK_KEY = 4_071_205_003;
+
+/**
+ * Cellule qui ne publie aucun facteur, et ce qui lui manque pour y arriver.
+ *
+ * Ces lignes ne sont **pas** persistées : elles sont recalculées à chaque run et
+ * ne vivent que dans son résumé. Sans elles, `by_status` annonce « 14 cellules
+ * sous le seuil » sans dire lesquelles ni à quelle distance — un chiffre qui ne
+ * distingue pas une brique sur le point de s'allumer d'une brique morte.
+ */
+export interface PendingWasteCell {
+  material_id: string;
+  pose_type: string;
+  skill_level: string;
+  status: WasteLearningStatus;
+  /** Observations retenues, après plafonnement par organisation. */
+  sample_size: number;
+  /** Observations collectées, avant plafonnement. */
+  raw_sample_size: number;
+  organization_count: number;
+  missing_observations: number;
+  /** Non nul ⇒ aucun chantier des organisations déjà présentes n'y suffira. */
+  missing_organizations: number;
+}
 
 export interface WasteLearningRunSummary {
   /** Observations exploitables extraites des chantiers terminés. */
@@ -33,6 +57,8 @@ export interface WasteLearningRunSummary {
   by_status: Record<WasteLearningStatus, number>;
   /** Lignes apprises supprimées faute de continuer à remplir les critères. */
   removed: number;
+  /** Cellules non apprises, les plus proches du seuil en tête. */
+  pending: PendingWasteCell[];
   computed_at: string;
 }
 
@@ -70,8 +96,15 @@ export class WasteLearningService {
   async runWeekly(): Promise<void> {
     try {
       const summary = await this.run();
+      // Le cron est le seul point d'observation de ce job en production : s'il
+      // ne dit que « 0 cellule apprise », personne ne peut distinguer une brique
+      // qui monte en charge d'une brique qui ne montera jamais.
+      const closest = summary.pending[0];
       this.logger.log(
-        `Facteurs de perte appris : ${summary.by_status.learned} cellule(s) sur ${summary.cells}, ${summary.observations} observation(s), ${summary.removed} retrait(s).`,
+        `Facteurs de perte appris : ${summary.by_status.learned} cellule(s) sur ${summary.cells}, ${summary.observations} observation(s), ${summary.removed} retrait(s).` +
+          (closest
+            ? ` ${summary.pending.length} cellule(s) en attente, la plus proche à ${closest.missing_observations} observation(s) et ${closest.missing_organizations} organisation(s).`
+            : ''),
       );
     } catch (err) {
       // Un rejet non capturé dans un cron tuerait le process : on trace et on
@@ -105,8 +138,37 @@ export class WasteLearningService {
       cells: outcomes.length,
       by_status: byStatus,
       removed,
+      pending: this.summarizePending(outcomes),
       computed_at: computedAt.toISOString(),
     };
+  }
+
+  /**
+   * Les cellules qui n'ont rien produit, ordonnées de la plus proche du seuil à
+   * la plus lointaine — le manque d'organisations d'abord, puisqu'il est le seul
+   * que le temps ne comble pas tout seul.
+   */
+  private summarizePending(
+    outcomes: WasteLearningOutcome[],
+  ): PendingWasteCell[] {
+    return outcomes
+      .filter((o) => o.status !== 'learned')
+      .map((o) => ({
+        material_id: o.material_id,
+        pose_type: o.pose_type,
+        skill_level: o.skill_level,
+        status: o.status,
+        sample_size: o.sample_size,
+        raw_sample_size: o.raw_sample_size,
+        organization_count: o.organization_count,
+        ...wasteLearningShortfall(o),
+      }))
+      .sort(
+        (a, b) =>
+          a.missing_organizations - b.missing_organizations ||
+          a.missing_observations - b.missing_observations ||
+          a.material_id.localeCompare(b.material_id),
+      );
   }
 
   async findAll(): Promise<LearnedWasteFactor[]> {

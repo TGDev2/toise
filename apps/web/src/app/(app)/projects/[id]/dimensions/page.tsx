@@ -489,6 +489,7 @@ export default function DimensionsPage() {
             widthUncertaintyCm={analysis.dimensions.width_cm_uncertainty}
             heightUncertaintyCm={analysis.dimensions.height_cm_uncertainty}
             openings={analysis.detectedOpenings}
+            openingDetector={analysis.openingDetector}
             onAccept={handleAcceptCvDimensions}
             onEdit={handleManualFallback}
           />

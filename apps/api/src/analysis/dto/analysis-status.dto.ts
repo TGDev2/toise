@@ -26,6 +26,13 @@ export class AnalysisStatusDto {
     count: number;
     confidence: number;
   }> | null;
+  /**
+   * `heuristic` ⇒ les ouvertures viennent du repli OpenCV, pas du modèle
+   * entraîné. Remonté jusqu'à l'écran : afficher « Ouvertures détectées » à
+   * l'identique dans les deux cas fait passer une approximation géométrique
+   * pour une détection apprise.
+   */
+  opening_detector?: 'yolo' | 'heuristic' | 'none' | null;
   error_message?: string | null;
   started_at?: string | null;
   completed_at?: string | null;

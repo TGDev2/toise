@@ -64,6 +64,12 @@ export interface CvAnalysisResponse {
   reference_type: string | null;
   openings: CvDetectedOpening[];
   num_images_processed: number;
+  /**
+   * Détecteur ayant réellement produit les ouvertures. Une boîte de YOLO et un
+   * contour de Canny sortent avec un `confidence` sur la même échelle 0-1 :
+   * sans ce champ, rien ne les distingue en aval.
+   */
+  opening_detector?: 'yolo' | 'heuristic' | 'none';
   raw_output: Record<string, unknown>;
   error?: string;
 }

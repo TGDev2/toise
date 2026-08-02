@@ -83,6 +83,13 @@ class DetectedOpeningSchema(BaseModel):
 
 class AnalyzeResponse(BaseModel):
     status: str  # "success" | "no_reference" | "error"
+    # Detecteur ayant reellement produit les ouvertures : "yolo" (modele
+    # entraine), "heuristique" OpenCV en repli, ou "none". Champ de premier
+    # niveau et non enfoui dans `raw_output` : c'est la seule difference entre
+    # une detection apprise et un contour de Canny, et les deux sortent
+    # aujourd'hui avec un `confidence` sur la meme echelle 0-1. Un appelant qui
+    # doit fouiller un dict non type pour le savoir ne le saura pas.
+    opening_detector: str = "none"  # "yolo" | "heuristic" | "none"
     dimensions: Optional[Dimensions] = None
     confidence: str = "medium"  # "high" | "medium" | "low"
     confidence_score: float = 0.0  # numeric 0-1 for observability

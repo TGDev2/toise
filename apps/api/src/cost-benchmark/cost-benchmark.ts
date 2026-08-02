@@ -108,6 +108,45 @@ export const DEFAULT_COST_BENCHMARK_OPTIONS: CostBenchmarkOptions = {
   neutralBandPercent: 3,
 };
 
+/** Ce qui manque à une cellule pour devenir publiable. */
+export interface BenchmarkShortfall {
+  missing_observations: number;
+  missing_organizations: number;
+}
+
+/**
+ * Distance d'une cellule aux seuils, dans les deux unités qui la commandent.
+ * Le k-anonymat n'est pas le seul plancher d'organisations : le plafond par
+ * organisation en impose un second, `⌈minObservations / maxObservationsPerOrg⌉`.
+ * C'est le plus exigeant des deux qui décide — à 3 observations par
+ * organisation, dix observations réclament au moins quatre contributeurs, et le
+ * k en réclame cinq.
+ *
+ * Publier ce calcul ne rouvre pas le k-anonymat : il ne parle que de comptages
+ * de cohorte, jamais d'un coût, et reste réservé à l'administration.
+ */
+export function benchmarkShortfall(
+  cell: Pick<BenchmarkCell, 'sample_size' | 'organization_count'>,
+  options: CostBenchmarkOptions = DEFAULT_COST_BENCHMARK_OPTIONS,
+): BenchmarkShortfall {
+  const requiredOrganizations = Math.max(
+    options.minOrganizations,
+    Math.ceil(
+      options.minObservations / Math.max(1, options.maxObservationsPerOrg),
+    ),
+  );
+  return {
+    missing_observations: Math.max(
+      0,
+      options.minObservations - cell.sample_size,
+    ),
+    missing_organizations: Math.max(
+      0,
+      requiredOrganizations - cell.organization_count,
+    ),
+  };
+}
+
 /** Identité d'une cellule de benchmark : type d'ouvrage × bande de surface. */
 export function benchmarkCellKey(cell: {
   work_type_code: string;

@@ -127,7 +127,9 @@ class DimensionCalculator:
         """
         if not image_paths:
             return AnalyzeResponse(
-                status="error", error="No images provided"
+                status="error",
+                error="No images provided",
+                opening_detector=self.opening_detector_mode(),
             )
 
         per_image_results: list[PerImageResult] = []
@@ -141,6 +143,7 @@ class DimensionCalculator:
             return AnalyzeResponse(
                 status="error",
                 error="Failed to process any image",
+                opening_detector=self.opening_detector_mode(),
             )
 
         # Check if any image found a reference
@@ -157,6 +160,7 @@ class DimensionCalculator:
                 confidence_score=0.0,
                 num_images_processed=len(per_image_results),
                 raw_output=raw_output,
+                opening_detector=self.opening_detector_mode(),
             )
 
         if not results_with_dims:
@@ -166,6 +170,7 @@ class DimensionCalculator:
                 error="Reference detected but dimensions could not be computed",
                 num_images_processed=len(per_image_results),
                 raw_output=raw_output,
+                opening_detector=self.opening_detector_mode(),
             )
 
         # Fuse dimensions via median
@@ -217,6 +222,7 @@ class DimensionCalculator:
             openings=opening_schemas,
             num_images_processed=len(per_image_results),
             raw_output=raw_output,
+            opening_detector=self.opening_detector_mode(),
         )
 
     def _process_single_image(
@@ -500,7 +506,7 @@ class DimensionCalculator:
         else:
             return "low"
 
-    def _opening_detector_mode(self) -> str:
+    def opening_detector_mode(self) -> str:
         """Which opening detector produced the boxes: yolo, heuristic or none.
 
         The retraining dataset builder (CV-6) only trusts YOLO boxes as
@@ -542,7 +548,7 @@ class DimensionCalculator:
 
         raw: dict = {
             "num_images_processed": len(results),
-            "opening_detector": self._opening_detector_mode(),
+            "opening_detector": self.opening_detector_mode(),
             "per_image": per_image,
         }
         if opening_groups is not None:

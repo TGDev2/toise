@@ -189,6 +189,7 @@ export class AnalysisService {
       result.confidence_score = data.confidence_score ?? null;
       result.reference_detected = data.reference_detected;
       result.openings = data.openings ?? null;
+      result.opening_detector = data.opening_detector ?? null;
 
       // L'incertitude par dimension (CV-5) est calculée une seule fois à
       // l'écriture (cf. processAnalysis) et persistée sur room_dimensions —

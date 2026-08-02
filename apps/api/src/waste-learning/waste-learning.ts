@@ -61,6 +61,26 @@ export interface WasteLearningOutcome {
   factor_percent: number | null;
   /** Observations retenues, après plafonnement par organisation. */
   sample_size: number;
+  /**
+   * Observations **avant** plafonnement. Sans elle, une cellule bloquée est
+   * indiagnosticable : `sample_size` stagne sans dire si c'est faute de
+   * chantiers ou parce que ceux qui existent viennent tous du même client.
+   */
+  raw_sample_size: number;
+  /** Organisations distinctes contribuant à la cellule. */
+  organization_count: number;
+}
+
+/** Ce qui manque à une cellule pour franchir le seuil de volume. */
+export interface WasteLearningShortfall {
+  /** Observations manquantes, à nombre d'organisations constant. */
+  missing_observations: number;
+  /**
+   * Organisations manquantes. Non nul ⇒ **aucun chantier supplémentaire des
+   * organisations déjà présentes ne débloquera la cellule** : le plafond par
+   * organisation borne l'échantillon à `organization_count × cap`.
+   */
+  missing_organizations: number;
 }
 
 export interface WasteLearningOptions {
@@ -152,6 +172,36 @@ export function organizationObservationCap(
 }
 
 /**
+ * Distance d'une cellule au seuil de volume, exprimée dans les deux unités qui
+ * la commandent réellement. Le plafond par organisation rend les deux
+ * nécessaires : à 2 organisations et un cap de 3, une cellule plafonne à 6
+ * observations retenues et n'apprendra **jamais**, quel que soit le nombre de
+ * chantiers ajoutés. Ne rapporter que les observations manquantes laisserait
+ * croire à une attente qui n'aboutira pas.
+ */
+export function wasteLearningShortfall(
+  outcome: Pick<WasteLearningOutcome, 'sample_size' | 'organization_count'>,
+  options: WasteLearningOptions = DEFAULT_WASTE_LEARNING_OPTIONS,
+): WasteLearningShortfall {
+  // Plancher à 1 : un plafond nul (configuration dégénérée, `minObservations`
+  // sous 3) rend la cellule inapprenable de toute façon — `sample_size` y reste
+  // à 0, donc les deux manques sortent au maximum. Pas de sentinelle à faire
+  // traverser au JSON pour un cas qui n'a pas de vocabulaire à lui.
+  const cap = Math.max(1, organizationObservationCap(options));
+  const requiredOrganizations = Math.ceil(options.minObservations / cap);
+  return {
+    missing_observations: Math.max(
+      0,
+      options.minObservations - outcome.sample_size,
+    ),
+    missing_organizations: Math.max(
+      0,
+      requiredOrganizations - outcome.organization_count,
+    ),
+  };
+}
+
+/**
  * Plafonne le nombre d'observations qu'une même organisation peut peser dans
  * une cellule : sans cela, une entreprise qui enchaîne les mêmes chantiers
  * deviendrait à elle seule la vérité du catalogue pour tous les autres. Les
@@ -187,7 +237,9 @@ function clamp(value: number, min: number, max: number): number {
  * l'étalonnage DTU d'ENG-5 reste la référence et non un simple point de départ.
  *
  * Retourne une ligne par cellule observée, y compris celles écartées, pour que
- * l'admin puisse voir *pourquoi* une cellule n'apprend pas.
+ * l'admin puisse voir *pourquoi* une cellule n'apprend pas. Seules les cellules
+ * `learned` sont persistées (`WasteLearningService.persist`) : les autres ne
+ * vivent que le temps du run, dans son résumé.
  */
 export function learnWasteFactors(
   observations: WasteObservation[],
@@ -217,7 +269,14 @@ export function learnWasteFactors(
     );
     const n = retained.length;
 
-    const cell = { material_id, pose_type, skill_level, sample_size: n };
+    const cell = {
+      material_id,
+      pose_type,
+      skill_level,
+      sample_size: n,
+      raw_sample_size: group.length,
+      organization_count: new Set(retained.map((o) => o.organization_id)).size,
+    };
 
     if (n < options.minObservations) {
       outcomes.push({

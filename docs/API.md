@@ -688,13 +688,19 @@ Vérifier le statut d'un job d'analyse.
     "confidence_score": 0.92,
     "openings": [
       { "type": "door", "width_cm": 90, "height_cm": 204, "confidence": 0.95, "count": 1 }
-    ]
+    ],
+    "opening_detector": "yolo"
   },
   "error_message": null
 }
 ```
 
 **Status possibles :** `pending`, `processing`, `completed`, `failed`
+
+**`opening_detector` :** `yolo` (modèle entraîné), `heuristic` (repli OpenCV en
+l'absence des poids — dimensions approximatives, à faire vérifier), `none`.
+Le `confidence` de chaque ouverture est sur la même échelle 0-1 dans les deux
+modes : ce champ est la seule façon de les distinguer.
 
 ---
 
@@ -2444,9 +2450,30 @@ plus les critères sont retirées.
     "no_change": 2
   },
   "removed": 1,
+  "pending": [
+    {
+      "material_id": "0253530f-f92a-470c-b201-4e0a46b0f50c",
+      "pose_type": "diagonal",
+      "skill_level": "intermediate",
+      "status": "insufficient_volume",
+      "sample_size": 6,
+      "raw_sample_size": 14,
+      "organization_count": 2,
+      "missing_observations": 2,
+      "missing_organizations": 1
+    }
+  ],
   "computed_at": "2026-08-02T02:00:00.000Z"
 }
 ```
+
+`pending` liste les cellules qui n'ont **rien** publié, les plus proches du seuil
+en tête. Elle n'est persistée nulle part : seules les cellules apprises entrent
+en base. `raw_sample_size` est le volume collecté avant plafonnement par
+organisation, `sample_size` ce qui pèse réellement. Un `missing_organizations`
+non nul signifie qu'**aucun chantier supplémentaire des organisations déjà
+présentes ne débloquera la cellule** : le plafond par organisation borne
+l'échantillon.
 
 ---
 

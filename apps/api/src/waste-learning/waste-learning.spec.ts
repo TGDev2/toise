@@ -5,6 +5,7 @@ import {
   median,
   medianAbsoluteDeviation,
   organizationObservationCap,
+  wasteLearningShortfall,
   overlayLearnedWasteFactors,
   WasteObservation,
 } from './waste-learning';
@@ -416,5 +417,56 @@ describe('overlayLearnedWasteFactors', () => {
     ]);
 
     expect(merged[0].factor_percent).toBe(7.5);
+  });
+});
+
+describe("diagnostic d'une cellule qui n'apprend pas", () => {
+  it('rapporte le volume brut et les organisations, pas seulement le retenu', () => {
+    // Dix chantiers d'un seul client : le plafond par organisation n'en retient
+    // que trois. Sans le brut ni le compte d'organisations, la cellule stagne à
+    // `sample_size: 3` sans jamais dire que dix chantiers ont bien été vus.
+    const observations = Array.from({ length: 10 }, (_, i) =>
+      makeObservation({
+        organization_id: 'org-1',
+        observed_at: new Date(2026, 6, i + 1),
+      }),
+    );
+
+    const [outcome] = learnWasteFactors(observations, baselineResolver);
+
+    expect(outcome.status).toBe('insufficient_volume');
+    expect(outcome.sample_size).toBe(3);
+    expect(outcome.raw_sample_size).toBe(10);
+    expect(outcome.organization_count).toBe(1);
+  });
+
+  it('compte les organisations qui pèsent réellement dans la cellule', () => {
+    const [outcome] = learnWasteFactors(spread(4), baselineResolver);
+
+    expect(outcome.organization_count).toBe(4);
+    expect(outcome.raw_sample_size).toBe(4);
+  });
+});
+
+describe('wasteLearningShortfall', () => {
+  it('annonce les organisations manquantes quand le plafond borne la cellule', () => {
+    // Plafond dérivé à 3 pour `minObservations: 8` : deux organisations
+    // plafonnent à 6 observations retenues. Ne rapporter que « 2 observations
+    // manquantes » laisserait attendre un déblocage qui n'arrivera jamais.
+    expect(
+      wasteLearningShortfall({ sample_size: 6, organization_count: 2 }),
+    ).toEqual({ missing_observations: 2, missing_organizations: 1 });
+  });
+
+  it('ne réclame plus rien à une cellule qui a franchi le seuil', () => {
+    expect(
+      wasteLearningShortfall({ sample_size: 8, organization_count: 3 }),
+    ).toEqual({ missing_observations: 0, missing_organizations: 0 });
+  });
+
+  it('ne réclame aucune organisation de plus quand seul le volume manque', () => {
+    expect(
+      wasteLearningShortfall({ sample_size: 5, organization_count: 5 }),
+    ).toEqual({ missing_observations: 3, missing_organizations: 0 });
   });
 });

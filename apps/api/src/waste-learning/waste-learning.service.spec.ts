@@ -341,4 +341,63 @@ describe('WasteLearningService', () => {
       expect(transactionManagerMock.getRepository).toHaveBeenCalled();
     });
   });
+  // Une cellule qui n'apprend pas n'est ecrite nulle part : sans le detail dans
+  // le resume du run, `by_status` annonce « N cellules sous le seuil » sans dire
+  // lesquelles ni a quelle distance -- indistinguable d'une brique morte.
+  describe('visibilite des cellules non apprises', () => {
+    it('nomme la cellule bloquee et ce qui lui manque', async () => {
+      seed(4, { estimated: 10, actual: 11 });
+
+      const summary = await service.run();
+
+      expect(summary.by_status.insufficient_volume).toBe(1);
+      expect(summary.pending).toHaveLength(1);
+      expect(summary.pending[0]).toEqual(
+        expect.objectContaining({
+          material_id: MATERIAL_ID,
+          pose_type: 'diagonal',
+          skill_level: 'intermediate',
+          status: 'insufficient_volume',
+          sample_size: 4,
+          raw_sample_size: 4,
+          organization_count: 4,
+          missing_observations: 4,
+          missing_organizations: 0,
+        }),
+      );
+    });
+
+    it('distingue le manque de chantiers du manque de clients distincts', async () => {
+      // Six chantiers, tous du meme client : le plafond par organisation en
+      // retient 3. Aucun chantier supplementaire de ce client ne debloquera la
+      // cellule -- seul `missing_organizations` le dit.
+      seed(6, { estimated: 10, actual: 11 });
+      projectQueryBuilderMock.getRawMany.mockResolvedValue(
+        Array.from({ length: 6 }, (_, i) => ({
+          id: `proj-${i}`,
+          organization_id: 'org-unique',
+        })),
+      );
+
+      const summary = await service.run();
+
+      expect(summary.pending[0]).toEqual(
+        expect.objectContaining({
+          sample_size: 3,
+          raw_sample_size: 6,
+          organization_count: 1,
+          missing_organizations: 2,
+        }),
+      );
+    });
+
+    it('ne liste pas les cellules qui ont appris', async () => {
+      seed(12, { estimated: 10, actual: 11 });
+
+      const summary = await service.run();
+
+      expect(summary.by_status.learned).toBe(1);
+      expect(summary.pending).toEqual([]);
+    });
+  });
 });

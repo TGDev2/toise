@@ -29,6 +29,13 @@ export interface DetectedOpening {
   confidence: number;
 }
 
+/**
+ * Detecteur ayant produit les ouvertures. `heuristic` = repli OpenCV : des
+ * contours geometriques, pas une detection apprise — et le `confidence` de
+ * chaque boite est sur la meme echelle dans les deux cas.
+ */
+export type OpeningDetectorMode = 'yolo' | 'heuristic' | 'none';
+
 /** Calibration reference: standard door, or a universal planar marker. */
 export type ReferenceType = 'door' | 'a4' | 'card';
 
@@ -46,6 +53,7 @@ interface JobStatusResponse {
   confidence_score?: number | null;
   reference_detected?: boolean;
   openings?: DetectedOpening[] | null;
+  opening_detector?: OpeningDetectorMode | null;
   error_message?: string | null;
 }
 
@@ -61,6 +69,7 @@ interface UseAnalysisReturn {
   confidence: string | null;
   confidenceScore: number | null;
   detectedOpenings: DetectedOpening[];
+  openingDetector: OpeningDetectorMode | null;
   referenceDetected: boolean;
   error: string | null;
   startAnalysis: (referenceObject?: ReferenceObjectInput) => Promise<void>;
@@ -76,6 +85,8 @@ export function useAnalysis(projectId: string): UseAnalysisReturn {
   const [confidence, setConfidence] = useState<string | null>(null);
   const [confidenceScore, setConfidenceScore] = useState<number | null>(null);
   const [detectedOpenings, setDetectedOpenings] = useState<DetectedOpening[]>([]);
+  const [openingDetector, setOpeningDetector] =
+    useState<OpeningDetectorMode | null>(null);
   const [referenceDetected, setReferenceDetected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
@@ -97,6 +108,7 @@ export function useAnalysis(projectId: string): UseAnalysisReturn {
     setConfidence(null);
     setConfidenceScore(null);
     setDetectedOpenings([]);
+    setOpeningDetector(null);
     setReferenceDetected(false);
     setError(null);
     setJobId(null);
@@ -123,6 +135,7 @@ export function useAnalysis(projectId: string): UseAnalysisReturn {
             setConfidence(data.confidence ?? null);
             setConfidenceScore(data.confidence_score ?? null);
             setDetectedOpenings(data.openings ?? []);
+            setOpeningDetector(data.opening_detector ?? null);
             setReferenceDetected(data.reference_detected ?? false);
           } else if (data.reference_detected === false) {
             setStatus('no_reference');
@@ -166,6 +179,7 @@ export function useAnalysis(projectId: string): UseAnalysisReturn {
       setConfidence(null);
       setConfidenceScore(null);
       setDetectedOpenings([]);
+      setOpeningDetector(null);
       setProgressPct(0);
 
       try {
@@ -199,6 +213,7 @@ export function useAnalysis(projectId: string): UseAnalysisReturn {
     confidence,
     confidenceScore,
     detectedOpenings,
+    openingDetector,
     referenceDetected,
     error,
     startAnalysis,

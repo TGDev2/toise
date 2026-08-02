@@ -178,6 +178,7 @@ n'est pas trouvé, la réponse reste `status="no_reference"`.
     }
   ],
   "num_images_processed": 2,
+  "opening_detector": "yolo",
   "raw_output": { ... },
   "error": null
 }
@@ -185,7 +186,10 @@ n'est pas trouvé, la réponse reste `status="no_reference"`.
 
 **Statuts possibles :** `success`, `no_reference`, `error`
 
-**Niveaux de confiance :** `high` (>= 0.7), `medium` (>= 0.4), `low` (< 0.4)
+**Niveaux de confiance :** `high` (>= 0.95), `medium` (>= 0.85), `low` (< 0.85)
+— cf. `DimensionCalculator._score_to_level`.
+
+**`opening_detector` :** `yolo` (modèle entraîné), `heuristic` (repli OpenCV, dimensions approximatives), `none` (aucun détecteur monté). Le `confidence` de chaque ouverture est sur la même échelle 0-1 dans les deux modes : c'est ce champ, et lui seul, qui dit ce qui a produit les boîtes.
 
 ## Pipeline d'analyse
 

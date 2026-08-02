@@ -20,15 +20,35 @@ import {
   BenchmarkComparison,
   BenchmarkOverall,
   benchmarkCellKey,
+  benchmarkShortfall,
   buildCostBenchmarks,
   compareToReference,
   CostObservation,
   resolveSurfaceBand,
   rollUpComparisons,
+  SurfaceBand,
 } from './cost-benchmark';
 
 /** Clé de verrou consultatif propre à ce job (distincte de DATA-3 et des migrations). */
 const COST_BENCHMARK_LOCK_KEY = 4_071_205_004;
+
+/**
+ * Cohorte non publiable, et ce qui lui manque.
+ *
+ * **Rien de tout ceci n'est persisté** : ces lignes sont recalculées à chaque
+ * run et ne quittent pas son résumé, réservé à l'administration. La règle du
+ * module pur tient : une cellule sous le seuil n'existe nulle part de façon
+ * durable, et aucun coût n'apparaît ici — seulement des comptages de cohorte.
+ */
+export interface PendingBenchmarkCell {
+  work_type_code: string;
+  surface_band: SurfaceBand;
+  status: BenchmarkCellStatus;
+  sample_size: number;
+  organization_count: number;
+  missing_observations: number;
+  missing_organizations: number;
+}
 
 export interface CostBenchmarkRunSummary {
   /** Ouvrages exploitables extraits des chantiers terminés. */
@@ -38,6 +58,8 @@ export interface CostBenchmarkRunSummary {
   by_status: Record<BenchmarkCellStatus, number>;
   /** Cellules retirées faute de continuer à satisfaire les seuils. */
   removed: number;
+  /** Cohortes non publiées, les plus proches du seuil en tête. */
+  pending: PendingBenchmarkCell[];
   computed_at: string;
 }
 
@@ -96,8 +118,15 @@ export class CostBenchmarkService {
   async runWeekly(): Promise<void> {
     try {
       const summary = await this.run();
+      // Sans la distance au seuil, « 0 cellule publiée » se lit pareil au
+      // premier chantier et au trois centième : le log ne dirait pas si la
+      // cohorte progresse.
+      const closest = summary.pending[0];
       this.logger.log(
-        `Benchmark de coûts : ${summary.by_status.published} cellule(s) publiée(s) sur ${summary.cells}, ${summary.observations} observation(s), ${summary.removed} retrait(s).`,
+        `Benchmark de coûts : ${summary.by_status.published} cellule(s) publiée(s) sur ${summary.cells}, ${summary.observations} observation(s), ${summary.removed} retrait(s).` +
+          (closest
+            ? ` ${summary.pending.length} cohorte(s) en attente, la plus proche à ${closest.missing_observations} observation(s) et ${closest.missing_organizations} organisation(s).`
+            : ''),
       );
     } catch (err) {
       // Un rejet non capturé dans un cron tuerait le process : on trace et on
@@ -129,8 +158,33 @@ export class CostBenchmarkService {
       cells: cells.length,
       by_status: byStatus,
       removed,
+      pending: this.summarizePending(cells),
       computed_at: computedAt.toISOString(),
     };
+  }
+
+  /**
+   * Les cohortes qui ne publient pas, de la plus proche du seuil à la plus
+   * lointaine — le manque d'organisations d'abord : c'est le seul que le temps
+   * ne comble pas si les mêmes clients reviennent.
+   */
+  private summarizePending(cells: BenchmarkCell[]): PendingBenchmarkCell[] {
+    return cells
+      .filter((c) => c.status !== 'published')
+      .map((c) => ({
+        work_type_code: c.work_type_code,
+        surface_band: c.surface_band,
+        status: c.status,
+        sample_size: c.sample_size,
+        organization_count: c.organization_count,
+        ...benchmarkShortfall(c),
+      }))
+      .sort(
+        (a, b) =>
+          a.missing_organizations - b.missing_organizations ||
+          a.missing_observations - b.missing_observations ||
+          a.work_type_code.localeCompare(b.work_type_code),
+      );
   }
 
   async findAll(): Promise<CostBenchmark[]> {

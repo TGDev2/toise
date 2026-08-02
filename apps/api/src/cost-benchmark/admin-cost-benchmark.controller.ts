@@ -21,6 +21,11 @@ interface PublishedCellDto {
  * Les cellules écartées (volume ou anonymat insuffisant) n'apparaissent que
  * dans le retour de `POST run`, calculé à la volée — savoir qu'une cohorte
  * approche du seuil ne justifie pas d'en conserver la trace.
+ *
+ * Ce retour porte le détail par cohorte (`pending`) : comptages et distance aux
+ * seuils, jamais un coût. Sans lui, un `by_status` disant « 12 cellules sous le
+ * seuil » se lit identiquement que la cohorte progresse ou qu'elle stagne, et le
+ * seul recours serait de requêter la base à la main.
  */
 @Controller('admin/cost-benchmarks')
 @UseGuards(FirebaseAuthGuard, AdminGuard)

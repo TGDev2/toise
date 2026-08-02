@@ -1,7 +1,10 @@
 'use client';
 
 import { RoomPreview } from '@/components/dimensions/RoomPreview';
-import type { DetectedOpening } from '@/hooks/useAnalysis';
+import type {
+  DetectedOpening,
+  OpeningDetectorMode,
+} from '@/hooks/useAnalysis';
 import { formatDimensionWithUncertainty } from '@/lib/format-dimension';
 
 interface AnalysisResultPanelProps {
@@ -14,6 +17,8 @@ interface AnalysisResultPanelProps {
   widthUncertaintyCm?: number | null;
   heightUncertaintyCm?: number | null;
   openings?: DetectedOpening[];
+  /** Detecteur ayant produit ces ouvertures (CV : modele ou repli OpenCV). */
+  openingDetector?: OpeningDetectorMode | null;
   onAccept: () => void;
   onEdit: () => void;
 }
@@ -33,6 +38,7 @@ export function AnalysisResultPanel({
   widthUncertaintyCm,
   heightUncertaintyCm,
   openings = [],
+  openingDetector,
   onAccept,
   onEdit,
 }: AnalysisResultPanelProps) {
@@ -106,6 +112,19 @@ export function AnalysisResultPanel({
           <p className="mb-1 text-xs font-medium text-stone-600">
             Ouvertures détectées
           </p>
+          {/*
+            Le repli OpenCV cherche des quadrilateres dans les contours de
+            l'image ; ses dimensions sont borneees par des minima et des maxima
+            en dur, et sa `confidence` est un score geometrique pose sur la
+            meme echelle 0-1 que celle du modele. Presenter les deux a
+            l'identique fait passer une approximation pour une mesure.
+          */}
+          {openingDetector === 'heuristic' && (
+            <p className="mb-1 text-xs text-amber-700">
+              Détection approximative (repli sans modèle) : vérifiez ces
+              ouvertures de près.
+            </p>
+          )}
           {openings.map((o, i) => (
             <div
               key={`${o.type}-${i}`}

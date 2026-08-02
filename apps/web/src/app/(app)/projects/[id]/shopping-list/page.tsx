@@ -47,6 +47,10 @@ export default function ShoppingListPage() {
   const [budgetSummary, setBudgetSummary] = useState<BudgetSummary | null>(null);
   const [ecoData, setEcoData] = useState<EcoSuggestionsResponse | null>(null);
   const [benchmark, setBenchmark] = useState<CostBenchmarkResponse | null>(null);
+  // Sans cet état, une panne réseau et une cohorte insuffisante produisent le
+  // même écran : rien. L'utilisateur ne peut alors pas distinguer une fonction
+  // qui attend des données d'une fonction cassée.
+  const [benchmarkFailed, setBenchmarkFailed] = useState(false);
   const [comparing, setComparing] = useState(false);
   const [comparisonData, setComparisonData] = useState<PriceComparisonResponse | null>(null);
   const [buyLinks, setBuyLinks] = useState<Map<string, BuyLinkItem>>(new Map());
@@ -99,8 +103,12 @@ export default function ShoppingListPage() {
         `/projects/${projectId}/cost-benchmark`,
       );
       setBenchmark(result);
+      setBenchmarkFailed(false);
     } catch {
-      // DATA-4 : comparaison secondaire, un échec ne doit jamais bloquer la liste.
+      // DATA-4 : comparaison secondaire, un échec ne doit jamais bloquer la
+      // liste — mais il doit se voir, sous peine de passer pour une pénurie de
+      // cohorte qui, elle, ne se répare pas en rechargeant la page.
+      setBenchmarkFailed(true);
     }
   }, [benchmarkAllowed, projectId]);
 
@@ -627,6 +635,7 @@ export default function ShoppingListPage() {
 
           <CostBenchmarkPanel
             benchmark={benchmark}
+            benchmarkFailed={benchmarkFailed}
             benchmarkAllowed={benchmarkAllowed}
             onShowPaywall={handleShowBenchmarkPaywall}
           />

@@ -48,6 +48,7 @@ describe('CostBenchmarkPanel', () => {
     render(
       <CostBenchmarkPanel
         benchmark={makeBenchmark()}
+        benchmarkFailed={false}
         benchmarkAllowed
         onShowPaywall={jest.fn()}
       />,
@@ -71,6 +72,7 @@ describe('CostBenchmarkPanel', () => {
             position: 'above',
           },
         })}
+        benchmarkFailed={false}
         benchmarkAllowed
         onShowPaywall={jest.fn()}
       />,
@@ -91,6 +93,7 @@ describe('CostBenchmarkPanel', () => {
             position: 'around',
           },
         })}
+        benchmarkFailed={false}
         benchmarkAllowed
         onShowPaywall={jest.fn()}
       />,
@@ -106,6 +109,7 @@ describe('CostBenchmarkPanel', () => {
     render(
       <CostBenchmarkPanel
         benchmark={makeBenchmark()}
+        benchmarkFailed={false}
         benchmarkAllowed
         onShowPaywall={jest.fn()}
       />,
@@ -123,6 +127,7 @@ describe('CostBenchmarkPanel', () => {
         benchmark={makeBenchmark({
           work_types_without_reference: ['Carrelage sol'],
         })}
+        benchmarkFailed={false}
         benchmarkAllowed
         onShowPaywall={jest.fn()}
       />,
@@ -131,26 +136,63 @@ describe('CostBenchmarkPanel', () => {
     expect(screen.getByText(/Carrelage sol/)).toBeInTheDocument();
   });
 
-  it('n’affiche rien tant qu’aucune cohorte n’est publiable', () => {
-    const { container } = render(
+  it('dit qu’il attend une cohorte, sans publier le moindre chiffre', () => {
+    render(
       <CostBenchmarkPanel
         benchmark={makeBenchmark({
           available: false,
           overall: null,
           comparisons: [],
+          work_types_without_reference: ['Carrelage sol'],
         })}
+        benchmarkFailed={false}
         benchmarkAllowed
         onShowPaywall={jest.fn()}
       />,
     );
 
-    expect(container).toBeEmptyDOMElement();
+    expect(screen.getByText(/Pas encore de référence/i)).toBeInTheDocument();
+    expect(screen.getByText(/Carrelage sol/)).toBeInTheDocument();
+    // Le k-anonymat tient : l'attente s'annonce, aucune médiane ne fuit.
+    expect(screen.queryByText(/EUR/)).not.toBeInTheDocument();
+  });
+
+  // Une panne réseau et une pénurie de cohorte produisaient le même écran vide.
+  // L'une se répare en rechargeant, l'autre non : les confondre laisse
+  // l'utilisateur sans le moindre geste utile.
+  it('distingue une panne de chargement d’une cohorte insuffisante', () => {
+    render(
+      <CostBenchmarkPanel
+        benchmark={null}
+        benchmarkFailed
+        benchmarkAllowed
+        onShowPaywall={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/Comparaison indisponible/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Pas encore de référence/i)).not.toBeInTheDocument();
+  });
+
+  it('ne montre pas la panne à qui n’a pas le palier', () => {
+    render(
+      <CostBenchmarkPanel
+        benchmark={null}
+        benchmarkFailed
+        benchmarkAllowed={false}
+        onShowPaywall={jest.fn()}
+      />,
+    );
+
+    expect(screen.queryByText(/Comparaison indisponible/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Passer à Pro/i })).toBeInTheDocument();
   });
 
   it('n’affiche rien avant que la réponse soit chargée', () => {
     const { container } = render(
       <CostBenchmarkPanel
         benchmark={null}
+        benchmarkFailed={false}
         benchmarkAllowed
         onShowPaywall={jest.fn()}
       />,
@@ -164,6 +206,7 @@ describe('CostBenchmarkPanel', () => {
     render(
       <CostBenchmarkPanel
         benchmark={makeBenchmark()}
+        benchmarkFailed={false}
         benchmarkAllowed={false}
         onShowPaywall={onShowPaywall}
       />,
