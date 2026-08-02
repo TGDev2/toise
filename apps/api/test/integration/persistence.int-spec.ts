@@ -237,20 +237,32 @@ describe('Persistance (intégration, PostgreSQL réel)', () => {
       ).toBe(1);
     });
 
-    it("efface l'organisation et les projets d'un utilisateur supprimé, sans toucher aux autres", async () => {
+    it("refuse d'effacer un utilisateur qui possède encore une organisation", async () => {
+      const mine = await seedProject(dataSource, 'user-a');
+
+      // `FK_organizations_owner` est passé en RESTRICT : la suppression nue
+      // n'est plus un chemin praticable, c'est le service de suppression de
+      // compte qui doit démonter l'organisation en premier.
+      await expect(
+        dataSource.query('DELETE FROM users WHERE id = $1', [mine.userId]),
+      ).rejects.toThrow(/FK_organizations_owner/);
+
+      // Le refus est total : rien n'a été effacé au passage.
+      expect(await countWhere(dataSource, 'users', 'id', mine.userId)).toBe(1);
+      expect(
+        await countWhere(dataSource, 'projects', 'id', mine.projectId),
+      ).toBe(1);
+    });
+
+    it("efface les projets d'un utilisateur avec son organisation, sans toucher aux autres", async () => {
       const mine = await seedProject(dataSource, 'user-a');
       const other = await seedProject(dataSource, 'user-b');
 
+      await dataSource.query('DELETE FROM organizations WHERE id = $1', [
+        mine.organizationId,
+      ]);
       await dataSource.query('DELETE FROM users WHERE id = $1', [mine.userId]);
 
-      expect(
-        await countWhere(
-          dataSource,
-          'organizations',
-          'id',
-          mine.organizationId,
-        ),
-      ).toBe(0);
       expect(
         await countWhere(dataSource, 'projects', 'id', mine.projectId),
       ).toBe(0);
