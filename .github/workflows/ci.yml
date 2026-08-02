@@ -139,26 +139,30 @@ jobs:
           python-version: '3.11'
       - name: Vérifie la syntaxe Python
         run: python -m compileall app training tests
-      - name: Installe cv2/numpy + pytest
-        # Le détecteur de référence et le pipeline de dimensions ne dépendent
-        # que d'OpenCV/numpy/pydantic/Pillow/pillow-heif (pas de
-        # torch/transformers), donc on n'installe pas tout requirements.txt
-        # (lourd) pour la CI. `pillow-heif` en fait partie parce que le
-        # chargement d'image HEIC est justement ce qui manquait sans qu'aucun
-        # test ne puisse le voir.
+      - name: Installe les dépendances de test (sans les poids lourds ML)
+        # Tout `requirements.txt` **sauf** torch/transformers/ultralytics :
+        # plusieurs centaines de Mo, et seul `app/services/depth_estimator.py`
+        # les importe — aucun test ne le charge.
         #
-        # En revanche les versions sont **extraites de requirements.txt**, pas
-        # ressaisies : une liste allégée qu'on ré-épingle à la main se
-        # désynchronise, et une CI verte atteste alors du comportement d'un
-        # OpenCV qui ne tournera jamais en production. Les seuils de
-        # `HoughLinesP` et consorts bougent entre versions mineures — c'est
-        # exactement l'API dont dépend la détection de lignes du pipeline.
+        # Exclure plutôt qu'énumérer, délibérément. La liste blanche
+        # précédente a été prise en défaut deux fois : d'abord sur un OpenCV
+        # non épinglé, puis quand `test_service_auth.py` a importé `fastapi`,
+        # absent de la liste — la CI est alors rouge sur un import, pas sur un
+        # défaut. Ici l'oubli est sûr : une nouvelle dépendance légère est
+        # installée sans que personne n'ait à y penser, et seul l'ajout d'un
+        # poids lourd demande une décision explicite, à un endroit visible.
+        #
+        # Les versions restent **celles de requirements.txt**, jamais
+        # ressaisies : les seuils de `HoughLinesP` et consorts bougent entre
+        # versions mineures d'OpenCV, et une CI verte sur une autre version
+        # atteste du comportement d'un binaire qui ne tournera jamais en prod.
         run: |
           set -euo pipefail
-          pins=$(grep -E '^(opencv-python-headless|numpy|pydantic|pydantic-settings|Pillow|pillow-heif)==' requirements.txt)
-          test "$(printf '%s\n' "$pins" | wc -l)" -eq 6 \
-            || { echo "requirements.txt a changé : le sous-ensemble CI ne résout plus 6 paquets"; printf '%s\n' "$pins"; exit 1; }
-          printf 'Versions CI (issues de requirements.txt) :\n%s\n' "$pins"
-          printf '%s\n' "$pins" | xargs pip install "pytest==8.3.4"
+          grep -vE '^(torch|transformers|ultralytics)==' requirements.txt > /tmp/requirements-ci.txt
+          printf 'Dépendances CI (issues de requirements.txt) :\n'
+          # `cat` et non un second `grep` : sous `set -e`, un grep sans
+          # correspondance renvoie 1 et tuerait l'étape pour un affichage.
+          cat /tmp/requirements-ci.txt
+          pip install -r /tmp/requirements-ci.txt "pytest==8.3.4"
       - name: Tests CV
         run: pytest tests -q
