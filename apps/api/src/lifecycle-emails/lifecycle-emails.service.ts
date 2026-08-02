@@ -20,12 +20,13 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * BACKLOG PLAT-2 : e-mails de cycle de vie. Sweep quotidien (même patron que
- * QuoteRemindersService, PRO-3) couvrant 4 déclencheurs indépendants :
- * onboarding J+1/J+3, projet abandonné à mi-parcours, fin d'essai Pro.
+ * QuoteRemindersService, PRO-3) couvrant 5 déclencheurs indépendants :
+ * onboarding J+1/J+3, projet abandonné à mi-parcours, chantier estimé jamais
+ * clôturé (DATA-5), fin d'essai Pro.
  *
- * Les fenêtres des 3 sweeps rétrospectifs (onboarding ×2, abandon) sont
- * bornées haut ET bas (contrairement à PRO-3 qui n'a qu'un seuil bas) : sans
- * borne haute, le premier déploiement enverrait ces e-mails à tous les
+ * Les fenêtres des 4 sweeps rétrospectifs (onboarding ×2, abandon, clôture)
+ * sont bornées haut ET bas (contrairement à PRO-3 qui n'a qu'un seuil bas) :
+ * sans borne haute, le premier déploiement enverrait ces e-mails à tous les
  * comptes/projets existants d'un coup.
  *
  * Politique de stamp (table lifecycle_email_sends) : identique à PRO-3, la
@@ -60,7 +61,91 @@ export class LifecycleEmailsService {
     await this.sweepOnboarding(LifecycleEmailType.ONBOARDING_D1, 2, 1);
     await this.sweepOnboarding(LifecycleEmailType.ONBOARDING_D3, 4, 3);
     await this.sweepAbandonedProjects();
+    await this.sweepCloseoutDue();
     await this.sweepTrialEndingSoon();
+  }
+
+  // --- Chantier estimé, jamais clôturé (DATA-5) ------------------------------
+
+  /**
+   * Relance unique sur un projet resté `estimated`.
+   *
+   * Fenêtre 14–45 jours après la dernière activité : avant 14 jours le
+   * chantier est probablement encore en cours, après 45 la relance arrive trop
+   * tard pour les enseignes au délai le plus court. Bornée des deux côtés,
+   * comme les trois autres sweeps rétrospectifs — sans borne haute, le premier
+   * déploiement écrirait à tous les projets estimés de l'historique.
+   *
+   * Aucun recouvrement avec `sweepAbandonedProjects` : celui-là ne regarde que
+   * `draft` et `active`, celui-ci que `estimated`. Un projet ne peut pas être
+   * dans les deux ensembles, et le stamp par (projet × type) rend de toute
+   * façon chaque relance unique.
+   */
+  private async sweepCloseoutDue(): Promise<void> {
+    const low = new Date();
+    low.setDate(low.getDate() - 45);
+    const high = new Date();
+    high.setDate(high.getDate() - 14);
+
+    const projects = await this.projectRepo.find({
+      where: {
+        updated_at: Between(low, high),
+        status: ProjectStatus.ESTIMATED,
+        deleted_at: IsNull(),
+      },
+      relations: ['user'],
+    });
+
+    // Même réserve que pour la relance d'abandon : la relance est nominative,
+    // un projet dont l'auteur a supprimé son compte n'a plus de destinataire.
+    const candidates = projects.filter((p): p is Project & { user: User } =>
+      Boolean(p.user?.email),
+    );
+    if (candidates.length === 0) return;
+
+    const alreadySent = await this.findSentProjectIds(
+      LifecycleEmailType.CLOSEOUT_DUE,
+      candidates.map((p) => p.id),
+    );
+    const due = candidates.filter((p) => !alreadySent.has(p.id));
+
+    for (const project of due) {
+      try {
+        await this.sendCloseoutDueEmail(project);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.error(
+          `Echec de la relance de clôture pour le projet ${project.id}: ${message}`,
+        );
+      }
+    }
+  }
+
+  private async sendCloseoutDueEmail(
+    project: Project & { user: User },
+  ): Promise<void> {
+    try {
+      await this.emailService.sendCloseoutDueEmail(project.user.email!, {
+        projectName: project.name,
+        closeoutUrl: `${this.publicUrl}/projects/${project.id}/shopping-list/closeout`,
+      });
+      this.analyticsService.track(
+        AnalyticsEventName.CLOSEOUT_DUE_EMAIL_SENT,
+        project.user.id,
+        { project_id: project.id },
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Echec de l'e-mail de clôture pour le projet ${project.id}: ${message}`,
+      );
+    }
+
+    await this.stamp(
+      project.user.id,
+      project.id,
+      LifecycleEmailType.CLOSEOUT_DUE,
+    );
   }
 
   // --- Onboarding J+1 / J+3 -------------------------------------------------

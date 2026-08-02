@@ -15,6 +15,11 @@ export enum AnalyticsEventName {
   PAYMENT_FAILED = 'payment_failed',
   SUBSCRIPTION_CANCELED = 'subscription_canceled',
   BUDGET_TRACKED = 'budget_tracked',
+  // DATA-5 : clôture par les quantités réellement achetées. Distinct de
+  // `budget_tracked`, qui ne dit rien du taux de déclaration — or c'est ce taux,
+  // et non le nombre de budgets figés, qui décide si DATA-3 et DATA-4 auront un
+  // jour de quoi tourner.
+  PROJECT_CLOSED_OUT = 'project_closed_out',
   REFERRAL_REDEEMED = 'referral_redeemed',
   REFERRAL_CREDIT_GRANTED = 'referral_credit_granted',
 
@@ -23,6 +28,10 @@ export enum AnalyticsEventName {
   ONBOARDING_D3_EMAIL_SENT = 'onboarding_d3_email_sent',
   PROJECT_ABANDONED_EMAIL_SENT = 'project_abandoned_email_sent',
   TRIAL_ENDING_EMAIL_SENT = 'trial_ending_email_sent',
+  // DATA-5 : relance de clôture. Rapproché de `project_closed_out`, il donne le
+  // taux de conversion de la relance — la mesure qui décide si l'hypothèse
+  // « l'utilisateur revient » tient.
+  CLOSEOUT_DUE_EMAIL_SENT = 'closeout_due_email_sent',
 
   // MOB-1 : mesure de l'adoption PWA, préalable à l'arbitrage MOB-2 (app native).
   // `pwa_session_start` porte à lui seul la part de sessions standalone et la

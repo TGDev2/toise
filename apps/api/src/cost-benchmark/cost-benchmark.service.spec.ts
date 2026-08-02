@@ -20,6 +20,13 @@ interface ItemSpec {
   material_id: string;
   units_needed?: number;
   real_unit_price?: number | null;
+  /**
+   * DATA-5 : quantité déclarée à la clôture. Par défaut égale à
+   * `units_needed` — le coût publié est celui qui a été engagé, donc la
+   * quantité réellement achetée. `null` reproduit une ligne jamais déclarée,
+   * dont on ne connaît que la quantité prévue.
+   */
+  purchased_units?: number | null;
 }
 
 function makeEstimation(index: number, lines: LineSpec[]): EstimationResult {
@@ -54,6 +61,11 @@ function makeShoppingList(
       material_items: items.map((i) => ({
         material_id: i.material_id,
         units_needed: i.units_needed ?? 1,
+        is_manually_adjusted: false,
+        purchased_units:
+          i.purchased_units === undefined
+            ? (i.units_needed ?? 1)
+            : i.purchased_units,
         real_unit_price:
           i.real_unit_price === undefined ? 10 : i.real_unit_price,
       })),
@@ -312,6 +324,37 @@ describe('CostBenchmarkService', () => {
       const summary = await observationsFor(
         makeShoppingList(1, [
           { material_id: 'mat-paint', units_needed: 1, real_unit_price: null },
+          { material_id: 'mat-tile', units_needed: 1, real_unit_price: 400 },
+        ]),
+        makeEstimation(1, [
+          { material_id: 'mat-paint', work_type_code: 'painting' },
+          {
+            material_id: 'mat-tile',
+            work_type_code: 'tiling',
+            work_item_id: 'wi-2',
+          },
+        ]),
+      );
+
+      expect(summary.observations).toBe(1);
+    });
+
+    /**
+     * DATA-5 — le benchmark publie des « coûts réels constatés ». Sans
+     * déclaration, on ne connaît que la quantité *prévue* : multiplier un prix
+     * réel par une quantité prévue et publier le résultat sous ce libellé
+     * serait le même abus de langage que le lot corrige ailleurs. L'ouvrage
+     * est écarté, pas approximé — exactement comme un ouvrage sans prix.
+     */
+    it('écarte un ouvrage dont la quantité achetée n’a pas été déclarée', async () => {
+      const summary = await observationsFor(
+        makeShoppingList(1, [
+          {
+            material_id: 'mat-paint',
+            units_needed: 1,
+            purchased_units: null,
+            real_unit_price: 200,
+          },
           { material_id: 'mat-tile', units_needed: 1, real_unit_price: 400 },
         ]),
         makeEstimation(1, [

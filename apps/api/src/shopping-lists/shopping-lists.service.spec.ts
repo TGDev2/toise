@@ -691,7 +691,20 @@ describe('ShoppingListsService.finalizeBudgetSummary', () => {
     );
   });
 
-  it('ne déclenche ni COMPLETED ni le carnet si des articles restent sans prix réel', async () => {
+  /**
+   * DATA-5 — inversion assumée du contrat.
+   *
+   * Ces deux cas exigeaient auparavant un rejet : une seule ligne sans prix
+   * réel bloquait la clôture. C'est ce qui rendait la boucle infermable — le
+   * carnet, le benchmark, les facteurs de perte appris et le partage
+   * communauté attendaient tous une saisie exhaustive que rien ne motivait.
+   *
+   * Le chantier se clôture désormais sur les **quantités**. Ce que le contrôle
+   * protégeait — la communauté ne doit pas publier un total sous-évalué —
+   * n'est pas perdu : `is_complete` continue de dire la vérité sur le
+   * tarifage, et c'est lui que `CommunityService.submitProject` exige.
+   */
+  it('clôture un chantier dont des articles n’ont pas de prix réel', async () => {
     shoppingListRepoMock.findOne.mockResolvedValue({
       id: 'shopping-list-1',
       estimation_id: 'estimation-1',
@@ -699,23 +712,31 @@ describe('ShoppingListsService.finalizeBudgetSummary', () => {
         material_items: [{ material_id: 'mat-paint', real_unit_price: null }],
         complementary_items: [],
       },
+      budget_summary_json: null,
     });
 
-    await expect(
-      service.finalizeBudgetSummary('project-1', 'org-1', 'user-1'),
-    ).rejects.toThrow();
+    const summary = await service.finalizeBudgetSummary(
+      'project-1',
+      'org-1',
+      'user-1',
+    );
 
-    expect(projectsServiceMock.updateStatus).not.toHaveBeenCalled();
-    expect(logbookServiceMock.recordChantierCompletion).not.toHaveBeenCalled();
+    expect(summary.is_complete).toBe(false);
+    expect(projectsServiceMock.updateStatus).toHaveBeenCalledWith(
+      'project-1',
+      ProjectStatus.COMPLETED,
+      expect.anything(),
+    );
+    expect(logbookServiceMock.recordChantierCompletion).toHaveBeenCalled();
   });
 
   /**
-   * Le cœur du constat 2.7 : le contrôle ne regardait que `material_items`. Un
-   * complémentaire non tarifé produisait un résumé `is_complete: false`, qui
-   * était persisté quand même — le projet passait `COMPLETED` et la communauté
-   * publiait un total sous-évalué.
+   * Le constat 2.7 portait sur une divergence : le contrôle ne regardait que
+   * `material_items`, si bien qu'un complémentaire non tarifé passait pour
+   * complet. La divergence reste fermée — `is_complete` compte les deux blocs —
+   * mais elle ne bloque plus la clôture.
    */
-  it('refuse de finaliser quand un complémentaire n’a pas de prix', async () => {
+  it('compte les complémentaires non tarifés dans is_complete sans bloquer', async () => {
     shoppingListRepoMock.findOne.mockResolvedValue({
       id: 'shopping-list-1',
       estimation_id: 'estimation-1',
@@ -740,13 +761,16 @@ describe('ShoppingListsService.finalizeBudgetSummary', () => {
       budget_summary_json: null,
     });
 
-    await expect(
-      service.finalizeBudgetSummary('project-1', 'org-1', 'user-1'),
-    ).rejects.toThrow(/1 article/);
+    const summary = await service.finalizeBudgetSummary(
+      'project-1',
+      'org-1',
+      'user-1',
+    );
 
-    expect(shoppingListRepoMock.save).not.toHaveBeenCalled();
-    expect(projectsServiceMock.updateStatus).not.toHaveBeenCalled();
-    expect(logbookServiceMock.recordChantierCompletion).not.toHaveBeenCalled();
+    expect(summary.items_priced).toBe(1);
+    expect(summary.items_total).toBe(2);
+    expect(summary.is_complete).toBe(false);
+    expect(shoppingListRepoMock.save).toHaveBeenCalled();
   });
 
   /** L'échappatoire : ce qu'on n'a pas acheté sort du décompte. */

@@ -154,6 +154,10 @@ export const OFFER_PLANS: OfferPlan[] = [
         gateKey: null,
         nonGateReason: 'socle',
       },
+      {
+        label: 'Clôture de chantier : vos restes et ce qui se rend encore',
+        gateKey: 'project_closeout',
+      },
     ],
     ctaLabel: 'Commencer gratuitement',
   },

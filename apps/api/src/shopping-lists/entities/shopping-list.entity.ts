@@ -22,6 +22,19 @@ export interface ShoppingListMaterialItem {
   original_units_needed: number;
   units_needed: number;
   is_manually_adjusted: boolean;
+  /**
+   * DATA-5 : conditionnements **réellement achetés**, déclarés à la clôture.
+   *
+   * Distinct de `units_needed`, qui reste la liste de courses — ce qu'il faut
+   * acheter, corrigeable avant les courses. Sans cette séparation, une ligne
+   * jamais regardée est indiscernable d'une ligne confirmée, et
+   * `WasteLearningService` lisait la première comme « l'estimation était
+   * exacte » : une non-observation qui confirmait le catalogue.
+   *
+   * `null` ou absent = l'utilisateur n'a rien déclaré. Seules les lignes
+   * déclarées alimentent DATA-3 et DATA-4.
+   */
+  purchased_units?: number | null;
   /** ENG-2 : nombre de pièces mutualisées sur cette ligne (≥ 2 → affichage « N pièces »). */
   room_count?: number;
   /** Legacy : présent sur les listes générées avant la mutualisation ENG-2. */
@@ -49,6 +62,8 @@ export interface ShoppingListComplementaryItem {
   is_calculated?: boolean;
   real_unit_price?: number | null;
   store_name?: string | null;
+  /** DATA-5 : quantité réellement achetée, déclarée à la clôture. */
+  purchased_quantity?: number | null;
 }
 
 export interface ShoppingListData {
@@ -91,6 +106,17 @@ export class ShoppingList {
 
   @Column({ type: 'jsonb', nullable: true, default: null })
   budget_summary_json!: BudgetSummary | null;
+
+  /**
+   * DATA-5 : date d'achat déclarée (`yyyy-mm-dd`), au niveau de la liste.
+   *
+   * Sert d'origine au calcul des échéances de reprise. Au niveau de la liste
+   * et non de la ligne : l'acheteur qui étale ses courses sur plusieurs
+   * semaines est hors périmètre, et une date par ligne ferait payer à tout le
+   * monde la précision qui ne sert qu'à lui.
+   */
+  @Column({ type: 'date', nullable: true, default: null })
+  purchased_on!: string | null;
 
   @Column({
     type: 'varchar',

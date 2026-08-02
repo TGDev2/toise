@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { DataSource, In, IsNull, Not, Repository } from 'typeorm';
 import { ShoppingList } from '../shopping-lists/entities/shopping-list.entity';
+import { declaredPurchasedUnits } from '../shopping-lists/closeout';
 import {
   EstimationLineItem,
   EstimationResult,
@@ -209,9 +210,18 @@ export class WasteLearningService {
 
       for (const item of list.items_json.material_items) {
         if (seenMaterialIds.has(item.material_id)) continue;
+
+        // DATA-5 : seule une quantité **déclarée** est une observation. Sans
+        // ce filtre, une ligne que personne n'a jamais regardée entrait ici
+        // avec `actual == estimated` et faisait confirmer le catalogue par le
+        // silence — un biais systématique vers « l'estimation est exacte », et
+        // d'autant plus fort que l'utilisateur était passif.
+        const actualUnits = declaredPurchasedUnits(item);
+        if (actualUnits === null) continue;
+
         // Un achat nul n'est pas une perte nulle : c'est un matériau
         // finalement écarté du chantier, hors sujet pour l'apprentissage.
-        if (item.original_units_needed <= 0 || item.units_needed <= 0) continue;
+        if (item.original_units_needed <= 0 || actualUnits <= 0) continue;
 
         const context = this.resolveLineContext(
           estimation.items_json,
@@ -226,7 +236,7 @@ export class WasteLearningService {
           skill_level: estimation.skill_level,
           applied_percent: context.applied_percent,
           estimated_units: item.original_units_needed,
-          actual_units: item.units_needed,
+          actual_units: actualUnits,
           organization_id: organizationId,
           observed_at: observedAt,
         });

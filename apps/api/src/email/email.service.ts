@@ -29,6 +29,10 @@ import {
   ProjectAbandonedEmailData,
 } from './templates/project-abandoned.template';
 import {
+  buildCloseoutDueEmail,
+  CloseoutDueEmailData,
+} from './templates/closeout-due.template';
+import {
   buildTrialEndingSoonEmail,
   TrialEndingSoonEmailData,
 } from './templates/trial-ending-soon.template';
@@ -94,6 +98,14 @@ export class EmailService {
     data: ProjectAbandonedEmailData,
   ): Promise<void> {
     const { subject, html, text } = buildProjectAbandonedEmail(data);
+    await this.brevoClient.sendTransactionalEmail({ to, subject, html, text });
+  }
+
+  async sendCloseoutDueEmail(
+    to: string,
+    data: CloseoutDueEmailData,
+  ): Promise<void> {
+    const { subject, html, text } = buildCloseoutDueEmail(data);
     await this.brevoClient.sendTransactionalEmail({ to, subject, html, text });
   }
 

@@ -110,11 +110,13 @@ describe('LifecycleEmailsService', () => {
     service = module.get(LifecycleEmailsService);
   });
 
-  it('interroge les 4 sweeps avec les bonnes fenêtres et bons filtres', async () => {
+  it('interroge les 5 sweeps avec les bonnes fenêtres et bons filtres', async () => {
     await service.runDailySweep();
 
     expect(userRepoMock.find).toHaveBeenCalledTimes(2);
-    expect(projectRepoMock.find).toHaveBeenCalledTimes(1);
+    // Deux passes sur les projets : abandon (draft/active) puis clôture
+    // (estimated). Les deux ensembles sont disjoints par construction.
+    expect(projectRepoMock.find).toHaveBeenCalledTimes(2);
     expect(subscriptionRepoMock.find).toHaveBeenCalledTimes(1);
 
     const [d1Call, d3Call] = userRepoMock.find.mock.calls as [
@@ -179,6 +181,27 @@ describe('LifecycleEmailsService', () => {
     ).toBeLessThan(60_000);
     expect(
       Math.abs(abandonedHigh.getTime() - expectedAbandonedHigh.getTime()),
+    ).toBeLessThan(60_000);
+
+    // DATA-5 : seconde passe projets — chantiers estimés jamais clôturés.
+    const closeoutCall = projectRepoMock.find.mock.calls[1] as [
+      { where: Record<string, unknown> },
+    ];
+    const closeoutWhere = closeoutCall[0].where;
+    expect(closeoutWhere.status).toBe(ProjectStatus.ESTIMATED);
+    const closeoutLow = (closeoutWhere.updated_at as { value: [Date, Date] })
+      .value[0];
+    const closeoutHigh = (closeoutWhere.updated_at as { value: [Date, Date] })
+      .value[1];
+    const expectedCloseoutLow = new Date();
+    expectedCloseoutLow.setDate(expectedCloseoutLow.getDate() - 45);
+    const expectedCloseoutHigh = new Date();
+    expectedCloseoutHigh.setDate(expectedCloseoutHigh.getDate() - 14);
+    expect(
+      Math.abs(closeoutLow.getTime() - expectedCloseoutLow.getTime()),
+    ).toBeLessThan(60_000);
+    expect(
+      Math.abs(closeoutHigh.getTime() - expectedCloseoutHigh.getTime()),
     ).toBeLessThan(60_000);
 
     const [subscriptionCall] = subscriptionRepoMock.find.mock.calls as [

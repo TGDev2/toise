@@ -539,11 +539,76 @@ Récupérer le résumé budgétaire.
 
 ### `POST /projects/:id/shopping-list/budget-summary/finalize`
 
-Finaliser le suivi budgétaire (marquer les prix réels).
+Finaliser le suivi budgétaire et déclarer le chantier terminé, sans déclaration
+d'achats. Chemin historique conservé pour les clients de l'API ; l'écran produit
+passe par `POST /projects/:id/shopping-list/closeout`.
 
 **Auth :** Requise (propriétaire uniquement) | **Feature gate :** `budget_tracking` (Pro+)
 
 **Réponses :** `201 Created` | `403 Forbidden`
+
+> **Changement DATA-5 (02/08/2026)** — l'endpoint ne renvoie plus `400` quand
+> des articles n'ont pas de prix réel. Les quantités ferment la boucle, les prix
+> sont facultatifs. `is_complete` continue de dire la vérité sur le tarifage, et
+> reste exigé par `POST /community` avant toute publication d'un total.
+
+---
+
+## Clôture de chantier (DATA-5)
+
+### `GET /projects/:id/shopping-list/closeout`
+
+Écran de clôture : une ligne par article, pré-remplie de la quantité estimée,
+plus ce que la déclaration en cours permet déjà de dire (surplus, reprenabilité,
+échéance, écart estimé/réel).
+
+**Auth :** Requise (propriétaire uniquement) | **Feature gate :** `project_closeout` (**free**)
+
+**Réponses :** `200 OK` | `403 Forbidden` | `404 Not Found`
+
+---
+
+### `POST /projects/:id/shopping-list/closeout`
+
+Enregistrer les quantités réellement achetées et clôturer le chantier
+(passage `completed`, instantané carnet du logement, résumé budgétaire figé).
+
+**Auth :** Requise (propriétaire uniquement) | **Feature gate :** `project_closeout` (**free**)
+
+**Corps :**
+
+```json
+{
+  "purchased_on": "2026-07-15",
+  "material_items": [{ "material_id": "uuid", "purchased_units": 21 }],
+  "complementary_items": [
+    { "complementary_material_id": "uuid", "purchased_quantity": 3 }
+  ]
+}
+```
+
+Une seule correction par ligne. Ni prix ni enseigne : ils existent déjà sur la
+ligne d'achat et restent facultatifs.
+
+**Réponse `201 Created` :** `{ closeout, budget_summary, is_finalized }`.
+
+`closeout` partitionne le surplus chiffré en trois montants disjoints dont la
+somme vaut `surplus_value_total` :
+
+| Champ | Sens |
+|---|---|
+| `recoverable_amount` | Enseigne connue **et** catégorie sans restriction publiée |
+| `restricted_amount` | Catégorie couramment exclue (peinture teintée, conditionnement descellé) |
+| `unknown_amount` | Enseigne absente du catalogue : aucune reprise n'est affirmée |
+
+Les échéances proviennent de `apps/api/src/shopping-lists/return-policies.ts` —
+trois enseignes relevées sur leur page officielle, chacune portant `source_url`
+et `verified_on`. Une enseigne absente ne produit **aucun** délai : la valeur
+« 30 jours » couramment admise est fausse pour les deux leaders (Castorama
+annonce 365 jours, Leroy Merlin 6 mois), et une valeur par défaut annoncerait un
+délai dépassé à un client qui dispose encore de plusieurs mois.
+
+**Réponses :** `201 Created` | `400 Bad Request` | `403 Forbidden` | `404 Not Found`
 
 ---
 

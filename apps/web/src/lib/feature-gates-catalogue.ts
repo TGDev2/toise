@@ -70,6 +70,11 @@ export const KNOWN_FEATURE_GATES: KnownFeatureGate[] = [
   { key: 'eco_materials', label: 'Matériaux éco-responsables', minTier: 'pro', since: '053' },
   { key: 'enterprise_sso', label: 'Authentification SSO', minTier: 'enterprise', since: '056' },
   { key: 'cost_benchmark', label: 'Benchmark de coûts', minTier: 'pro', since: '060' },
+  // 1711468800064 — DATA-5. Seule gate `free` en dehors de la galerie : la
+  // clôture est l'unique source de DATA-3, DATA-4, COM-1 et PLAT-1, et un
+  // volant de données qui ne tourne que sur les abonnés n'apprend rien des
+  // chantiers qu'il cherche à décrire.
+  { key: 'project_closeout', label: 'Clôture de chantier', minTier: 'free', since: '064' },
 ];
 
 export const KNOWN_FEATURE_GATE_KEYS = KNOWN_FEATURE_GATES.map((gate) => gate.key);

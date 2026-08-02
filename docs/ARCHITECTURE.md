@@ -28,7 +28,7 @@ Chiffréo est un **monorepo pnpm** composé de 3 applications communicant via RE
                  ┌────────────────┐  ┌─────────────────────┐
                  │  CV Service    │  │   PostgreSQL 16      │
                  │  FastAPI       │  │                      │
-                 │  Depth Any. V2 │  │   27 migrations      │
+                 │  Depth Any. V2 │  │   65 migrations      │
                  │  YOLOv8n       │  │   25+ entités        │
                  │  :8000         │  │                      │
                  └────────────────┘  └─────────────────────┘
@@ -284,7 +284,7 @@ supplier_price_cache   (cache prix fournisseurs)
 - Nommage : `snake_case` pour tables et colonnes
 - Timestamps : `created_at`, `updated_at` sur toutes les entités
 - Soft delete : `deleted_at` sur `projects` et `community_projects`
-- Migrations : 27 fichiers versionnés dans `apps/api/migrations/`
+- Migrations : 65 fichiers versionnés dans `apps/api/src/migrations/`
 
 ## Sécurité
 

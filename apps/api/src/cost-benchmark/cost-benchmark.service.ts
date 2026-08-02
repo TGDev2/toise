@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { DataSource, In, IsNull, Not, Repository } from 'typeorm';
 import { ShoppingList } from '../shopping-lists/entities/shopping-list.entity';
+import { declaredPurchasedUnits } from '../shopping-lists/closeout';
 import {
   EstimationLineItem,
   EstimationResult,
@@ -393,7 +394,13 @@ export class CostBenchmarkService {
       const workType = workTypeByMaterial.get(item.material_id);
       if (workType === undefined) return null;
 
-      if (item.real_unit_price == null) {
+      // DATA-5 : le coût publié est celui qui a été **engagé**, donc le prix
+      // réel multiplié par la quantité réellement achetée. Sans déclaration,
+      // on ne connaît que la quantité prévue : la publier sous le libellé
+      // « coûts réels constatés » serait le même abus de langage que ce lot
+      // corrige ailleurs. L'ouvrage est écarté, pas approximé.
+      const purchasedUnits = declaredPurchasedUnits(item);
+      if (item.real_unit_price == null || purchasedUnits === null) {
         // Un ouvrage partiellement chiffré paraîtrait moins cher qu'il n'est :
         // on l'écarte, sans écarter les autres ouvrages du chantier.
         incompleteWorkTypes.add(workType);
@@ -402,7 +409,7 @@ export class CostBenchmarkService {
       costByWorkType.set(
         workType,
         (costByWorkType.get(workType) ?? 0) +
-          item.real_unit_price * item.units_needed,
+          item.real_unit_price * purchasedUnits,
       );
     }
 

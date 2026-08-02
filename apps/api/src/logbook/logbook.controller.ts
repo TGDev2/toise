@@ -36,6 +36,11 @@ export class LogbookController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
   ): Promise<RoomLogEntry[]> {
     const scope = await this.resolveScope(firebaseUser);
-    return this.logbookService.findAllByUser(scope.organizationId);
+    // `room_log_entries.user_id` porte une clé étrangère vers `users` et est
+    // écrit avec `scope.userId` par `recordChantierCompletion`. Passer
+    // `scope.organizationId` ici comparait deux UUID de deux tables : le
+    // carnet renvoyait `[]` à tout le monde depuis PLAT-1. Couvert par
+    // `test/logbook.e2e-spec.ts` — le service, lui, n'a jamais eu tort.
+    return this.logbookService.findAllByUser(scope.userId);
   }
 }

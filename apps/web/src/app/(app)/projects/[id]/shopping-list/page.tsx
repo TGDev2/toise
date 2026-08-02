@@ -35,6 +35,9 @@ export default function ShoppingListPage() {
   const canQuote = isFeatureAllowed('export_devis');
   const ecoAllowed = isFeatureAllowed('eco_materials');
   const benchmarkAllowed = isFeatureAllowed('cost_benchmark');
+  // DATA-5 : gate `free`. La clôture alimente DATA-3, DATA-4, COM-1 et PLAT-1 ;
+  // la réserver aux abonnés reviendrait à n'apprendre que d'eux.
+  const closeoutAllowed = isFeatureAllowed('project_closeout');
 
   const [data, setData] = useState<ShoppingListResponse | null>(null);
   const [projectName, setProjectName] = useState('');
@@ -581,6 +584,28 @@ export default function ShoppingListPage() {
             </svg>
             {comparing ? 'Comparaison...' : 'Comparer les prix'}
           </button>
+          {/*
+            DATA-5 : la seule entrée vers la clôture, et elle est ouverte à
+            tous. Avant, le seul chemin vers « chantier terminé » était le
+            bouton « Finaliser le budget » du tableau de bord Pro, qui ne
+            s'affiche que si chaque article porte un prix réel. Un compte free
+            n'avait donc aucun moyen de fermer la boucle — ni le produit d'en
+            recevoir la donnée.
+          */}
+          {closeoutAllowed && (
+            <button
+              type="button"
+              onClick={() =>
+                router.push(`/projects/${projectId}/shopping-list/closeout`)
+              }
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-stone-900 bg-stone-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-stone-800"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
+              </svg>
+              Chantier terminé
+            </button>
+          )}
         </div>
       )}
 

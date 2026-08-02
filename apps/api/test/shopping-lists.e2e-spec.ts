@@ -79,6 +79,8 @@ const shoppingListsServiceMock = {
     latestEstimationId: mockEstimationId,
   }),
   getEcoSuggestions: jest.fn(),
+  getCloseout: jest.fn(),
+  recordCloseout: jest.fn(),
 };
 
 const usersServiceMock = {
@@ -383,6 +385,102 @@ describe('ShoppingListsController (e2e)', () => {
       await request(app.getHttpServer())
         .get(`/projects/${mockProjectId}/shopping-list/eco-suggestions`)
         .expect(404);
+    });
+  });
+
+  /**
+   * DATA-5 — la clôture de chantier. Ce qui se joue au niveau HTTP, et nulle
+   * part ailleurs : la gate lue par le guard réel. Si elle redevenait
+   * `budget_tracking`, la seule source de DATA-3, DATA-4, COM-1 et PLAT-1
+   * repasserait derrière un palier payant sans qu'aucun test ne bronche.
+   */
+  describe('POST /projects/:id/shopping-list/closeout', () => {
+    const closeoutResult = {
+      closeout: {
+        purchased_on: '2026-07-15',
+        lines: [],
+        lines_total: 0,
+        lines_declared: 0,
+        surplus_lines: 0,
+        surplus_value_total: 0,
+        recoverable_amount: 0,
+        restricted_amount: 0,
+        unknown_amount: 0,
+        unpriced_surplus_lines: 0,
+        earliest_deadline: null,
+        unknown_retailers: [],
+        computed_at: '2026-08-02T10:00:00.000Z',
+      },
+      budgetSummary: null,
+      isFinalized: true,
+    };
+
+    it('accepte une déclaration de quantités sans aucun prix', async () => {
+      shoppingListsServiceMock.recordCloseout.mockResolvedValueOnce(
+        closeoutResult,
+      );
+
+      await request(app.getHttpServer())
+        .post(`/projects/${mockProjectId}/shopping-list/closeout`)
+        .send({
+          purchased_on: '2026-07-15',
+          material_items: [{ material_id: mockMaterialId, purchased_units: 3 }],
+        })
+        .expect(201)
+        .expect((res: request.Response) => {
+          const body = res.body as { is_finalized: boolean };
+          expect(body.is_finalized).toBe(true);
+        });
+
+      expect(shoppingListsServiceMock.recordCloseout).toHaveBeenCalledWith(
+        mockProjectId,
+        mockOrgId,
+        mockUserId,
+        expect.objectContaining({
+          purchased_on: '2026-07-15',
+          material_items: [{ material_id: mockMaterialId, purchased_units: 3 }],
+        }),
+      );
+    });
+
+    it('reste ouverte à un compte free', async () => {
+      // Le guard réel est monté ici : c'est `isFeatureAllowed` qui tranche, et
+      // le palier du compte de test est `free` (cf. orgContextMock).
+      shoppingListsServiceMock.recordCloseout.mockResolvedValueOnce(
+        closeoutResult,
+      );
+
+      await request(app.getHttpServer())
+        .post(`/projects/${mockProjectId}/shopping-list/closeout`)
+        .send({ material_items: [] })
+        .expect(201);
+
+      expect(featureGatesServiceMock.isFeatureAllowed).toHaveBeenCalledWith(
+        'project_closeout',
+        SubscriptionTier.FREE,
+      );
+    });
+
+    it('refuse une quantité négative', async () => {
+      await request(app.getHttpServer())
+        .post(`/projects/${mockProjectId}/shopping-list/closeout`)
+        .send({
+          material_items: [
+            { material_id: mockMaterialId, purchased_units: -1 },
+          ],
+        })
+        .expect(400);
+
+      expect(shoppingListsServiceMock.recordCloseout).not.toHaveBeenCalled();
+    });
+
+    it('refuse une date d’achat qui n’en est pas une', async () => {
+      await request(app.getHttpServer())
+        .post(`/projects/${mockProjectId}/shopping-list/closeout`)
+        .send({ purchased_on: 'la semaine derniere', material_items: [] })
+        .expect(400);
+
+      expect(shoppingListsServiceMock.recordCloseout).not.toHaveBeenCalled();
     });
   });
 });

@@ -6,4 +6,8 @@ export enum LifecycleEmailType {
   ONBOARDING_D3 = 'onboarding_d3',
   PROJECT_ABANDONED = 'project_abandoned',
   TRIAL_ENDING_SOON = 'trial_ending_soon',
+  // DATA-5 : relance de clôture. Aucun recouvrement avec `project_abandoned`,
+  // qui vise les projets `draft`/`active` — celui-ci ne regarde que les
+  // projets `estimated`, c'est-à-dire ceux dont le chantier a pu avoir lieu.
+  CLOSEOUT_DUE = 'closeout_due',
 }

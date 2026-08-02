@@ -19,6 +19,7 @@ import { ShoppingListResponseDto } from './dto/shopping-list-response.dto';
 import { BudgetSummaryResponseDto } from './dto/budget-summary-response.dto';
 import { EcoSuggestionsResponseDto } from './dto/eco-suggestions-response.dto';
 import { UpdateShoppingListDto } from './dto/update-shopping-list.dto';
+import { CloseoutRequestDto, CloseoutResponseDto } from './dto/closeout.dto';
 import { RequireFeature } from '../feature-gates/decorators/require-feature.decorator';
 import { FeatureGateGuard } from '../feature-gates/guards/feature-gate.guard';
 
@@ -113,6 +114,47 @@ export class ShoppingListsController {
       scope.organizationId,
     );
     return EcoSuggestionsResponseDto.fromResult(result);
+  }
+
+  /**
+   * DATA-5 — gate `project_closeout`, palier **free** et non `budget_tracking`.
+   * La clôture est l'unique source de DATA-3, DATA-4, COM-1 et PLAT-1 :
+   * derrière un palier payant, le volant de données ne tourne que sur les
+   * abonnés, c'est-à-dire à peu près jamais.
+   */
+  @Get(':id/shopping-list/closeout')
+  @UseGuards(FeatureGateGuard)
+  @RequireFeature('project_closeout')
+  async getCloseout(
+    @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
+    @Param('id', ParseUUIDPipe) projectId: string,
+  ): Promise<CloseoutResponseDto> {
+    const scope = await this.resolveScope(firebaseUser);
+    const { closeout, budgetSummary, isFinalized } =
+      await this.shoppingListsService.getCloseout(
+        projectId,
+        scope.organizationId,
+      );
+    return CloseoutResponseDto.from(closeout, budgetSummary, isFinalized);
+  }
+
+  @Post(':id/shopping-list/closeout')
+  @UseGuards(FeatureGateGuard)
+  @RequireFeature('project_closeout')
+  async recordCloseout(
+    @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
+    @Param('id', ParseUUIDPipe) projectId: string,
+    @Body() dto: CloseoutRequestDto,
+  ): Promise<CloseoutResponseDto> {
+    const scope = await this.resolveScope(firebaseUser);
+    const { closeout, budgetSummary, isFinalized } =
+      await this.shoppingListsService.recordCloseout(
+        projectId,
+        scope.organizationId,
+        scope.userId,
+        dto,
+      );
+    return CloseoutResponseDto.from(closeout, budgetSummary, isFinalized);
   }
 
   @Post(':id/shopping-list/budget-summary/finalize')

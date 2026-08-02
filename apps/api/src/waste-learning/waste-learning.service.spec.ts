@@ -17,6 +17,12 @@ function makeShoppingList(
     actual?: number;
     finalized?: boolean;
     materialId?: string;
+    /**
+     * DATA-5 : `false` reproduit une ligne que personne n'a jamais déclarée.
+     * Avant ce lot elle entrait dans la cohorte avec `actual == estimated` et
+     * confirmait le catalogue par le silence.
+     */
+    declared?: boolean;
   } = {},
 ): ShoppingList {
   const {
@@ -24,6 +30,7 @@ function makeShoppingList(
     actual = 10,
     finalized = true,
     materialId = MATERIAL_ID,
+    declared = true,
   } = overrides;
 
   return {
@@ -40,6 +47,8 @@ function makeShoppingList(
           material_id: materialId,
           original_units_needed: estimated,
           units_needed: actual,
+          is_manually_adjusted: false,
+          ...(declared ? { purchased_units: actual } : {}),
         },
       ],
       complementary_items: [],
@@ -141,11 +150,20 @@ describe('WasteLearningService', () => {
   /** n chantiers terminés, un par organisation, achetant `actual` pour `estimated`. */
   function seed(
     count: number,
-    options: { estimated?: number; actual?: number } = {},
+    options: {
+      estimated?: number;
+      actual?: number;
+      declared?: boolean;
+      manuallyAdjusted?: boolean;
+    } = {},
   ): void {
-    const lists = Array.from({ length: count }, (_, i) =>
-      makeShoppingList(i, options),
-    );
+    const lists = Array.from({ length: count }, (_, i) => {
+      const list = makeShoppingList(i, options);
+      if (options.manuallyAdjusted) {
+        list.items_json.material_items[0].is_manually_adjusted = true;
+      }
+      return list;
+    });
     shoppingListRepoMock.find.mockResolvedValue(lists);
     estimationRepoMock.find.mockResolvedValue(
       Array.from({ length: count }, (_, i) => makeEstimation(i)),
@@ -225,6 +243,42 @@ describe('WasteLearningService', () => {
 
     expect(summary.observations).toBe(0);
     expect(learnedRepoMock.upsert).not.toHaveBeenCalled();
+  });
+
+  /**
+   * DATA-5 — le biais que la déclaration explicite retire.
+   *
+   * Une liste finalisée dont personne n'a corrigé les quantités entrait ici
+   * avec `actual == estimated` : le catalogue se voyait confirmer par des
+   * lignes que l'utilisateur n'avait jamais regardées, et d'autant plus qu'il
+   * était passif. Dix chantiers muets suffisaient à franchir le seuil de huit
+   * observations et à figer le facteur DTU comme « appris ».
+   */
+  it('n’admet pas une ligne dont la quantité n’a jamais été déclarée', async () => {
+    seed(12, { estimated: 10, actual: 10, declared: false });
+
+    const summary = await service.run();
+
+    expect(summary.observations).toBe(0);
+    expect(learnedRepoMock.upsert).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Le repli d'historique : avant DATA-5, une correction manuelle était la
+   * seule trace d'un achat réel. Elle reste une observation, sans quoi le lot
+   * jetterait la seule donnée déjà collectée.
+   */
+  it('admet une ligne d’avant DATA-5 corrigée à la main', async () => {
+    seed(12, {
+      estimated: 10,
+      actual: 12,
+      declared: false,
+      manuallyAdjusted: true,
+    });
+
+    const summary = await service.run();
+
+    expect(summary.observations).toBe(12);
   });
 
   it('counts one observation per material on a pre-ENG-2 list', async () => {

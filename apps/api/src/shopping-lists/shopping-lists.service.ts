@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, In, Repository } from 'typeorm';
 import { randomBytes } from 'crypto';
@@ -28,6 +24,14 @@ import { AnalyticsService } from '../analytics/analytics.service';
 import { LogbookService } from '../logbook/logbook.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 import { UpdateShoppingListDto } from './dto/update-shopping-list.dto';
+import { CloseoutRequestDto } from './dto/closeout.dto';
+import {
+  computeCloseout,
+  type CloseoutComplementaryInput,
+  type CloseoutMaterialInput,
+  type CloseoutSummary,
+} from './closeout';
+import type { EstimationLineItem } from '../estimations/entities/estimation-result.entity';
 import { DEFAULT_WASTE_PERCENT } from '../estimations/estimation-engine';
 import { ProjectStatus } from '../projects/entities/project.entity';
 import {
@@ -38,16 +42,21 @@ import {
 import { isShareTokenExpired, shareTokenExpiry } from './share-token';
 
 /**
- * Reporte les relevés de terrain — prix payé, enseigne — de l'ancienne liste
- * vers celle qui la remplace. Ce sont les seules données que l'utilisateur a
- * saisies lui-même : les recalculer est impossible, les perdre est définitif.
+ * Reporte les relevés de terrain — prix payé, enseigne, quantité réellement
+ * achetée — de l'ancienne liste vers celle qui la remplace. Ce sont les seules
+ * données que l'utilisateur a saisies lui-même : les recalculer est impossible,
+ * les perdre est définitif.
  *
  * Les compléments sont repris au même titre que les matériaux. Ils ne l'étaient
  * pas, ce qui devient intenable dès lors que la finalisation exige un prix sur
  * chacun d'eux (cf. `finalizeBudgetSummary`) : une régénération aurait imposé de
  * ressaisir tout le second bloc.
+ *
+ * DATA-5 : les quantités déclarées voyagent avec les prix. Une régénération
+ * après la clôture — un coup de « Régénérer » malencontreux — effacerait sinon
+ * la seule donnée que ce lot existe pour collecter.
  */
-function carryOverRealPrices(
+function carryOverFieldRecords(
   previous: ShoppingListData,
   next: ShoppingListData,
 ): void {
@@ -62,6 +71,9 @@ function carryOverRealPrices(
     }
     if (before.store_name != null) {
       item.store_name = before.store_name;
+    }
+    if (before.purchased_units != null) {
+      item.purchased_units = before.purchased_units;
     }
   }
 
@@ -79,6 +91,9 @@ function carryOverRealPrices(
     }
     if (before.store_name != null) {
       item.store_name = before.store_name;
+    }
+    if (before.purchased_quantity != null) {
+      item.purchased_quantity = before.purchased_quantity;
     }
   }
 }
@@ -313,7 +328,7 @@ export class ShoppingListsService {
     }
 
     if (preserveRealPrices) {
-      carryOverRealPrices(existing.items_json, data);
+      carryOverFieldRecords(existing.items_json, data);
     }
 
     existing.estimation_id = estimationId;
@@ -523,21 +538,16 @@ export class ShoppingListsService {
   }
 
   /**
-   * Fige le budget réel et déclare le chantier terminé.
+   * Fige le budget réel et déclare le chantier terminé, sans déclaration
+   * d'achats — le chemin historique, conservé pour les clients de l'API.
+   * L'écran produit passe désormais par `recordCloseout`, qui déclare puis
+   * clôture en une transaction.
    *
-   * Lecture verrouillée, validation, résumé et passage `COMPLETED` sont **une
-   * seule transaction** : « le budget est finalisé » et « le projet est
-   * terminé » sont deux façons de dire le même fait, et le partage communauté
-   * les lit ensemble. C'étaient deux écritures indépendantes, dont l'une
-   * pouvait aboutir sans l'autre. Le verrou ferme la seconde fenêtre : sans
-   * lui, un `PATCH` concurrent pouvait glisser une ligne non tarifée entre la
-   * validation et l'écriture du résumé.
-   *
-   * Le carnet du logement reste **hors** transaction : il fait ses propres
-   * lectures (pièces, dimensions) et son écriture est un upsert sur
-   * `(project_id, room_id)` — une ré-finalisation le rejoue sans doublon. Le
-   * faire entrer dans la transaction demanderait de propager le manager dans
-   * `LogbookService` et `ProjectsService.getRooms` pour un gain nul.
+   * Lecture verrouillée, résumé et passage `COMPLETED` sont **une seule
+   * transaction** : « le budget est finalisé » et « le projet est terminé »
+   * sont deux façons de dire le même fait, et le partage communauté les lit
+   * ensemble. C'étaient deux écritures indépendantes, dont l'une pouvait
+   * aboutir sans l'autre.
    */
   async finalizeBudgetSummary(
     projectId: string,
@@ -547,54 +557,94 @@ export class ShoppingListsService {
     await this.projectsService.findOneForOrg(projectId, organizationId);
 
     const { summary, shoppingList, estimation } =
-      await this.shoppingListRepo.manager.transaction(async (manager) => {
-        const shoppingList = await manager.findOne(ShoppingList, {
-          where: { project_id: projectId },
-          lock: { mode: 'pessimistic_write' },
-        });
+      await this.shoppingListRepo.manager.transaction((manager) =>
+        this.completeChantierLocked(manager, projectId),
+      );
 
-        if (!shoppingList) {
-          throw new NotFoundException(
-            'No shopping list found for this project.',
-          );
-        }
+    await this.recordCompletionSideEffects(
+      projectId,
+      organizationId,
+      userId,
+      estimation,
+      shoppingList,
+      summary,
+    );
 
-        const estimation = await this.estimationsService.findById(
-          shoppingList.estimation_id,
-        );
+    return summary;
+  }
 
-        const summary = this.computeBudgetSummary(
-          shoppingList,
-          estimation.items_json,
-        );
+  /**
+   * Corps verrouillé de la clôture : calcule le résumé, le fige et déclare le
+   * projet terminé. Unique chemin de passage à `COMPLETED` — `finalize` comme
+   * `recordCloseout` passent par ici, pour qu'il n'existe pas deux définitions
+   * concurrentes de « le chantier est fini ».
+   *
+   * DATA-5 : la finalisation n'exige plus que **tout** soit tarifé. Elle le
+   * faisait, et c'est ce qui rendait la boucle infermable — un seul sachet de
+   * croisillons sans prix bloquait la clôture, donc le carnet, le benchmark,
+   * les facteurs de perte appris et le partage communauté. Ce que la clôture
+   * demande, ce sont les **quantités** ; les prix restent facultatifs.
+   *
+   * L'invariant que gardait ce contrôle est conservé ailleurs, et mieux :
+   * `is_complete` dit toujours la vérité sur le tarifage, et c'est lui que
+   * `CommunityService.submitProject` exige avant de publier un total. Un
+   * budget partiel est donc persistable, mais reste impubliable.
+   */
+  private async completeChantierLocked(
+    manager: EntityManager,
+    projectId: string,
+  ): Promise<{
+    summary: BudgetSummary;
+    shoppingList: ShoppingList;
+    estimation: Awaited<ReturnType<EstimationsService['findById']>>;
+  }> {
+    const shoppingList = await manager.findOne(ShoppingList, {
+      where: { project_id: projectId },
+      lock: { mode: 'pessimistic_write' },
+    });
 
-        // La postcondition **est** le contrôle. Le contrôle d'avant ne
-        // regardait que `material_items` : un complément non tarifé produisait
-        // un résumé `is_complete: false` qui était persisté quand même, le
-        // projet passait `COMPLETED` et la communauté publiait un total
-        // sous-évalué. Décider sur `computeBudgetSummary` — la même fonction
-        // qui compte — rend cette divergence impossible à réintroduire.
-        // L'utilisateur qui n'a pas acheté un complément le marque
-        // `is_removed`, ce qui le sort du décompte.
-        if (!summary.is_complete) {
-          const missing = summary.items_total - summary.items_priced;
-          throw new BadRequestException(
-            `${missing} article(s) n'ont pas encore de prix reel.`,
-          );
-        }
+    if (!shoppingList) {
+      throw new NotFoundException('No shopping list found for this project.');
+    }
 
-        shoppingList.budget_summary_json = summary;
-        await manager.save(shoppingList);
+    const estimation = await this.estimationsService.findById(
+      shoppingList.estimation_id,
+    );
 
-        await this.projectsService.updateStatus(
-          projectId,
-          ProjectStatus.COMPLETED,
-          manager,
-        );
+    const summary = this.computeBudgetSummary(
+      shoppingList,
+      estimation.items_json,
+    );
 
-        return { summary, shoppingList, estimation };
-      });
+    shoppingList.budget_summary_json = summary;
+    await manager.save(shoppingList);
 
+    await this.projectsService.updateStatus(
+      projectId,
+      ProjectStatus.COMPLETED,
+      manager,
+    );
+
+    return { summary, shoppingList, estimation };
+  }
+
+  /**
+   * Effets hors transaction de la clôture.
+   *
+   * Le carnet du logement reste **hors** transaction : il fait ses propres
+   * lectures (pièces, dimensions) et son écriture est un upsert sur
+   * `(project_id, room_id)` — une re-clôture le rejoue sans doublon. Le faire
+   * entrer dans la transaction demanderait de propager le manager dans
+   * `LogbookService` et `ProjectsService.getRooms` pour un gain nul.
+   */
+  private async recordCompletionSideEffects(
+    projectId: string,
+    organizationId: string,
+    userId: string,
+    estimation: Awaited<ReturnType<EstimationsService['findById']>>,
+    shoppingList: ShoppingList,
+    summary: BudgetSummary,
+  ): Promise<void> {
     // PLAT-1 : instantané par pièce (dimensions validées, matériaux
     // réellement achetés) — même point d'ancrage que le partage communauté
     // (COM-1/COM-2), seul moment garanti où prix réels ET dimensions sont
@@ -612,8 +662,221 @@ export class ShoppingListsService {
       savings_amount: summary.savings_amount,
       savings_percent: summary.savings_percent,
     });
+  }
 
-    return summary;
+  /**
+   * Prépare l'écran de clôture : une ligne par article, pré-remplie de la
+   * quantité estimée, plus ce que la déclaration en cours permet déjà de dire.
+   */
+  async getCloseout(
+    projectId: string,
+    organizationId: string,
+    today: string = new Date().toISOString().slice(0, 10),
+  ): Promise<{
+    closeout: CloseoutSummary;
+    budgetSummary: BudgetSummary | null;
+    isFinalized: boolean;
+  }> {
+    await this.projectsService.findOneForOrg(projectId, organizationId);
+
+    const shoppingList = await this.shoppingListRepo.findOne({
+      where: { project_id: projectId },
+    });
+
+    if (!shoppingList) {
+      throw new NotFoundException('No shopping list found for this project.');
+    }
+
+    const estimation = await this.estimationsService.findById(
+      shoppingList.estimation_id,
+    );
+
+    return this.buildCloseoutView(shoppingList, estimation.items_json, today);
+  }
+
+  /**
+   * Enregistre les quantités réellement achetées et clôture le chantier.
+   *
+   * Déclaration et clôture partagent une transaction et un verrou : sans cela,
+   * un `PATCH` concurrent pourrait glisser entre les deux et le résumé figé
+   * décrirait une liste que l'utilisateur n'a pas déclarée.
+   *
+   * Aucun prix n'est exigé. C'est le cœur du lot : la clôture rend un service
+   * (ce qui reste, ce qui se rend, l'écart avec l'estimation) contre une seule
+   * correction par ligne, là où la finalisation réclamait une saisie complète
+   * sans rien donner en retour.
+   */
+  async recordCloseout(
+    projectId: string,
+    organizationId: string,
+    userId: string,
+    dto: CloseoutRequestDto,
+    today: string = new Date().toISOString().slice(0, 10),
+  ): Promise<{
+    closeout: CloseoutSummary;
+    budgetSummary: BudgetSummary | null;
+    isFinalized: boolean;
+  }> {
+    await this.projectsService.findOneForOrg(projectId, organizationId);
+
+    const { summary, shoppingList, estimation } =
+      await this.shoppingListRepo.manager.transaction(async (manager) => {
+        await this.applyDeclarationsLocked(manager, projectId, dto);
+        return this.completeChantierLocked(manager, projectId);
+      });
+
+    await this.recordCompletionSideEffects(
+      projectId,
+      organizationId,
+      userId,
+      estimation,
+      shoppingList,
+      summary,
+    );
+
+    const view = this.buildCloseoutView(
+      shoppingList,
+      estimation.items_json,
+      today,
+    );
+
+    this.analyticsService.track(AnalyticsEventName.PROJECT_CLOSED_OUT, userId, {
+      project_id: projectId,
+      lines_declared: view.closeout.lines_declared,
+      lines_total: view.closeout.lines_total,
+      surplus_value_total: view.closeout.surplus_value_total,
+      recoverable_amount: view.closeout.recoverable_amount,
+    });
+
+    return { ...view, isFinalized: true };
+  }
+
+  /** Corps transactionnel de `recordCloseout` : merge des quantités déclarées. */
+  private async applyDeclarationsLocked(
+    manager: EntityManager,
+    projectId: string,
+    dto: CloseoutRequestDto,
+  ): Promise<void> {
+    const shoppingList = await manager.findOne(ShoppingList, {
+      where: { project_id: projectId },
+      lock: { mode: 'pessimistic_write' },
+    });
+
+    if (!shoppingList) {
+      throw new NotFoundException(
+        'No shopping list found for this project. Generate one first.',
+      );
+    }
+
+    const data = shoppingList.items_json;
+
+    for (const declaration of dto.material_items ?? []) {
+      const item = data.material_items.find(
+        (m) => m.material_id === declaration.material_id,
+      );
+      if (item) {
+        item.purchased_units = declaration.purchased_units;
+      }
+    }
+
+    for (const declaration of dto.complementary_items ?? []) {
+      const item = data.complementary_items.find(
+        (c) =>
+          c.complementary_material_id === declaration.complementary_material_id,
+      );
+      if (item) {
+        item.purchased_quantity = declaration.purchased_quantity;
+      }
+    }
+
+    if (dto.purchased_on !== undefined) {
+      shoppingList.purchased_on = dto.purchased_on.slice(0, 10);
+    }
+
+    shoppingList.items_json = data;
+    await manager.save(shoppingList);
+  }
+
+  /**
+   * Assemble les entrées du module pur à partir de la liste et de l'estimation.
+   *
+   * Le besoin net et le facteur de perte viennent de l'estimation, pas de la
+   * liste : la liste ne porte que le résultat arrondi au conditionnement.
+   * Un matériau dont les lignes d'estimation portent plusieurs facteurs de
+   * perte ne se voit attribuer aucun taux — la même discipline que
+   * `WasteLearningService`, pour la même raison : une moyenne de deux poses
+   * différentes ne décrit ni l'une ni l'autre.
+   */
+  private buildCloseoutView(
+    shoppingList: ShoppingList,
+    estimationItems: EstimationLineItem[],
+    today: string,
+  ): {
+    closeout: CloseoutSummary;
+    budgetSummary: BudgetSummary | null;
+    isFinalized: boolean;
+  } {
+    const stats = new Map<
+      string,
+      { theoretical: number; percents: Set<number> }
+    >();
+    for (const line of estimationItems) {
+      const entry = stats.get(line.material_id) ?? {
+        theoretical: 0,
+        percents: new Set<number>(),
+      };
+      entry.theoretical += line.theoretical_qty;
+      entry.percents.add(line.waste_factor_percent);
+      stats.set(line.material_id, entry);
+    }
+
+    const materials: CloseoutMaterialInput[] =
+      shoppingList.items_json.material_items.map((item) => {
+        const stat = stats.get(item.material_id);
+        return {
+          material_id: item.material_id,
+          material_name: item.material_name,
+          material_category: item.material_category,
+          material_unit: item.material_unit,
+          packaging_label: item.packaging_label,
+          packaging_qty_per_unit: item.packaging_qty_per_unit,
+          estimated_units: item.original_units_needed,
+          purchased_units: item.purchased_units ?? null,
+          real_unit_price: item.real_unit_price ?? null,
+          store_name: item.store_name ?? null,
+          theoretical_qty: stat ? stat.theoretical : null,
+          estimated_waste_percent:
+            stat && stat.percents.size === 1 ? [...stat.percents][0] : null,
+        };
+      });
+
+    const complementaries: CloseoutComplementaryInput[] =
+      shoppingList.items_json.complementary_items
+        .filter((item) => !item.is_removed)
+        .map((item) => ({
+          complementary_material_id: item.complementary_material_id,
+          name: item.name,
+          unit_label: item.unit_label,
+          estimated_quantity: item.quantity,
+          purchased_quantity: item.purchased_quantity ?? null,
+          real_unit_price: item.real_unit_price ?? null,
+          store_name: item.store_name ?? null,
+        }));
+
+    const summary = this.computeBudgetSummary(shoppingList, estimationItems);
+
+    return {
+      closeout: computeCloseout(
+        materials,
+        complementaries,
+        shoppingList.purchased_on,
+        today,
+      ),
+      // Un budget sans aucun prix connu n'est pas un budget : le rendre à zéro
+      // ferait afficher « 0 EUR dépensé » à qui n'a rien saisi.
+      budgetSummary: summary.items_priced > 0 ? summary : null,
+      isFinalized: shoppingList.budget_summary_json != null,
+    };
   }
 
   private computeBudgetSummary(
