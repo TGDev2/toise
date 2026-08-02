@@ -26,7 +26,15 @@ import {
 import { SkillLevel } from '../projects/entities/project-work-item.entity';
 import { ProjectStatus } from '../projects/entities/project.entity';
 import { WorkType } from '../projects/entities/work-type.entity';
+import {
+  QuoteCoherenceStatus,
+  WasteReferenceRange,
+  classifyDeclared,
+  dominantWasteReference,
+  impliedWastePercent,
+} from './quote-coherence';
 import { PublicEstimateRequestDto } from './dto/public-estimate-request.dto';
+import { PublicQuoteCheckRequestDto } from './dto/public-quote-check-request.dto';
 import { PublicEstimateEmailDto } from './dto/public-estimate-email.dto';
 import { ApiEstimateRequestDto } from './dto/api-estimate-request.dto';
 import { EmailService } from '../email/email.service';
@@ -43,6 +51,32 @@ export interface PublicEstimateResponse {
 
 export interface PublicEstimateEmailResponse {
   sent: boolean;
+}
+
+/**
+ * Réponse du contrôle de devis (GTM-10).
+ *
+ * **Aucun champ de prix, et c'est structurel** : la décision produit est que
+ * Chiffréo mesure et n'arbitre pas. `quote-check-response.spec.ts` interdit à
+ * cette interface toute clé de prix — le jour où quelqu'un voudra en ajouter une,
+ * il devra d'abord rouvrir la décision, pas seulement le fichier.
+ */
+export interface PublicQuoteCheckResponse {
+  work_type_code: string;
+  work_type_label: string;
+  surface_target: string;
+  /** Surface avant déduction des ouvertures et des zones non traitées. */
+  gross_surface_m2: number;
+  /** Surface réellement à traiter — le terme de comparaison du devis. */
+  net_surface_m2: number;
+  deducted_m2: number;
+  declared_surface_m2: number;
+  /** `null` quand la pièce ne donne rien à comparer (surface nette nulle). */
+  implied_waste_percent: number | null;
+  reference: WasteReferenceRange;
+  status: QuoteCoherenceStatus;
+  /** Ce que la pièce demande, pour recouper les lignes matériaux du devis. */
+  items: EstimationLineItem[];
 }
 
 /** Réponse de l'API publique (PLAT-5) : lignes détaillées + achats mutualisés. */
@@ -258,18 +292,17 @@ export class EstimationsService {
     return saved;
   }
 
-  async estimatePublic(
-    dto: PublicEstimateRequestDto,
-  ): Promise<PublicEstimateResponse> {
-    const workType = await this.workTypesRepo.findOne({
-      where: { code: dto.work_type_code },
-    });
-
-    if (!workType) {
-      throw new NotFoundException('Unknown work type');
-    }
-
-    const room: RoomData = {
+  /**
+   * Traduction d'une requête publique en pièce pour le moteur.
+   *
+   * Partagée par `estimatePublic` et `checkQuotePublic` : les deux surfaces
+   * décrivent la **même** pièce, et une seconde copie de ce mapping finirait par
+   * ne pas recevoir le champ ajouté à l'autre. C'est déjà arrivé une fois —
+   * `exclusions` manquait au chemin public avant GTM-9, si bien que l'écran
+   * déduisait une aire que le moteur rachetait derrière.
+   */
+  private toRoomData(dto: PublicEstimateRequestDto): RoomData {
+    return {
       length_cm: dto.length_cm,
       width_cm: dto.width_cm,
       height_cm: dto.height_cm,
@@ -293,6 +326,20 @@ export class EstimationsService {
         area_m2: e.area_m2,
       })),
     };
+  }
+
+  async estimatePublic(
+    dto: PublicEstimateRequestDto,
+  ): Promise<PublicEstimateResponse> {
+    const workType = await this.workTypesRepo.findOne({
+      where: { code: dto.work_type_code },
+    });
+
+    if (!workType) {
+      throw new NotFoundException('Unknown work type');
+    }
+
+    const room = this.toRoomData(dto);
 
     const skillLevel = dto.skill_level || SkillLevel.INTERMEDIATE;
     const workItemInput: WorkItemInput = {
@@ -314,6 +361,69 @@ export class EstimationsService {
       skill_level: skillLevel,
       total_items: items.length,
       items,
+    };
+  }
+
+  /**
+   * Contrôle de cohérence d'un devis reçu (GTM-10) : la quantité qu'il facture
+   * face à celle que la pièce demande.
+   *
+   * Aucune persistance, aucun compte, et — par décision produit (§ 4.7 de
+   * PRODUCT_STRATEGY) — **aucun prix**. La réponse décrit un écart de quantité et
+   * la fourchette du catalogue ; elle ne qualifie ni le devis, ni l'entreprise.
+   * `checkQuotePublic` réutilise `estimatePublic` plutôt que de refaire son
+   * travail : la traduction « ce que la pièce demande » affichée sous le verdict
+   * doit être exactement celle du calculateur, sinon les deux surfaces
+   * annonceraient deux quantités pour la même pièce.
+   */
+  async checkQuotePublic(
+    dto: PublicQuoteCheckRequestDto,
+  ): Promise<PublicQuoteCheckResponse> {
+    const estimate = await this.estimatePublic(dto);
+
+    const workType = await this.workTypesRepo.findOne({
+      where: { code: dto.work_type_code },
+    });
+    // `estimatePublic` a déjà levé si le code est inconnu ; ce garde-fou n'existe
+    // que pour le typage.
+    if (!workType) {
+      throw new NotFoundException('Unknown work type');
+    }
+
+    const room = this.toRoomData(dto);
+    const netSurfaceM2 = this.engine.computeSurface(
+      room,
+      workType.surface_target,
+    );
+    const grossSurfaceM2 = this.engine.computeGrossSurface(
+      room,
+      workType.surface_target,
+    );
+
+    const poseType =
+      (dto.custom_params?.laying_pattern as string) || 'standard';
+    const reference = dominantWasteReference(
+      await this.loadMaterialInputs(workType.category),
+      poseType,
+    );
+
+    const impliedPercent = impliedWastePercent(
+      dto.declared_surface_m2,
+      netSurfaceM2,
+    );
+
+    return {
+      work_type_code: workType.code,
+      work_type_label: workType.label_fr,
+      surface_target: workType.surface_target,
+      gross_surface_m2: Math.round(grossSurfaceM2 * 100) / 100,
+      net_surface_m2: Math.round(netSurfaceM2 * 100) / 100,
+      deducted_m2: Math.round((grossSurfaceM2 - netSurfaceM2) * 100) / 100,
+      declared_surface_m2: dto.declared_surface_m2,
+      implied_waste_percent: impliedPercent,
+      reference,
+      status: classifyDeclared(impliedPercent, reference),
+      items: estimate.items,
     };
   }
 

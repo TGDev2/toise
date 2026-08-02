@@ -4,6 +4,12 @@
 export enum AnalyticsEventName {
   // Funnel DATA-1 : visite calculateur → compte → 1re estimation → liste → checkout
   CALCULATOR_VIEWED = 'calculator_viewed',
+  // GTM-10 : visite du contrôle de devis. Distinct de `calculator_viewed` — les
+  // deux surfaces partagent le moteur mais pas l'intention (préparer un achat vs
+  // contrôler une affirmation), et c'est justement l'écart entre les deux taux de
+  // conversion qui dira si l'hypothèse « le demandeur de devis bascule vers le
+  // parcours DIY » tient. Les confondre rendrait la question indécidable.
+  QUOTE_CHECK_VIEWED = 'quote_check_viewed',
   ACCOUNT_CREATED = 'account_created',
   ESTIMATE_CREATED = 'estimate_created',
   SHOPPING_LIST_GENERATED = 'shopping_list_generated',

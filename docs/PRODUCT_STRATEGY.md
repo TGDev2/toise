@@ -207,6 +207,34 @@ Chiffréo entrait donc dans le combat avec la seule fonctionnalité que tout le 
 
 ---
 
+### 4.7 Contrôle de devis : Chiffréo mesure, il n'arbitre pas (GTM-10, août 2026)
+
+Le moteur ne servait que dans un sens : préparer un achat. Or « quelles quantités cet ouvrage demande-t-il dans cette pièce ? » répond aussi à un besoin non couvert et à bien plus forte intention — un propriétaire qui reçoit deux ou trois devis pour 5 000 à 15 000 € n'a aucun moyen de juger les quantités qu'on lui facture. C'est la même opération, lue dans l'autre sens.
+
+Ouvrir cette surface pose un conflit qui ne se gère pas : on ne peut pas vendre un outil aux artisans (19/29/49 €, §4.5) et publier en même temps des pages qui apprennent à leurs clients à contester leurs devis.
+
+**Décision — la portée du verdict, pas l'audience.** Chiffréo répond « combien faut-il ? », **jamais** « est-ce trop cher ? ». Le contrôle porte sur les quantités face à la pièce ; il ne mentionne aucun prix et ne qualifie aucune entreprise.
+
+Ce que la décision coûte, et qui en fait une décision :
+
+- on renonce **définitivement** au mot-clé « devis trop cher », le plus à forte intention — y compris le jour où le benchmark se remplirait ;
+- le titre naturel de la page (« Ce devis est-il juste ? ») devient « Vérifier les quantités d'un devis » ;
+- en échange, les deux audiences tiennent ensemble : un artisan dont les quantités sont dans la fourchette obtient de la même page une justification opposable.
+
+**La décision coïncide avec ce que le code peut tenir**, ce qui la rend soutenable plutôt que vertueuse. Il n'existe aucun prix de référence dans le système : `materials_catalog` n'a pas de colonne de prix, le seul prix saisi vit dans `shopping_lists.items_json[].real_unit_price`, et `cost_benchmarks` porte **en base** `CHECK (organization_count >= 5 AND sample_size >= 10)` avec une médiane `NOT NULL` — une cellule non publiable ne peut pas être stockée. Le verdict de prix n'est pas « pas encore » : il est inconstructible.
+
+**La référence, elle, existe déjà.** Les `waste_factors` semés donnent la fourchette descriptive par pose et par niveau — carrelage pose droite 5/10/15 %, diagonale 10/15/20 %. Le verdict s'énonce donc comme un **taux de perte impliqué** (`déclaré / surface nette − 1`) confronté à cette fourchette. Descriptif par construction : « cette quantité correspond à X % de perte », jamais « ce devis est excessif ».
+
+**Risque assumé et sa parade.** Un verdict « au-dessus » peut faire perdre un chantier à une entreprise honnête, sur la foi d'un calcul qui ignore la contrainte de chantier et la découpe réelle. La réserve nommant les causes légitimes n'est donc pas une précaution rédactionnelle : c'est un **champ obligatoire** du type de formulation, et un test refuse un verdict d'écart qui n'en porte pas.
+
+**Limite annoncée, pas découverte.** Beaucoup de devis d'artisan sont au forfait, sans quantité — le contrôle est alors impossible. La page le dit d'elle-même et donne la question à poser, plutôt que de rendre un verdict sur une quantité devinée.
+
+**Garde-fous** : [quote-check-wording.spec.ts](../apps/web/src/__tests__/quote-check-wording.spec.ts) interdit le lexique tarifaire et prescriptif sur toute la prose de la surface, exige la réserve, et ferme l'union des statuts des deux côtés ; `estimations.service.spec.ts` interdit toute clé de prix sur la réponse ; [quote-coherence.spec.ts](../apps/api/src/estimations/quote-coherence.spec.ts) ancre la fourchette sur les valeurs réellement semées.
+
+**Hors périmètre à ce stade** : aucun paiement sur cette surface — la disposition à payer 15 € est une hypothèse, pas une mesure ; et aucune variante côté artisan, qui viendra si le taux d'usage la justifie.
+
+---
+
 ## 5. Architecture fonctionnelle cible
 
 Cinq domaines, du haut vers le bas du funnel :

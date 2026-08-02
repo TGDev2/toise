@@ -18,6 +18,7 @@ import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 import { SkillLevel } from '../projects/entities/project-work-item.entity';
 import { ProjectStatus } from '../projects/entities/project.entity';
 import { PublicEstimateRequestDto } from './dto/public-estimate-request.dto';
+import { PublicQuoteCheckRequestDto } from './dto/public-quote-check-request.dto';
 import { PublicEstimateEmailDto } from './dto/public-estimate-email.dto';
 
 const mockWorkType: WorkType = {
@@ -297,6 +298,222 @@ describe('EstimationsService.estimatePublic', () => {
 
     expect(result.items[0].waste_factor_percent).toBe(5);
     expect(result.items[0].waste_factor_source).toBe('catalog');
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* GTM-10 — contrôle de cohérence d'un devis reçu                              */
+/* -------------------------------------------------------------------------- */
+
+/** Carrelage sol : c'est l'ouvrage dont la pose change la fourchette. */
+const mockTilingWorkType: WorkType = {
+  ...mockWorkType,
+  id: 'wt-floor-tiling',
+  code: 'floor_tiling',
+  label_fr: 'Carrelage sol',
+  category: 'tiling',
+  surface_target: 'floor',
+};
+
+const mockTileMaterial = {
+  id: 'mat-tile',
+  name: 'Carrelage sol 30x30 cm',
+  category: MaterialCategory.TILING,
+  unit: 'm2',
+  yield_per_unit: 1,
+  is_active: true,
+  is_eco: false,
+  waste_factors: [
+    { pose_type: 'straight', skill_level: 'beginner', factor_percent: 15 },
+    { pose_type: 'straight', skill_level: 'intermediate', factor_percent: 10 },
+    { pose_type: 'straight', skill_level: 'expert', factor_percent: 5 },
+    { pose_type: 'diagonal', skill_level: 'beginner', factor_percent: 20 },
+    { pose_type: 'diagonal', skill_level: 'intermediate', factor_percent: 15 },
+    { pose_type: 'diagonal', skill_level: 'expert', factor_percent: 10 },
+  ],
+  packagings: [{ label: 'Boîte 1 m²', quantity_per_unit: 1, unit: 'm2' }],
+} as unknown as MaterialCatalog;
+
+function makeQuoteCheckDto(
+  overrides: Partial<PublicQuoteCheckRequestDto> = {},
+): PublicQuoteCheckRequestDto {
+  return {
+    // Pièce 4 × 3 m → 12 m² au sol, sans exclusion.
+    length_cm: 400,
+    width_cm: 300,
+    height_cm: 250,
+    openings: [],
+    work_type_code: 'floor_tiling',
+    // `laying_pattern` est une question contextuelle **obligatoire** de
+    // floor_tiling (migration 003) : le formulaire l'envoie toujours. L'omettre
+    // ici testerait un cas que la surface publique ne produit pas.
+    custom_params: { laying_pattern: 'straight' },
+    declared_surface_m2: 12,
+    ...overrides,
+  } as PublicQuoteCheckRequestDto;
+}
+
+describe('EstimationsService.checkQuotePublic', () => {
+  let service: EstimationsService;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    materialsRepoMock.find.mockResolvedValue([mockTileMaterial]);
+    learnedWasteFactorRepoMock.find.mockResolvedValue([]);
+    workTypesRepoMock.findOne.mockResolvedValue(mockTilingWorkType);
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        EstimationsService,
+        EstimationEngine,
+        {
+          provide: getRepositoryToken(EstimationResult),
+          useValue: estimationRepoMock,
+        },
+        {
+          provide: getRepositoryToken(MaterialCatalog),
+          useValue: materialsRepoMock,
+        },
+        {
+          provide: getRepositoryToken(LearnedWasteFactor),
+          useValue: learnedWasteFactorRepoMock,
+        },
+        { provide: getRepositoryToken(WorkType), useValue: workTypesRepoMock },
+        {
+          provide: getRepositoryToken(EmailCapture),
+          useValue: emailCaptureRepoMock,
+        },
+        { provide: ProjectsService, useValue: projectsServiceMock },
+        { provide: EmailService, useValue: emailServiceMock },
+        { provide: AnalyticsService, useValue: analyticsServiceMock },
+      ],
+    }).compile();
+
+    service = module.get(EstimationsService);
+  });
+
+  it('reports the implied waste of an over-declared quantity', async () => {
+    // 18 m² facturés pour 12 m² au sol → +50 %, contre une référence 5–15 %.
+    const result = await service.checkQuotePublic(
+      makeQuoteCheckDto({ declared_surface_m2: 18 }),
+    );
+
+    expect(result.net_surface_m2).toBe(12);
+    expect(result.implied_waste_percent).toBe(50);
+    expect(result.reference).toMatchObject({
+      pose_type: 'straight',
+      min_percent: 5,
+      max_percent: 15,
+      is_default: false,
+    });
+    expect(result.status).toBe('above_reference');
+  });
+
+  it('reads the pose from custom_params — diagonal admits more', async () => {
+    // +18 % : au-dessus en pose droite (5–15), dans la fourchette en diagonale
+    // (10–20). Le même devis change de verdict selon la pose, et c'est exact.
+    const straight = await service.checkQuotePublic(
+      makeQuoteCheckDto({
+        declared_surface_m2: 14.16,
+        custom_params: { laying_pattern: 'straight' },
+      }),
+    );
+    const diagonal = await service.checkQuotePublic(
+      makeQuoteCheckDto({
+        declared_surface_m2: 14.16,
+        custom_params: { laying_pattern: 'diagonal' },
+      }),
+    );
+
+    expect(straight.status).toBe('above_reference');
+    expect(diagonal.status).toBe('within_reference');
+    expect(diagonal.reference.max_percent).toBe(20);
+  });
+
+  it('compares against the net surface, openings deducted', async () => {
+    // Mur d'une pièce 4×3×2,5 = 35 m² bruts, moins une porte 0,9×2,1 = 1,89.
+    workTypesRepoMock.findOne.mockResolvedValue(mockWorkType);
+    materialsRepoMock.find.mockResolvedValue([mockMaterial]);
+
+    const result = await service.checkQuotePublic(
+      makeQuoteCheckDto({
+        work_type_code: 'wall_painting',
+        openings: [{ width_cm: 90, height_cm: 210, count: 1 }],
+        declared_surface_m2: 35,
+      }),
+    );
+
+    expect(result.gross_surface_m2).toBe(35);
+    expect(result.net_surface_m2).toBe(33.11);
+    expect(result.deducted_m2).toBe(1.89);
+    // Facturer la surface brute, c'est facturer les ouvertures : +5,7 %.
+    expect(result.implied_waste_percent).toBe(5.7);
+  });
+
+  it('flags a bracket that is only the generic default', async () => {
+    // Le carrelage n'a aucune ligne `standard` au catalogue : un ouvrage sans
+    // pose déclarée (wall_tiling, qui ne pose pas la question) retombe sur le
+    // défaut générique de 10 %. La référence doit le **dire**, sinon la page
+    // présenterait un défaut comme une fourchette de pose — c'est ce qui rend
+    // « pas de référence » et « référence » distinguables à l'écran.
+    const result = await service.checkQuotePublic(
+      makeQuoteCheckDto({ custom_params: {} }),
+    );
+
+    expect(result.reference).toMatchObject({
+      is_default: true,
+      min_percent: 10,
+      max_percent: 10,
+    });
+  });
+
+  it('returns no verdict when the room leaves nothing to compare', async () => {
+    workTypesRepoMock.findOne.mockResolvedValue(mockWorkType);
+    materialsRepoMock.find.mockResolvedValue([mockMaterial]);
+
+    const result = await service.checkQuotePublic(
+      makeQuoteCheckDto({
+        work_type_code: 'wall_painting',
+        // Une ouverture plus grande que le mur : surface nette nulle.
+        openings: [{ width_cm: 10000, height_cm: 10000, count: 1 }],
+      }),
+    );
+
+    expect(result.net_surface_m2).toBe(0);
+    expect(result.implied_waste_percent).toBeNull();
+    expect(result.status).toBe('not_comparable');
+  });
+
+  it('returns what the room needs, identical to the calculator path', async () => {
+    // La page affiche la traduction en matériaux sous le verdict. Si elle
+    // divergeait du calculateur, les deux surfaces annonceraient deux quantités
+    // pour la même pièce.
+    const dto = makeQuoteCheckDto();
+    const check = await service.checkQuotePublic(dto);
+    const estimate = await service.estimatePublic(dto);
+
+    expect(check.items).toEqual(estimate.items);
+  });
+
+  it('never returns a price-shaped field — the decision, held by a test', async () => {
+    // § 4.7 de PRODUCT_STRATEGY : Chiffréo mesure, il n'arbitre pas. Aucun prix
+    // n'existe d'ailleurs dans le système (materials_catalog n'a pas de colonne
+    // de prix, cost_benchmarks est vide par construction), mais l'invariant ne
+    // doit pas dépendre de cette absence : il doit survivre au jour où un prix
+    // entrera dans le catalogue.
+    const result = await service.checkQuotePublic(makeQuoteCheckDto());
+
+    const forbidden = /prix|price|cost|montant|amount|euro|eur|tarif|median/i;
+    const offending = Object.keys(result).filter((key) => forbidden.test(key));
+    expect(offending).toEqual([]);
+  });
+
+  it('throws NotFoundException for an unknown work type code', async () => {
+    workTypesRepoMock.findOne.mockResolvedValue(null);
+
+    await expect(service.checkQuotePublic(makeQuoteCheckDto())).rejects.toThrow(
+      NotFoundException,
+    );
   });
 });
 

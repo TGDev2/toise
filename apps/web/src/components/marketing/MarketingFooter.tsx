@@ -10,6 +10,7 @@ const LINKS = [
   { href: '/artisans', label: 'Artisans' },
   { href: '/pricing', label: 'Tarifs' },
   { href: '/calculateurs', label: 'Calculateurs gratuits' },
+  { href: '/verifier-un-devis', label: 'Vérifier un devis' },
   { href: '/community', label: 'Réalisations' },
   { href: '/cgu', label: 'CGU' },
   { href: '/cgv', label: 'CGV' },
