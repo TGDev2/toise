@@ -44,4 +44,9 @@ COPY models/ ./models/
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Un seul worker, explicitement. Chaque worker charge sa propre copie de Torch
+# et du modèle de profondeur (~1 Go) sous une limite de conteneur de 4 Go — en
+# ajouter un ne double pas le débit, il rapproche l'OOM. C'est l'hypothèse sur
+# laquelle repose le contrat d'admission du service (`MAX_CONCURRENT_ANALYSES`,
+# cf. app/config.py) : la borne d'analyses simultanées est par processus.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

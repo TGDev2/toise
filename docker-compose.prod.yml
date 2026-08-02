@@ -5,7 +5,8 @@
 #   - web  (port 3000)  → https://votre-domaine.fr
 #   - api  (port 3001)  → https://api.votre-domaine.fr (ou /api sur le même domaine)
 # Voir docs/DEPLOY.md — section "Déploiement continu (CD)" pour le flux automatisé
-# (api/web sont alors mis à jour via `image:`/IMAGE_TAG plutôt que reconstruits ici).
+# (api/web/cv-service sont alors mis à jour via `image:`/IMAGE_TAG plutôt que
+# reconstruits ici).
 
 name: chiffreo
 
@@ -117,6 +118,11 @@ services:
       start_period: 20s
 
   cv-service:
+    # Voir le commentaire sur `api.image` : même logique CD/secours. Le CV fait
+    # partie de l'unité de livraison — il partage avec l'API un contrat HTTP non
+    # versionné, donc les deux doivent porter le même `IMAGE_TAG`. Les poids YOLO
+    # sont récupérés par la CD au moment du build (cf. .github/workflows/deploy.yml).
+    image: ghcr.io/tgdev2/chiffreo-cv:${IMAGE_TAG:-latest}
     build:
       context: ./apps/cv-service
       dockerfile: Dockerfile

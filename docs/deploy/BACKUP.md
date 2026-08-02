@@ -9,13 +9,51 @@ et de restauration, testée sur une base jetable. Référencée depuis
 - **Quoi** : la base Postgres (`pg_dump -Fc`, format custom) et le volume
   `uploads` (photos des projets), chacun chiffré individuellement.
 - **Où** : `/var/backups/chiffreo` sur le VPS (configurable), fichiers
-  `chiffreo-db-<horodatage>.dump.gpg` et `chiffreo-uploads-<horodatage>.tar.gz.gpg`.
+  `chiffreo-db-<horodatage>.dump.gpg` et `chiffreo-uploads-<horodatage>.tar.gz.gpg`,
+  plus une copie hors-site si `BACKUP_REMOTE` est configuré (§5).
 - **Fréquence** : quotidienne, via cron (§4).
 - **Rétention** : 14 jours par défaut, configurable (`RETENTION_DAYS`) — les
   fichiers plus anciens sont supprimés à chaque run (rotation simple par âge,
   pas de schéma journalier/hebdomadaire différencié pour l'instant).
+- **Signalement** : ping de supervision au succès, `/fail` à l'échec, si
+  `BACKUP_MONITOR_URL` est configuré (§4).
 - **Scripts** : [`backup.sh`](backup.sh) (cron) et [`restore.sh`](restore.sh)
   (drill de vérification et reprise sur sinistre — même script, deux modes).
+
+### Cohérence entre la base et les fichiers
+
+Le dump et l'archive portent sur des données vivantes : rien ne les fige
+ensemble. Un `pg_dump` suivi d'un simple `tar` produit donc une restauration où
+une photo supprimée entre les deux laisse une **référence sans fichier**.
+
+`backup.sh` garantit à la place une propriété unique et vérifiable — *le jeu de
+fichiers archivé est un sur-ensemble de ce que le dump référence* — en
+encadrant le dump :
+
+1. **t0**, avant le dump : archive complète du volume. Tout fichier existant à
+   t0 est capturé, y compris ceux qu'une suppression fera disparaître ensuite.
+2. **t1** : `pg_dump`.
+3. **t2**, après le dump : `find -newermt` ajoute à la *même* archive tout ce
+   qui est apparu ou a changé depuis t0. Une entrée en double est résolue par
+   la plus récente à l'extraction.
+
+Toute ligne du dump référence un fichier qui existait à t1 : soit il existait
+déjà à t0 (passe 1), soit il est né dans (t0, t1] et son mtime le place dans la
+passe 3. Le seul défaut restant possible est un fichier *sans* ligne — un
+orphelin bénin.
+
+Deux compléments rendent cette propriété utile plutôt que théorique :
+
+- les photos sont écrites de façon atomique par l'API (fichier temporaire puis
+  `rename`, cf. `local-storage.service.ts`) : `tar` ne peut jamais archiver un
+  fichier à moitié écrit ;
+- l'archivage exige **GNU tar et GNU find** (`--append`, `-newermt`), que
+  BusyBox ne fournit pas — d'où `HELPER_IMAGE=debian:12-slim` et non `alpine`.
+
+**Limite assumée** : un fichier créé *et* supprimé à l'intérieur de la fenêtre
+alors que le dump le référence encore échappe aux deux passes. Fermer cette
+course-là demanderait un instantané de système de fichiers (LVM/ZFS), pas un
+`tar`.
 
 ## 2. Modèle de menace et choix du chiffrement
 
@@ -81,28 +119,70 @@ sudo crontab -e
 15 3 * * * bash /opt/chiffreo/docs/deploy/backup.sh >> /var/log/chiffreo-backup.log 2>&1
 ```
 
-`backup.sh` échoue bruyamment (`set -euo pipefail`, code de sortie non nul)
-en cas de problème — mais un VPS standard n'a pas de MTA local configuré par
-défaut, donc **aucune alerte e-mail n'est envoyée aujourd'hui** en cas
-d'échec cron : le seul signal est `/var/log/chiffreo-backup.log`. Une
-alerte réelle (webhook, Sentry…) est prévue par OPS-5, pas par cette tâche —
-en attendant, vérifier le log périodiquement ou après tout incident VPS.
+`backup.sh` échoue bruyamment (`set -euo pipefail`, code de sortie non nul),
+mais un VPS standard n'a pas de MTA local : sans configuration supplémentaire,
+un échec cron ne produit aucun signal sortant.
+
+### Alerte sur échec — et sur absence de run
+
+Renseigner `BACKUP_MONITOR_URL` dans `/etc/chiffreo/backup.env` avec une URL de
+type [healthchecks.io](https://healthchecks.io) (offre gratuite suffisante, ou
+instance auto-hébergée) :
+
+```bash
+BACKUP_MONITOR_URL=https://hc-ping.com/<uuid>
+```
+
+Le script pinge cette URL à la fin d'un run réussi, et `<url>/fail` à l'échec.
+Régler la période du check sur 1 jour avec une marge de quelques heures.
+
+Ce choix couvre le cas qu'une alerte purement « sur échec » ne voit jamais :
+**le cron qui n'a pas tourné du tout** (service désactivé, VPS éteint, disque
+plein empêchant même le démarrage du script). Le silence devient alors lui-même
+un signal, ce qu'aucun code embarqué dans le script ne peut produire.
+
+Sans cette variable, le seul signal reste `/var/log/chiffreo-backup.log` — à
+vérifier périodiquement et après tout incident VPS.
 
 Alternative non retenue : un timer systemd (`chiffreo-backup.service` +
 `.timer`) offrirait un journal structuré (`journalctl`) et un
 `OnFailure=` natif — à envisager si cron s'avère insuffisant.
 
-## 5. Politique de rétention
+## 5. Rétention et copie hors-site
 
-Rétention plate par âge (`RETENTION_DAYS`, 14 par défaut) : simple, prévisible,
-suffisant pour un premier niveau de sauvegarde. Un schéma différencié
-(ex. 7 quotidiennes + 4 hebdomadaires) est une amélioration possible plus
-tard, pas construite ici.
+Rétention locale plate par âge (`RETENTION_DAYS`, 14 par défaut) : simple,
+prévisible, suffisant pour un premier niveau de sauvegarde. Un schéma
+différencié (ex. 7 quotidiennes + 4 hebdomadaires) est une amélioration
+possible plus tard, pas construite ici.
 
-**Limite connue, assumée** : les sauvegardes restent sur le même VPS que la
-donnée qu'elles protègent. Une panne disque du VPS emporterait la prod *et*
-ses sauvegardes ensemble. Une copie hors-site (rsync/rclone vers un stockage
-objet) n'est pas dans le périmètre de cette tâche — à traiter en suivi.
+### Copie hors-site
+
+Des sauvegardes qui vivent sur le disque qu'elles protègent ne protègent de
+rien face à une panne disque, un vol de machine ou un chiffrement du VPS : la
+prod et ses sauvegardes disparaissent ensemble. `backup.sh` pousse donc les
+fichiers chiffrés vers une destination distante à la fin de chaque run, dès que
+`BACKUP_REMOTE` est renseigné.
+
+```bash
+sudo apt install rclone
+sudo rclone config          # une fois, en root : créer un remote (B2, S3, SFTP…)
+# puis dans /etc/chiffreo/backup.env :
+BACKUP_REMOTE=b2:chiffreo-backups/vps
+```
+
+Les fichiers partent **déjà chiffrés** par GPG (§2) : le fournisseur de
+stockage n'est jamais un tiers de confiance, et un compte de stockage compromis
+ne donne accès à rien de lisible.
+
+Le script fait `rclone copy`, jamais `sync` — délibérément. Une copie distante
+qui reflète les suppressions locales n'est pas une sauvegarde : un VPS
+compromis effacerait la copie distante en même temps que la sienne. La
+conséquence est que la rétention distante doit être réglée **côté fournisseur**
+(règle de cycle de vie sur le bucket), hors d'atteinte du VPS. Utiliser si
+possible une clé d'application en écriture seule, sans droit de suppression.
+
+Sans `BACKUP_REMOTE`, le script le signale à chaque run (`AVERTISSEMENT`) — une
+absence de protection qui reste visible plutôt que tacite.
 
 ## 6. Restauration — drill de vérification (routine, non destructif)
 
@@ -132,8 +212,13 @@ Consigner chaque drill dans le tableau §8.
    (`provision.sh`, DNS, `.env`).
 2. Démarrer uniquement Postgres, base vide :
    `docker compose -f docker-compose.prod.yml up -d postgres`
-3. Restaurer depuis la dernière sauvegarde récupérée **avant** la perte du
-   VPS mort (ou depuis un stockage hors-site si disponible) :
+3. Récupérer la dernière sauvegarde. Si `BACKUP_REMOTE` était configuré (§5),
+   c'est la source à utiliser — le disque du VPS mort n'est plus accessible :
+   ```bash
+   # Depuis le poste qui détient la clé privée
+   rclone copy b2:chiffreo-backups/vps . --include 'chiffreo-*.gpg' --max-age 48h
+   ```
+   Puis restaurer :
    ```bash
    bash docs/deploy/restore.sh \
      --db-backup chiffreo-db-<dernier-horodatage>.dump.gpg \
@@ -157,11 +242,19 @@ Consigner chaque drill dans le tableau §8.
 
 ## 9. Non-goals / limites connues
 
-- **Pas de copie hors-site** des sauvegardes (disque VPS = point de défaillance
-  unique pour prod + sauvegardes). Suivi possible : rsync/rclone vers un
-  stockage objet (Hetzner Storage Box, Backblaze B2…).
-- **Pas d'alerting** sur échec cron (OPS-5). `backup.sh` échoue bruyamment et
-  logue, mais rien ne pousse activement une alerte aujourd'hui.
-- **Rétention plate**, pas de schéma différencié quotidien/hebdomadaire/mensuel.
+- **Copie hors-site et alerting sont opt-in** : le mécanisme existe et le script
+  avertit à chaque run tant que `BACKUP_REMOTE` / `BACKUP_MONITOR_URL` ne sont
+  pas renseignés (§4, §5). Tant qu'ils ne le sont pas, le VPS reste un point de
+  défaillance unique pour la prod *et* ses sauvegardes, et un échec cron reste
+  muet. Ces deux valeurs demandent des identifiants qui ne peuvent pas vivre
+  dans le dépôt.
+- **Rétention distante non gérée par le script** : `rclone copy` n'efface
+  jamais rien à distance (§5). À régler par une règle de cycle de vie côté
+  fournisseur, sans quoi le stockage distant croît indéfiniment.
+- **Pas d'instantané de système de fichiers** : la cohérence base ↔ fichiers
+  repose sur l'encadrement du dump (§1). Un fichier créé *et* supprimé pendant
+  la fenêtre, encore référencé par le dump, y échappe.
+- **Rétention locale plate**, pas de schéma différencié quotidien/hebdomadaire/
+  mensuel.
 - **Clé unique**, pas d'escrow — perte de la clé privée = sauvegardes
   définitivement perdues (assumé, voir §2).

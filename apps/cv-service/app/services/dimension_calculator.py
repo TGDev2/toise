@@ -63,9 +63,27 @@ def _resolve_upload_path(image_path: str) -> Path:
     return candidate
 
 
+def _depth_stats(depth_map: np.ndarray) -> dict:
+    """Résumé scalaire d'une carte de profondeur, pour `raw_output`."""
+    return {
+        "min": float(np.min(depth_map)),
+        "max": float(np.max(depth_map)),
+        "mean": float(np.mean(depth_map)),
+        "std": float(np.std(depth_map)),
+    }
+
+
 @dataclass
 class PerImageResult:
-    """Results from processing a single image."""
+    """Results from processing a single image.
+
+    Ne porte **que** des scalaires. Cette liste vit jusqu'à la fin de la
+    requête : y retenir la carte de profondeur (float32, 4 o/px) et le masque
+    de sol rendait la mémoire proportionnelle au nombre d'images, pour des
+    tableaux dont seules quatre statistiques étaient relues et dont les
+    contours ne l'étaient jamais. Cinq images de 100 Mpx représentaient ainsi
+    ~2,5 Go de rétention pure sous une limite de conteneur de 4 Go.
+    """
 
     image_path: str
     dimensions: Optional[Dimensions] = None
@@ -76,8 +94,7 @@ class PerImageResult:
     wall_lines_count: int = 0
     floor_coverage: float = 0.0
     px_per_cm: float = 0.0
-    depth_map: Optional[np.ndarray] = None
-    contours: Optional[object] = None
+    depth_stats: Optional[dict] = None
 
 
 class DimensionCalculator:
@@ -219,7 +236,12 @@ class DimensionCalculator:
         try:
             # `load_rgb` et pas `Image.open` : c'est lui qui garantit que le
             # décodeur HEIF est enregistré (l'API accepte et stocke du HEIC).
-            pil_image = load_rgb(full_path)
+            # `max_pixels` borne le travail *avant* qu'il soit fait : c'est le
+            # seul endroit du chemin serveur où la taille de l'image devient
+            # une décision (cf. `load_rgb`).
+            pil_image = load_rgb(
+                full_path, max_pixels=settings.max_image_pixels
+            )
         except Exception as e:
             logger.warning(f"Failed to load image {full_path}: {e}")
             return None
@@ -248,8 +270,7 @@ class DimensionCalculator:
             floor_coverage=float(
                 np.sum(contours.floor_mask) / contours.floor_mask.size
             ),
-            depth_map=depth_map,
-            contours=contours,
+            depth_stats=_depth_stats(depth_map),
         )
 
         if detected is None or detected.px_per_cm <= 0:
@@ -515,13 +536,8 @@ class DimensionCalculator:
                     "width_cm": r.dimensions.width_cm,
                     "height_cm": r.dimensions.height_cm,
                 }
-            if r.depth_map is not None:
-                entry["depth_map_stats"] = {
-                    "min": float(np.min(r.depth_map)),
-                    "max": float(np.max(r.depth_map)),
-                    "mean": float(np.mean(r.depth_map)),
-                    "std": float(np.std(r.depth_map)),
-                }
+            if r.depth_stats is not None:
+                entry["depth_map_stats"] = r.depth_stats
             per_image.append(entry)
 
         raw: dict = {

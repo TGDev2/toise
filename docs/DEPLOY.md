@@ -115,17 +115,26 @@ sudo crontab -e
 15 3 * * * bash /opt/chiffreo/docs/deploy/backup.sh >> /var/log/chiffreo-backup.log 2>&1
 ```
 
+Renseigner aussi `BACKUP_REMOTE` (copie hors-site) et `BACKUP_MONITOR_URL`
+(alerte sur échec **et** sur run manquant) dans `/etc/chiffreo/backup.env` :
+sans eux, les sauvegardes vivent sur le disque qu'elles protègent et un échec
+cron reste muet. Voir `BACKUP.md` §4 et §5.
+
 ## 6. Déploiement continu (CD)
 
 Une fois les sections 1 à 3 faites au moins une fois (VPS provisionné, `.env`
-renseigné, premier `docker compose up -d --build` réussi), les mises à jour de
-`api`/`web` peuvent être automatisées : `.github/workflows/deploy.yml` se
-déclenche sur un tag `vX.Y.Z`, rejoue la CI (`ci.yml`, en `workflow_call`)
-comme garde-fou, construit et pousse les images vers GHCR
-(`ghcr.io/tgdev2/chiffreo-api` et `-web`), puis se connecte en SSH au VPS pour
-synchroniser `docker-compose.prod.yml` et faire `docker compose pull` +
-`up -d` sur `api`/`web` uniquement (`cv-service` reste construit depuis les
-sources sur le VPS, hors périmètre de cette CD).
+renseigné, premier `docker compose up -d --build` réussi), les mises à jour sont
+automatisées : `.github/workflows/deploy.yml` se déclenche sur un tag `vX.Y.Z`,
+rejoue la CI (`ci.yml`, en `workflow_call`) comme garde-fou, construit et pousse
+les **trois** images vers GHCR (`ghcr.io/tgdev2/chiffreo-api`, `-web` et `-cv`),
+puis se connecte en SSH au VPS pour synchroniser `docker-compose.prod.yml` et
+faire `docker compose pull` + `up -d` sur `api`, `web` et `cv-service`.
+
+Les trois portent le même `IMAGE_TAG`, délibérément : l'API et le service CV
+partagent un contrat HTTP (`AnalyzeRequest`/`AnalyzeResponse`) qui n'est ni
+versionné ni négocié. Les livrer séparément revient à accepter qu'un tag déploie
+une API neuve contre un CV ancien — et à découvrir l'incompatibilité en `422`
+sur le trafic réel.
 
 ```bash
 git tag v1.0.0
@@ -161,12 +170,20 @@ déploiement relaie ce même token (valable seulement le temps du run) au VPS
 par SSH pour le `pull`, puis `docker logout` — aucun identifiant de registre
 durable n'est stocké sur le VPS.
 
+### Variables de dépôt (optionnelles)
+
+À renseigner dans *Settings → Secrets and variables → Actions → Variables*.
+
+| Variable | Usage |
+|---|---|
+| `CV_MODEL_TAG` | Épingle la release de poids YOLO utilisée au build du service CV (ex. `cv-model-v1`). Vide → dernière release `cv-model-*` |
+
 ### Rollback
 
 ```bash
 # Sur le VPS, dans /opt/chiffreo :
-IMAGE_TAG=v1.0.0 docker compose -f docker-compose.prod.yml pull api web
-IMAGE_TAG=v1.0.0 docker compose -f docker-compose.prod.yml up -d api web
+IMAGE_TAG=v1.0.0 docker compose -f docker-compose.prod.yml pull api web cv-service
+IMAGE_TAG=v1.0.0 docker compose -f docker-compose.prod.yml up -d api web cv-service
 ```
 
 ### Limites connues
@@ -177,21 +194,39 @@ IMAGE_TAG=v1.0.0 docker compose -f docker-compose.prod.yml up -d api web
   le plus haut en semver — la CD elle-même ne s'appuie jamais dessus, elle
   épingle toujours `IMAGE_TAG` explicitement.
 
-### Mise à jour de `cv-service` (hors CD) : poids du modèle portes/fenêtres
+### Poids du modèle portes/fenêtres (`cv-service`)
 
-`cv-service` reste construit depuis les sources sur le VPS. Les poids YOLO
-portes/fenêtres (`models/door-window-yolov8n.pt`) ne sont **pas dans git** :
-ils sont des artefacts de GitHub Release (tags `cv-model-vN`, publiés par
-`apps/cv-service/scripts/release-model.sh` — cycle complet dans
-[`apps/cv-service/training/README.md`](../apps/cv-service/training/README.md)).
-Le Dockerfile fait `COPY models/`, donc le fetch doit précéder le build :
+Les poids YOLO portes/fenêtres (`models/door-window-yolov8n.pt`) ne sont **pas
+dans git** : ce sont des artefacts de GitHub Release (tags `cv-model-vN`,
+publiés par `apps/cv-service/scripts/release-model.sh` — cycle complet dans
+[`apps/cv-service/training/README.md`](../apps/cv-service/training/README.md)),
+et le Dockerfile fait `COPY models/`.
+
+**En CD, rien à faire** : le workflow lance `fetch-model.sh` avant de construire
+l'image CV, avec le `GITHUB_TOKEN` du run. L'étape est bloquante — sans poids,
+l'image publiée basculerait en mode heuristique (`"yolo": false`) et prendrait
+silencieusement la place d'un conteneur équipé. Un déploiement qui s'arrête est
+préférable à une précision qui baisse sans que rien ne le dise.
+
+Publier une nouvelle version des poids se fait donc en deux temps : publier la
+release `cv-model-vN`, puis taguer une version applicative (ou pousser un tag
+`vX.Y.Z+1`) pour que la CD reconstruise l'image avec ces poids. Pour figer une
+version précise, renseigner la variable de dépôt `CV_MODEL_TAG`.
+
+**Construction manuelle** (secours, premier déploiement, VPS sans CD) — le fetch
+doit précéder le build :
 
 ```bash
 # Sur le VPS, dans /opt/chiffreo :
-./apps/cv-service/scripts/fetch-model.sh            # ou un tag précis : cv-model-v1
+bash apps/cv-service/scripts/fetch-model.sh         # ou un tag précis : cv-model-v1
 docker compose -f docker-compose.prod.yml build cv-service
 docker compose -f docker-compose.prod.yml up -d cv-service
-# Contrôle : le health du service doit exposer "yolo": true
+```
+
+Contrôle, dans les deux cas — `"yolo": true` atteste que les poids sont bien
+dans l'image qui tourne :
+
+```bash
 docker compose -f docker-compose.prod.yml exec cv-service \
   python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8000/health').read().decode())"
 ```
@@ -199,8 +234,7 @@ docker compose -f docker-compose.prod.yml exec cv-service \
 Le script préfère `gh` (`apt install gh` puis `gh auth login`, une fois) ; à
 défaut, repli `curl` avec `GITHUB_REPOSITORY=owner/repo` et, si le dépôt est
 privé, `GITHUB_TOKEN`. Il vérifie le SHA-256 des assets et est idempotent (ne
-retélécharge pas des poids déjà à jour). Sans poids, le service fonctionne en
-mode heuristique (`"yolo": false`) — pas d'interruption, précision moindre.
+retélécharge pas des poids déjà à jour).
 
 ## 7. Déploiement manuel (secours / premier déploiement)
 

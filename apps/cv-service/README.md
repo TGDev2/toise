@@ -64,6 +64,32 @@ Variables d'environnement (ou `app/config.py` par défaut) :
 | `OPENING_MODEL_PATH` | Chemin du modèle YOLOv8 | `models/door-window-yolov8n.pt` |
 | `HOST` | Adresse d'écoute | `0.0.0.0` |
 | `PORT` | Port d'écoute | `8000` |
+| `CV_SERVICE_TOKEN` | Secret partagé avec l'API (requis hors développement) | — |
+| `MAX_IMAGES_PER_REQUEST` | Images acceptées par appel à `/analyze` | `8` |
+| `MAX_IMAGE_PIXELS` | Surface décodée par image ; au-delà l'image est **réduite** | `50000000` |
+| `MAX_CONCURRENT_ANALYSES` | Analyses simultanées ; au-delà → `429` | `1` |
+
+### Contrat d'admission
+
+Le service tient dans un seul processus uvicorn sous 4 Go (cf. `Dockerfile` et
+`docker-compose.prod.yml`). Les trois dernières variables ci-dessus sont ce qui
+empêche une requête unique de le saturer :
+
+- au-delà de `MAX_IMAGES_PER_REQUEST`, la requête est refusée en `422` **avant**
+  tout travail ;
+- au-delà de `MAX_IMAGE_PIXELS`, l'image est réduite à ce budget, jamais
+  rejetée : toutes les mesures sont des rapports entre une longueur en pixels et
+  un `px_per_cm` mesuré dans la même image, donc invariantes par mise à
+  l'échelle. Un JPEG très compressé de 100 Mpx ne monte jamais en mémoire en
+  pleine résolution (`Image.thumbnail` passe par `draft()`) ;
+- au-delà de `MAX_CONCURRENT_ANALYSES`, la requête est refusée en `429` avec
+  `Retry-After`. Refuser plutôt que mettre en file : une file invisible déplace
+  la saturation vers des timeouts côté appelant pendant que le travail continue
+  sans destinataire.
+
+Le pipeline lui-même s'exécute dans un thread (`asyncio.to_thread`) : la boucle
+d'événements reste libre, donc `/health` répond pendant une analyse — sans quoi
+le healthcheck Docker finit par déclarer malsain un service qui travaille.
 
 ## Endpoints
 

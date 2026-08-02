@@ -3,6 +3,8 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, field_validator
 
+from app.config import settings
+
 # Calibration reference types: a standard door, or a universal planar marker
 # (A4 sheet / bank card) the user lays on the wall when no door is visible.
 ReferenceType = Literal["door", "a4", "card"]
@@ -54,6 +56,14 @@ class AnalyzeRequest(BaseModel):
     def _check_image_paths(cls, paths: list[str]) -> list[str]:
         if not paths:
             raise ValueError("image_paths must not be empty")
+        # Borne lue à la validation et non figée dans un `Field` : un
+        # `max_length` évalué à l'import gèlerait la valeur des tests et de
+        # tout déploiement qui la surcharge par l'environnement.
+        limit = settings.max_images_per_request
+        if len(paths) > limit:
+            raise ValueError(
+                f"image_paths must not exceed {limit} images (got {len(paths)})"
+            )
         return [_validate_relative_upload_path(p) for p in paths]
 
 
