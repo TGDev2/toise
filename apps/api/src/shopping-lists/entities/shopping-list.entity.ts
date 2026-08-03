@@ -70,6 +70,11 @@ export interface ShoppingListComplementaryItem {
   default_quantity: number;
   quantity: number;
   is_removed: boolean;
+  /**
+   * Legacy : plus jamais écrit depuis E1-6, où les quantités calculées sont
+   * repassées au catalogue. Encore lu (export PDF, web) pour les listes
+   * générées avant, dont l'instantané JSONB le porte toujours.
+   */
   is_calculated?: boolean;
   real_unit_price?: number | null;
   store_name?: string | null;

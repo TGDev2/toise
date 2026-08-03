@@ -25,7 +25,7 @@ chantier). Objectif : 3 à 6 lignes achetables par ouvrage.
   peintures sol/fer/radiateur/boiseries, lasures et vernis, décapant, white
   spirit (inutile en acrylique), aérosols, peintures à effet.
 
-**Deux limites connues, portées par les épics suivants** :
+**Une limite connue, portée par l'épic suivant** :
 
 1. **Quantités des accessoires** — E1-4 a supprimé la moitié du défaut : le
    nombre de couches ne s'applique plus qu'aux matériaux qui le déclarent
@@ -36,12 +36,31 @@ chantier). Objectif : 3 à 6 lignes achetables par ouvrage.
    sourçage des rendements), soit une règle de quantité portée par le rôle
    `accessoire` (« jeu d'outils par chantier », indépendant de la surface).
    Tant que ce n'est pas tranché, l'assertion « aucun accessoire au-dessus de
-   5 unités » du test E1-1 reste rouge.
-2. **Doublons avec les compléments calculés** — rouleau, bâche, ruban,
-   croisillons, bande/enduit à joint, colle papier peint et cutter existent
-   aussi comme « compléments » (migrations `…009`/`…010`). L'arbitrage entre
-   les deux mécanismes est confié à E1-6 ; en attendant, la liaison est la
-   source curée de référence.
+   5 unités » du test E1-1 reste rouge. Le complément `Croisillons` supprimé par
+   E1-6 portait une formule plus juste — 4 croisillons par carreau, 200 par
+   sachet, soit 3 sachets pour 12 m² de 45 × 45 : cette connaissance appartient
+   au `yield_per_unit` du catalogue, à reprendre en E1-7.
+
+**Le doublon avec les compléments est tranché (E1-6)** — rouleau, bâche, ruban,
+colle, joint, croisillons, peigne, bande/enduit à joint, colle papier peint et
+cutter existaient *aussi* comme « compléments » (migrations `…009`/`…010`),
+donc deux fois dans la même liste. La règle retenue : **cette liaison est la
+seule source des produits chiffrés ; dès qu'une quantité dépend de la
+géométrie, le produit relève du catalogue.** Le catalogue est lié par ouvrage
+(le sol reçoit du mortier-colle C2, le mur de la colle en pâte — la catégorie
+`tiling` ne savait pas les distinguer), il passe par le rendement, le facteur
+de perte par pose et niveau, le choix du conditionnement et la mutualisation
+entre pièces, et lui seul est atteignable par l'appariement fournisseur, les
+alternatives éco et les facteurs de perte appris. La migration `…069` supprime
+les 14 compléments redondants et la colonne `formula_code` ; ne restent en
+complément que **bac à peinture**, **profil de finition** et **barre de seuil**,
+que les règles transverses ci-dessus excluent explicitement du chiffrage à la
+surface.
+
+**Manque de curation révélé par cet arbitrage** : `wall_tiling` n'a pas de
+peigne à colle (plafond de 6 lignes), qu'il recevait jusqu'ici par le
+complément. À reprendre dans `work_type_materials`, pas par un complément qui
+doublonnerait au sol.
 
 Légende rôle : P = principal · SC = sous-couche · C = consommable ·
 A = accessoire. Les lignes « optionnel » ne sont pas chiffrées.

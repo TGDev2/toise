@@ -34,11 +34,6 @@ import {
 import type { EstimationLineItem } from '../estimations/entities/estimation-result.entity';
 import { DEFAULT_WASTE_PERCENT } from '../estimations/estimation-engine';
 import { ProjectStatus } from '../projects/entities/project.entity';
-import {
-  ComplementaryContext,
-  computeComplementaryQuantity,
-  parseTileFormat,
-} from './complementary-formulas';
 import { isShareTokenExpired, shareTokenExpiry } from './share-token';
 
 /**
@@ -225,42 +220,21 @@ export class ShoppingListsService {
       order: { category: 'ASC', display_order: 'ASC' },
     });
 
-    // Build tiling context for calculated complementary materials
-    const tilingContext = await this.buildTilingContext(
-      projectId,
-      organizationId,
-      latest.items_json,
-      categoryByCode,
-    );
-
+    // E1-6 : un complément est un forfait, et rien d'autre. Ce qui se calcule
+    // sur la géométrie — colle, joint, croisillons — est un matériau du
+    // catalogue, chiffré par le moteur avec son rendement, son facteur de perte
+    // et son conditionnement. Le calculer ici en doublait la ligne.
     const complementaryItems: ShoppingListComplementaryItem[] = complements.map(
-      (c) => {
-        let quantity = c.default_quantity;
-        let isCalculated = false;
-
-        if (c.formula_code && tilingContext) {
-          const computed = computeComplementaryQuantity(
-            c.formula_code,
-            tilingContext,
-          );
-          if (computed !== null) {
-            quantity = computed;
-            isCalculated = true;
-          }
-        }
-
-        return {
-          complementary_material_id: c.id,
-          name: c.name,
-          description_fr: c.description_fr,
-          category: c.category,
-          unit_label: c.unit_label,
-          default_quantity: quantity,
-          quantity,
-          is_removed: false,
-          is_calculated: isCalculated,
-        };
-      },
+      (c) => ({
+        complementary_material_id: c.id,
+        name: c.name,
+        description_fr: c.description_fr,
+        category: c.category,
+        unit_label: c.unit_label,
+        default_quantity: c.default_quantity,
+        quantity: c.default_quantity,
+        is_removed: false,
+      }),
     );
 
     const data: ShoppingListData = {
@@ -1078,43 +1052,5 @@ export class ShoppingListsService {
 
   async saveEntity(entity: ShoppingList): Promise<ShoppingList> {
     return this.shoppingListRepo.save(entity);
-  }
-
-  private async buildTilingContext(
-    projectId: string,
-    organizationId: string,
-    estimationItems: { work_type_code: string; surface_m2: number }[],
-    categoryByCode: Map<string, string>,
-  ): Promise<ComplementaryContext | null> {
-    // Aggregate tiling surface from estimation items
-    const tilingSurfaceM2 = estimationItems
-      .filter((item) => categoryByCode.get(item.work_type_code) === 'tiling')
-      .reduce((sum, item) => sum + item.surface_m2, 0);
-
-    if (tilingSurfaceM2 <= 0) return null;
-
-    // Format de carreau : 1er work item carrelage trouvé, toutes pièces
-    // confondues (hypothèse mono-format documentée — multi-format = passe
-    // ultérieure).
-    const rooms = await this.projectsService.getRooms(
-      projectId,
-      organizationId,
-    );
-    const tilingWorkItem = rooms
-      .flatMap((r) => r.workItems || [])
-      .find((wi) => wi.work_type.category === 'tiling');
-
-    const tileFormatStr =
-      (tilingWorkItem?.custom_params?.tile_format as string) || '30x30';
-    const tileFormat = parseTileFormat(tileFormatStr) || {
-      length_cm: 30,
-      width_cm: 30,
-    };
-
-    return {
-      total_surface_m2: tilingSurfaceM2,
-      tile_length_cm: tileFormat.length_cm,
-      tile_width_cm: tileFormat.width_cm,
-    };
   }
 }
