@@ -79,6 +79,26 @@ function writeLastIdentity(uid: string | null): void {
 }
 
 /**
+ * Marqueur de présence de session lu par `proxy.ts` — un cookie non sensible,
+ * jamais le jeton Firebase (l'API vérifie ce dernier à chaque requête).
+ *
+ * Écrit ici plutôt qu'en ligne dans deux endroits : `startGuestSession` doit le
+ * poser avant de rendre la main, et `onIdTokenChanged` le pose pour toutes les
+ * autres entrées en session. Deux chaînes recopiées finiraient par diverger sur
+ * le `path` ou le `max-age`, et la divergence se paierait en redirections
+ * inexplicables vers `/login`.
+ */
+const SESSION_MARKER_COOKIE = 'chiffreo_auth';
+
+function markSessionPresent(): void {
+  document.cookie = `${SESSION_MARKER_COOKIE}=1; path=/; max-age=2592000; samesite=lax`;
+}
+
+function clearSessionMarker(): void {
+  document.cookie = `${SESSION_MARKER_COOKIE}=; path=/; max-age=0`;
+}
+
+/**
  * Purge les caches hors ligne dès que l'identité de l'appareil change.
  *
  * `logout` le faisait déjà, mais rien n'impose de se déconnecter : le cas courant sur un
@@ -267,11 +287,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // contenu protégé. Ce n'est PAS une barrière de sécurité : l'API
       // vérifie le token Firebase sur chaque requête.
       if (user) {
-        document.cookie =
-          'chiffreo_auth=1; path=/; max-age=2592000; samesite=lax';
+        markSessionPresent();
         await syncWithBackend();
       } else {
-        document.cookie = 'chiffreo_auth=; path=/; max-age=0';
+        clearSessionMarker();
         setAppUser(null);
       }
       setIsLoading(false);
@@ -339,8 +358,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signInWithPopup(getFirebaseAuth(), provider);
   }, []);
 
+  /**
+   * Ouverture d'une session invité.
+   *
+   * **`isLoading` est réarmé avant l'appel Firebase, et c'est le cœur du
+   * correctif E2-1.** `signInAnonymously` résout dès que Firebase a émis le
+   * jeton, mais l'utilisateur applicatif n'existe qu'après le `POST /auth/sync`
+   * que déclenche `onIdTokenChanged`. Entre les deux, l'état observable par les
+   * écrans est exactement celui d'un visiteur anonyme sans session :
+   * `appUser === null`, et `isGuest` encore `false` tant que React n'a pas
+   * propagé le nouveau `firebaseUser`. Comme `isLoading` était retombé à `false`
+   * au tout premier `onIdTokenChanged` (celui qui constate l'absence de
+   * session), la garde de la page d'arrivée s'exécutait dans cette fenêtre et
+   * renvoyait vers `/login` — sans un mot, au clic même sur « Essayer sans
+   * compte ». Observé en navigateur : la navigation vers `/login` part pendant
+   * que `/auth/sync` est encore en vol.
+   *
+   * Le drapeau n'est pas retombé ici en cas de succès : c'est
+   * `onIdTokenChanged` qui l'abaisse, une fois la synchronisation terminée. En
+   * cas d'échec en revanche, aucun événement ne viendra — il faut le rendre
+   * soi-même, sous peine de laisser l'application sur son écran de chargement.
+   *
+   * **Le marqueur de session est posé ici, et pas seulement dans
+   * `onIdTokenChanged`.** L'appelant navigue vers `/dashboard` dès que cette
+   * promesse résout, et `proxy.ts` redirige vers `/login` toute requête
+   * `/dashboard` ou `/projects/*` dépourvue du cookie. L'observateur de jeton
+   * est asynchrone : il pose le cookie *parfois* après cette navigation, ce qui
+   * rendait l'échec intermittent — donc invisible en développement et fatal
+   * dans le funnel. La garde anti-flash serveur ne peut pas s'appuyer sur un
+   * état que le client n'a pas encore publié.
+   */
   const startGuestSession = useCallback(async () => {
-    await signInAnonymously(getFirebaseAuth());
+    setIsLoading(true);
+    try {
+      await signInAnonymously(getFirebaseAuth());
+      markSessionPresent();
+    } catch (error) {
+      setIsLoading(false);
+      throw error;
+    }
   }, []);
 
   const convertGuestAccount = useCallback(
