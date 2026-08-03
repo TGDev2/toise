@@ -159,6 +159,7 @@ export class EstimationsService {
         name: m.name,
         unit: m.unit,
         yield_per_unit: Number(m.yield_per_unit),
+        applies_coats: m.applies_coats,
         role: l.role,
         waste_factors: overlayLearnedWasteFactors(
           m.waste_factors.map((wf) => ({

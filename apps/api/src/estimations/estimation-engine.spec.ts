@@ -60,8 +60,35 @@ describe('EstimationEngine', () => {
     name: 'Peinture acrylique mate',
     unit: 'L',
     yield_per_unit: 11,
+    applies_coats: true,
     waste_factors: makePaintWasteFactors(),
     packagings: makePaintPackagings(),
+    ...overrides,
+  });
+
+  /**
+   * Accessoire d'un ouvrage de peinture (E1-4) : même catégorie que la
+   * peinture, mais `applies_coats` faux — un pinceau ne se rachète pas à
+   * chaque couche.
+   */
+  const makeAccessoryMaterial = (
+    overrides?: Partial<MaterialInput>,
+  ): MaterialInput => ({
+    id: 'brush-uuid',
+    name: 'Pinceau à rechampir 25mm',
+    unit: 'unit',
+    yield_per_unit: 1,
+    role: 'accessoire',
+    waste_factors: [
+      { pose_type: 'standard', skill_level: 'beginner', factor_percent: 10 },
+      {
+        pose_type: 'standard',
+        skill_level: 'intermediate',
+        factor_percent: 5,
+      },
+      { pose_type: 'standard', skill_level: 'expert', factor_percent: 2 },
+    ],
+    packagings: [{ label: 'Unité', quantity_per_unit: 1, unit: 'unit' }],
     ...overrides,
   });
 
@@ -236,40 +263,35 @@ describe('EstimationEngine', () => {
   // computeTheoreticalQty
   // =========================================================================
   describe('computeTheoreticalQty', () => {
-    it('should compute base quantity for non-painting', () => {
-      const { qty } = engine.computeTheoreticalQty(12, 1, {}, 'tiling');
+    it('should compute base quantity for a material that does not apply coats', () => {
+      const { qty } = engine.computeTheoreticalQty(12, 1, {}, false);
       expect(qty).toBe(12);
     });
 
-    it('should multiply by number of coats for painting', () => {
+    it('should multiply by number of coats for a coat-applied material', () => {
       const { qty, coats } = engine.computeTheoreticalQty(
         31.964,
         11,
         { number_of_coats: 2 },
-        'painting',
+        true,
       );
       // 31.964 / 11 * 2 = 5.812
       expect(qty).toBeCloseTo(5.812, 2);
       expect(coats).toBe(2);
     });
 
-    it('should default to 2 coats for painting when not specified', () => {
-      const { qty, coats } = engine.computeTheoreticalQty(
-        31.964,
-        11,
-        {},
-        'painting',
-      );
+    it('should default to 2 coats when not specified', () => {
+      const { qty, coats } = engine.computeTheoreticalQty(31.964, 11, {}, true);
       expect(qty).toBeCloseTo(5.812, 2);
       expect(coats).toBe(2);
     });
 
-    it('should support 1 coat for painting', () => {
+    it('should support 1 coat', () => {
       const { qty, coats } = engine.computeTheoreticalQty(
         31.964,
         11,
         { number_of_coats: 1 },
-        'painting',
+        true,
       );
       // 31.964 / 11 * 1 = 2.906
       expect(qty).toBeCloseTo(2.906, 2);
@@ -281,9 +303,33 @@ describe('EstimationEngine', () => {
         12,
         '1' as unknown as number,
         {},
-        'tiling',
+        false,
       );
       expect(qty).toBe(12);
+    });
+
+    // E1-4 : le cœur du défaut corrigé — un accessoire d'un ouvrage de
+    // peinture, à rendement 1, ne suit pas le nombre de couches saisi.
+    it('does not multiply an accessory by the number of coats', () => {
+      const surfaceM2 = 33.3068;
+
+      const accessory = engine.computeTheoreticalQty(
+        surfaceM2,
+        1,
+        { number_of_coats: 2 },
+        false,
+      );
+      const paint = engine.computeTheoreticalQty(
+        surfaceM2,
+        1,
+        { number_of_coats: 2 },
+        true,
+      );
+
+      expect(accessory.qty).toBeCloseTo(surfaceM2, 4);
+      expect(accessory.coats).toBeUndefined();
+      // Le même matériau marqué « applique les couches » double, lui.
+      expect(paint.qty).toBeCloseTo(surfaceM2 * 2, 4);
     });
   });
 
@@ -469,6 +515,45 @@ describe('EstimationEngine', () => {
       expect(item.surface_m2_low).toBeUndefined();
       expect(item.adjusted_qty_low).toBeUndefined();
       expect(item.units_needed_low).toBeUndefined();
+    });
+
+    // E1-4 : dans un MÊME ouvrage de peinture, la peinture suit les couches et
+    // l'accessoire non. C'est le matériau qui décide, plus la catégorie de
+    // l'ouvrage — le défaut corrigé était exactement l'inverse.
+    it('applies the coat count to the paint but not to the accessory of the same work item', () => {
+      const room = makeRoom(); // mur brut 35 m², aucune ouverture
+      const workItems: WorkItemInput[] = [
+        {
+          id: 'wi-1',
+          work_type_code: 'wall_painting',
+          work_type_label: 'Peinture murale',
+          category: 'painting',
+          surface_target: 'wall',
+          skill_level: 'expert', // 2 % de perte sur l'accessoire
+          custom_params: { number_of_coats: 2 },
+          materials: [makePaintMaterial(), makeAccessoryMaterial()],
+        },
+      ];
+
+      const [paint, accessory] = engine.computeEstimation(room, workItems);
+
+      // 35 / 11 × 2 couches = 6,364 L
+      expect(paint.theoretical_qty).toBeCloseTo(6.364, 3);
+      expect(paint.number_of_coats).toBe(2);
+
+      // 35 / 1 = 35 unités — surtout PAS 70. La ligne ne porte aucune couche,
+      // parce que sa quantité n'en dépend pas.
+      expect(accessory.theoretical_qty).toBeCloseTo(35, 3);
+      expect(accessory.number_of_coats).toBeUndefined();
+      expect(accessory.adjusted_qty).toBeCloseTo(35.7, 3);
+
+      // Le passage à 3 couches ne bouge que la peinture.
+      const [paint3, accessory3] = engine.computeEstimation(room, [
+        { ...workItems[0], custom_params: { number_of_coats: 3 } },
+      ]);
+      expect(paint3.theoretical_qty).toBeCloseTo(9.545, 3);
+      expect(accessory3.theoretical_qty).toBe(accessory.theoretical_qty);
+      expect(accessory3.units_needed).toBe(accessory.units_needed);
     });
 
     // CV-5 : une pièce mesurée par CV porte une fourchette basse/haute

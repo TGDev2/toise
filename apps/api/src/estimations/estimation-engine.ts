@@ -65,6 +65,17 @@ export interface MaterialInput {
   unit: string;
   yield_per_unit: number;
   /**
+   * E1-4 — la quantité de ce matériau est proportionnelle au nombre de couches
+   * (`custom_params.number_of_coats`). Porté par le catalogue
+   * (`materials_catalog.applies_coats`), jamais déduit de la catégorie de
+   * l'ouvrage : une peinture et le pinceau qui l'applique sont tous deux des
+   * matériaux `painting`, seule la première se multiplie par les couches.
+   *
+   * Absent = `false`, comme le défaut de la colonne : un appel qui ne renseigne
+   * pas l'attribut ne fait pas de couches.
+   */
+  applies_coats?: boolean;
+  /**
    * Rôle porté par la liaison ouvrage → matériau (E1-3). Absent pour les
    * appels qui ne passent pas par `work_type_materials` (tests legacy). Le
    * moteur ne s'en sert pas encore pour les quantités (E1-4) ; il permet déjà
@@ -79,6 +90,12 @@ export interface WorkItemInput {
   id: string;
   work_type_code: string;
   work_type_label: string;
+  /**
+   * Famille de l'ouvrage, conservée pour la traçabilité de l'entrée et les
+   * appelants qui la portent déjà. Le moteur ne l'utilise plus pour aucun
+   * calcul depuis E1-4 : les règles de quantité sont portées par le matériau
+   * (`MaterialInput.applies_coats`), jamais déduites de cette valeur.
+   */
   category: string;
   surface_target: string;
   skill_level: string;
@@ -238,19 +255,27 @@ export class EstimationEngine {
     return resolveWasteFactor(wasteFactors, poseType, skillLevel);
   }
 
+  /**
+   * Quantité théorique avant perte. Le nombre de couches ne s'applique qu'aux
+   * matériaux qui le déclarent (`applies_coats`, E1-4) — un rouleau, un ruban
+   * ou une bâche ne se rachètent pas à chaque couche.
+   *
+   * `coats` n'est renseigné dans le retour que pour ces matériaux : c'est ce
+   * qui alimente le « · 2 couches » affiché sur la ligne, qui n'a de sens que
+   * là où la quantité en dépend vraiment.
+   */
   computeTheoreticalQty(
     surfaceM2: number,
     yieldPerUnit: number,
     customParams: Record<string, unknown>,
-    category: string,
+    appliesCoats: boolean,
   ): { qty: number; coats?: number } {
     const yield_ = Number(yieldPerUnit);
-    let qty = surfaceM2 / yield_;
+    const qty = surfaceM2 / yield_;
 
-    if (category === 'painting') {
+    if (appliesCoats) {
       const coats = Number(customParams.number_of_coats) || DEFAULT_COATS;
-      qty *= coats;
-      return { qty, coats };
+      return { qty: qty * coats, coats };
     }
 
     return { qty };
@@ -326,11 +351,13 @@ export class EstimationEngine {
           wi.skill_level,
         );
 
+        const appliesCoats = mat.applies_coats ?? false;
+
         const { qty: theoreticalQty, coats } = this.computeTheoreticalQty(
           surfaceM2,
           mat.yield_per_unit,
           wi.custom_params,
-          wi.category,
+          appliesCoats,
         );
 
         const adjustedQty = theoreticalQty * (1 + wasteFactor.percent / 100);
@@ -346,7 +373,7 @@ export class EstimationEngine {
               surfaceBounds.low,
               mat.yield_per_unit,
               wi.custom_params,
-              wi.category,
+              appliesCoats,
             ).qty *
             (1 + wasteFactor.percent / 100);
           const adjustedQtyHigh =
@@ -354,7 +381,7 @@ export class EstimationEngine {
               surfaceBounds.high,
               mat.yield_per_unit,
               wi.custom_params,
-              wi.category,
+              appliesCoats,
             ).qty *
             (1 + wasteFactor.percent / 100);
 

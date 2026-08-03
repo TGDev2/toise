@@ -59,6 +59,15 @@ export class CreateMaterialDto {
   @Min(0.0001)
   yield_per_unit!: number;
 
+  /**
+   * E1-4 — à vrai pour un revêtement dont la quantité suit le nombre de
+   * couches (peinture, lasure, vernis). Absent = faux : un matériau créé sans
+   * le préciser n'est jamais multiplié par les couches.
+   */
+  @IsOptional()
+  @IsBoolean()
+  applies_coats?: boolean;
+
   @IsOptional()
   @IsBoolean()
   is_eco?: boolean;

@@ -388,6 +388,7 @@ Créer un matériau dans le catalogue.
 | `category` | enum | oui | `painting`, `tiling`, `flooring`, `partition`, `wall_covering` |
 | `unit` | string | oui | Max 20 caractères |
 | `yield_per_unit` | number | oui | Min 0.0001 |
+| `applies_coats` | boolean | non | Défaut `false`. À `true`, la quantité est multipliée par le nombre de couches demandé (peintures, lasures, vernis) ; à `false`, elle n'en dépend pas — accessoires, consommables, sous-couches |
 | `packagings` | array | oui | Au moins 1 élément |
 | `packagings[].label` | string | oui | Max 255 caractères |
 | `packagings[].quantity_per_unit` | number | oui | Min 0.0001 |

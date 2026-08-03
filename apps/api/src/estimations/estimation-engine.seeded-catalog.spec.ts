@@ -20,6 +20,7 @@ const toMaterialInput = (mat: SeedMaterial, index: number): MaterialInput => ({
   name: mat.name,
   unit: mat.unit,
   yield_per_unit: mat.yield_per_unit,
+  applies_coats: mat.applies_coats ?? false,
   waste_factors: mat.waste_factors.map((wf) => ({
     pose_type: wf.pose_type,
     skill_level: wf.skill_level,

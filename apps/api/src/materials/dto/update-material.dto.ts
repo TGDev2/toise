@@ -37,6 +37,11 @@ export class UpdateMaterialDto {
   @Min(0.0001)
   yield_per_unit?: number;
 
+  /** Cf. `CreateMaterialDto.applies_coats` (E1-4). */
+  @IsOptional()
+  @IsBoolean()
+  applies_coats?: boolean;
+
   @IsOptional()
   @IsBoolean()
   is_active?: boolean;

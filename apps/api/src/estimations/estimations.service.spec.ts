@@ -41,6 +41,9 @@ const mockMaterial = {
   category: MaterialCategory.PAINTING,
   unit: 'L',
   yield_per_unit: 10,
+  // E1-4 : une peinture suit le nombre de couches, l'attribut est porté par le
+  // catalogue et propagé par loadMaterialInputs.
+  applies_coats: true,
   is_active: true,
   is_eco: false,
   waste_factors: [

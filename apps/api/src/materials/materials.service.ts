@@ -57,6 +57,7 @@ export class MaterialsService {
         category: dto.category,
         unit: dto.unit,
         yield_per_unit: dto.yield_per_unit,
+        applies_coats: dto.applies_coats ?? false,
         is_eco: dto.is_eco ?? false,
         eco_label_fr: dto.eco_label_fr ?? null,
         modified_by: userId,

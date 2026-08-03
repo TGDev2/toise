@@ -27,11 +27,16 @@ chantier). Objectif : 3 à 6 lignes achetables par ouvrage.
 
 **Deux limites connues, portées par les épics suivants** :
 
-1. **Quantités des accessoires** — tant qu'E1-4 n'est pas fait, le moteur
-   applique le nombre de couches et un rendement au m² à tout, accessoires
-   compris : un rouleau « sort » aujourd'hui à ~70 unités pour 33 m². La
-   composition des listes est juste, les quantités des accessoires non. C'est
-   l'assertion rouge du test E1-1 qu'E1-4 doit faire passer.
+1. **Quantités des accessoires** — E1-4 a supprimé la moitié du défaut : le
+   nombre de couches ne s'applique plus qu'aux matériaux qui le déclarent
+   (`materials_catalog.applies_coats`), donc un rouleau est passé de ~70 à
+   ~35 unités pour 33 m². Reste l'autre moitié : la quantité d'un accessoire
+   demeure proportionnelle à la surface, parce que son `yield_per_unit` vaut 1
+   — un rouleau « couvrirait » 1 m². Il faut soit un rendement réel (E1-7,
+   sourçage des rendements), soit une règle de quantité portée par le rôle
+   `accessoire` (« jeu d'outils par chantier », indépendant de la surface).
+   Tant que ce n'est pas tranché, l'assertion « aucun accessoire au-dessus de
+   5 unités » du test E1-1 reste rouge.
 2. **Doublons avec les compléments calculés** — rouleau, bâche, ruban,
    croisillons, bande/enduit à joint, colle papier peint et cutter existent
    aussi comme « compléments » (migrations `…009`/`…010`). L'arbitrage entre
