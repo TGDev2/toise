@@ -160,7 +160,7 @@ describe("Liste d'achat carrelage sol (intégration, PostgreSQL réel)", () => {
   /**
    * Pourquoi le contexte carrelage était faux : une ligne d'estimation est un
    * couple (ouvrage × matériau). Chacune porte les **mêmes** 12 m² ; les sommer
-   * donnait autant de fois la surface qu'il y a de matériaux curés — 72 m² ici,
+   * donnait autant de fois la surface qu'il y a de matériaux curés — 36 m² ici,
    * jusqu'à 48 × 12 avant E1-2. La colle et le joint se calculaient là-dessus.
    */
   it("chaque ligne d'estimation porte les mêmes 12 m² — les sommer les multiplie", () => {
@@ -191,21 +191,21 @@ describe("Liste d'achat carrelage sol (intégration, PostgreSQL réel)", () => {
     )!;
     expect(adhesive).toBeDefined();
 
-    // 12 / 0,22 m²·kg⁻¹ = 54,5 kg, + 10 % de perte (pose droite, niveau
-    // intermédiaire) = 60,0 kg, soit 5,0 kg/m² : la consommation d'un
-    // mortier-colle au peigne de 10 mm sous du 45 × 45. Fourchette
-    // reconnaissable par un carreleur : 4 à 6 kg/m².
-    expect(adhesive.adjusted_qty / SURFACE_M2).toBeGreaterThanOrEqual(4);
-    expect(adhesive.adjusted_qty / SURFACE_M2).toBeLessThanOrEqual(6);
+    // 12 / 0,14 m²·kg⁻¹ = 85,7 kg, + 10 % de perte (pose droite, niveau
+    // intermédiaire) = 94,3 kg, soit 7,9 kg/m² : la consommation fiche d'un
+    // mortier-colle sous du 45 × 45 au sol — 7 kg/m² en U9 double encollage
+    // (Cermix CERMIFLEX, docs/SOURCES_CATALOGUE.md) — plus la perte.
+    expect(adhesive.adjusted_qty / SURFACE_M2).toBeGreaterThanOrEqual(7);
+    expect(adhesive.adjusted_qty / SURFACE_M2).toBeLessThanOrEqual(9);
 
     // Et ce qu'on met dans le caddie couvre ce besoin sans jamais dépasser d'un
-    // conditionnement entier : 3 sacs de 25 kg pour 60 kg.
+    // conditionnement entier : 4 sacs de 25 kg pour 94,3 kg.
     const bought = adhesive.units_needed * adhesive.packaging_qty_per_unit;
     expect(bought).toBeGreaterThanOrEqual(adhesive.adjusted_qty);
     expect(bought - adhesive.adjusted_qty).toBeLessThan(
       adhesive.packaging_qty_per_unit,
     );
-    expect(adhesive.units_needed).toBe(3);
+    expect(adhesive.units_needed).toBe(4);
     expect(adhesive.packaging_label).toBe('Sac 25 kg');
   });
 

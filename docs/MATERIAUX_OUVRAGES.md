@@ -4,9 +4,9 @@ Décision métier matérialisée dans `work_type_materials` (seed :
 `apps/api/src/materials/work-type-materials.data.ts`, migrations `…066`/`…067`).
 Pour chaque ouvrage : le **principal** (un seul est chiffré par défaut, les
 alternatives sont documentées mais jamais chiffrées automatiquement), les
-**consommables** systématiques, la **sous-couche** quand elle couvre toute la
-surface, et les **accessoires** (petit matériel couramment racheté par
-chantier). Objectif : 3 à 6 lignes achetables par ouvrage.
+**consommables** systématiques et la **sous-couche** quand elle couvre toute
+la surface. Objectif : 2 à 6 lignes achetables par ouvrage, toutes au
+rendement sourcé (`docs/SOURCES_CATALOGUE.md`).
 
 **Règles transverses appliquées** (valables pour les sept listes) :
 
@@ -25,21 +25,19 @@ chantier). Objectif : 3 à 6 lignes achetables par ouvrage.
   peintures sol/fer/radiateur/boiseries, lasures et vernis, décapant, white
   spirit (inutile en acrylique), aérosols, peintures à effet.
 
-**Une limite connue, portée par l'épic suivant** :
-
-1. **Quantités des accessoires** — E1-4 a supprimé la moitié du défaut : le
-   nombre de couches ne s'applique plus qu'aux matériaux qui le déclarent
-   (`materials_catalog.applies_coats`), donc un rouleau est passé de ~70 à
-   ~35 unités pour 33 m². Reste l'autre moitié : la quantité d'un accessoire
-   demeure proportionnelle à la surface, parce que son `yield_per_unit` vaut 1
-   — un rouleau « couvrirait » 1 m². Il faut soit un rendement réel (E1-7,
-   sourçage des rendements), soit une règle de quantité portée par le rôle
-   `accessoire` (« jeu d'outils par chantier », indépendant de la surface).
-   Tant que ce n'est pas tranché, l'assertion « aucun accessoire au-dessus de
-   5 unités » du test E1-1 reste rouge. Le complément `Croisillons` supprimé par
-   E1-6 portait une formule plus juste — 4 croisillons par carreau, 200 par
-   sachet, soit 3 sachets pour 12 m² de 45 × 45 : cette connaissance appartient
-   au `yield_per_unit` du catalogue, à reprendre en E1-7.
+**La limite des accessoires est tranchée (E1-7)** : un outil pur — rouleau,
+pinceau, ruban de masquage, bâche, éponge, peigne, brosse, roulette, cutter,
+cale — n'a pas de rendement exprimable en m² par unité ; « un rouleau couvre
+1 m² » faisait acheter 35 rouleaux pour une chambre. Ces 10 outils sortent des
+liaisons (migration `…071`) et restent au catalogue, hors chiffrage. Sortent
+aussi, faute de source : les croisillons (aucune table de consommation
+fabricant), le joint silicone et le ruban pare-vapeur (grandeur fiche
+linéaire ou non normée — un modèle à la surface ne peut pas les porter
+honnêtement). L'assertion « aucun accessoire au-dessus de 5 unités » du test
+E1-1 est verte. Réintégrer outils et consommables linéaires comme rappel
+d'achat forfaitaire reste possible via `complementary_materials`, qui porte
+déjà ce mécanisme (bac à peinture) — hors périmètre V1, à inscrire au backlog
+si souhaité.
 
 **Le doublon avec les compléments est tranché (E1-6)** — rouleau, bâche, ruban,
 colle, joint, croisillons, peigne, bande/enduit à joint, colle papier peint et
@@ -57,10 +55,10 @@ complément que **bac à peinture**, **profil de finition** et **barre de seuil*
 que les règles transverses ci-dessus excluent explicitement du chiffrage à la
 surface.
 
-**Manque de curation révélé par cet arbitrage** : `wall_tiling` n'a pas de
-peigne à colle (plafond de 6 lignes), qu'il recevait jusqu'ici par le
-complément. À reprendre dans `work_type_materials`, pas par un complément qui
-doublonnerait au sol.
+**Manque de curation révélé par cet arbitrage, refermé par E1-7** :
+`wall_tiling` n'avait pas de peigne à colle. Sans objet désormais — le peigne
+est un outil pur, retiré du périmètre chiffré au même titre que celui de
+`floor_tiling`.
 
 Légende rôle : P = principal · SC = sous-couche · C = consommable ·
 A = accessoire. Les lignes « optionnel » ne sont pas chiffrées.
@@ -73,16 +71,13 @@ A = accessoire. Les lignes « optionnel » ne sont pas chiffrées.
 |---|---|---|---|---|
 | 1 | Peinture acrylique mate | P | obligatoire | Le défaut le plus courant en rénovation intérieure |
 | 2 | Sous-couche universelle | SC | obligatoire | Parti pris sûr quel que soit le support |
-| 3 | Rouleau méché 180mm | A | obligatoire | Le manchon se rachète par chantier |
-| 4 | Pinceau à rechampir 25mm | A | obligatoire | Angles et bords |
-| 5 | Ruban de masquage 50m | A | obligatoire | Consommé à chaque chantier |
-| 6 | Bâche de protection 4x5m | A | obligatoire | Protection des sols et meubles |
-| 7 | Peinture acrylique satinée | P | optionnel | Alternative lessivable |
-| 8 | Peinture acrylique velours | P | optionnel | Alternative intermédiaire mat/satin |
-| 9 | Peinture cuisine et salle de bain | P | optionnel | Variante pièces humides |
+| 3 | Peinture acrylique satinée | P | optionnel | Alternative lessivable |
+| 4 | Peinture acrylique velours | P | optionnel | Alternative intermédiaire mat/satin |
+| 5 | Peinture cuisine et salle de bain | P | optionnel | Variante pièces humides |
 
 **Écartés qu'on pourrait croire nécessaires** :
 
+- Rouleau méché 180mm, pinceau à rechampir 25mm, ruban de masquage 50m, bâche de protection 4x5m — outils purs, rendement non sourçable en m²/unité, retirés par E1-7.
 - Enduit de rebouchage — dépend du diagnostic d'état du support, pas de la surface à peindre.
 - Enduit de lissage — prestation de préparation distincte, chiffrée à part si le support l'exige.
 - Papier abrasif grain 120 — égrenage selon l'état du support, relève de la préparation.
@@ -97,14 +92,11 @@ A = accessoire. Les lignes « optionnel » ne sont pas chiffrées.
 |---|---|---|---|---|
 | 1 | Peinture plafond mate | P | obligatoire | Formulation anti-goutte, mat profond |
 | 2 | Sous-couche universelle | SC | obligatoire | — |
-| 3 | Rouleau méché 180mm | A | obligatoire | — |
-| 4 | Pinceau à rechampir 25mm | A | obligatoire | Rechampi en périphérie |
-| 5 | Bâche de protection 4x5m | A | obligatoire | Tout le sol est exposé |
-| 6 | Ruban de masquage 50m | A | obligatoire | Protection du haut des murs finis |
-| 7 | Peinture plafond anti-traces | P | optionnel | Le choix rénovation en lumière rasante |
+| 3 | Peinture plafond anti-traces | P | optionnel | Le choix rénovation en lumière rasante |
 
 **Écartés qu'on pourrait croire nécessaires** :
 
+- Rouleau méché 180mm, pinceau à rechampir 25mm, bâche de protection 4x5m, ruban de masquage 50m — outils purs, rendement non sourçable en m²/unité, retirés par E1-7.
 - Perche télescopique 1.2-2.4m — l'outil du plafond, mais outillage durable : on ne le rachète pas à chaque chantier.
 - Peinture acrylique mate (murale) — non formulée pour l'application en sous-face ; le produit plafond dédié est le bon défaut.
 - Peinture anti-humidité — traite un symptôme ; ne s'applique qu'après diagnostic et traitement de la cause.
@@ -118,15 +110,14 @@ A = accessoire. Les lignes « optionnel » ne sont pas chiffrées.
 | 1 | Carrelage sol 45x45 cm | P | obligatoire | Format standard actuel en rénovation (le 30x30 est daté) |
 | 2 | Mortier-colle flexible (C2) | C | obligatoire | Le bon défaut sur supports existants |
 | 3 | Joint fin 1-6mm | C | obligatoire | Largeur courante en 45x45 intérieur |
-| 4 | Croisillons 3mm (x200) | A | obligatoire | Consommable de pose |
-| 5 | Éponge de carreleur | A | obligatoire | Jointoiement, usée par chantier |
-| 6 | Peigne à colle 10mm | A | obligatoire | Denture sol ; s'use et se rachète par chantier |
-| 7 | Carrelage sol 30x30 cm | P | optionnel | Ancien défaut, conservé comme variante petit format |
-| 8 | Carrelage sol 60x60 cm | P | optionnel | Grand format — appellerait colle C2S1 et nivelage (limite documentée) |
-| 9 | Carrelage imitation bois 20x120 cm | P | optionnel | Grand format — même réserve que le 60x60 |
+| 4 | Carrelage sol 30x30 cm | P | optionnel | Ancien défaut, conservé comme variante petit format |
+| 5 | Carrelage sol 60x60 cm | P | optionnel | Grand format — appellerait colle C2S1 et nivelage (limite documentée) |
+| 6 | Carrelage imitation bois 20x120 cm | P | optionnel | Grand format — même réserve que le 60x60 |
 
 **Écartés qu'on pourrait croire nécessaires** :
 
+- Croisillons 3mm (x200) — aucune table de consommation par m² publiée par un fabricant (Rubi, Raimondi, Taliaplast vérifiés) : non sourçable, retirés par E1-7.
+- Éponge de carreleur, peigne à colle 10mm — outils purs, rendement non sourçable en m²/unité, retirés par E1-7.
 - Primaire d'accrochage carrelage — seulement selon le support (ancien carrelage, support fermé).
 - Ragréage autolissant — dépend de la planéité constatée, diagnostic préalable.
 - Plinthe carrelage 8x30 cm — chiffrage au linéaire, ouvrage de finition séparé.
@@ -144,14 +135,14 @@ A = accessoire. Les lignes « optionnel » ne sont pas chiffrées.
 | 1 | Faïence murale 25x40 cm | P | obligatoire | Format courant cuisine / salle de bain |
 | 2 | Colle en pâte prête à l'emploi | C | obligatoire | Le choix pro en mural intérieur, **hors zone douche** (immersion → mortier-colle) |
 | 3 | Joint fin 1-6mm | C | obligatoire | Joints fins muraux |
-| 4 | Joint souple silicone | C | obligatoire | Angles rentrants et périphéries (bac, plan de travail) |
-| 5 | Croisillons 2mm (x200) | A | obligatoire | — |
-| 6 | Éponge de carreleur | A | obligatoire | — |
-| 7 | Carrelage métro 7.5x15 cm | P | optionnel | Même colle, mêmes croisillons |
-| 8 | Carrelage mural 20x40 cm | P | optionnel | — |
+| 4 | Carrelage métro 7.5x15 cm | P | optionnel | Même colle |
+| 5 | Carrelage mural 20x40 cm | P | optionnel | — |
 
 **Écartés qu'on pourrait croire nécessaires** :
 
+- Joint souple silicone — les fiches fabricant ne publient qu'un métrage linéaire de cordon (12 m par cartouche, Bostik S300), jamais un rendement au m² : non sourçable dans un modèle à la surface, retiré par E1-7 — même logique que son exclusion côté sol.
+- Croisillons 2mm (x200) — aucune table de consommation par m² publiée par un fabricant : non sourçable, retirés par E1-7.
+- Éponge de carreleur — outil pur, rendement non sourçable en m²/unité, retirée par E1-7.
 - SEL + bande d'étanchéité 120mm — zone douche uniquement (locaux EB+, DTU 52.2), pas du systématique.
 - Primaire d'accrochage carrelage — selon support (peinture, plâtre lisse), sur diagnostic.
 - Profilé de finition alu / baguette PVC — au linéaire, selon les angles sortants du chantier.
@@ -166,14 +157,14 @@ A = accessoire. Les lignes « optionnel » ne sont pas chiffrées.
 | 1 | Stratifié 8mm AC4 | P | obligatoire | Défaut rénovation pièce à vivre |
 | 2 | Sous-couche mousse 3mm | SC | obligatoire | Défaut courant |
 | 3 | Film pare-vapeur PE | SC | obligatoire | Support minéral (dalle, chape) — à proscrire sur plancher bois (documenté) |
-| 4 | Ruban adhésif pare-vapeur | C | obligatoire | Jointoiement des lés — va toujours avec le film |
-| 5 | Cale de dilatation (x40) | A | obligatoire | Le consommable de la pose flottante |
-| 6 | Parquet contrecollé chêne 14mm | P | optionnel | Montée en gamme bois véritable |
-| 7 | Stratifié 12mm AC5 | P | optionnel | Usage intensif |
+| 4 | Parquet contrecollé chêne 14mm | P | optionnel | Montée en gamme bois véritable |
+| 5 | Stratifié 12mm AC5 | P | optionnel | Usage intensif |
 
 **Écartés qu'on pourrait croire nécessaires** :
 
-- Kit de pose stratifié (cale+tire-lame+maillet) — tire-lame et maillet sont de l'outillage durable ; seul le consommable (cales) est retenu.
+- Ruban adhésif pare-vapeur — aucune fiche fabricant ne norme sa consommation au m², et la fiche du film (Wineo) ne l'exige pas en conditions normales : non sourçable, retiré par E1-7. Le recouvrement des lés, lui, est chiffré (rendement du film 0,8).
+- Cale de dilatation (x40) — sa quantité suit le périmètre de la pièce, pas la surface : pas de rendement en m²/unité, retirée par E1-7.
+- Kit de pose stratifié (cale+tire-lame+maillet) — tire-lame et maillet sont de l'outillage durable.
 - Plinthes MDF / chêne — chiffrage au linéaire, pas à la surface.
 - Barres de seuil — à l'unité, par passage de porte.
 - Colle parquet — pose collée uniquement, hors sujet en pose flottante.
@@ -211,14 +202,12 @@ A = accessoire. Les lignes « optionnel » ne sont pas chiffrées.
 |---|---|---|---|---|
 | 1 | Papier peint intissé uni | P | obligatoire | On encolle le mur, pas le lé |
 | 2 | Colle papier peint intissé | C | obligatoire | Colle dédiée (consistance, glisse) |
-| 3 | Brosse à maroufler | A | obligatoire | Marouflage des lés |
-| 4 | Roulette de joint | A | obligatoire | Le geste du raccord invisible |
-| 5 | Cutter de précision | A | obligatoire | Lames changées en continu — arasement net |
-| 6 | Papier peint intissé à motif | P | optionnel | Le facteur de chute « patterned » du catalogue le couvre |
-| 7 | Papier peint vinyle sur intissé | P | optionnel | Papiers lourds → colle renforcée (limite documentée) |
+| 3 | Papier peint intissé à motif | P | optionnel | Le facteur de chute « patterned » du catalogue le couvre |
+| 4 | Papier peint vinyle sur intissé | P | optionnel | Papiers lourds → colle renforcée (limite documentée) |
 
 **Écartés qu'on pourrait croire nécessaires** :
 
+- Brosse à maroufler, roulette de joint, cutter de précision — outils purs, rendement non sourçable en m²/unité, retirés par E1-7.
 - Table à tapisser — outillage durable ; et en intissé on encolle le mur, elle ne sert même pas.
 - Fil à plomb / règle alu 2m — outillage durable.
 - Couteau à maroufler — guide de coupe utile mais durable ; la roulette et le cutter suffisent.

@@ -8,14 +8,13 @@ import { WorkTypeMaterialRole } from './entities/work-type-material.entity';
  * une seule source de vérité, sur le modèle posé par `seed-catalog.data.ts`.
  *
  * E1-3 matérialise la décision métier des 7 jeux (relecture artisan :
- * `docs/MATERIAUX_OUVRAGES.md`) : principal + consommables systématiques +
- * accessoires « petit matériel par chantier », 3 à 6 lignes obligatoires par
- * ouvrage. `is_optional: true` = alternative documentée, jamais chiffrée
- * automatiquement. Deux limites assumées, portées par les épics suivants :
- * les quantités des accessoires restent fausses tant qu'E1-4 n'est pas fait
- * (couches appliquées à tout, rendements `unit` à 1), et le recouvrement avec
- * les compléments calculés (`…009`/`…010` : rouleau, bâche, croisillons,
- * bande/enduit à joint, colle papier peint…) est arbitré par E1-6.
+ * `docs/MATERIAUX_OUVRAGES.md`) : principal + consommables systématiques,
+ * `is_optional: true` = alternative documentée, jamais chiffrée
+ * automatiquement. E1-7 a retiré les outils purs (rouleau, pinceau, éponge,
+ * peigne, bâche…) : un outil n'a pas de rendement exprimable en m²/unité, et
+ * seuls les matériaux au rendement sourcé restent liés — le registre est
+ * `docs/SOURCES_CATALOGUE.md`, la migration `…071` porte le retrait pour les
+ * bases déjà seedées.
  */
 export interface WorkTypeMaterialLink {
   work_type_code: string;
@@ -124,45 +123,15 @@ const e12Links: WorkTypeMaterialLink[] = [
 ];
 
 /**
- * Delta E1-3 : les 45 liaisons ajoutées à la curation, insérées par `…067`
- * sur les bases déjà migrées (sur base vierge, `…066` insère directement le
- * tableau complet et ces INSERT sont des no-ops). Groupées par ouvrage,
- * `display_order` continuant après les rangs d'E1-2.
+ * Delta E1-3 : les liaisons ajoutées à la curation (45 à l'origine, réduites
+ * par E1-7 des outils purs), insérées par `…067` sur les bases déjà migrées
+ * (sur base vierge, `…066` insère directement le tableau complet et ces
+ * INSERT sont des no-ops). Groupées par ouvrage, `display_order` continuant
+ * après les rangs d'E1-2 — les trous laissés par E1-7 sont sans effet,
+ * l'ordre ne sert qu'en ORDER BY.
  */
 export const workTypeMaterialLinksE13: WorkTypeMaterialLink[] = [
   // --- wall_painting : peinture murale intérieure (E1-2 : ordres 1-2) ---
-  {
-    work_type_code: 'wall_painting',
-    material_name: 'Rouleau méché 180mm',
-    material_category: 'painting',
-    role: 'accessoire',
-    is_optional: false,
-    display_order: 3,
-  },
-  {
-    work_type_code: 'wall_painting',
-    material_name: 'Pinceau à rechampir 25mm',
-    material_category: 'painting',
-    role: 'accessoire',
-    is_optional: false,
-    display_order: 4,
-  },
-  {
-    work_type_code: 'wall_painting',
-    material_name: 'Ruban de masquage 50m',
-    material_category: 'painting',
-    role: 'accessoire',
-    is_optional: false,
-    display_order: 5,
-  },
-  {
-    work_type_code: 'wall_painting',
-    material_name: 'Bâche de protection 4x5m',
-    material_category: 'painting',
-    role: 'accessoire',
-    is_optional: false,
-    display_order: 6,
-  },
   {
     work_type_code: 'wall_painting',
     material_name: 'Peinture acrylique satinée',
@@ -188,38 +157,6 @@ export const workTypeMaterialLinksE13: WorkTypeMaterialLink[] = [
     display_order: 9,
   },
   // --- ceiling_painting : peinture plafond (E1-2 : ordres 1-2) ---
-  {
-    work_type_code: 'ceiling_painting',
-    material_name: 'Rouleau méché 180mm',
-    material_category: 'painting',
-    role: 'accessoire',
-    is_optional: false,
-    display_order: 3,
-  },
-  {
-    work_type_code: 'ceiling_painting',
-    material_name: 'Pinceau à rechampir 25mm',
-    material_category: 'painting',
-    role: 'accessoire',
-    is_optional: false,
-    display_order: 4,
-  },
-  {
-    work_type_code: 'ceiling_painting',
-    material_name: 'Bâche de protection 4x5m',
-    material_category: 'painting',
-    role: 'accessoire',
-    is_optional: false,
-    display_order: 5,
-  },
-  {
-    work_type_code: 'ceiling_painting',
-    material_name: 'Ruban de masquage 50m',
-    material_category: 'painting',
-    role: 'accessoire',
-    is_optional: false,
-    display_order: 6,
-  },
   {
     work_type_code: 'ceiling_painting',
     material_name: 'Peinture plafond anti-traces',
@@ -252,30 +189,6 @@ export const workTypeMaterialLinksE13: WorkTypeMaterialLink[] = [
     role: 'consommable',
     is_optional: false,
     display_order: 3,
-  },
-  {
-    work_type_code: 'floor_tiling',
-    material_name: 'Croisillons 3mm (x200)',
-    material_category: 'tiling',
-    role: 'accessoire',
-    is_optional: false,
-    display_order: 4,
-  },
-  {
-    work_type_code: 'floor_tiling',
-    material_name: 'Éponge de carreleur',
-    material_category: 'tiling',
-    role: 'accessoire',
-    is_optional: false,
-    display_order: 5,
-  },
-  {
-    work_type_code: 'floor_tiling',
-    material_name: 'Peigne à colle 10mm',
-    material_category: 'tiling',
-    role: 'accessoire',
-    is_optional: false,
-    display_order: 6,
   },
   {
     work_type_code: 'floor_tiling',
@@ -312,30 +225,6 @@ export const workTypeMaterialLinksE13: WorkTypeMaterialLink[] = [
   },
   {
     work_type_code: 'wall_tiling',
-    material_name: 'Joint souple silicone',
-    material_category: 'tiling',
-    role: 'consommable',
-    is_optional: false,
-    display_order: 4,
-  },
-  {
-    work_type_code: 'wall_tiling',
-    material_name: 'Croisillons 2mm (x200)',
-    material_category: 'tiling',
-    role: 'accessoire',
-    is_optional: false,
-    display_order: 5,
-  },
-  {
-    work_type_code: 'wall_tiling',
-    material_name: 'Éponge de carreleur',
-    material_category: 'tiling',
-    role: 'accessoire',
-    is_optional: false,
-    display_order: 6,
-  },
-  {
-    work_type_code: 'wall_tiling',
     material_name: 'Carrelage métro 7.5x15 cm',
     material_category: 'tiling',
     role: 'principal',
@@ -358,22 +247,6 @@ export const workTypeMaterialLinksE13: WorkTypeMaterialLink[] = [
     role: 'sous_couche',
     is_optional: false,
     display_order: 3,
-  },
-  {
-    work_type_code: 'parquet_flooring',
-    material_name: 'Ruban adhésif pare-vapeur',
-    material_category: 'flooring',
-    role: 'consommable',
-    is_optional: false,
-    display_order: 4,
-  },
-  {
-    work_type_code: 'parquet_flooring',
-    material_name: 'Cale de dilatation (x40)',
-    material_category: 'flooring',
-    role: 'accessoire',
-    is_optional: false,
-    display_order: 5,
   },
   {
     work_type_code: 'parquet_flooring',
@@ -457,30 +330,6 @@ export const workTypeMaterialLinksE13: WorkTypeMaterialLink[] = [
     display_order: 9,
   },
   // --- wall_covering : papier peint intissé (E1-2 : ordres 1-2) ---
-  {
-    work_type_code: 'wall_covering',
-    material_name: 'Brosse à maroufler',
-    material_category: 'wall_covering',
-    role: 'accessoire',
-    is_optional: false,
-    display_order: 3,
-  },
-  {
-    work_type_code: 'wall_covering',
-    material_name: 'Roulette de joint',
-    material_category: 'wall_covering',
-    role: 'accessoire',
-    is_optional: false,
-    display_order: 4,
-  },
-  {
-    work_type_code: 'wall_covering',
-    material_name: 'Cutter de précision',
-    material_category: 'wall_covering',
-    role: 'accessoire',
-    is_optional: false,
-    display_order: 5,
-  },
   {
     work_type_code: 'wall_covering',
     material_name: 'Papier peint intissé à motif',
