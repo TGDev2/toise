@@ -130,22 +130,20 @@ export class EstimationsService {
       order: { display_order: 'ASC' },
     });
 
-    const materials = links
-      .map((l) => l.material)
-      .filter(
-        (m) =>
-          m.is_active &&
-          // PLAT-3 : les alternatives éco sont informationnelles (badge/
-          // suggestion sur la liste de courses), jamais injectées dans le
-          // chiffrage automatique — un matériau éco actif serait sinon ajouté
-          // au chiffrage de tous les utilisateurs, Free inclus.
-          !m.is_eco,
-      );
+    const activeLinks = links.filter(
+      (l) =>
+        l.material.is_active &&
+        // PLAT-3 : les alternatives éco sont informationnelles (badge/
+        // suggestion sur la liste de courses), jamais injectées dans le
+        // chiffrage automatique — un matériau éco actif serait sinon ajouté
+        // au chiffrage de tous les utilisateurs, Free inclus.
+        !l.material.is_eco,
+    );
 
-    if (materials.length === 0) return [];
+    if (activeLinks.length === 0) return [];
 
     const learned = await this.learnedWasteFactorRepo.find({
-      where: { material_id: In(materials.map((m) => m.id)) },
+      where: { material_id: In(activeLinks.map((l) => l.material.id)) },
     });
     const learnedByMaterialId = new Map<string, LearnedWasteFactor[]>();
     for (const lwf of learned) {
@@ -154,25 +152,29 @@ export class EstimationsService {
       else learnedByMaterialId.set(lwf.material_id, [lwf]);
     }
 
-    return materials.map((m) => ({
-      id: m.id,
-      name: m.name,
-      unit: m.unit,
-      yield_per_unit: Number(m.yield_per_unit),
-      waste_factors: overlayLearnedWasteFactors(
-        m.waste_factors.map((wf) => ({
-          pose_type: wf.pose_type,
-          skill_level: wf.skill_level,
-          factor_percent: Number(wf.factor_percent),
+    return activeLinks.map((l) => {
+      const m = l.material;
+      return {
+        id: m.id,
+        name: m.name,
+        unit: m.unit,
+        yield_per_unit: Number(m.yield_per_unit),
+        role: l.role,
+        waste_factors: overlayLearnedWasteFactors(
+          m.waste_factors.map((wf) => ({
+            pose_type: wf.pose_type,
+            skill_level: wf.skill_level,
+            factor_percent: Number(wf.factor_percent),
+          })),
+          learnedByMaterialId.get(m.id) ?? [],
+        ),
+        packagings: m.packagings.map((p) => ({
+          label: p.label,
+          quantity_per_unit: Number(p.quantity_per_unit),
+          unit: p.unit,
         })),
-        learnedByMaterialId.get(m.id) ?? [],
-      ),
-      packagings: m.packagings.map((p) => ({
-        label: p.label,
-        quantity_per_unit: Number(p.quantity_per_unit),
-        unit: p.unit,
-      })),
-    }));
+      };
+    });
   }
 
   async estimate(
@@ -415,8 +417,15 @@ export class EstimationsService {
 
     const poseType =
       (dto.custom_params?.laying_pattern as string) || 'standard';
+    // La quantité d'un devis suit la surface de l'ouvrage : la fourchette de
+    // référence se calcule sur les matériaux surfaciques. Depuis E1-3, les
+    // accessoires (rouleaux, croisillons…) peuvent être majoritaires dans un
+    // jeu — sans ce filtre, leur fourchette gagnerait le vote de
+    // `dominantWasteReference` et un devis honnête serait signalé en écart.
     const reference = dominantWasteReference(
-      await this.loadMaterialInputs(workType),
+      (await this.loadMaterialInputs(workType)).filter(
+        (m) => m.role !== 'accessoire',
+      ),
       poseType,
     );
 

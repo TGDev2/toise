@@ -113,13 +113,15 @@ export function wasteReferenceRange(
  * porte un devis vise **l'ouvrage**. Il faut donc désigner laquelle des fourchettes
  * fait référence, et le faire sur une règle et non au jugé.
  *
- * Règle retenue : celle que **le plus grand nombre de matériaux de l'ouvrage
- * partagent**. Elle tombe juste sur les cinq catégories semées, parce que les
- * accessoires comptables (croisillons, pinceaux, cales…) sont toujours minoritaires
- * face aux matériaux de l'ouvrage : carrelage → 5–15 % en pose droite, peinture →
- * 5–15 %, sol → 5–10 %. Une règle par unité (`m2`) ou par nom échouerait : la
- * peinture se compte en litres, et le white-spirit aussi tout en portant la
- * fourchette des accessoires.
+ * Règle retenue : celle que **le plus grand nombre des matériaux fournis
+ * partagent**. Attention au périmètre : depuis la curation E1-3, les
+ * accessoires comptables (croisillons, pinceaux, bâches…) peuvent être
+ * MAJORITAIRES dans un jeu (4 lignes sur 6 en peinture murale) — l'appelant
+ * doit les exclure par leur rôle (`role !== 'accessoire'`, cf.
+ * `checkQuotePublic`) avant le vote, sinon la fourchette des accessoires
+ * l'emporterait sur celle de l'ouvrage. Une règle par unité (`m2`) ou par nom
+ * échouerait de la même façon : la peinture se compte en litres, et le
+ * white-spirit aussi tout en portant la fourchette des accessoires.
  *
  * Égalité tranchée par la fourchette **la plus large**. C'est le sens prudent : une
  * fourchette large produit moins de verdicts « au-dessus », et le risque nommé par

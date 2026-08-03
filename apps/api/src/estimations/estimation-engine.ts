@@ -64,6 +64,13 @@ export interface MaterialInput {
   name: string;
   unit: string;
   yield_per_unit: number;
+  /**
+   * Rôle porté par la liaison ouvrage → matériau (E1-3). Absent pour les
+   * appels qui ne passent pas par `work_type_materials` (tests legacy). Le
+   * moteur ne s'en sert pas encore pour les quantités (E1-4) ; il permet déjà
+   * d'exclure les accessoires de la fourchette de référence d'un devis.
+   */
+  role?: 'principal' | 'sous_couche' | 'consommable' | 'accessoire';
   waste_factors: WasteFactorInput[];
   packagings: PackagingInput[];
 }

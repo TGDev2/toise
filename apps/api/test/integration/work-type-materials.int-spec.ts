@@ -111,9 +111,12 @@ describe('work_type_materials (intégration, PostgreSQL réel)', () => {
     const workType = (await dataSource
       .getRepository(WorkType)
       .findOne({ where: { code: 'wall_painting' } }))!;
+    // Un matériau volontairement HORS de la curation E1-3 : la satinée est
+    // désormais seedée en alternative de `wall_painting` et entrerait en
+    // collision avec `UQ_work_type_materials`.
     const material = (await dataSource.getRepository(MaterialCatalog).findOne({
       where: {
-        name: 'Peinture acrylique satinée',
+        name: 'Peinture tableau noir',
         category: 'painting' as MaterialCatalog['category'],
       },
     }))!;
@@ -134,9 +137,7 @@ describe('work_type_materials (intégration, PostgreSQL réel)', () => {
       );
 
       expect(
-        result.items.some(
-          (i) => i.material_name === 'Peinture acrylique satinée',
-        ),
+        result.items.some((i) => i.material_name === 'Peinture tableau noir'),
       ).toBe(false);
     } finally {
       await dataSource.getRepository(WorkTypeMaterial).delete(link.id);
