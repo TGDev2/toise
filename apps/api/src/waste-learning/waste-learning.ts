@@ -16,6 +16,10 @@ import { WasteFactorInput } from '../estimations/estimation-engine';
  * catalogue courante : une observation reste ainsi correctement interprétée
  * après un ré-apprentissage, et l'estimateur converge au lieu de dériver.
  *
+ * Le « catalogue » désigne les `waste_factors` seedés : des valeurs d'usage
+ * métier, sans référence normative — aucun DTU ne fixe de pourcentage de
+ * perte (E1-7). Étalonnées lors d'ENG-5, elles sont affinées ici (DATA-3).
+ *
  * Deux propriétés portent toute la méthode :
  *  - `ratio = 1` ⇒ perte impliquée = perte appliquée. **Ne rien ajuster est un
  *    point fixe** : l'inaction ne produit aucune dérive. C'est aussi ce qui
@@ -53,7 +57,7 @@ export interface WasteLearningOutcome {
   pose_type: string;
   skill_level: string;
   status: WasteLearningStatus;
-  /** Valeur catalogue (DTU) vers laquelle on rétrécit. */
+  /** Valeur catalogue (usage métier, non normative) vers laquelle on rétrécit. */
   baseline_percent: number;
   /** Médiane robuste des pertes impliquées, avant crédibilité et bornes. */
   observed_percent: number | null;
@@ -84,7 +88,7 @@ export interface WasteLearningShortfall {
 }
 
 export interface WasteLearningOptions {
-  /** En deçà, aucune valeur apprise : le catalogue DTU reste seul maître. */
+  /** En deçà, aucune valeur apprise : le catalogue reste seul maître. */
   minObservations: number;
   /**
    * Plafond de politique par organisation et par cellule (les plus récentes).
@@ -162,7 +166,7 @@ export function impliedWastePercent(observation: WasteObservation): number {
  * Dériver la valeur plutôt que la choisir petite est ce qui rend l'oubli sûr :
  * régler `minObservations` ne peut plus rouvrir le trou en silence. Un minimum
  * fixé sous 3 donne un plafond nul et rend la cellule inapprenable — la panne
- * va dans le bon sens, celui du catalogue DTU inchangé.
+ * va dans le bon sens, celui du catalogue inchangé.
  */
 export function organizationObservationCap(
   options: WasteLearningOptions,
@@ -234,7 +238,7 @@ function clamp(value: number, min: number, max: number): number {
  * Calcule, cellule par cellule, le facteur de perte appris. `resolveBaseline`
  * fournit la valeur catalogue de la cellule, résolue exactement comme le
  * moteur (exact → `standard` → défaut) : c'est vers elle qu'on rétrécit, donc
- * l'étalonnage DTU d'ENG-5 reste la référence et non un simple point de départ.
+ * l'étalonnage ENG-5 reste la référence et non un simple point de départ.
  *
  * Retourne une ligne par cellule observée, y compris celles écartées, pour que
  * l'admin puisse voir *pourquoi* une cellule n'apprend pas. Seules les cellules
@@ -346,7 +350,7 @@ function round2(value: number): number {
  * valeur apprise remplace la cellule catalogue de même (pose, niveau), et en
  * crée une si elle n'existait pas — un couple appris devient alors un point de
  * résolution exact là où le moteur retombait sur `standard` ou sur le défaut.
- * Le catalogue DTU lui-même n'est jamais réécrit.
+ * Le catalogue lui-même n'est jamais réécrit.
  */
 export function overlayLearnedWasteFactors(
   catalogFactors: WasteFactorInput[],

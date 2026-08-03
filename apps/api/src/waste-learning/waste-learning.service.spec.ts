@@ -252,7 +252,7 @@ describe('WasteLearningService', () => {
    * avec `actual == estimated` : le catalogue se voyait confirmer par des
    * lignes que l'utilisateur n'avait jamais regardées, et d'autant plus qu'il
    * était passif. Dix chantiers muets suffisaient à franchir le seuil de huit
-   * observations et à figer le facteur DTU comme « appris ».
+   * observations et à figer le facteur catalogue comme « appris ».
    */
   it('n’admet pas une ligne dont la quantité n’a jamais été déclarée', async () => {
     seed(12, { estimated: 10, actual: 10, declared: false });

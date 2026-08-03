@@ -14,10 +14,10 @@ import { numericTransformer } from '../../common/transformers/numeric.transforme
  * BACKLOG DATA-3 : facteur de perte appris sur les achats réels, superposé au
  * catalogue au chargement (`overlayLearnedWasteFactors`).
  *
- * Table **distincte** de `waste_factors` à dessein : l'étalonnage DTU d'ENG-5
+ * Table **distincte** de `waste_factors` à dessein : l'étalonnage ENG-5
  * reste la référence auditable et n'est jamais réécrit par un calcul
- * automatique. On peut donc comparer à tout moment l'appris et la norme, et
- * revenir au catalogue seul en vidant cette table.
+ * automatique. On peut donc comparer à tout moment l'appris et la valeur
+ * catalogue, et revenir au catalogue seul en vidant cette table.
  */
 @Entity('learned_waste_factors')
 @Unique('UQ_learned_waste_factors_cell', [

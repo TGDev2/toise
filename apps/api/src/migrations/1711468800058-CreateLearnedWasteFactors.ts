@@ -4,7 +4,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * BACKLOG DATA-3 : facteurs de perte appris sur les écarts estimé/acheté des
  * chantiers terminés.
  *
- * Table séparée de `waste_factors` : le catalogue DTU étalonné par ENG-5 n'est
+ * Table séparée de `waste_factors` : le catalogue de pertes étalonné par ENG-5 n'est
  * jamais réécrit par le calcul automatique, il reste la référence auditable
  * vers laquelle l'apprentissage rétrécit (`baseline_percent`). Vider cette
  * table suffit à revenir au catalogue seul.

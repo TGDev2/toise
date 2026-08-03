@@ -56,7 +56,7 @@ Périmètre réel, non négociable à court terme **[O]** :
 - **7 ouvrages**, tous de finition : peinture murale, peinture plafond, carrelage sol, carrelage mural, parquet/stratifié, cloison sèche, revêtement mural (migration `…003:51-58`). Ni plomberie, ni électricité, ni isolation, ni maçonnerie, ni menuiserie.
 - **208 matériaux** seedés (54 peinture, 48 carrelage, 41 sol, 33 revêtement mural, 32 cloison), **sans aucun prix en base** — la table `materials_catalog` n'a pas de colonne prix. Tout prix vient d'une saisie utilisateur ou d'un flux fournisseur.
 - **Un seul bloc de main-d'œuvre** par devis : horaire ou forfait (`quote.entity.ts:75-102`). Pas de ligne de MO par ouvrage, pas de déboursé sec.
-- **24 rendements sur 208** ont été recalibrés sur fiches fabricants (migration `…033`) ; les 184 autres ne sont sourcés nulle part. Les facteurs de perte sont six familles de nombres ronds (15/10/5, 20/15/10, 12/8/4…), appelés « catalogue DTU » dans le code et dans `docs/API.md:2463` **sans qu'aucune référence DTU n'apparaisse**. **[O]**
+- **Les matériaux servis par la V1 sont sourcés** (E1-7, `docs/SOURCES_CATALOGUE.md`) : 35 matériaux liés aux 7 ouvrages, chacun vérifié contre une fiche fabricant (URL + date), 15 rendements corrigés (migration `…070`), 14 matériaux non sourçables retirés des liaisons (migration `…071`) — un test l'impose (`sources-catalogue.spec.ts`). Le reste du catalogue (~170 entrées non liées) demeure non sourcé et hors périmètre chiffré. Les facteurs de perte restent six familles de nombres ronds, désormais assumés comme **valeurs d'usage métier sans référence normative** — l'appellation « catalogue DTU » a disparu du code et de la doc. **[O]**
 
 ### 2.2 L'utilisateur, et la situation où le produit devient utile
 
@@ -196,7 +196,7 @@ saisie des dimensions → ouvrage, niveau, pose → **liste d'achat de 3 à 6 li
 |---|---|---|
 | `apps/api` — estimations, shopping-lists, materials, projects | **Conserver et corriger** | C'est le produit. Les défauts sont des bugs, pas de l'architecture. |
 | `room-geometry.ts`, agrégation multi-pièces | **Conserver tel quel** | La meilleure brique du dépôt. Union exacte de rectangles, formes en L/T/U, `ceil(Σ) ≤ Σceil` prouvé et testé. |
-| Catalogue matériaux + facteurs de perte | **Conserver, réviser les données** | 184 rendements non sourcés ; cesser de les appeler « DTU » sans référence. |
+| Catalogue matériaux + facteurs de perte | **Conserver, réviser les données** | Fait pour le périmètre V1 (E1-7) : rendements servis sourcés dans `docs/SOURCES_CATALOGUE.md`, appellation « DTU » retirée. Le hors-périmètre reste non sourcé. |
 | Devis / factures / profil d'entreprise | **Conserver, étendre** | Ajouter la MO par ouvrage (§3.2). Le reste est conforme. |
 | Organisations | **Conserver, geler l'UI** | Déjà backfillé 1:1 sur toutes les entités ; le retirer coûte plus que le garder. |
 | Feature gates | **Conserver** | Exactement la bonne mécanique pour geler sans supprimer. |
@@ -262,7 +262,7 @@ Les cinq premières étapes représentent **12 à 16 jours**. Tout ce qui a ét�
 
 | Risque | Gravité | Signal d'alerte | Réponse |
 |---|---|---|---|
-| **Les quantités restent contestées après correction** — 184 rendements sur 208 ne sont sourcés nulle part, et les facteurs de perte sont des nombres ronds appelés « DTU » sans référence | **Élevée** — c'est la seule promesse du produit | Un artisan sur cinq conteste une quantité à l'étape 5 | Restreindre la V1 aux ouvrages dont les rendements sont vérifiés (la migration `…033` en a recalibré 24) et le dire, plutôt que couvrir large et faux |
+| **Les quantités restent contestées après correction** — les rendements servis sont désormais sourcés (E1-7, `docs/SOURCES_CATALOGUE.md`), mais les facteurs de perte restent des valeurs d'usage non normatives, et les hypothèses (formats par défaut, cloison 72/48 deux faces) peuvent ne pas coller au chantier | **Moyenne** — la promesse est désormais adossée à des fiches, pas encore au terrain | Un artisan sur cinq conteste une quantité à l'étape 5 | Confronter les 7 listes sourcées aux artisans ; les écarts constatés nourrissent DATA-3 (facteurs appris) ou corrigent le registre, pièce par pièce |
 | **Reprise du développement au lieu de la confrontation** | **Élevée** — c'est le mode de défaillance déjà observé : 20 épics en 48 h pour zéro utilisateur | Un commit `feat(...)` avant les cinq artisans | Règle explicite : aucune nouvelle fonctionnalité tant que l'étape 5 n'a pas rendu son verdict |
 | **Le segment artisan ne convertit pas à 19 €** — face à Tolteck 19 € et Obat 29 € qui couvrent *tous* les corps d'état | Élevée | Aucun essai converti sur les vingt premiers | Le calcul de quantités est le seul argument ; s'il ne suffit pas, la thèse artisan tombe et il faut revenir au particulier avec un modèle non-abonnement (paiement à l'usage, affiliation) |
 | **Régression d'isolation multi-tenant** — zéro test inter-organisation, 46 filtres manuels | Moyenne, conséquence sévère | — | Trois tests d'isolation (projets, devis, listes) à écrire pendant l'étape 4 |

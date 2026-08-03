@@ -75,7 +75,7 @@ const workTypeMaterialsRepoMock = {
   find: jest.fn().mockResolvedValue([{ material: mockMaterial }]),
 };
 
-// DATA-3 : aucun facteur appris par défaut → le catalogue DTU seul s'applique.
+// DATA-3 : aucun facteur appris par défaut → le catalogue seul s'applique.
 const learnedWasteFactorRepoMock = {
   find: jest.fn().mockResolvedValue([]),
 };

@@ -2461,7 +2461,9 @@ DATA-3 : les facteurs de perte du catalogue sont réajustés à partir des écar
 entre quantité estimée et quantité réellement achetée, relevés sur les
 chantiers dont le budget a été finalisé, par matériau × pose × niveau.
 
-Le catalogue DTU (`waste_factors`, étalonné par ENG-5) n'est **jamais** réécrit :
+Le catalogue de pertes (`waste_factors`) porte des valeurs d'usage métier, sans
+référence normative — aucun DTU ne fixe de pourcentage de perte (E1-7).
+Étalonné par ENG-5, il n'est **jamais** réécrit :
 les valeurs apprises vivent dans `learned_waste_factors` et sont superposées au
 chargement du catalogue. Une ligne d'estimation issue d'une valeur apprise porte
 `waste_factor_source: "learned"` (au lieu de `"catalog"` ou `"default"`).

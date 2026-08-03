@@ -110,7 +110,7 @@ export class EstimationsService {
 
   /**
    * Catalogue d'un ouvrage, prêt pour le moteur, avec les facteurs de perte
-   * appris (DATA-3) superposés au catalogue DTU. La superposition a lieu ici et
+   * appris (DATA-3) superposés au catalogue de pertes. La superposition a lieu ici et
    * non dans le moteur : tout ce qui chiffre — application, calculateurs
    * publics, API PLAT-5, widget PLAT-7 — passe par cette méthode, et un moteur
    * qui resterait une fonction du seul catalogue qu'on lui donne demeure
