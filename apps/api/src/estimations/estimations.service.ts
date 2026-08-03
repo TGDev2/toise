@@ -12,8 +12,8 @@ import {
   EstimationResult,
 } from './entities/estimation-result.entity';
 import { EmailCapture } from './entities/email-capture.entity';
-import { MaterialCatalog } from '../materials/entities/material-catalog.entity';
 import { LearnedWasteFactor } from '../materials/entities/learned-waste-factor.entity';
+import { WorkTypeMaterial } from '../materials/entities/work-type-material.entity';
 import { overlayLearnedWasteFactors } from '../waste-learning/waste-learning';
 import { ProjectsService } from '../projects/projects.service';
 import {
@@ -94,10 +94,10 @@ export class EstimationsService {
   constructor(
     @InjectRepository(EstimationResult)
     private readonly estimationRepo: Repository<EstimationResult>,
-    @InjectRepository(MaterialCatalog)
-    private readonly materialsRepo: Repository<MaterialCatalog>,
     @InjectRepository(LearnedWasteFactor)
     private readonly learnedWasteFactorRepo: Repository<LearnedWasteFactor>,
+    @InjectRepository(WorkTypeMaterial)
+    private readonly workTypeMaterialsRepo: Repository<WorkTypeMaterial>,
     @InjectRepository(WorkType)
     private readonly workTypesRepo: Repository<WorkType>,
     @InjectRepository(EmailCapture)
@@ -109,28 +109,38 @@ export class EstimationsService {
   ) {}
 
   /**
-   * Catalogue d'une catégorie, prêt pour le moteur, avec les facteurs de perte
+   * Catalogue d'un ouvrage, prêt pour le moteur, avec les facteurs de perte
    * appris (DATA-3) superposés au catalogue DTU. La superposition a lieu ici et
    * non dans le moteur : tout ce qui chiffre — application, calculateurs
    * publics, API PLAT-5, widget PLAT-7 — passe par cette méthode, et un moteur
    * qui resterait une fonction du seul catalogue qu'on lui donne demeure
    * testable sans base.
+   *
+   * E1-2 : la liaison est portée par `work_type_materials`, pas par la
+   * catégorie — `wall_painting` et `ceiling_painting` partagent la catégorie
+   * `painting` mais pas les mêmes matériaux. Une liaison `is_optional` est une
+   * alternative documentée (E1-3), jamais chiffrée automatiquement.
    */
-  private async loadMaterialInputs(category: string): Promise<MaterialInput[]> {
-    const materials = await this.materialsRepo.find({
-      where: {
-        category: category as MaterialCatalog['category'],
-        is_active: true,
-        // PLAT-3 : les alternatives éco sont informationnelles (badge/
-        // suggestion sur la liste de courses), jamais injectées dans le
-        // chiffrage automatique — la catégorie regroupe des matériaux
-        // consommés ENSEMBLE (ex. peinture + sous-couche), pas des
-        // alternatives, donc un matériau éco actif serait sinon ajouté au
-        // chiffrage de tous les utilisateurs, Free inclus.
-        is_eco: false,
-      },
-      relations: ['packagings', 'waste_factors'],
+  private async loadMaterialInputs(
+    workType: WorkType,
+  ): Promise<MaterialInput[]> {
+    const links = await this.workTypeMaterialsRepo.find({
+      where: { work_type_id: workType.id, is_optional: false },
+      relations: ['material', 'material.packagings', 'material.waste_factors'],
+      order: { display_order: 'ASC' },
     });
+
+    const materials = links
+      .map((l) => l.material)
+      .filter(
+        (m) =>
+          m.is_active &&
+          // PLAT-3 : les alternatives éco sont informationnelles (badge/
+          // suggestion sur la liste de courses), jamais injectées dans le
+          // chiffrage automatique — un matériau éco actif serait sinon ajouté
+          // au chiffrage de tous les utilisateurs, Free inclus.
+          !m.is_eco,
+      );
 
     if (materials.length === 0) return [];
 
@@ -192,16 +202,19 @@ export class EstimationsService {
       );
     }
 
-    // Catalogue matériaux mis en cache par catégorie : une seule requête par
-    // catégorie pour tout le projet, quel que soit le nombre de pièces.
-    const materialsByCategory = new Map<string, MaterialInput[]>();
+    // Catalogue matériaux mis en cache par ouvrage : une seule requête par
+    // ouvrage pour tout le projet, quel que soit le nombre de pièces. Par
+    // ouvrage et non par catégorie (E1-2) — deux ouvrages d'une même
+    // catégorie (ex. `wall_painting`/`ceiling_painting`) n'ont pas les mêmes
+    // matériaux liés.
+    const materialsByWorkTypeId = new Map<string, MaterialInput[]>();
     const loadMaterials = async (
-      category: string,
+      workType: WorkType,
     ): Promise<MaterialInput[]> => {
-      const cached = materialsByCategory.get(category);
+      const cached = materialsByWorkTypeId.get(workType.id);
       if (cached) return cached;
-      const loaded = await this.loadMaterialInputs(category);
-      materialsByCategory.set(category, loaded);
+      const loaded = await this.loadMaterialInputs(workType);
+      materialsByWorkTypeId.set(workType.id, loaded);
       return loaded;
     };
 
@@ -233,7 +246,7 @@ export class EstimationsService {
       const workItemInputs: WorkItemInput[] = [];
       for (const wi of room.workItems) {
         const wt = wi.work_type;
-        const materialInputs = await loadMaterials(wt.category);
+        const materialInputs = await loadMaterials(wt);
 
         // Mémorise les conditionnements par matériau pour l'agrégation.
         for (const mat of materialInputs) {
@@ -350,7 +363,7 @@ export class EstimationsService {
       surface_target: workType.surface_target,
       skill_level: skillLevel,
       custom_params: { ...dto.custom_params },
-      materials: await this.loadMaterialInputs(workType.category),
+      materials: await this.loadMaterialInputs(workType),
     };
 
     const items = this.engine.computeEstimation(room, [workItemInput]);
@@ -403,7 +416,7 @@ export class EstimationsService {
     const poseType =
       (dto.custom_params?.laying_pattern as string) || 'standard';
     const reference = dominantWasteReference(
-      await this.loadMaterialInputs(workType.category),
+      await this.loadMaterialInputs(workType),
       poseType,
     );
 
@@ -463,16 +476,16 @@ export class EstimationsService {
       );
     }
 
-    // Une requête par catégorie pour toute la demande, quel que soit le nombre
+    // Une requête par ouvrage pour toute la demande, quel que soit le nombre
     // de pièces — même mémoïsation que `estimate()`.
-    const materialsByCategory = new Map<string, MaterialInput[]>();
+    const materialsByWorkTypeId = new Map<string, MaterialInput[]>();
     const loadMaterials = async (
-      category: string,
+      workType: WorkType,
     ): Promise<MaterialInput[]> => {
-      const cached = materialsByCategory.get(category);
+      const cached = materialsByWorkTypeId.get(workType.id);
       if (cached) return cached;
-      const loaded = await this.loadMaterialInputs(category);
-      materialsByCategory.set(category, loaded);
+      const loaded = await this.loadMaterialInputs(workType);
+      materialsByWorkTypeId.set(workType.id, loaded);
       return loaded;
     };
 
@@ -504,7 +517,7 @@ export class EstimationsService {
       const workItemInputs: WorkItemInput[] = [];
       for (const item of room.work_items) {
         const workType = workTypeByCode.get(item.work_type_code)!;
-        const materialInputs = await loadMaterials(workType.category);
+        const materialInputs = await loadMaterials(workType);
 
         for (const mat of materialInputs) {
           if (!packagingByMaterialId.has(mat.id)) {

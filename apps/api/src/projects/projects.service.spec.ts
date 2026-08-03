@@ -130,7 +130,6 @@ const mockWorkType: WorkTypeEntity = {
   category: 'painting',
   surface_target: 'wall',
   waste_factor_base: 1.1,
-  required_materials: [],
   contextual_questions: [],
   display_order: 1,
   created_at: new Date('2026-03-27T00:00:00.000Z'),
@@ -144,7 +143,6 @@ const mockFloorTilingWorkType: WorkTypeEntity = {
   category: 'tiling',
   surface_target: 'floor',
   waste_factor_base: 1.1,
-  required_materials: [],
   contextual_questions: [
     {
       key: 'tile_format',

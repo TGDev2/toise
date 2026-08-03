@@ -1,0 +1,207 @@
+import { DataSource } from 'typeorm';
+import { migratedDataSource } from './test-database';
+import { EstimationsService } from '../../src/estimations/estimations.service';
+import { EstimationEngine } from '../../src/estimations/estimation-engine';
+import { EstimationResult } from '../../src/estimations/entities/estimation-result.entity';
+import { EmailCapture } from '../../src/estimations/entities/email-capture.entity';
+import { ApiEstimateRequestDto } from '../../src/estimations/dto/api-estimate-request.dto';
+import { PublicQuoteCheckRequestDto } from '../../src/estimations/dto/public-quote-check-request.dto';
+import { LearnedWasteFactor } from '../../src/materials/entities/learned-waste-factor.entity';
+import { WorkTypeMaterial } from '../../src/materials/entities/work-type-material.entity';
+import { MaterialCatalog } from '../../src/materials/entities/material-catalog.entity';
+import { WorkType } from '../../src/projects/entities/work-type.entity';
+import type { ProjectsService } from '../../src/projects/projects.service';
+import type { EmailService } from '../../src/email/email.service';
+import type { AnalyticsService } from '../../src/analytics/analytics.service';
+
+/**
+ * E1-2 : le câblage réel — migration `1711468800066-CreateWorkTypeMaterials`
+ * + `EstimationsService.loadMaterialInputs` — sur PostgreSQL réel et les
+ * vraies migrations, pas sur une simulation du chargement comme
+ * `estimation-engine.seeded-catalog.spec.ts`.
+ */
+
+const WORK_TYPE_CODES = [
+  'wall_painting',
+  'ceiling_painting',
+  'floor_tiling',
+  'wall_tiling',
+  'parquet_flooring',
+  'drywall',
+  'wall_covering',
+];
+
+function buildEstimationsService(dataSource: DataSource): EstimationsService {
+  return new EstimationsService(
+    dataSource.getRepository(EstimationResult),
+    dataSource.getRepository(LearnedWasteFactor),
+    dataSource.getRepository(WorkTypeMaterial),
+    dataSource.getRepository(WorkType),
+    dataSource.getRepository(EmailCapture),
+    {} as ProjectsService,
+    new EstimationEngine(),
+    {} as EmailService,
+    { track: () => undefined } as unknown as AnalyticsService,
+  );
+}
+
+/** Un partenaire/widget appelle `estimatePublicMulti` : c'est le seul chemin
+ * qui accepte les 7 codes sans la restriction à 5 du calculateur public
+ * (`PUBLIC_WORK_TYPE_CODES`). */
+function makeApiDto(workTypeCode: string): ApiEstimateRequestDto {
+  return {
+    rooms: [
+      {
+        length_cm: 400,
+        width_cm: 300,
+        height_cm: 250,
+        openings: [{ width_cm: 83, height_cm: 204, count: 1 }],
+        work_items: [
+          {
+            work_type_code: workTypeCode,
+            custom_params: { laying_pattern: 'straight', tile_format: '30x30' },
+          },
+        ],
+      },
+    ],
+  } as ApiEstimateRequestDto;
+}
+
+describe('work_type_materials (intégration, PostgreSQL réel)', () => {
+  let dataSource: DataSource;
+  let service: EstimationsService;
+
+  beforeAll(async () => {
+    dataSource = await migratedDataSource();
+    service = buildEstimationsService(dataSource);
+  });
+
+  afterAll(async () => {
+    if (dataSource?.isInitialized) {
+      await dataSource.destroy();
+    }
+  });
+
+  it.each(WORK_TYPE_CODES)(
+    '%s a au moins une liaison non optionnelle en base',
+    async (code) => {
+      const workType = await dataSource
+        .getRepository(WorkType)
+        .findOne({ where: { code } });
+      expect(workType).not.toBeNull();
+
+      const count = await dataSource.getRepository(WorkTypeMaterial).count({
+        where: { work_type_id: workType!.id, is_optional: false },
+      });
+
+      expect(count).toBeGreaterThanOrEqual(1);
+    },
+  );
+
+  it.each(WORK_TYPE_CODES)(
+    'estimatePublicMulti renvoie au plus 6 lignes pour %s',
+    async (code) => {
+      const result = await service.estimatePublicMulti(makeApiDto(code));
+
+      expect(result.items.length).toBeLessThanOrEqual(6);
+    },
+  );
+
+  it('ne chiffre pas un matériau lié en optionnel', async () => {
+    const workType = (await dataSource
+      .getRepository(WorkType)
+      .findOne({ where: { code: 'wall_painting' } }))!;
+    const material = (await dataSource.getRepository(MaterialCatalog).findOne({
+      where: {
+        name: 'Peinture acrylique satinée',
+        category: 'painting' as MaterialCatalog['category'],
+      },
+    }))!;
+    expect(material).not.toBeNull();
+
+    const link = dataSource.getRepository(WorkTypeMaterial).create({
+      work_type_id: workType.id,
+      material_id: material.id,
+      role: 'principal',
+      is_optional: true,
+      display_order: 99,
+    });
+    await dataSource.getRepository(WorkTypeMaterial).save(link);
+
+    try {
+      const result = await service.estimatePublicMulti(
+        makeApiDto('wall_painting'),
+      );
+
+      expect(
+        result.items.some(
+          (i) => i.material_name === 'Peinture acrylique satinée',
+        ),
+      ).toBe(false);
+    } finally {
+      await dataSource.getRepository(WorkTypeMaterial).delete(link.id);
+    }
+  });
+
+  it('refuse de supprimer un matériau encore lié à un ouvrage (FK RESTRICT)', async () => {
+    const material = (await dataSource.getRepository(MaterialCatalog).findOne({
+      where: {
+        name: 'Peinture acrylique mate',
+        category: 'painting' as MaterialCatalog['category'],
+      },
+    }))!;
+    expect(material).not.toBeNull();
+
+    await expect(
+      dataSource.query('DELETE FROM "materials_catalog" WHERE "id" = $1', [
+        material.id,
+      ]),
+    ).rejects.toThrow();
+  });
+
+  /**
+   * `dominantWasteReference` (quote-coherence.ts) retient la fourchette que le
+   * plus grand nombre de matériaux de l'ouvrage partagent. Réduire le jeu de
+   * matériaux à 1-2 par ouvrage (E1-2) pourrait faire basculer ce vote — on
+   * verrouille donc les verdicts sur les deux catégories qui ont une pose
+   * (peinture, carrelage), un verdict visible par l'utilisateur.
+   */
+  describe('checkQuotePublic — fourchette dominante inchangée par E1-2', () => {
+    it('peinture murale : 5–15 % en pose standard', async () => {
+      const result = await service.checkQuotePublic({
+        length_cm: 400,
+        width_cm: 300,
+        height_cm: 250,
+        openings: [{ width_cm: 83, height_cm: 204, count: 1 }],
+        work_type_code: 'wall_painting',
+        declared_surface_m2: 33.31,
+      } as PublicQuoteCheckRequestDto);
+
+      expect(result.reference).toMatchObject({
+        pose_type: 'standard',
+        min_percent: 5,
+        max_percent: 15,
+        is_default: false,
+      });
+    });
+
+    it('carrelage sol, pose droite : 5–15 %', async () => {
+      const result = await service.checkQuotePublic({
+        length_cm: 400,
+        width_cm: 300,
+        height_cm: 250,
+        openings: [],
+        work_type_code: 'floor_tiling',
+        custom_params: { laying_pattern: 'straight', tile_format: '30x30' },
+        declared_surface_m2: 12,
+      } as PublicQuoteCheckRequestDto);
+
+      expect(result.reference).toMatchObject({
+        pose_type: 'straight',
+        min_percent: 5,
+        max_percent: 15,
+        is_default: false,
+      });
+    });
+  });
+});

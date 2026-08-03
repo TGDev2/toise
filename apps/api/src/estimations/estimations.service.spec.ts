@@ -10,6 +10,7 @@ import {
   MaterialCategory,
 } from '../materials/entities/material-catalog.entity';
 import { LearnedWasteFactor } from '../materials/entities/learned-waste-factor.entity';
+import { WorkTypeMaterial } from '../materials/entities/work-type-material.entity';
 import { WorkType } from '../projects/entities/work-type.entity';
 import { ProjectsService } from '../projects/projects.service';
 import { EmailService } from '../email/email.service';
@@ -28,7 +29,6 @@ const mockWorkType: WorkType = {
   category: 'painting',
   surface_target: 'wall',
   waste_factor_base: 1.1,
-  required_materials: [],
   contextual_questions: [],
   display_order: 1,
   created_at: new Date('2026-03-27T00:00:00.000Z'),
@@ -68,8 +68,8 @@ const estimationRepoMock = {
   findOne: jest.fn(),
 };
 
-const materialsRepoMock = {
-  find: jest.fn().mockResolvedValue([mockMaterial]),
+const workTypeMaterialsRepoMock = {
+  find: jest.fn().mockResolvedValue([{ material: mockMaterial }]),
 };
 
 // DATA-3 : aucun facteur appris par défaut → le catalogue DTU seul s'applique.
@@ -119,7 +119,9 @@ describe('EstimationsService.estimatePublic', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    materialsRepoMock.find.mockResolvedValue([mockMaterial]);
+    workTypeMaterialsRepoMock.find.mockResolvedValue([
+      { material: mockMaterial },
+    ]);
     learnedWasteFactorRepoMock.find.mockResolvedValue([]);
     workTypesRepoMock.findOne.mockResolvedValue(mockWorkType);
 
@@ -132,8 +134,8 @@ describe('EstimationsService.estimatePublic', () => {
           useValue: estimationRepoMock,
         },
         {
-          provide: getRepositoryToken(MaterialCatalog),
-          useValue: materialsRepoMock,
+          provide: getRepositoryToken(WorkTypeMaterial),
+          useValue: workTypeMaterialsRepoMock,
         },
         {
           provide: getRepositoryToken(LearnedWasteFactor),
@@ -237,29 +239,23 @@ describe('EstimationsService.estimatePublic', () => {
   });
 
   it('excludes eco-alternative materials from the automatic estimation loop', async () => {
-    // PLAT-3 : le repo n'est qu'un mock, donc il ne filtre pas vraiment sur
-    // `where` — on simule ici le comportement réel de Postgres pour prouver
-    // que le service demande bien `is_eco: false`, et pas seulement que le
-    // fixture de test est bien formé.
-    materialsRepoMock.find.mockImplementation(
-      (options: { where: { is_eco?: boolean } }) =>
-        Promise.resolve(
-          options.where.is_eco === false
-            ? [mockMaterial]
-            : [mockMaterial, mockEcoMaterial],
-        ),
-    );
+    // PLAT-3 : le filtre éco est appliqué par le service une fois les
+    // liaisons chargées, pas délégué au `where` de `work_type_materials` — on
+    // renvoie les deux matériaux pour prouver que seul le non-éco ressort.
+    workTypeMaterialsRepoMock.find.mockResolvedValue([
+      { material: mockMaterial },
+      { material: mockEcoMaterial },
+    ]);
 
     const result = await service.estimatePublic(makeDto());
 
     expect(result.items).toHaveLength(1);
     expect(result.items[0].material_id).toBe('mat-paint');
-    expect(materialsRepoMock.find).toHaveBeenCalledWith(
+    expect(workTypeMaterialsRepoMock.find).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          category: MaterialCategory.PAINTING,
-          is_active: true,
-          is_eco: false,
+          work_type_id: mockWorkType.id,
+          is_optional: false,
         }) as object,
       }) as object,
     );
@@ -358,7 +354,9 @@ describe('EstimationsService.checkQuotePublic', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    materialsRepoMock.find.mockResolvedValue([mockTileMaterial]);
+    workTypeMaterialsRepoMock.find.mockResolvedValue([
+      { material: mockTileMaterial },
+    ]);
     learnedWasteFactorRepoMock.find.mockResolvedValue([]);
     workTypesRepoMock.findOne.mockResolvedValue(mockTilingWorkType);
 
@@ -371,8 +369,8 @@ describe('EstimationsService.checkQuotePublic', () => {
           useValue: estimationRepoMock,
         },
         {
-          provide: getRepositoryToken(MaterialCatalog),
-          useValue: materialsRepoMock,
+          provide: getRepositoryToken(WorkTypeMaterial),
+          useValue: workTypeMaterialsRepoMock,
         },
         {
           provide: getRepositoryToken(LearnedWasteFactor),
@@ -433,7 +431,9 @@ describe('EstimationsService.checkQuotePublic', () => {
   it('compares against the net surface, openings deducted', async () => {
     // Mur d'une pièce 4×3×2,5 = 35 m² bruts, moins une porte 0,9×2,1 = 1,89.
     workTypesRepoMock.findOne.mockResolvedValue(mockWorkType);
-    materialsRepoMock.find.mockResolvedValue([mockMaterial]);
+    workTypeMaterialsRepoMock.find.mockResolvedValue([
+      { material: mockMaterial },
+    ]);
 
     const result = await service.checkQuotePublic(
       makeQuoteCheckDto({
@@ -469,7 +469,9 @@ describe('EstimationsService.checkQuotePublic', () => {
 
   it('returns no verdict when the room leaves nothing to compare', async () => {
     workTypesRepoMock.findOne.mockResolvedValue(mockWorkType);
-    materialsRepoMock.find.mockResolvedValue([mockMaterial]);
+    workTypeMaterialsRepoMock.find.mockResolvedValue([
+      { material: mockMaterial },
+    ]);
 
     const result = await service.checkQuotePublic(
       makeQuoteCheckDto({
@@ -533,7 +535,9 @@ describe('EstimationsService.emailEstimate', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    materialsRepoMock.find.mockResolvedValue([mockMaterial]);
+    workTypeMaterialsRepoMock.find.mockResolvedValue([
+      { material: mockMaterial },
+    ]);
     learnedWasteFactorRepoMock.find.mockResolvedValue([]);
     workTypesRepoMock.findOne.mockResolvedValue(mockWorkType);
     emailCaptureRepoMock.create.mockImplementation(
@@ -554,8 +558,8 @@ describe('EstimationsService.emailEstimate', () => {
           useValue: estimationRepoMock,
         },
         {
-          provide: getRepositoryToken(MaterialCatalog),
-          useValue: materialsRepoMock,
+          provide: getRepositoryToken(WorkTypeMaterial),
+          useValue: workTypeMaterialsRepoMock,
         },
         {
           provide: getRepositoryToken(LearnedWasteFactor),
@@ -652,7 +656,9 @@ describe('EstimationsService.estimate', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    materialsRepoMock.find.mockResolvedValue([mockMaterial]);
+    workTypeMaterialsRepoMock.find.mockResolvedValue([
+      { material: mockMaterial },
+    ]);
     learnedWasteFactorRepoMock.find.mockResolvedValue([]);
     projectsServiceMock.getRooms.mockResolvedValue([
       {
@@ -686,8 +692,8 @@ describe('EstimationsService.estimate', () => {
           useValue: estimationRepoMock,
         },
         {
-          provide: getRepositoryToken(MaterialCatalog),
-          useValue: materialsRepoMock,
+          provide: getRepositoryToken(WorkTypeMaterial),
+          useValue: workTypeMaterialsRepoMock,
         },
         {
           provide: getRepositoryToken(LearnedWasteFactor),

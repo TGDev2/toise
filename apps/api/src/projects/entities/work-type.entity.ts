@@ -47,9 +47,6 @@ export class WorkType {
   waste_factor_base!: number;
 
   @Column({ type: 'jsonb', default: [] })
-  required_materials!: unknown[];
-
-  @Column({ type: 'jsonb', default: [] })
   contextual_questions!: ContextualQuestion[];
 
   @Column({ type: 'integer', default: 0 })
