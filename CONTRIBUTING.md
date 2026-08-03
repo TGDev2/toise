@@ -153,13 +153,23 @@ Toute migration qui touche `feature_gates` (INSERT, changement de `min_tier`,
 activation) doit mettre à jour **dans le même lot** le miroir web
 `apps/web/src/lib/feature-gates-catalogue.ts`, puis décider de l'offre :
 
-1. Ajouter la gate à `KNOWN_FEATURE_GATES` avec son `min_tier` effectif.
+1. Ajouter la gate à `KNOWN_FEATURE_GATES` avec son `min_tier` effectif et son
+   `enabled` (l'`is_enabled` de la migration).
 2. Soit la vendre — une ligne `{ label, gateKey }` dans le plan correspondant de
    `apps/web/src/lib/pricing.ts` — soit l'écarter explicitement en la déclarant
    dans `GATES_NOT_MARKETED` **avec sa raison**.
 3. `pnpm --filter web test` : `offer-catalogue.spec.ts` échoue tant qu'une gate
    connue n'est ni vendue ni écartée, et tant qu'une ligne annoncée ne correspond
    à aucune gate réelle.
+
+**Cas particulier — désactiver une gate (gel).** `is_enabled = false` fait
+refuser la gate à *tous* les paliers, palier maximal compris : la vendre devient
+une promesse inatteignable. Une migration qui éteint une gate doit donc, dans le
+même lot, passer `enabled: false` dans le miroir, retirer sa ligne de
+`pricing.ts` et l'inscrire dans `GATES_NOT_MARKETED` avec la raison du gel et son
+critère de dégel. Le dégel est le geste exactement inverse, en un seul lot lui
+aussi. Le gel courant est celui de l'[ADR 0001](docs/adr/0001-cible-et-perimetre-v1.md) (D2, D3),
+appliqué par la migration `1711468800065`.
 
 Cette contrainte existe parce que les trois descriptions de l'offre (prose
 marketing, prix Stripe, gates en base) avaient divergé au point de vendre deux

@@ -56,9 +56,9 @@ const PRO_PROOF = [
       'Mentions obligatoires, TVA, HT/TTC, conditions : le PDF généré est conforme, pas un tableur exporté.',
   },
   {
-    title: 'Le chantier suivi jusqu’à la facture',
+    title: 'Du devis accepté à la facture',
     description:
-      'Jalons et statuts d’avancement, relances automatiques des devis sans réponse, puis passage du devis accepté à la facture numérotée.',
+      'Le devis accepté devient une facture numérotée sans trou, avec ses mentions légales. Rien à ressaisir, aucun compteur à tenir à la main.',
   },
   {
     title: 'Vos clients au même endroit',
@@ -88,8 +88,8 @@ export default function ArtisansPage() {
 
             <p className="mt-5 max-w-xl text-lg leading-8 text-stone-700">
               Photo de la pièce, estimation des matériaux, devis PDF conforme
-              (TVA, HT/TTC, mentions) envoyé avant de repartir. Fichier clients,
-              suivi de chantier et facturation suivent derrière.
+              (TVA, HT/TTC, mentions) envoyé avant de repartir. Fichier clients
+              et facturation suivent derrière.
             </p>
 
             <p className="mt-4 max-w-xl text-sm leading-6 text-stone-600">
@@ -232,14 +232,14 @@ export default function ArtisansPage() {
         {/* Offres Contractor */}
         <section id="offres" className="mt-24 scroll-mt-8">
           <h2 className="text-3xl font-semibold text-stone-950">
-            Trois niveaux selon votre activité
+            Deux niveaux selon votre activité
           </h2>
           <p className="mt-3 max-w-xl text-base text-stone-700">
-            Les paliers se distinguent par ce qu&apos;ils débloquent réellement,
-            pas par le volume : suivi de chantier et relances au Standard,
-            équipe et intégrations au Premium.
+            L&apos;Essentiel porte tout le parcours : chiffrage, devis conforme,
+            fichier clients et facturation. Le Standard n&apos;ajoute que le
+            support prioritaire.
           </p>
-          <div className="mt-8 grid gap-5 md:grid-cols-3">
+          <div className="mt-8 grid gap-5 md:grid-cols-2">
             {CONTRACTOR_PLANS.map((plan) => (
               <PlanCard
                 key={plan.key}

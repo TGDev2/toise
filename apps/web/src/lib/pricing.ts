@@ -86,12 +86,17 @@ export interface PlanFeature {
 }
 
 export interface OfferPlan {
+  /**
+   * `contractor_premium` a existé ici jusqu'au gel de l'ADR 0001 (D3) : ses deux
+   * lignes — multi-utilisateurs et API publique — étaient ses seuls
+   * différenciateurs, et le palier ne justifiait plus 49 € sans elles. Le rang
+   * reste dans `TIER_ORDER` : des comptes peuvent le porter en base.
+   */
   key:
     | 'free'
     | 'pro'
     | 'contractor_essentiel'
     | 'contractor_standard'
-    | 'contractor_premium'
     | 'enterprise';
   /**
    * Clé correspondante dans GET /subscriptions/plans (résolue en price_id
@@ -100,11 +105,7 @@ export interface OfferPlan {
    * affichés ici sont indicatifs : le checkout n'envoie jamais un montant,
    * uniquement un price_id fourni par l'API.
    */
-  apiPlanKey?:
-    | 'pro'
-    | 'contractor_essentiel'
-    | 'contractor_standard'
-    | 'contractor_premium';
+  apiPlanKey?: 'pro' | 'contractor_essentiel' | 'contractor_standard';
   tier: PlanTier;
   audience: Audience;
   name: string;
@@ -129,6 +130,10 @@ export interface OfferPlan {
  * rester sous ce plafond ; il valait 50 € avant GTM-8. Les paliers supérieurs
  * peuvent le dépasser, mais seulement en portant des capacités que ces outils ne
  * vendent pas à ce prix (multi-utilisateurs, API, widget).
+ *
+ * Ces trois capacités étant gelées par l'ADR 0001 (D3), plus aucun palier
+ * artisan ne peut aujourd'hui dépasser le plafond : le palier Premium à 49 € a
+ * été retiré avec elles.
  */
 export const GENERALIST_MARKET_CEILING_EUR = 30;
 
@@ -174,10 +179,6 @@ export const OFFER_PLANS: OfferPlan[] = [
     features: [
       { label: 'Projets illimités', gateKey: 'unlimited_projects' },
       {
-        label: 'Analyse photo automatique des dimensions',
-        gateKey: 'cv_analysis',
-      },
-      {
         label: 'Facteurs de perte avancés pour plus de précision',
         gateKey: 'advanced_loss_factors',
       },
@@ -192,16 +193,8 @@ export const OFFER_PLANS: OfferPlan[] = [
         gateKey: 'price_comparison',
       },
       {
-        label: 'Repérage des matériaux éco-responsables',
-        gateKey: 'eco_materials',
-      },
-      {
         label: 'Carnet du logement : l’historique de vos pièces',
         gateKey: 'logbook',
-      },
-      {
-        label: 'Votre budget situé face aux chantiers comparables',
-        gateKey: 'cost_benchmark',
       },
     ],
     highlighted: true,
@@ -250,52 +243,15 @@ export const OFFER_PLANS: OfferPlan[] = [
     priceNumber: 29,
     period: '/mois',
     description: 'Le quotidien d’un artisan organisé.',
+    // Le suivi de chantier et les relances de devis, ses deux différenciateurs,
+    // sont gelés par l'ADR 0001 (D3) : le palier ne tient plus que par son
+    // engagement de support en attendant sa fusion avec Essentiel (D4, E3-4).
     features: [
       { label: 'Tout Essentiel +', gateKey: null, nonGateReason: 'heritage' },
-      {
-        label: 'Suivi de chantier : jalons, statuts et dates',
-        gateKey: 'site_tracking',
-      },
-      {
-        label: 'Relances automatiques des devis sans réponse',
-        gateKey: 'quote_reminders',
-      },
       { label: 'Support prioritaire', gateKey: null, nonGateReason: 'support' },
     ],
     highlighted: true,
     ctaLabel: 'Choisir Standard',
-  },
-  {
-    key: 'contractor_premium',
-    apiPlanKey: 'contractor_premium',
-    tier: 'contractor_premium',
-    audience: 'artisan',
-    name: 'Premium',
-    priceLabel: '49 €',
-    priceNumber: 49,
-    period: '/mois',
-    description: 'Pour les équipes et les gros volumes.',
-    features: [
-      { label: 'Tout Standard +', gateKey: null, nonGateReason: 'heritage' },
-      {
-        label: 'Multi-utilisateurs : votre équipe sur le même compte',
-        gateKey: 'multi_user',
-      },
-      {
-        // La gate `public_api` couvre aussi le widget embarquable : c'est elle
-        // que `widget-config.controller.ts` exige via `PUBLIC_API_FEATURE_KEY`.
-        // Le widget n'est donc pas une exclusivité enterprise, et le vendre
-        // comme telle serait faux.
-        label: 'API publique et widget d’estimation embarquable',
-        gateKey: 'public_api',
-      },
-      {
-        label: 'Accompagnement dédié',
-        gateKey: null,
-        nonGateReason: 'support',
-      },
-    ],
-    ctaLabel: 'Choisir Premium',
   },
   {
     key: 'enterprise',
@@ -310,12 +266,11 @@ export const OFFER_PLANS: OfferPlan[] = [
     period: '',
     description:
       'Pour les enseignes et les réseaux qui intègrent Chiffréo à leur propre système.',
+    // Le SSO, seule capacité propre de ce palier, est gelé par l'ADR 0001 (D3) :
+    // ne restent que des clauses de contrat. Le palier lui-même disparaît des
+    // surfaces en E3-4.
     features: [
-      { label: 'Tout Premium +', gateKey: null, nonGateReason: 'heritage' },
-      {
-        label: 'SSO SAML ou OIDC avec votre annuaire d’entreprise',
-        gateKey: 'enterprise_sso',
-      },
+      { label: 'Tout Standard +', gateKey: null, nonGateReason: 'heritage' },
       {
         label: 'Contrat annuel et engagements de SLA',
         gateKey: null,

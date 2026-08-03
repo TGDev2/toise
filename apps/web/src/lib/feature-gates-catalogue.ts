@@ -38,6 +38,13 @@ export interface KnownFeatureGate {
   /** `label_fr` de la migration — sert de garde-fou de relecture, pas d'affichage. */
   label: string;
   minTier: PlanTier;
+  /**
+   * `is_enabled` en base. Une gate à `false` est **gelée** : son code reste,
+   * mais `FeatureGatesService.isFeatureAllowed` la refuse à tous les paliers,
+   * palier maximal compris. Une gate gelée ne peut donc pas être vendue — c'est
+   * l'invariant que garde `offer-catalogue.spec.ts`.
+   */
+  enabled: boolean;
   /** Migration qui fixe l'état courant (`is_enabled`). */
   since: string;
 }
@@ -48,36 +55,46 @@ export interface KnownFeatureGate {
  */
 export const KNOWN_FEATURE_GATES: KnownFeatureGate[] = [
   // 1711468800017 — socle Pro
-  { key: 'cv_analysis', label: 'Analyse photo automatique', minTier: 'pro', since: '017' },
-  { key: 'advanced_loss_factors', label: 'Facteurs de perte avancés', minTier: 'pro', since: '017' },
-  { key: 'unlimited_projects', label: 'Projets illimités', minTier: 'pro', since: '017' },
-  { key: 'budget_tracking', label: 'Suivi budgétaire', minTier: 'pro', since: '017' },
+  { key: 'cv_analysis', label: 'Analyse photo automatique', minTier: 'pro', enabled: false, since: '065' },
+  { key: 'advanced_loss_factors', label: 'Facteurs de perte avancés', minTier: 'pro', enabled: true, since: '017' },
+  { key: 'unlimited_projects', label: 'Projets illimités', minTier: 'pro', enabled: true, since: '017' },
+  { key: 'budget_tracking', label: 'Suivi budgétaire', minTier: 'pro', enabled: true, since: '017' },
   // 1711468800020, éteinte en 027 (adaptateurs mock), rallumée en 036 (ManoMano + Leroy Merlin réels)
-  { key: 'price_comparison', label: 'Comparateur de prix', minTier: 'pro', since: '036' },
+  { key: 'price_comparison', label: 'Comparateur de prix', minTier: 'pro', enabled: true, since: '036' },
   // 1711468800023 — `contractor` à l'origine, recalé sur `contractor_essentiel` par 037
-  { key: 'export_devis', label: 'Export de devis PDF', minTier: 'contractor_essentiel', since: '037' },
-  { key: 'client_management', label: 'Gestion de clients', minTier: 'contractor_essentiel', since: '037' },
+  { key: 'export_devis', label: 'Export de devis PDF', minTier: 'contractor_essentiel', enabled: true, since: '037' },
+  { key: 'client_management', label: 'Gestion de clients', minTier: 'contractor_essentiel', enabled: true, since: '037' },
   // 1711468800026
-  { key: 'community_gallery', label: 'Galerie communautaire', minTier: 'free', since: '026' },
-  // 1711468800037 — différenciateurs Standard/Premium, allumés un par un avec leur code
-  { key: 'site_tracking', label: 'Suivi de chantier', minTier: 'contractor_standard', since: '039' },
-  { key: 'quote_reminders', label: 'Relances de devis', minTier: 'contractor_standard', since: '041' },
-  { key: 'multi_user', label: 'Multi-utilisateurs', minTier: 'contractor_premium', since: '054' },
-  { key: 'public_api', label: 'API publique', minTier: 'contractor_premium', since: '055' },
+  { key: 'community_gallery', label: 'Galerie communautaire', minTier: 'free', enabled: true, since: '026' },
+  // 1711468800037 — différenciateurs Standard/Premium, allumés un par un avec
+  // leur code (039, 041, 054, 055), puis tous gelés par 065 (ADR 0001 D3)
+  { key: 'site_tracking', label: 'Suivi de chantier', minTier: 'contractor_standard', enabled: false, since: '065' },
+  { key: 'quote_reminders', label: 'Relances de devis', minTier: 'contractor_standard', enabled: false, since: '065' },
+  { key: 'multi_user', label: 'Multi-utilisateurs', minTier: 'contractor_premium', enabled: false, since: '065' },
+  { key: 'public_api', label: 'API publique', minTier: 'contractor_premium', enabled: false, since: '065' },
   // 1711468800045 / 049 / 053 / 056 / 060
-  { key: 'invoicing', label: 'Facturation', minTier: 'contractor_essentiel', since: '045' },
-  { key: 'logbook', label: 'Carnet du logement', minTier: 'pro', since: '049' },
-  { key: 'eco_materials', label: 'Matériaux éco-responsables', minTier: 'pro', since: '053' },
-  { key: 'enterprise_sso', label: 'Authentification SSO', minTier: 'enterprise', since: '056' },
-  { key: 'cost_benchmark', label: 'Benchmark de coûts', minTier: 'pro', since: '060' },
+  { key: 'invoicing', label: 'Facturation', minTier: 'contractor_essentiel', enabled: true, since: '045' },
+  { key: 'logbook', label: 'Carnet du logement', minTier: 'pro', enabled: true, since: '049' },
+  { key: 'eco_materials', label: 'Matériaux éco-responsables', minTier: 'pro', enabled: false, since: '065' },
+  { key: 'enterprise_sso', label: 'Authentification SSO', minTier: 'enterprise', enabled: false, since: '065' },
+  { key: 'cost_benchmark', label: 'Benchmark de coûts', minTier: 'pro', enabled: false, since: '065' },
   // 1711468800064 — DATA-5. Seule gate `free` en dehors de la galerie : la
   // clôture est l'unique source de DATA-3, DATA-4, COM-1 et PLAT-1, et un
   // volant de données qui ne tourne que sur les abonnés n'apprend rien des
   // chantiers qu'il cherche à décrire.
-  { key: 'project_closeout', label: 'Clôture de chantier', minTier: 'free', since: '064' },
+  { key: 'project_closeout', label: 'Clôture de chantier', minTier: 'free', enabled: true, since: '064' },
 ];
 
 export const KNOWN_FEATURE_GATE_KEYS = KNOWN_FEATURE_GATES.map((gate) => gate.key);
+
+/**
+ * Les gates gelées par la migration 1711468800065 (ADR 0001 D2 et D3). Dérivé
+ * de `enabled`, jamais redéclaré : une gate dégelée en base disparaît d'ici
+ * dès que le miroir suit, et redevient vendable sans autre geste.
+ */
+export const FROZEN_FEATURE_GATE_KEYS = KNOWN_FEATURE_GATES.filter(
+  (gate) => !gate.enabled,
+).map((gate) => gate.key);
 
 export type FeatureGateKey = string;
 
@@ -89,6 +106,27 @@ export type FeatureGateKey = string;
 export const GATES_NOT_MARKETED: Record<string, string> = {
   community_gallery:
     "Gate `free` : la galerie est un canal d'acquisition ouvert à tous, pas un argument de palier. La vendre reviendrait à suggérer qu'elle se débloque.",
+
+  // ── Gelées par 1711468800065 (ADR 0001) ────────────────────────────────
+  // Le gel est un état, pas une étape : ces gates restent en base, leur code
+  // reste dans git, et aucune surface ne les annonce tant qu'elles sont à
+  // `is_enabled = false`. Les critères de dégel sont écrits à l'ADR §5.
+  cv_analysis:
+    "Gelée (ADR 0001 D2) : la précision de l'analyse photo n'a jamais été mesurée sur une seule photo réelle, et le service sort de la production. Dégel : erreur médiane sous 5 % sur 50 à 100 photos relevées au télémètre.",
+  public_api:
+    "Gelée (ADR 0001 D3) : l'API et le widget embarquable étaient facturés sans qu'aucun écran ne permette de créer une clé. Dégel : deux prospects distincts, non sollicités, prêts à contractualiser.",
+  enterprise_sso:
+    "Gelée (ADR 0001 D3) : le SSO est appliqué dans `FirebaseAuthGuard`, donc sur le chemin critique de toute requête authentifiée, pour zéro client. Dégel : une organisation de plus de dix utilisateurs avec un besoin d'annuaire formulé par elle.",
+  multi_user:
+    "Gelée (ADR 0001 D3) : le multi-utilisateurs était vendu au palier Premium sans qu'aucun écran ne permette d'inviter qui que ce soit. Le modèle `organizations` reste en base, l'interface reste gelée.",
+  cost_benchmark:
+    "Gelée (ADR 0001 D3) : sans signal avant plusieurs centaines de chantiers clôturés, et aujourd'hui structurellement faussée — le benchmark exclut tout projet mêlant peinture murale et peinture plafond.",
+  eco_materials:
+    "Gelée (ADR 0001 D3, §3.1) : argument destiné au particulier, hors de la cible artisan de la V1. Le catalogue d'équivalences reste en base.",
+  site_tracking:
+    "Gelée (ADR 0001 D3) : différenciateur du palier Standard, que la réduction à un palier payant unique (D4) fait disparaître. Rien du parcours V1 — chiffrer, acheter, devis — n'en dépend.",
+  quote_reminders:
+    "Gelée (ADR 0001 D3) : même raison que `site_tracking`, et une relance automatique suppose un volume de devis envoyés qu'aucun compte n'a encore.",
 };
 
 export function getKnownGate(key: string): KnownFeatureGate | undefined {

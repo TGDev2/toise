@@ -79,7 +79,7 @@ const FAQ_ITEMS = [
   {
     question: 'Quelle offre choisir : Pro ou Contractor ?',
     answer:
-      'Pro s’adresse aux particuliers qui rénovent chez eux : estimation, liste d’achats, budget. Contractor ajoute ce dont un professionnel a besoin pour facturer son client — devis conformes, fichier clients, suivi de chantier et factures.',
+      'Pro s’adresse aux particuliers qui rénovent chez eux : estimation, liste d’achats, budget. Contractor ajoute ce dont un professionnel a besoin pour facturer son client — devis conformes, fichier clients et factures numérotées.',
   },
   {
     question: 'Contractor couvre-t-il tous les corps d’état ?',
@@ -94,7 +94,7 @@ const FAQ_ITEMS = [
   {
     question: 'Comment fonctionne l’offre Enterprise ?',
     answer:
-      'Elle repose sur un contrat annuel rattaché à votre organisation, et non sur un abonnement individuel : SSO avec votre annuaire, API et widget embarquable, engagements de SLA. Elle se met en place après échange avec nous.',
+      'Elle repose sur un contrat annuel rattaché à votre organisation, et non sur un abonnement individuel : engagements de SLA et environnement dédié. Elle se met en place après échange avec nous.',
   },
 ];
 
@@ -161,7 +161,7 @@ export default function PricingPage() {
         {/* Artisans */}
         <section id="artisans" className="mt-24 scroll-mt-8">
           <AudienceHeading audience="artisan" />
-          <div className="mt-8 grid gap-5 md:grid-cols-3">
+          <div className="mt-8 grid gap-5 md:grid-cols-2 lg:max-w-3xl">
             {ARTISAN_PLANS.map((plan) => (
               <PlanCard
                 key={plan.key}

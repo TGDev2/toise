@@ -15,6 +15,7 @@ import {
   type Audience,
 } from '@/lib/pricing';
 import {
+  FROZEN_FEATURE_GATE_KEYS,
   GATES_NOT_MARKETED,
   KNOWN_FEATURE_GATES,
   KNOWN_FEATURE_GATE_KEYS,
@@ -57,6 +58,30 @@ describe("catalogue d'offre", () => {
       );
 
       expect(unjustified).toEqual([]);
+    });
+
+    it("n'annonce aucune gate gelée", () => {
+      // `is_enabled = false` fait refuser la gate à TOUS les paliers, palier
+      // maximal compris (`FeatureGatesService.isFeatureAllowed`) : une gate
+      // gelée annoncée dans une carte tarifaire est une promesse que même un
+      // abonné ne peut pas atteindre. C'est ce que l'ADR 0001 (D3) interdit —
+      // « aucune ligne d'offre adossée à ces gates » — et le seul endroit qui
+      // pouvait le vérifier. Dégeler une gate en base, mettre `enabled: true`
+      // dans le miroir et la revendre est le geste inverse, en un seul lot.
+      const frozen = new Set(FROZEN_FEATURE_GATE_KEYS);
+
+      const sold = OFFER_PLANS.flatMap((plan) =>
+        plan.features
+          .filter(
+            (feature) => feature.gateKey !== null && frozen.has(feature.gateKey),
+          )
+          .map(
+            (feature) =>
+              `${plan.key} → « ${feature.label} » (${feature.gateKey}, gelée)`,
+          ),
+      );
+
+      expect(sold).toEqual([]);
     });
   });
 
