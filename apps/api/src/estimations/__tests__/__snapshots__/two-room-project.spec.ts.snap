@@ -1,0 +1,1108 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) ceiling_painting · beginner · pose standard 1`] = `
+projet  : 2 pièces · niveau beginner
+pièces  : Chambre rectangulaire (nette 12.000 m²) · Séjour en L (nette 15.000 m²)
+ouvrages: Peinture plafond (ceiling_painting, pose standard)
+
+Peinture plafond mate  [ceiling_painting] · 2 pièces · 2 contributions
+   Chambre rectangulaire    ceiling_painting        2.760 L      2 1 × Pot 2.5 L + 1 × Pot 0.5 L
+   Séjour en L              ceiling_painting        3.450 L      3 1 × Pot 2.5 L + 2 × Pot 0.5 L
+   mutualisé                                        6.210 L      2 1 × Pot 5 L + 1 × Pot 2.5 L
+   économie de mutualisation                                      3 contenants évités
+Sous-couche universelle  [ceiling_painting] · 2 pièces · 2 contributions
+   Chambre rectangulaire    ceiling_painting        1.380 L      1 1 × Pot 2.5 L
+   Séjour en L              ceiling_painting        1.725 L      1 1 × Pot 2.5 L
+   mutualisé                                        3.105 L      3 1 × Pot 2.5 L + 2 × Pot 0.5 L
+   économie de mutualisation                                     -1 aucun contenant évité
+
+total : 2 matériaux · 7 contenants pièce par pièce → 5 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) ceiling_painting · expert · pose standard 1`] = `
+projet  : 2 pièces · niveau expert
+pièces  : Chambre rectangulaire (nette 12.000 m²) · Séjour en L (nette 15.000 m²)
+ouvrages: Peinture plafond (ceiling_painting, pose standard)
+
+Peinture plafond mate  [ceiling_painting] · 2 pièces · 2 contributions
+   Chambre rectangulaire    ceiling_painting        2.520 L      2 1 × Pot 2.5 L + 1 × Pot 0.5 L
+   Séjour en L              ceiling_painting        3.150 L      3 1 × Pot 2.5 L + 2 × Pot 0.5 L
+   mutualisé                                        5.670 L      3 1 × Pot 5 L + 2 × Pot 0.5 L
+   économie de mutualisation                                      2 contenants évités
+Sous-couche universelle  [ceiling_painting] · 2 pièces · 2 contributions
+   Chambre rectangulaire    ceiling_painting        1.260 L      1 1 × Pot 2.5 L
+   Séjour en L              ceiling_painting        1.575 L      1 1 × Pot 2.5 L
+   mutualisé                                        2.835 L      2 1 × Pot 2.5 L + 1 × Pot 0.5 L
+   économie de mutualisation                                      0 aucun contenant évité
+
+total : 2 matériaux · 7 contenants pièce par pièce → 5 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) ceiling_painting · intermediate · pose standard 1`] = `
+projet  : 2 pièces · niveau intermediate
+pièces  : Chambre rectangulaire (nette 12.000 m²) · Séjour en L (nette 15.000 m²)
+ouvrages: Peinture plafond (ceiling_painting, pose standard)
+
+Peinture plafond mate  [ceiling_painting] · 2 pièces · 2 contributions
+   Chambre rectangulaire    ceiling_painting        2.640 L      2 1 × Pot 2.5 L + 1 × Pot 0.5 L
+   Séjour en L              ceiling_painting        3.300 L      3 1 × Pot 2.5 L + 2 × Pot 0.5 L
+   mutualisé                                        5.940 L      3 1 × Pot 5 L + 2 × Pot 0.5 L
+   économie de mutualisation                                      2 contenants évités
+Sous-couche universelle  [ceiling_painting] · 2 pièces · 2 contributions
+   Chambre rectangulaire    ceiling_painting        1.320 L      1 1 × Pot 2.5 L
+   Séjour en L              ceiling_painting        1.650 L      1 1 × Pot 2.5 L
+   mutualisé                                        2.970 L      2 1 × Pot 2.5 L + 1 × Pot 0.5 L
+   économie de mutualisation                                      0 aucun contenant évité
+
+total : 2 matériaux · 7 contenants pièce par pièce → 5 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) chantiers réalistes — niveau beginner carrelage sol + mural, deux pièces, pose droite 1`] = `
+projet  : 2 pièces · niveau beginner
+pièces  : Chambre rectangulaire (nette 12.000 m²) · Séjour en L (nette 15.000 m²)
+ouvrages: Carrelage sol (floor_tiling, pose straight) · Carrelage mural (wall_tiling, pose straight)
+
+Carrelage sol 45x45 cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling          13.800 m2     10 8 × Boîte 1.5 m² + 2 × Boîte 1 m²
+   Séjour en L              floor_tiling          17.250 m2     12 11 × Boîte 1.5 m² + 1 × Boîte 1 m²
+   mutualisé                                      31.050 m2     21 21 × Boîte 1.5 m²
+   économie de mutualisation                                      1 contenants évités
+Mortier-colle flexible (C2)  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling          98.571 kg      4 4 × Sac 25 kg
+   Séjour en L              floor_tiling         123.214 kg      5 5 × Sac 25 kg
+   mutualisé                                     221.785 kg      9 9 × Sac 25 kg
+   économie de mutualisation                                      0 aucun contenant évité
+Joint fin 1-6mm  [floor_tiling] · 2 pièces · 4 contributions
+   Chambre rectangulaire    floor_tiling           3.450 kg      1 1 × Sac 5 kg
+   Chambre rectangulaire    wall_tiling            9.576 kg      1 1 × Sac 10 kg
+   Séjour en L              floor_tiling           4.313 kg      1 1 × Sac 5 kg
+   Séjour en L              wall_tiling           12.037 kg      2 1 × Sac 10 kg + 1 × Sac 5 kg
+   mutualisé                                      29.376 kg      3 3 × Sac 10 kg
+   économie de mutualisation                                      2 contenants évités
+Faïence murale 25x40 cm  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling           38.303 m2     39 39 × Boîte 1 m²
+   Séjour en L              wall_tiling           48.147 m2     49 49 × Boîte 1 m²
+   mutualisé                                      86.450 m2     87 87 × Boîte 1 m²
+   économie de mutualisation                                      1 contenants évités
+Colle en pâte prête à l'emploi  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling          174.104 kg     12 12 × Seau 15 kg
+   Séjour en L              wall_tiling          218.849 kg     15 15 × Seau 15 kg
+   mutualisé                                     392.953 kg     27 26 × Seau 15 kg + 1 × Seau 7 kg
+   économie de mutualisation                                      0 aucun contenant évité
+
+total : 5 matériaux · 151 contenants pièce par pièce → 147 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) chantiers réalistes — niveau beginner peinture murale + plafond, deux pièces 1`] = `
+projet  : 2 pièces · niveau beginner
+pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.867 m²)
+ouvrages: Peinture murale (wall_painting, pose standard) · Peinture plafond (ceiling_painting, pose standard)
+
+Peinture acrylique mate  [wall_painting] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_painting           6.964 L      2 1 × Pot 5 L + 1 × Pot 2.5 L
+   Séjour en L              wall_painting           8.754 L      1 1 × Pot 10 L
+   mutualisé                                       15.718 L      4 1 × Pot 10 L + 1 × Pot 5 L + 2 × Pot 0.5 L
+   économie de mutualisation                                     -1 aucun contenant évité
+Sous-couche universelle  [wall_painting] · 2 pièces · 4 contributions
+   Chambre rectangulaire    wall_painting           3.830 L      1 1 × Pot 5 L
+   Chambre rectangulaire    ceiling_painting        1.380 L      1 1 × Pot 2.5 L
+   Séjour en L              wall_painting           4.815 L      1 1 × Pot 5 L
+   Séjour en L              ceiling_painting        1.725 L      1 1 × Pot 2.5 L
+   mutualisé                                       11.750 L      2 1 × Pot 10 L + 1 × Pot 2.5 L
+   économie de mutualisation                                      2 contenants évités
+Peinture plafond mate  [ceiling_painting] · 2 pièces · 2 contributions
+   Chambre rectangulaire    ceiling_painting        2.760 L      2 1 × Pot 2.5 L + 1 × Pot 0.5 L
+   Séjour en L              ceiling_painting        3.450 L      3 1 × Pot 2.5 L + 2 × Pot 0.5 L
+   mutualisé                                        6.210 L      2 1 × Pot 5 L + 1 × Pot 2.5 L
+   économie de mutualisation                                      3 contenants évités
+
+total : 3 matériaux · 12 contenants pièce par pièce → 8 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) chantiers réalistes — niveau expert carrelage sol + mural, deux pièces, pose droite 1`] = `
+projet  : 2 pièces · niveau expert
+pièces  : Chambre rectangulaire (nette 12.000 m²) · Séjour en L (nette 15.000 m²)
+ouvrages: Carrelage sol (floor_tiling, pose straight) · Carrelage mural (wall_tiling, pose straight)
+
+Carrelage sol 45x45 cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling          12.600 m2      9 8 × Boîte 1.5 m² + 1 × Boîte 1 m²
+   Séjour en L              floor_tiling          15.750 m2     11 10 × Boîte 1.5 m² + 1 × Boîte 1 m²
+   mutualisé                                      28.350 m2     19 19 × Boîte 1.5 m²
+   économie de mutualisation                                      1 contenants évités
+Mortier-colle flexible (C2)  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling          90.000 kg      4 4 × Sac 25 kg
+   Séjour en L              floor_tiling         112.500 kg      5 5 × Sac 25 kg
+   mutualisé                                     202.500 kg      9 9 × Sac 25 kg
+   économie de mutualisation                                      0 aucun contenant évité
+Joint fin 1-6mm  [floor_tiling] · 2 pièces · 4 contributions
+   Chambre rectangulaire    floor_tiling           3.150 kg      1 1 × Sac 5 kg
+   Chambre rectangulaire    wall_tiling            8.743 kg      1 1 × Sac 10 kg
+   Séjour en L              floor_tiling           3.938 kg      1 1 × Sac 5 kg
+   Séjour en L              wall_tiling           10.990 kg      2 1 × Sac 10 kg + 1 × Sac 5 kg
+   mutualisé                                      26.821 kg      3 3 × Sac 10 kg
+   économie de mutualisation                                      2 contenants évités
+Faïence murale 25x40 cm  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling           34.972 m2     35 35 × Boîte 1 m²
+   Séjour en L              wall_tiling           43.960 m2     44 44 × Boîte 1 m²
+   mutualisé                                      78.932 m2     79 79 × Boîte 1 m²
+   économie de mutualisation                                      0 aucun contenant évité
+Colle en pâte prête à l'emploi  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling          158.964 kg     11 11 × Seau 15 kg
+   Séjour en L              wall_tiling          199.819 kg     14 13 × Seau 15 kg + 1 × Seau 7 kg
+   mutualisé                                     358.783 kg     24 24 × Seau 15 kg
+   économie de mutualisation                                      1 contenants évités
+
+total : 5 matériaux · 138 contenants pièce par pièce → 134 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) chantiers réalistes — niveau expert peinture murale + plafond, deux pièces 1`] = `
+projet  : 2 pièces · niveau expert
+pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.867 m²)
+ouvrages: Peinture murale (wall_painting, pose standard) · Peinture plafond (ceiling_painting, pose standard)
+
+Peinture acrylique mate  [wall_painting] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_painting           6.359 L      2 1 × Pot 5 L + 1 × Pot 2.5 L
+   Séjour en L              wall_painting           7.993 L      3 1 × Pot 5 L + 1 × Pot 2.5 L + 1 × Pot 0.5 L
+   mutualisé                                       14.352 L      2 1 × Pot 10 L + 1 × Pot 5 L
+   économie de mutualisation                                      3 contenants évités
+Sous-couche universelle  [wall_painting] · 2 pièces · 4 contributions
+   Chambre rectangulaire    wall_painting           3.497 L      3 1 × Pot 2.5 L + 2 × Pot 0.5 L
+   Chambre rectangulaire    ceiling_painting        1.260 L      1 1 × Pot 2.5 L
+   Séjour en L              wall_painting           4.396 L      1 1 × Pot 5 L
+   Séjour en L              ceiling_painting        1.575 L      1 1 × Pot 2.5 L
+   mutualisé                                       10.728 L      3 1 × Pot 10 L + 2 × Pot 0.5 L
+   économie de mutualisation                                      3 contenants évités
+Peinture plafond mate  [ceiling_painting] · 2 pièces · 2 contributions
+   Chambre rectangulaire    ceiling_painting        2.520 L      2 1 × Pot 2.5 L + 1 × Pot 0.5 L
+   Séjour en L              ceiling_painting        3.150 L      3 1 × Pot 2.5 L + 2 × Pot 0.5 L
+   mutualisé                                        5.670 L      3 1 × Pot 5 L + 2 × Pot 0.5 L
+   économie de mutualisation                                      2 contenants évités
+
+total : 3 matériaux · 16 contenants pièce par pièce → 8 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) chantiers réalistes — niveau intermediate carrelage sol + mural, deux pièces, pose droite 1`] = `
+projet  : 2 pièces · niveau intermediate
+pièces  : Chambre rectangulaire (nette 12.000 m²) · Séjour en L (nette 15.000 m²)
+ouvrages: Carrelage sol (floor_tiling, pose straight) · Carrelage mural (wall_tiling, pose straight)
+
+Carrelage sol 45x45 cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling          13.200 m2      9 9 × Boîte 1.5 m²
+   Séjour en L              floor_tiling          16.500 m2     11 11 × Boîte 1.5 m²
+   mutualisé                                      29.700 m2     20 20 × Boîte 1.5 m²
+   économie de mutualisation                                      0 aucun contenant évité
+Mortier-colle flexible (C2)  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling          94.286 kg      4 4 × Sac 25 kg
+   Séjour en L              floor_tiling         117.857 kg      5 5 × Sac 25 kg
+   mutualisé                                     212.143 kg      9 9 × Sac 25 kg
+   économie de mutualisation                                      0 aucun contenant évité
+Joint fin 1-6mm  [floor_tiling] · 2 pièces · 4 contributions
+   Chambre rectangulaire    floor_tiling           3.300 kg      1 1 × Sac 5 kg
+   Chambre rectangulaire    wall_tiling            9.159 kg      1 1 × Sac 10 kg
+   Séjour en L              floor_tiling           4.125 kg      1 1 × Sac 5 kg
+   Séjour en L              wall_tiling           11.513 kg      2 1 × Sac 10 kg + 1 × Sac 5 kg
+   mutualisé                                      28.097 kg      3 3 × Sac 10 kg
+   économie de mutualisation                                      2 contenants évités
+Faïence murale 25x40 cm  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling           36.637 m2     37 37 × Boîte 1 m²
+   Séjour en L              wall_tiling           46.053 m2     47 47 × Boîte 1 m²
+   mutualisé                                      82.690 m2     83 83 × Boîte 1 m²
+   économie de mutualisation                                      1 contenants évités
+Colle en pâte prête à l'emploi  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling          166.534 kg     12 11 × Seau 15 kg + 1 × Seau 7 kg
+   Séjour en L              wall_tiling          209.334 kg     14 14 × Seau 15 kg
+   mutualisé                                     375.868 kg     26 25 × Seau 15 kg + 1 × Seau 7 kg
+   économie de mutualisation                                      0 aucun contenant évité
+
+total : 5 matériaux · 144 contenants pièce par pièce → 141 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) chantiers réalistes — niveau intermediate peinture murale + plafond, deux pièces 1`] = `
+projet  : 2 pièces · niveau intermediate
+pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.867 m²)
+ouvrages: Peinture murale (wall_painting, pose standard) · Peinture plafond (ceiling_painting, pose standard)
+
+Peinture acrylique mate  [wall_painting] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_painting           6.661 L      2 1 × Pot 5 L + 1 × Pot 2.5 L
+   Séjour en L              wall_painting           8.373 L      1 1 × Pot 10 L
+   mutualisé                                       15.034 L      3 1 × Pot 10 L + 1 × Pot 5 L + 1 × Pot 0.5 L
+   économie de mutualisation                                      0 aucun contenant évité
+Sous-couche universelle  [wall_painting] · 2 pièces · 4 contributions
+   Chambre rectangulaire    wall_painting           3.664 L      1 1 × Pot 5 L
+   Chambre rectangulaire    ceiling_painting        1.320 L      1 1 × Pot 2.5 L
+   Séjour en L              wall_painting           4.605 L      1 1 × Pot 5 L
+   Séjour en L              ceiling_painting        1.650 L      1 1 × Pot 2.5 L
+   mutualisé                                       11.239 L      2 1 × Pot 10 L + 1 × Pot 2.5 L
+   économie de mutualisation                                      2 contenants évités
+Peinture plafond mate  [ceiling_painting] · 2 pièces · 2 contributions
+   Chambre rectangulaire    ceiling_painting        2.640 L      2 1 × Pot 2.5 L + 1 × Pot 0.5 L
+   Séjour en L              ceiling_painting        3.300 L      3 1 × Pot 2.5 L + 2 × Pot 0.5 L
+   mutualisé                                        5.940 L      3 1 × Pot 5 L + 2 × Pot 0.5 L
+   économie de mutualisation                                      2 contenants évités
+
+total : 3 matériaux · 12 contenants pièce par pièce → 8 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) drywall · beginner · pose standard 1`] = `
+projet  : 2 pièces · niveau beginner
+pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.867 m²)
+ouvrages: Cloison seche (drywall, pose standard)
+
+Plaque BA13 standard 2.5x1.2m  [drywall] · 2 pièces · 2 contributions
+   Chambre rectangulaire    drywall               77.716 m2     26 26 × Plaque (3 m²)
+   Séjour en L              drywall               97.689 m2     33 33 × Plaque (3 m²)
+   mutualisé                                     175.405 m2     59 59 × Plaque (3 m²)
+   économie de mutualisation                                      0 aucun contenant évité
+Rail R48 3m  [drywall] · 2 pièces · 2 contributions
+   Chambre rectangulaire    drywall                33.607 m     12 12 × Barre 3 m
+   Séjour en L              drywall                42.244 m     15 15 × Barre 3 m
+   mutualisé                                       75.851 m     26 26 × Barre 3 m
+   économie de mutualisation                                      1 contenants évités
+Montant M48 2.7m  [drywall] · 2 pièces · 2 contributions
+   Chambre rectangulaire    drywall                77.716 m     29 29 × Barre 2.7 m
+   Séjour en L              drywall                97.689 m     37 37 × Barre 2.7 m
+   mutualisé                                      175.405 m     65 65 × Barre 2.7 m
+   économie de mutualisation                                      1 contenants évités
+Vis placo 25mm (x500)  [drywall] · 2 pièces · 2 contributions
+   Chambre rectangulaire    drywall              1.614 unit      2 2 × Boîte 500 pcs
+   Séjour en L              drywall              2.029 unit      3 3 × Boîte 500 pcs
+   mutualisé                                     3.643 unit      4 4 × Boîte 500 pcs
+   économie de mutualisation                                      1 contenants évités
+Bande à joint papier 23m  [drywall] · 2 pièces · 2 contributions
+   Chambre rectangulaire    drywall               103.621 m      5 5 × Rouleau 23 m
+   Séjour en L              drywall               130.252 m      6 6 × Rouleau 23 m
+   mutualisé                                      233.873 m     11 11 × Rouleau 23 m
+   économie de mutualisation                                      0 aucun contenant évité
+Enduit à joint prêt 7kg  [drywall] · 2 pièces · 2 contributions
+   Chambre rectangulaire    drywall               37.304 kg      2 2 × Seau 20 kg
+   Séjour en L              drywall               46.891 kg      3 2 × Seau 20 kg + 1 × Seau 7 kg
+   mutualisé                                      84.195 kg      5 4 × Seau 20 kg + 1 × Seau 7 kg
+   économie de mutualisation                                      0 aucun contenant évité
+
+total : 6 matériaux · 173 contenants pièce par pièce → 170 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) drywall · expert · pose standard 1`] = `
+projet  : 2 pièces · niveau expert
+pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.867 m²)
+ouvrages: Cloison seche (drywall, pose standard)
+
+Plaque BA13 standard 2.5x1.2m  [drywall] · 2 pièces · 2 contributions
+   Chambre rectangulaire    drywall               72.165 m2     25 25 × Plaque (3 m²)
+   Séjour en L              drywall               90.711 m2     31 31 × Plaque (3 m²)
+   mutualisé                                     162.876 m2     55 55 × Plaque (3 m²)
+   économie de mutualisation                                      1 contenants évités
+Rail R48 3m  [drywall] · 2 pièces · 2 contributions
+   Chambre rectangulaire    drywall                31.206 m     11 11 × Barre 3 m
+   Séjour en L              drywall                39.227 m     14 14 × Barre 3 m
+   mutualisé                                       70.433 m     24 24 × Barre 3 m
+   économie de mutualisation                                      1 contenants évités
+Montant M48 2.7m  [drywall] · 2 pièces · 2 contributions
+   Chambre rectangulaire    drywall                72.165 m     27 27 × Barre 2.7 m
+   Séjour en L              drywall                90.711 m     34 34 × Barre 2.7 m
+   mutualisé                                      162.876 m     61 61 × Barre 2.7 m
+   économie de mutualisation                                      0 aucun contenant évité
+Vis placo 25mm (x500)  [drywall] · 2 pièces · 2 contributions
+   Chambre rectangulaire    drywall              1.497 unit      2 2 × Boîte 500 pcs
+   Séjour en L              drywall              1.881 unit      2 2 × Boîte 500 pcs
+   mutualisé                                     3.378 unit      4 4 × Boîte 500 pcs
+   économie de mutualisation                                      0 aucun contenant évité
+Bande à joint papier 23m  [drywall] · 2 pièces · 2 contributions
+   Chambre rectangulaire    drywall                96.220 m      5 5 × Rouleau 23 m
+   Séjour en L              drywall               120.949 m      6 6 × Rouleau 23 m
+   mutualisé                                      217.169 m     10 10 × Rouleau 23 m
+   économie de mutualisation                                      1 contenants évités
+Enduit à joint prêt 7kg  [drywall] · 2 pièces · 2 contributions
+   Chambre rectangulaire    drywall               34.639 kg      2 2 × Seau 20 kg
+   Séjour en L              drywall               43.541 kg      3 2 × Seau 20 kg + 1 × Seau 7 kg
+   mutualisé                                      78.180 kg      4 4 × Seau 20 kg
+   économie de mutualisation                                      1 contenants évités
+
+total : 6 matériaux · 162 contenants pièce par pièce → 158 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) drywall · intermediate · pose standard 1`] = `
+projet  : 2 pièces · niveau intermediate
+pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.867 m²)
+ouvrages: Cloison seche (drywall, pose standard)
+
+Plaque BA13 standard 2.5x1.2m  [drywall] · 2 pièces · 2 contributions
+   Chambre rectangulaire    drywall               74.940 m2     25 25 × Plaque (3 m²)
+   Séjour en L              drywall               94.200 m2     32 32 × Plaque (3 m²)
+   mutualisé                                     169.140 m2     57 57 × Plaque (3 m²)
+   économie de mutualisation                                      0 aucun contenant évité
+Rail R48 3m  [drywall] · 2 pièces · 2 contributions
+   Chambre rectangulaire    drywall                32.407 m     11 11 × Barre 3 m
+   Séjour en L              drywall                40.735 m     14 14 × Barre 3 m
+   mutualisé                                       73.142 m     25 25 × Barre 3 m
+   économie de mutualisation                                      0 aucun contenant évité
+Montant M48 2.7m  [drywall] · 2 pièces · 2 contributions
+   Chambre rectangulaire    drywall                74.940 m     28 28 × Barre 2.7 m
+   Séjour en L              drywall                94.200 m     35 35 × Barre 2.7 m
+   mutualisé                                      169.140 m     63 63 × Barre 2.7 m
+   économie de mutualisation                                      0 aucun contenant évité
+Vis placo 25mm (x500)  [drywall] · 2 pièces · 2 contributions
+   Chambre rectangulaire    drywall              1.541 unit      2 2 × Boîte 500 pcs
+   Séjour en L              drywall              1.937 unit      2 2 × Boîte 500 pcs
+   mutualisé                                     3.478 unit      4 4 × Boîte 500 pcs
+   économie de mutualisation                                      0 aucun contenant évité
+Bande à joint papier 23m  [drywall] · 2 pièces · 2 contributions
+   Chambre rectangulaire    drywall                99.920 m      5 5 × Rouleau 23 m
+   Séjour en L              drywall               125.600 m      6 6 × Rouleau 23 m
+   mutualisé                                      225.520 m     10 10 × Rouleau 23 m
+   économie de mutualisation                                      1 contenants évités
+Enduit à joint prêt 7kg  [drywall] · 2 pièces · 2 contributions
+   Chambre rectangulaire    drywall               35.971 kg      2 2 × Seau 20 kg
+   Séjour en L              drywall               45.216 kg      3 2 × Seau 20 kg + 1 × Seau 7 kg
+   mutualisé                                      81.187 kg      5 4 × Seau 20 kg + 1 × Seau 7 kg
+   économie de mutualisation                                      0 aucun contenant évité
+
+total : 6 matériaux · 165 contenants pièce par pièce → 164 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) floor_tiling · beginner · pose diagonal 1`] = `
+projet  : 2 pièces · niveau beginner
+pièces  : Chambre rectangulaire (nette 12.000 m²) · Séjour en L (nette 15.000 m²)
+ouvrages: Carrelage sol (floor_tiling, pose diagonal)
+
+Carrelage sol 45x45 cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling          14.400 m2     10 9 × Boîte 1.5 m² + 1 × Boîte 1 m²
+   Séjour en L              floor_tiling          18.000 m2     12 12 × Boîte 1.5 m²
+   mutualisé                                      32.400 m2     22 21 × Boîte 1.5 m² + 1 × Boîte 1 m²
+   économie de mutualisation                                      0 aucun contenant évité
+Mortier-colle flexible (C2)  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling         102.857 kg      5 5 × Sac 25 kg
+   Séjour en L              floor_tiling         128.571 kg      6 6 × Sac 25 kg
+   mutualisé                                     231.428 kg     10 10 × Sac 25 kg
+   économie de mutualisation                                      1 contenants évités
+Joint fin 1-6mm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling           3.600 kg      1 1 × Sac 5 kg
+   Séjour en L              floor_tiling           4.500 kg      1 1 × Sac 5 kg
+   mutualisé                                       8.100 kg      1 1 × Sac 10 kg
+   économie de mutualisation                                      1 contenants évités
+
+total : 3 matériaux · 35 contenants pièce par pièce → 33 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) floor_tiling · beginner · pose standard 1`] = `
+projet  : 2 pièces · niveau beginner
+pièces  : Chambre rectangulaire (nette 12.000 m²) · Séjour en L (nette 15.000 m²)
+ouvrages: Carrelage sol (floor_tiling, pose standard)
+
+Carrelage sol 45x45 cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling          13.200 m2      9 9 × Boîte 1.5 m²
+   Séjour en L              floor_tiling          16.500 m2     11 11 × Boîte 1.5 m²
+   mutualisé                                      29.700 m2     20 20 × Boîte 1.5 m²
+   économie de mutualisation                                      0 aucun contenant évité
+Mortier-colle flexible (C2)  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling          94.286 kg      4 4 × Sac 25 kg
+   Séjour en L              floor_tiling         117.857 kg      5 5 × Sac 25 kg
+   mutualisé                                     212.143 kg      9 9 × Sac 25 kg
+   économie de mutualisation                                      0 aucun contenant évité
+Joint fin 1-6mm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling           3.300 kg      1 1 × Sac 5 kg
+   Séjour en L              floor_tiling           4.125 kg      1 1 × Sac 5 kg
+   mutualisé                                       7.425 kg      1 1 × Sac 10 kg
+   économie de mutualisation                                      1 contenants évités
+
+total : 3 matériaux · 31 contenants pièce par pièce → 30 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) floor_tiling · beginner · pose straight 1`] = `
+projet  : 2 pièces · niveau beginner
+pièces  : Chambre rectangulaire (nette 12.000 m²) · Séjour en L (nette 15.000 m²)
+ouvrages: Carrelage sol (floor_tiling, pose straight)
+
+Carrelage sol 45x45 cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling          13.800 m2     10 8 × Boîte 1.5 m² + 2 × Boîte 1 m²
+   Séjour en L              floor_tiling          17.250 m2     12 11 × Boîte 1.5 m² + 1 × Boîte 1 m²
+   mutualisé                                      31.050 m2     21 21 × Boîte 1.5 m²
+   économie de mutualisation                                      1 contenants évités
+Mortier-colle flexible (C2)  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling          98.571 kg      4 4 × Sac 25 kg
+   Séjour en L              floor_tiling         123.214 kg      5 5 × Sac 25 kg
+   mutualisé                                     221.785 kg      9 9 × Sac 25 kg
+   économie de mutualisation                                      0 aucun contenant évité
+Joint fin 1-6mm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling           3.450 kg      1 1 × Sac 5 kg
+   Séjour en L              floor_tiling           4.313 kg      1 1 × Sac 5 kg
+   mutualisé                                       7.763 kg      1 1 × Sac 10 kg
+   économie de mutualisation                                      1 contenants évités
+
+total : 3 matériaux · 33 contenants pièce par pièce → 31 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) floor_tiling · expert · pose diagonal 1`] = `
+projet  : 2 pièces · niveau expert
+pièces  : Chambre rectangulaire (nette 12.000 m²) · Séjour en L (nette 15.000 m²)
+ouvrages: Carrelage sol (floor_tiling, pose diagonal)
+
+Carrelage sol 45x45 cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling          13.200 m2      9 9 × Boîte 1.5 m²
+   Séjour en L              floor_tiling          16.500 m2     11 11 × Boîte 1.5 m²
+   mutualisé                                      29.700 m2     20 20 × Boîte 1.5 m²
+   économie de mutualisation                                      0 aucun contenant évité
+Mortier-colle flexible (C2)  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling          94.286 kg      4 4 × Sac 25 kg
+   Séjour en L              floor_tiling         117.857 kg      5 5 × Sac 25 kg
+   mutualisé                                     212.143 kg      9 9 × Sac 25 kg
+   économie de mutualisation                                      0 aucun contenant évité
+Joint fin 1-6mm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling           3.300 kg      1 1 × Sac 5 kg
+   Séjour en L              floor_tiling           4.125 kg      1 1 × Sac 5 kg
+   mutualisé                                       7.425 kg      1 1 × Sac 10 kg
+   économie de mutualisation                                      1 contenants évités
+
+total : 3 matériaux · 31 contenants pièce par pièce → 30 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) floor_tiling · expert · pose standard 1`] = `
+projet  : 2 pièces · niveau expert
+pièces  : Chambre rectangulaire (nette 12.000 m²) · Séjour en L (nette 15.000 m²)
+ouvrages: Carrelage sol (floor_tiling, pose standard)
+
+Carrelage sol 45x45 cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling          13.200 m2      9 9 × Boîte 1.5 m²
+   Séjour en L              floor_tiling          16.500 m2     11 11 × Boîte 1.5 m²
+   mutualisé                                      29.700 m2     20 20 × Boîte 1.5 m²
+   économie de mutualisation                                      0 aucun contenant évité
+Mortier-colle flexible (C2)  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling          94.286 kg      4 4 × Sac 25 kg
+   Séjour en L              floor_tiling         117.857 kg      5 5 × Sac 25 kg
+   mutualisé                                     212.143 kg      9 9 × Sac 25 kg
+   économie de mutualisation                                      0 aucun contenant évité
+Joint fin 1-6mm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling           3.300 kg      1 1 × Sac 5 kg
+   Séjour en L              floor_tiling           4.125 kg      1 1 × Sac 5 kg
+   mutualisé                                       7.425 kg      1 1 × Sac 10 kg
+   économie de mutualisation                                      1 contenants évités
+
+total : 3 matériaux · 31 contenants pièce par pièce → 30 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) floor_tiling · expert · pose straight 1`] = `
+projet  : 2 pièces · niveau expert
+pièces  : Chambre rectangulaire (nette 12.000 m²) · Séjour en L (nette 15.000 m²)
+ouvrages: Carrelage sol (floor_tiling, pose straight)
+
+Carrelage sol 45x45 cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling          12.600 m2      9 8 × Boîte 1.5 m² + 1 × Boîte 1 m²
+   Séjour en L              floor_tiling          15.750 m2     11 10 × Boîte 1.5 m² + 1 × Boîte 1 m²
+   mutualisé                                      28.350 m2     19 19 × Boîte 1.5 m²
+   économie de mutualisation                                      1 contenants évités
+Mortier-colle flexible (C2)  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling          90.000 kg      4 4 × Sac 25 kg
+   Séjour en L              floor_tiling         112.500 kg      5 5 × Sac 25 kg
+   mutualisé                                     202.500 kg      9 9 × Sac 25 kg
+   économie de mutualisation                                      0 aucun contenant évité
+Joint fin 1-6mm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling           3.150 kg      1 1 × Sac 5 kg
+   Séjour en L              floor_tiling           3.938 kg      1 1 × Sac 5 kg
+   mutualisé                                       7.088 kg      1 1 × Sac 10 kg
+   économie de mutualisation                                      1 contenants évités
+
+total : 3 matériaux · 31 contenants pièce par pièce → 29 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) floor_tiling · intermediate · pose diagonal 1`] = `
+projet  : 2 pièces · niveau intermediate
+pièces  : Chambre rectangulaire (nette 12.000 m²) · Séjour en L (nette 15.000 m²)
+ouvrages: Carrelage sol (floor_tiling, pose diagonal)
+
+Carrelage sol 45x45 cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling          13.800 m2     10 8 × Boîte 1.5 m² + 2 × Boîte 1 m²
+   Séjour en L              floor_tiling          17.250 m2     12 11 × Boîte 1.5 m² + 1 × Boîte 1 m²
+   mutualisé                                      31.050 m2     21 21 × Boîte 1.5 m²
+   économie de mutualisation                                      1 contenants évités
+Mortier-colle flexible (C2)  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling          98.571 kg      4 4 × Sac 25 kg
+   Séjour en L              floor_tiling         123.214 kg      5 5 × Sac 25 kg
+   mutualisé                                     221.785 kg      9 9 × Sac 25 kg
+   économie de mutualisation                                      0 aucun contenant évité
+Joint fin 1-6mm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling           3.450 kg      1 1 × Sac 5 kg
+   Séjour en L              floor_tiling           4.313 kg      1 1 × Sac 5 kg
+   mutualisé                                       7.763 kg      1 1 × Sac 10 kg
+   économie de mutualisation                                      1 contenants évités
+
+total : 3 matériaux · 33 contenants pièce par pièce → 31 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) floor_tiling · intermediate · pose standard 1`] = `
+projet  : 2 pièces · niveau intermediate
+pièces  : Chambre rectangulaire (nette 12.000 m²) · Séjour en L (nette 15.000 m²)
+ouvrages: Carrelage sol (floor_tiling, pose standard)
+
+Carrelage sol 45x45 cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling          13.200 m2      9 9 × Boîte 1.5 m²
+   Séjour en L              floor_tiling          16.500 m2     11 11 × Boîte 1.5 m²
+   mutualisé                                      29.700 m2     20 20 × Boîte 1.5 m²
+   économie de mutualisation                                      0 aucun contenant évité
+Mortier-colle flexible (C2)  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling          94.286 kg      4 4 × Sac 25 kg
+   Séjour en L              floor_tiling         117.857 kg      5 5 × Sac 25 kg
+   mutualisé                                     212.143 kg      9 9 × Sac 25 kg
+   économie de mutualisation                                      0 aucun contenant évité
+Joint fin 1-6mm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling           3.300 kg      1 1 × Sac 5 kg
+   Séjour en L              floor_tiling           4.125 kg      1 1 × Sac 5 kg
+   mutualisé                                       7.425 kg      1 1 × Sac 10 kg
+   économie de mutualisation                                      1 contenants évités
+
+total : 3 matériaux · 31 contenants pièce par pièce → 30 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) floor_tiling · intermediate · pose straight 1`] = `
+projet  : 2 pièces · niveau intermediate
+pièces  : Chambre rectangulaire (nette 12.000 m²) · Séjour en L (nette 15.000 m²)
+ouvrages: Carrelage sol (floor_tiling, pose straight)
+
+Carrelage sol 45x45 cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling          13.200 m2      9 9 × Boîte 1.5 m²
+   Séjour en L              floor_tiling          16.500 m2     11 11 × Boîte 1.5 m²
+   mutualisé                                      29.700 m2     20 20 × Boîte 1.5 m²
+   économie de mutualisation                                      0 aucun contenant évité
+Mortier-colle flexible (C2)  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling          94.286 kg      4 4 × Sac 25 kg
+   Séjour en L              floor_tiling         117.857 kg      5 5 × Sac 25 kg
+   mutualisé                                     212.143 kg      9 9 × Sac 25 kg
+   économie de mutualisation                                      0 aucun contenant évité
+Joint fin 1-6mm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling           3.300 kg      1 1 × Sac 5 kg
+   Séjour en L              floor_tiling           4.125 kg      1 1 × Sac 5 kg
+   mutualisé                                       7.425 kg      1 1 × Sac 10 kg
+   économie de mutualisation                                      1 contenants évités
+
+total : 3 matériaux · 31 contenants pièce par pièce → 30 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) parquet_flooring · beginner · pose diagonal 1`] = `
+projet  : 2 pièces · niveau beginner
+pièces  : Chambre rectangulaire (nette 12.000 m²) · Séjour en L (nette 15.000 m²)
+ouvrages: Parquet ou stratifie (parquet_flooring, pose diagonal)
+
+Stratifié 8mm AC4  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring      13.800 m2      6 6 × Paquet 2.49 m²
+   Séjour en L              parquet_flooring      17.250 m2      7 7 × Paquet 2.49 m²
+   mutualisé                                      31.050 m2     13 13 × Paquet 2.49 m²
+   économie de mutualisation                                      0 aucun contenant évité
+Sous-couche mousse 3mm  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring      13.200 m2      1 1 × Rouleau 15 m²
+   Séjour en L              parquet_flooring      16.500 m2      2 2 × Rouleau 15 m²
+   mutualisé                                      29.700 m2      2 2 × Rouleau 15 m²
+   économie de mutualisation                                      1 contenants évités
+Film pare-vapeur PE  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring      16.500 m2      1 1 × Rouleau 20 m²
+   Séjour en L              parquet_flooring      20.625 m2      2 2 × Rouleau 20 m²
+   mutualisé                                      37.125 m2      2 2 × Rouleau 20 m²
+   économie de mutualisation                                      1 contenants évités
+
+total : 3 matériaux · 19 contenants pièce par pièce → 17 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) parquet_flooring · beginner · pose standard 1`] = `
+projet  : 2 pièces · niveau beginner
+pièces  : Chambre rectangulaire (nette 12.000 m²) · Séjour en L (nette 15.000 m²)
+ouvrages: Parquet ou stratifie (parquet_flooring, pose standard)
+
+Stratifié 8mm AC4  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring      13.200 m2      6 6 × Paquet 2.49 m²
+   Séjour en L              parquet_flooring      16.500 m2      7 7 × Paquet 2.49 m²
+   mutualisé                                      29.700 m2     12 12 × Paquet 2.49 m²
+   économie de mutualisation                                      1 contenants évités
+Sous-couche mousse 3mm  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring      13.200 m2      1 1 × Rouleau 15 m²
+   Séjour en L              parquet_flooring      16.500 m2      2 2 × Rouleau 15 m²
+   mutualisé                                      29.700 m2      2 2 × Rouleau 15 m²
+   économie de mutualisation                                      1 contenants évités
+Film pare-vapeur PE  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring      16.500 m2      1 1 × Rouleau 20 m²
+   Séjour en L              parquet_flooring      20.625 m2      2 2 × Rouleau 20 m²
+   mutualisé                                      37.125 m2      2 2 × Rouleau 20 m²
+   économie de mutualisation                                      1 contenants évités
+
+total : 3 matériaux · 19 contenants pièce par pièce → 16 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) parquet_flooring · expert · pose diagonal 1`] = `
+projet  : 2 pièces · niveau expert
+pièces  : Chambre rectangulaire (nette 12.000 m²) · Séjour en L (nette 15.000 m²)
+ouvrages: Parquet ou stratifie (parquet_flooring, pose diagonal)
+
+Stratifié 8mm AC4  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring      12.840 m2      6 6 × Paquet 2.49 m²
+   Séjour en L              parquet_flooring      16.050 m2      7 7 × Paquet 2.49 m²
+   mutualisé                                      28.890 m2     12 12 × Paquet 2.49 m²
+   économie de mutualisation                                      1 contenants évités
+Sous-couche mousse 3mm  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring      12.600 m2      1 1 × Rouleau 15 m²
+   Séjour en L              parquet_flooring      15.750 m2      2 2 × Rouleau 15 m²
+   mutualisé                                      28.350 m2      2 2 × Rouleau 15 m²
+   économie de mutualisation                                      1 contenants évités
+Film pare-vapeur PE  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring      15.750 m2      1 1 × Rouleau 20 m²
+   Séjour en L              parquet_flooring      19.688 m2      1 1 × Rouleau 20 m²
+   mutualisé                                      35.438 m2      2 2 × Rouleau 20 m²
+   économie de mutualisation                                      0 aucun contenant évité
+
+total : 3 matériaux · 18 contenants pièce par pièce → 16 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) parquet_flooring · expert · pose standard 1`] = `
+projet  : 2 pièces · niveau expert
+pièces  : Chambre rectangulaire (nette 12.000 m²) · Séjour en L (nette 15.000 m²)
+ouvrages: Parquet ou stratifie (parquet_flooring, pose standard)
+
+Stratifié 8mm AC4  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring      12.600 m2      6 6 × Paquet 2.49 m²
+   Séjour en L              parquet_flooring      15.750 m2      7 7 × Paquet 2.49 m²
+   mutualisé                                      28.350 m2     12 12 × Paquet 2.49 m²
+   économie de mutualisation                                      1 contenants évités
+Sous-couche mousse 3mm  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring      12.600 m2      1 1 × Rouleau 15 m²
+   Séjour en L              parquet_flooring      15.750 m2      2 2 × Rouleau 15 m²
+   mutualisé                                      28.350 m2      2 2 × Rouleau 15 m²
+   économie de mutualisation                                      1 contenants évités
+Film pare-vapeur PE  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring      15.750 m2      1 1 × Rouleau 20 m²
+   Séjour en L              parquet_flooring      19.688 m2      1 1 × Rouleau 20 m²
+   mutualisé                                      35.438 m2      2 2 × Rouleau 20 m²
+   économie de mutualisation                                      0 aucun contenant évité
+
+total : 3 matériaux · 18 contenants pièce par pièce → 16 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) parquet_flooring · intermediate · pose diagonal 1`] = `
+projet  : 2 pièces · niveau intermediate
+pièces  : Chambre rectangulaire (nette 12.000 m²) · Séjour en L (nette 15.000 m²)
+ouvrages: Parquet ou stratifie (parquet_flooring, pose diagonal)
+
+Stratifié 8mm AC4  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring      13.200 m2      6 6 × Paquet 2.49 m²
+   Séjour en L              parquet_flooring      16.500 m2      7 7 × Paquet 2.49 m²
+   mutualisé                                      29.700 m2     12 12 × Paquet 2.49 m²
+   économie de mutualisation                                      1 contenants évités
+Sous-couche mousse 3mm  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring      12.840 m2      1 1 × Rouleau 15 m²
+   Séjour en L              parquet_flooring      16.050 m2      2 2 × Rouleau 15 m²
+   mutualisé                                      28.890 m2      2 2 × Rouleau 15 m²
+   économie de mutualisation                                      1 contenants évités
+Film pare-vapeur PE  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring      16.050 m2      1 1 × Rouleau 20 m²
+   Séjour en L              parquet_flooring      20.063 m2      2 2 × Rouleau 20 m²
+   mutualisé                                      36.113 m2      2 2 × Rouleau 20 m²
+   économie de mutualisation                                      1 contenants évités
+
+total : 3 matériaux · 19 contenants pièce par pièce → 16 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) parquet_flooring · intermediate · pose standard 1`] = `
+projet  : 2 pièces · niveau intermediate
+pièces  : Chambre rectangulaire (nette 12.000 m²) · Séjour en L (nette 15.000 m²)
+ouvrages: Parquet ou stratifie (parquet_flooring, pose standard)
+
+Stratifié 8mm AC4  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring      12.840 m2      6 6 × Paquet 2.49 m²
+   Séjour en L              parquet_flooring      16.050 m2      7 7 × Paquet 2.49 m²
+   mutualisé                                      28.890 m2     12 12 × Paquet 2.49 m²
+   économie de mutualisation                                      1 contenants évités
+Sous-couche mousse 3mm  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring      12.840 m2      1 1 × Rouleau 15 m²
+   Séjour en L              parquet_flooring      16.050 m2      2 2 × Rouleau 15 m²
+   mutualisé                                      28.890 m2      2 2 × Rouleau 15 m²
+   économie de mutualisation                                      1 contenants évités
+Film pare-vapeur PE  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring      16.050 m2      1 1 × Rouleau 20 m²
+   Séjour en L              parquet_flooring      20.063 m2      2 2 × Rouleau 20 m²
+   mutualisé                                      36.113 m2      2 2 × Rouleau 20 m²
+   économie de mutualisation                                      1 contenants évités
+
+total : 3 matériaux · 19 contenants pièce par pièce → 16 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_covering · beginner · pose plain 1`] = `
+projet  : 2 pièces · niveau beginner
+pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.867 m²)
+ouvrages: Revetement mural (wall_covering, pose plain)
+
+Papier peint intissé uni  [wall_covering] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_covering         36.637 m2      7 7 × Rouleau 10.05m x 0.53m (~5.3 m²)
+   Séjour en L              wall_covering         46.053 m2      9 9 × Rouleau 10.05m x 0.53m (~5.3 m²)
+   mutualisé                                      82.690 m2     16 16 × Rouleau 10.05m x 0.53m (~5.3 m²)
+   économie de mutualisation                                      0 aucun contenant évité
+Colle papier peint intissé  [wall_covering] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_covering          4.580 kg      1 1 × Seau 5 kg
+   Séjour en L              wall_covering          5.757 kg      1 1 × Seau 10 kg
+   mutualisé                                      10.337 kg      2 1 × Seau 10 kg + 1 × Seau 5 kg
+   économie de mutualisation                                      0 aucun contenant évité
+
+total : 2 matériaux · 18 contenants pièce par pièce → 18 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_covering · beginner · pose standard 1`] = `
+projet  : 2 pièces · niveau beginner
+pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.867 m²)
+ouvrages: Revetement mural (wall_covering, pose standard)
+
+Papier peint intissé uni  [wall_covering] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_covering         36.637 m2      7 7 × Rouleau 10.05m x 0.53m (~5.3 m²)
+   Séjour en L              wall_covering         46.053 m2      9 9 × Rouleau 10.05m x 0.53m (~5.3 m²)
+   mutualisé                                      82.690 m2     16 16 × Rouleau 10.05m x 0.53m (~5.3 m²)
+   économie de mutualisation                                      0 aucun contenant évité
+Colle papier peint intissé  [wall_covering] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_covering          4.580 kg      1 1 × Seau 5 kg
+   Séjour en L              wall_covering          5.757 kg      1 1 × Seau 10 kg
+   mutualisé                                      10.337 kg      2 1 × Seau 10 kg + 1 × Seau 5 kg
+   économie de mutualisation                                      0 aucun contenant évité
+
+total : 2 matériaux · 18 contenants pièce par pièce → 18 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_covering · expert · pose plain 1`] = `
+projet  : 2 pièces · niveau expert
+pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.867 m²)
+ouvrages: Revetement mural (wall_covering, pose plain)
+
+Papier peint intissé uni  [wall_covering] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_covering         34.306 m2      7 7 × Rouleau 10.05m x 0.53m (~5.3 m²)
+   Séjour en L              wall_covering         43.123 m2      9 9 × Rouleau 10.05m x 0.53m (~5.3 m²)
+   mutualisé                                      77.429 m2     15 15 × Rouleau 10.05m x 0.53m (~5.3 m²)
+   économie de mutualisation                                      1 contenants évités
+Colle papier peint intissé  [wall_covering] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_covering          4.288 kg      1 1 × Seau 5 kg
+   Séjour en L              wall_covering          5.390 kg      1 1 × Seau 10 kg
+   mutualisé                                       9.678 kg      1 1 × Seau 10 kg
+   économie de mutualisation                                      1 contenants évités
+
+total : 2 matériaux · 18 contenants pièce par pièce → 16 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_covering · expert · pose standard 1`] = `
+projet  : 2 pièces · niveau expert
+pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.867 m²)
+ouvrages: Revetement mural (wall_covering, pose standard)
+
+Papier peint intissé uni  [wall_covering] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_covering         36.637 m2      7 7 × Rouleau 10.05m x 0.53m (~5.3 m²)
+   Séjour en L              wall_covering         46.053 m2      9 9 × Rouleau 10.05m x 0.53m (~5.3 m²)
+   mutualisé                                      82.690 m2     16 16 × Rouleau 10.05m x 0.53m (~5.3 m²)
+   économie de mutualisation                                      0 aucun contenant évité
+Colle papier peint intissé  [wall_covering] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_covering          4.580 kg      1 1 × Seau 5 kg
+   Séjour en L              wall_covering          5.757 kg      1 1 × Seau 10 kg
+   mutualisé                                      10.337 kg      2 1 × Seau 10 kg + 1 × Seau 5 kg
+   économie de mutualisation                                      0 aucun contenant évité
+
+total : 2 matériaux · 18 contenants pièce par pièce → 18 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_covering · intermediate · pose plain 1`] = `
+projet  : 2 pièces · niveau intermediate
+pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.867 m²)
+ouvrages: Revetement mural (wall_covering, pose plain)
+
+Papier peint intissé uni  [wall_covering] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_covering         35.638 m2      7 7 × Rouleau 10.05m x 0.53m (~5.3 m²)
+   Séjour en L              wall_covering         44.797 m2      9 9 × Rouleau 10.05m x 0.53m (~5.3 m²)
+   mutualisé                                      80.435 m2     16 16 × Rouleau 10.05m x 0.53m (~5.3 m²)
+   économie de mutualisation                                      0 aucun contenant évité
+Colle papier peint intissé  [wall_covering] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_covering          4.455 kg      1 1 × Seau 5 kg
+   Séjour en L              wall_covering          5.600 kg      1 1 × Seau 10 kg
+   mutualisé                                      10.055 kg      2 1 × Seau 10 kg + 1 × Seau 5 kg
+   économie de mutualisation                                      0 aucun contenant évité
+
+total : 2 matériaux · 18 contenants pièce par pièce → 18 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_covering · intermediate · pose standard 1`] = `
+projet  : 2 pièces · niveau intermediate
+pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.867 m²)
+ouvrages: Revetement mural (wall_covering, pose standard)
+
+Papier peint intissé uni  [wall_covering] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_covering         36.637 m2      7 7 × Rouleau 10.05m x 0.53m (~5.3 m²)
+   Séjour en L              wall_covering         46.053 m2      9 9 × Rouleau 10.05m x 0.53m (~5.3 m²)
+   mutualisé                                      82.690 m2     16 16 × Rouleau 10.05m x 0.53m (~5.3 m²)
+   économie de mutualisation                                      0 aucun contenant évité
+Colle papier peint intissé  [wall_covering] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_covering          4.580 kg      1 1 × Seau 5 kg
+   Séjour en L              wall_covering          5.757 kg      1 1 × Seau 10 kg
+   mutualisé                                      10.337 kg      2 1 × Seau 10 kg + 1 × Seau 5 kg
+   économie de mutualisation                                      0 aucun contenant évité
+
+total : 2 matériaux · 18 contenants pièce par pièce → 18 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_painting · beginner · pose standard 1`] = `
+projet  : 2 pièces · niveau beginner
+pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.867 m²)
+ouvrages: Peinture murale (wall_painting, pose standard)
+
+Peinture acrylique mate  [wall_painting] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_painting           6.964 L      2 1 × Pot 5 L + 1 × Pot 2.5 L
+   Séjour en L              wall_painting           8.754 L      1 1 × Pot 10 L
+   mutualisé                                       15.718 L      4 1 × Pot 10 L + 1 × Pot 5 L + 2 × Pot 0.5 L
+   économie de mutualisation                                     -1 aucun contenant évité
+Sous-couche universelle  [wall_painting] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_painting           3.830 L      1 1 × Pot 5 L
+   Séjour en L              wall_painting           4.815 L      1 1 × Pot 5 L
+   mutualisé                                        8.645 L      1 1 × Pot 10 L
+   économie de mutualisation                                      1 contenants évités
+
+total : 2 matériaux · 5 contenants pièce par pièce → 5 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_painting · expert · pose standard 1`] = `
+projet  : 2 pièces · niveau expert
+pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.867 m²)
+ouvrages: Peinture murale (wall_painting, pose standard)
+
+Peinture acrylique mate  [wall_painting] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_painting           6.359 L      2 1 × Pot 5 L + 1 × Pot 2.5 L
+   Séjour en L              wall_painting           7.993 L      3 1 × Pot 5 L + 1 × Pot 2.5 L + 1 × Pot 0.5 L
+   mutualisé                                       14.352 L      2 1 × Pot 10 L + 1 × Pot 5 L
+   économie de mutualisation                                      3 contenants évités
+Sous-couche universelle  [wall_painting] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_painting           3.497 L      3 1 × Pot 2.5 L + 2 × Pot 0.5 L
+   Séjour en L              wall_painting           4.396 L      1 1 × Pot 5 L
+   mutualisé                                        7.893 L      3 1 × Pot 5 L + 1 × Pot 2.5 L + 1 × Pot 0.5 L
+   économie de mutualisation                                      1 contenants évités
+
+total : 2 matériaux · 9 contenants pièce par pièce → 5 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_painting · intermediate · pose standard 1`] = `
+projet  : 2 pièces · niveau intermediate
+pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.867 m²)
+ouvrages: Peinture murale (wall_painting, pose standard)
+
+Peinture acrylique mate  [wall_painting] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_painting           6.661 L      2 1 × Pot 5 L + 1 × Pot 2.5 L
+   Séjour en L              wall_painting           8.373 L      1 1 × Pot 10 L
+   mutualisé                                       15.034 L      3 1 × Pot 10 L + 1 × Pot 5 L + 1 × Pot 0.5 L
+   économie de mutualisation                                      0 aucun contenant évité
+Sous-couche universelle  [wall_painting] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_painting           3.664 L      1 1 × Pot 5 L
+   Séjour en L              wall_painting           4.605 L      1 1 × Pot 5 L
+   mutualisé                                        8.269 L      1 1 × Pot 10 L
+   économie de mutualisation                                      1 contenants évités
+
+total : 2 matériaux · 5 contenants pièce par pièce → 4 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_tiling · beginner · pose diagonal 1`] = `
+projet  : 2 pièces · niveau beginner
+pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.867 m²)
+ouvrages: Carrelage mural (wall_tiling, pose diagonal)
+
+Faïence murale 25x40 cm  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling           39.968 m2     40 40 × Boîte 1 m²
+   Séjour en L              wall_tiling           50.240 m2     51 51 × Boîte 1 m²
+   mutualisé                                      90.208 m2     91 91 × Boîte 1 m²
+   économie de mutualisation                                      0 aucun contenant évité
+Colle en pâte prête à l'emploi  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling          181.673 kg     13 12 × Seau 15 kg + 1 × Seau 7 kg
+   Séjour en L              wall_tiling          228.364 kg     16 15 × Seau 15 kg + 1 × Seau 7 kg
+   mutualisé                                     410.037 kg     28 27 × Seau 15 kg + 1 × Seau 7 kg
+   économie de mutualisation                                      1 contenants évités
+Joint fin 1-6mm  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling            9.992 kg      1 1 × Sac 10 kg
+   Séjour en L              wall_tiling           12.560 kg      2 1 × Sac 10 kg + 1 × Sac 5 kg
+   mutualisé                                      22.552 kg      3 2 × Sac 10 kg + 1 × Sac 5 kg
+   économie de mutualisation                                      0 aucun contenant évité
+
+total : 3 matériaux · 123 contenants pièce par pièce → 122 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_tiling · beginner · pose standard 1`] = `
+projet  : 2 pièces · niveau beginner
+pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.867 m²)
+ouvrages: Carrelage mural (wall_tiling, pose standard)
+
+Faïence murale 25x40 cm  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling           36.637 m2     37 37 × Boîte 1 m²
+   Séjour en L              wall_tiling           46.053 m2     47 47 × Boîte 1 m²
+   mutualisé                                      82.690 m2     83 83 × Boîte 1 m²
+   économie de mutualisation                                      1 contenants évités
+Colle en pâte prête à l'emploi  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling          166.534 kg     12 11 × Seau 15 kg + 1 × Seau 7 kg
+   Séjour en L              wall_tiling          209.334 kg     14 14 × Seau 15 kg
+   mutualisé                                     375.868 kg     26 25 × Seau 15 kg + 1 × Seau 7 kg
+   économie de mutualisation                                      0 aucun contenant évité
+Joint fin 1-6mm  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling            9.159 kg      1 1 × Sac 10 kg
+   Séjour en L              wall_tiling           11.513 kg      2 1 × Sac 10 kg + 1 × Sac 5 kg
+   mutualisé                                      20.672 kg      3 2 × Sac 10 kg + 1 × Sac 5 kg
+   économie de mutualisation                                      0 aucun contenant évité
+
+total : 3 matériaux · 113 contenants pièce par pièce → 112 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_tiling · beginner · pose straight 1`] = `
+projet  : 2 pièces · niveau beginner
+pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.867 m²)
+ouvrages: Carrelage mural (wall_tiling, pose straight)
+
+Faïence murale 25x40 cm  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling           38.303 m2     39 39 × Boîte 1 m²
+   Séjour en L              wall_tiling           48.147 m2     49 49 × Boîte 1 m²
+   mutualisé                                      86.450 m2     87 87 × Boîte 1 m²
+   économie de mutualisation                                      1 contenants évités
+Colle en pâte prête à l'emploi  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling          174.104 kg     12 12 × Seau 15 kg
+   Séjour en L              wall_tiling          218.849 kg     15 15 × Seau 15 kg
+   mutualisé                                     392.953 kg     27 26 × Seau 15 kg + 1 × Seau 7 kg
+   économie de mutualisation                                      0 aucun contenant évité
+Joint fin 1-6mm  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling            9.576 kg      1 1 × Sac 10 kg
+   Séjour en L              wall_tiling           12.037 kg      2 1 × Sac 10 kg + 1 × Sac 5 kg
+   mutualisé                                      21.613 kg      3 2 × Sac 10 kg + 1 × Sac 5 kg
+   économie de mutualisation                                      0 aucun contenant évité
+
+total : 3 matériaux · 118 contenants pièce par pièce → 117 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_tiling · expert · pose diagonal 1`] = `
+projet  : 2 pièces · niveau expert
+pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.867 m²)
+ouvrages: Carrelage mural (wall_tiling, pose diagonal)
+
+Faïence murale 25x40 cm  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling           36.637 m2     37 37 × Boîte 1 m²
+   Séjour en L              wall_tiling           46.053 m2     47 47 × Boîte 1 m²
+   mutualisé                                      82.690 m2     83 83 × Boîte 1 m²
+   économie de mutualisation                                      1 contenants évités
+Colle en pâte prête à l'emploi  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling          166.534 kg     12 11 × Seau 15 kg + 1 × Seau 7 kg
+   Séjour en L              wall_tiling          209.334 kg     14 14 × Seau 15 kg
+   mutualisé                                     375.868 kg     26 25 × Seau 15 kg + 1 × Seau 7 kg
+   économie de mutualisation                                      0 aucun contenant évité
+Joint fin 1-6mm  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling            9.159 kg      1 1 × Sac 10 kg
+   Séjour en L              wall_tiling           11.513 kg      2 1 × Sac 10 kg + 1 × Sac 5 kg
+   mutualisé                                      20.672 kg      3 2 × Sac 10 kg + 1 × Sac 5 kg
+   économie de mutualisation                                      0 aucun contenant évité
+
+total : 3 matériaux · 113 contenants pièce par pièce → 112 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_tiling · expert · pose standard 1`] = `
+projet  : 2 pièces · niveau expert
+pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.867 m²)
+ouvrages: Carrelage mural (wall_tiling, pose standard)
+
+Faïence murale 25x40 cm  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling           36.637 m2     37 37 × Boîte 1 m²
+   Séjour en L              wall_tiling           46.053 m2     47 47 × Boîte 1 m²
+   mutualisé                                      82.690 m2     83 83 × Boîte 1 m²
+   économie de mutualisation                                      1 contenants évités
+Colle en pâte prête à l'emploi  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling          166.534 kg     12 11 × Seau 15 kg + 1 × Seau 7 kg
+   Séjour en L              wall_tiling          209.334 kg     14 14 × Seau 15 kg
+   mutualisé                                     375.868 kg     26 25 × Seau 15 kg + 1 × Seau 7 kg
+   économie de mutualisation                                      0 aucun contenant évité
+Joint fin 1-6mm  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling            9.159 kg      1 1 × Sac 10 kg
+   Séjour en L              wall_tiling           11.513 kg      2 1 × Sac 10 kg + 1 × Sac 5 kg
+   mutualisé                                      20.672 kg      3 2 × Sac 10 kg + 1 × Sac 5 kg
+   économie de mutualisation                                      0 aucun contenant évité
+
+total : 3 matériaux · 113 contenants pièce par pièce → 112 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_tiling · expert · pose straight 1`] = `
+projet  : 2 pièces · niveau expert
+pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.867 m²)
+ouvrages: Carrelage mural (wall_tiling, pose straight)
+
+Faïence murale 25x40 cm  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling           34.972 m2     35 35 × Boîte 1 m²
+   Séjour en L              wall_tiling           43.960 m2     44 44 × Boîte 1 m²
+   mutualisé                                      78.932 m2     79 79 × Boîte 1 m²
+   économie de mutualisation                                      0 aucun contenant évité
+Colle en pâte prête à l'emploi  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling          158.964 kg     11 11 × Seau 15 kg
+   Séjour en L              wall_tiling          199.819 kg     14 13 × Seau 15 kg + 1 × Seau 7 kg
+   mutualisé                                     358.783 kg     24 24 × Seau 15 kg
+   économie de mutualisation                                      1 contenants évités
+Joint fin 1-6mm  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling            8.743 kg      1 1 × Sac 10 kg
+   Séjour en L              wall_tiling           10.990 kg      2 1 × Sac 10 kg + 1 × Sac 5 kg
+   mutualisé                                      19.733 kg      2 2 × Sac 10 kg
+   économie de mutualisation                                      1 contenants évités
+
+total : 3 matériaux · 107 contenants pièce par pièce → 105 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_tiling · intermediate · pose diagonal 1`] = `
+projet  : 2 pièces · niveau intermediate
+pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.867 m²)
+ouvrages: Carrelage mural (wall_tiling, pose diagonal)
+
+Faïence murale 25x40 cm  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling           38.303 m2     39 39 × Boîte 1 m²
+   Séjour en L              wall_tiling           48.147 m2     49 49 × Boîte 1 m²
+   mutualisé                                      86.450 m2     87 87 × Boîte 1 m²
+   économie de mutualisation                                      1 contenants évités
+Colle en pâte prête à l'emploi  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling          174.104 kg     12 12 × Seau 15 kg
+   Séjour en L              wall_tiling          218.849 kg     15 15 × Seau 15 kg
+   mutualisé                                     392.953 kg     27 26 × Seau 15 kg + 1 × Seau 7 kg
+   économie de mutualisation                                      0 aucun contenant évité
+Joint fin 1-6mm  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling            9.576 kg      1 1 × Sac 10 kg
+   Séjour en L              wall_tiling           12.037 kg      2 1 × Sac 10 kg + 1 × Sac 5 kg
+   mutualisé                                      21.613 kg      3 2 × Sac 10 kg + 1 × Sac 5 kg
+   économie de mutualisation                                      0 aucun contenant évité
+
+total : 3 matériaux · 118 contenants pièce par pièce → 117 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_tiling · intermediate · pose standard 1`] = `
+projet  : 2 pièces · niveau intermediate
+pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.867 m²)
+ouvrages: Carrelage mural (wall_tiling, pose standard)
+
+Faïence murale 25x40 cm  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling           36.637 m2     37 37 × Boîte 1 m²
+   Séjour en L              wall_tiling           46.053 m2     47 47 × Boîte 1 m²
+   mutualisé                                      82.690 m2     83 83 × Boîte 1 m²
+   économie de mutualisation                                      1 contenants évités
+Colle en pâte prête à l'emploi  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling          166.534 kg     12 11 × Seau 15 kg + 1 × Seau 7 kg
+   Séjour en L              wall_tiling          209.334 kg     14 14 × Seau 15 kg
+   mutualisé                                     375.868 kg     26 25 × Seau 15 kg + 1 × Seau 7 kg
+   économie de mutualisation                                      0 aucun contenant évité
+Joint fin 1-6mm  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling            9.159 kg      1 1 × Sac 10 kg
+   Séjour en L              wall_tiling           11.513 kg      2 1 × Sac 10 kg + 1 × Sac 5 kg
+   mutualisé                                      20.672 kg      3 2 × Sac 10 kg + 1 × Sac 5 kg
+   économie de mutualisation                                      0 aucun contenant évité
+
+total : 3 matériaux · 113 contenants pièce par pièce → 112 mutualisés
+`;
+
+exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_tiling · intermediate · pose straight 1`] = `
+projet  : 2 pièces · niveau intermediate
+pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.867 m²)
+ouvrages: Carrelage mural (wall_tiling, pose straight)
+
+Faïence murale 25x40 cm  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling           36.637 m2     37 37 × Boîte 1 m²
+   Séjour en L              wall_tiling           46.053 m2     47 47 × Boîte 1 m²
+   mutualisé                                      82.690 m2     83 83 × Boîte 1 m²
+   économie de mutualisation                                      1 contenants évités
+Colle en pâte prête à l'emploi  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling          166.534 kg     12 11 × Seau 15 kg + 1 × Seau 7 kg
+   Séjour en L              wall_tiling          209.334 kg     14 14 × Seau 15 kg
+   mutualisé                                     375.868 kg     26 25 × Seau 15 kg + 1 × Seau 7 kg
+   économie de mutualisation                                      0 aucun contenant évité
+Joint fin 1-6mm  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling            9.159 kg      1 1 × Sac 10 kg
+   Séjour en L              wall_tiling           11.513 kg      2 1 × Sac 10 kg + 1 × Sac 5 kg
+   mutualisé                                      20.672 kg      3 2 × Sac 10 kg + 1 × Sac 5 kg
+   économie de mutualisation                                      0 aucun contenant évité
+
+total : 3 matériaux · 113 contenants pièce par pièce → 112 mutualisés
+`;

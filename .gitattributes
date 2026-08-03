@@ -1,0 +1,7 @@
+# Instantanés jest (`apps/api/src/estimations/__tests__/__snapshots__`).
+#
+# jest lit un `.snap` **brut** et l'évalue, alors que la valeur reçue est
+# normalisée en `\n` avant comparaison. Sur une copie de travail Windows
+# (`core.autocrlf=true`), un instantané récupéré en CRLF fait donc échouer tous
+# les instantanés multi-lignes — sur une différence invisible à l'écran.
+*.snap text eol=lf

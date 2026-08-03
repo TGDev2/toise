@@ -20,6 +20,18 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @chiffreo/api lint
       - run: pnpm --filter @chiffreo/api build
+      # Placé avant les tests unitaires, et nommé, parce qu'une dérive de
+      # quantité doit porter son nom dans la CI plutôt que d'être noyée dans
+      # 1 000+ tests. Le harnais tourne donc deux fois — quelques secondes de
+      # calcul pur, sans base : le prix de l'attribution immédiate.
+      #
+      # `--ci` est explicite dans le script. Sans lui, jest **écrit** un
+      # instantané manquant et passe au vert : une suite dont le `.snap` n'a
+      # jamais été committé attesterait alors exactement ce qu'elle vient de
+      # constater. (`CI=true` suffirait ici ; l'écrire rend la garantie vraie
+      # aussi en local, où elle se vérifie.)
+      - name: Harnais de non-régression du moteur (catalogue seedé)
+        run: pnpm --filter @chiffreo/api test:engine-regression
       - name: Tests unitaires
         run: pnpm --filter @chiffreo/api test
       # Nom explicite : ces suites montent des contrôleurs avec services mockés

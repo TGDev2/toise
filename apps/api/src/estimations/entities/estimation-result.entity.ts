@@ -88,8 +88,9 @@ export interface PurchaseContribution {
 /**
  * Ligne d'achat mutualisée (ENG-2) : un matériau, sommé sur toutes les pièces
  * et tous les work items, avec le conditionnement choisi **une seule fois** sur
- * la quantité totale continue. `ceil(Σ) ≤ Σ ceil` → mutualiser ne coûte jamais
- * plus de conditionnements.
+ * la quantité totale continue — donc jamais plus cher qu'un achat pièce par
+ * pièce, au sens du critère d'E1-5. En nombre de contenants, en revanche,
+ * l'achat mutualisé peut être plus grand : cf. `EstimationEngine.aggregatePurchases`.
  */
 export interface AggregatedMaterialLine {
   material_id: string;

@@ -1,4 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
+import { seedWorkTypes } from '../projects/work-types.data';
 
 export class CreateWorkTypesAndProjectWorkItems1711468800003 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -20,44 +21,25 @@ export class CreateWorkTypesAndProjectWorkItems1711468800003 implements Migratio
       );
     `);
 
-    // Contextual questions JSON for floor_tiling
-    const floorTilingQuestions = JSON.stringify([
-      {
-        key: 'tile_format',
-        type: 'select',
-        label_fr: 'Format du carreau',
-        options: [
-          { value: '20x20', label_fr: '20 x 20 cm' },
-          { value: '30x30', label_fr: '30 x 30 cm' },
-          { value: '45x45', label_fr: '45 x 45 cm' },
-          { value: '60x60', label_fr: '60 x 60 cm' },
-          { value: '30x60', label_fr: '30 x 60 cm' },
+    // Les 7 ouvrages viennent de `projects/work-types.data.ts` — même parti que
+    // `…006` pour le catalogue matériaux : une seule source de vérité, que les
+    // tests peuvent énumérer sans base. `required_materials` reste le littéral
+    // `'[]'` (colonne jamais lue, supprimée par `…066`), donc absente du module.
+    for (const wt of seedWorkTypes) {
+      await queryRunner.query(
+        `INSERT INTO "work_types" ("code", "label_fr", "category", "surface_target", "waste_factor_base", "required_materials", "contextual_questions", "display_order")
+         VALUES ($1, $2, $3, $4, $5, '[]', $6, $7)`,
+        [
+          wt.code,
+          wt.label_fr,
+          wt.category,
+          wt.surface_target,
+          wt.waste_factor_base,
+          JSON.stringify(wt.contextual_questions),
+          wt.display_order,
         ],
-        required: true,
-      },
-      {
-        key: 'laying_pattern',
-        type: 'select',
-        label_fr: 'Type de pose',
-        options: [
-          { value: 'straight', label_fr: 'Pose droite' },
-          { value: 'diagonal', label_fr: 'Pose diagonale' },
-        ],
-        required: true,
-      },
-    ]);
-
-    await queryRunner.query(
-      `INSERT INTO "work_types" ("code", "label_fr", "category", "surface_target", "waste_factor_base", "required_materials", "contextual_questions", "display_order") VALUES
-        ('wall_painting', 'Peinture murale', 'painting', 'wall', 1.10, '[]', '[]', 1),
-        ('ceiling_painting', 'Peinture plafond', 'painting', 'ceiling', 1.10, '[]', '[]', 2),
-        ('floor_tiling', 'Carrelage sol', 'tiling', 'floor', 1.10, '[]', $1, 3),
-        ('wall_tiling', 'Carrelage mural', 'tiling', 'wall', 1.10, '[]', '[]', 4),
-        ('parquet_flooring', 'Parquet ou stratifie', 'flooring', 'floor', 1.10, '[]', '[]', 5),
-        ('drywall', 'Cloison seche', 'partition', 'wall', 1.05, '[]', '[]', 6),
-        ('wall_covering', 'Revetement mural', 'wall_covering', 'wall', 1.10, '[]', '[]', 7);`,
-      [floorTilingQuestions],
-    );
+      );
+    }
 
     await queryRunner.query(`
       CREATE TABLE "project_work_items" (

@@ -76,8 +76,6 @@ const purchaseBreakdown = (line: EstimationLineItem): PurchaseUnit[] => {
   );
 };
 
-const ACCESSORY_PATTERN = /Pinceau|Rouleau|Bâche/;
-
 // Chambre 400 × 300 × 250 cm, une porte 83 × 204.
 // Mur net = 2 × (4 + 3) × 2,5 − (0,83 × 2,04) = 35 − 1,6932 = 33,3068 m².
 const room: RoomData = {
@@ -112,13 +110,11 @@ describe('EstimationEngine — catalogue seedé, chambre 4 × 3 × 2,5 m', () =>
     expect(totalUnits).toBeLessThanOrEqual(15);
   });
 
-  it('ne fait acheter ni pinceaux, ni rouleaux, ni bâches en quantité absurde', () => {
-    const excessive = lines
-      .filter((l) => ACCESSORY_PATTERN.test(l.material_name))
-      .filter((l) => l.units_needed > 5)
-      .map((l) => `${l.material_name}: ${l.units_needed}`);
-    expect(excessive).toEqual([]);
-  });
+  // Retiré : un filtre `/Pinceau|Rouleau|Bâche/` sur les quantités absurdes.
+  // E1-7 ayant retiré les outils des liaisons, il ne correspondait plus à aucun
+  // matériau chiffré et le test valait `expect([]).toEqual([])` — vert, et
+  // aveugle. Ce que ce filtre voulait surveiller est désormais tenu par
+  // `__tests__/harness-coverage.spec.ts` (inventaire figé des matériaux liés).
 
   it('achète 6,66 L de peinture acrylique mate en 1 pot de 5 L + 1 pot de 2,5 L', () => {
     const paint = lines.find(
@@ -133,73 +129,13 @@ describe('EstimationEngine — catalogue seedé, chambre 4 × 3 × 2,5 m', () =>
   });
 });
 
-/**
- * E1-2 : le critère réel du backlog — un ouvrage ne charge plus toute sa
- * catégorie — vérifié sur les 7 ouvrages, pas seulement `wall_painting`.
+/*
+ * Retiré ici : un `describe.each` qui rejouait les 7 ouvrages en recopiant à la
+ * main leur `label_fr`, leur `category` et surtout leur `surface_target` — la
+ * valeur qui décide de la surface chiffrée. Un ouvrage recopié teste sa copie.
+ *
+ * `__tests__/` reprend la couverture des 7 ouvrages, avec les métadonnées
+ * seedées (`projects/work-types.data.ts`), les 3 niveaux, toutes les poses
+ * disponibles et trois géométries. Ce fichier-ci garde ce qu'un instantané ne
+ * peut pas porter : des valeurs argumentées, écrites à la main.
  */
-describe.each([
-  {
-    code: 'wall_painting',
-    label_fr: 'Peinture murale',
-    category: 'painting',
-    surface_target: 'wall',
-  },
-  {
-    code: 'ceiling_painting',
-    label_fr: 'Peinture plafond',
-    category: 'painting',
-    surface_target: 'ceiling',
-  },
-  {
-    code: 'floor_tiling',
-    label_fr: 'Carrelage sol',
-    category: 'tiling',
-    surface_target: 'floor',
-  },
-  {
-    code: 'wall_tiling',
-    label_fr: 'Carrelage mural',
-    category: 'tiling',
-    surface_target: 'wall',
-  },
-  {
-    code: 'parquet_flooring',
-    label_fr: 'Parquet ou stratifie',
-    category: 'flooring',
-    surface_target: 'floor',
-  },
-  {
-    code: 'drywall',
-    label_fr: 'Cloison seche',
-    category: 'partition',
-    surface_target: 'wall',
-  },
-  {
-    code: 'wall_covering',
-    label_fr: 'Revetement mural',
-    category: 'wall_covering',
-    surface_target: 'wall',
-  },
-])(
-  'EstimationEngine — $label_fr ($code), catalogue seedé',
-  ({ code, label_fr, category, surface_target }) => {
-    const engine = new EstimationEngine();
-
-    it('ne génère pas plus de 6 lignes', () => {
-      const workItem = {
-        id: `wi-${code}`,
-        work_type_code: code,
-        work_type_label: label_fr,
-        category,
-        surface_target,
-        skill_level: 'intermediate',
-        custom_params: {},
-        materials: materialsForWorkType(code),
-      };
-
-      const lines = engine.computeEstimation(room, [workItem]);
-
-      expect(lines.length).toBeLessThanOrEqual(6);
-    });
-  },
-);

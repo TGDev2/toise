@@ -1,0 +1,41 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`Harnais — couverture du catalogue seedé fige l’inventaire des cas et des matériaux liés 1`] = `
+wall_painting · Peinture murale · painting · surface wall
+  poses : standard · niveaux : beginner, intermediate, expert · 3 cas
+  - Peinture acrylique mate         principal    L     rendement 11 · couches oui
+  - Sous-couche universelle         sous_couche  L     rendement 10 · couches non
+ceiling_painting · Peinture plafond · painting · surface ceiling
+  poses : standard · niveaux : beginner, intermediate, expert · 3 cas
+  - Peinture plafond mate           principal    L     rendement 10 · couches oui
+  - Sous-couche universelle         sous_couche  L     rendement 10 · couches non
+floor_tiling · Carrelage sol · tiling · surface floor
+  poses : standard, diagonal, straight · niveaux : beginner, intermediate, expert · 9 cas
+  - Carrelage sol 45x45 cm          principal    m2    rendement 1 · couches non
+  - Mortier-colle flexible (C2)     consommable  kg    rendement 0.14 · couches non
+  - Joint fin 1-6mm                 consommable  kg    rendement 4 · couches non
+wall_tiling · Carrelage mural · tiling · surface wall
+  poses : standard, diagonal, straight · niveaux : beginner, intermediate, expert · 9 cas
+  - Faïence murale 25x40 cm         principal    m2    rendement 1 · couches non
+  - Colle en pâte prête à l'emploi  consommable  kg    rendement 0.22 · couches non
+  - Joint fin 1-6mm                 consommable  kg    rendement 4 · couches non
+parquet_flooring · Parquet ou stratifie · flooring · surface floor
+  poses : standard, diagonal · niveaux : beginner, intermediate, expert · 6 cas
+  - Stratifié 8mm AC4               principal    m2    rendement 1 · couches non
+  - Sous-couche mousse 3mm          sous_couche  m2    rendement 1 · couches non
+  - Film pare-vapeur PE             sous_couche  m2    rendement 0.8 · couches non
+drywall · Cloison seche · partition · surface wall
+  poses : standard · niveaux : beginner, intermediate, expert · 3 cas
+  - Plaque BA13 standard 2.5x1.2m   principal    m2    rendement 0.48 · couches non
+  - Rail R48 3m                     consommable  m     rendement 1.11 · couches non
+  - Montant M48 2.7m                consommable  m     rendement 0.48 · couches non
+  - Vis placo 25mm (x500)           consommable  unit  rendement 22.7 · couches non
+  - Bande à joint papier 23m        consommable  m     rendement 0.36 · couches non
+  - Enduit à joint prêt 7kg         consommable  kg    rendement 1 · couches non
+wall_covering · Revetement mural · wall_covering · surface wall
+  poses : standard, plain · niveaux : beginner, intermediate, expert · 6 cas
+  - Papier peint intissé uni        principal    m2    rendement 1 · couches non
+  - Colle papier peint intissé      consommable  kg    rendement 8 · couches non
+
+total : 39 cas
+`;

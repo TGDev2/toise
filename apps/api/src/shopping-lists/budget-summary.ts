@@ -24,9 +24,11 @@
  *    Ce qui reste, et qui est un fait : à facteur de perte, format et prix
  *    **identiques**, acheter une fois pour tout le chantier coûte moins cher
  *    qu'acheter pièce par pièce, parce que l'arrondi au conditionnement n'est
- *    payé qu'une fois (`ceil(Σq) ≤ Σ ceil(q)`, ENG-2). C'est cet écart, et lui
- *    seul, que l'écran appelle désormais une économie. Il est nul quand le
- *    chantier n'a qu'une pièce — c'est alors la vérité, pas une régression.
+ *    payé qu'une fois (ENG-2). C'est cet écart, et lui seul, que l'écran appelle
+ *    désormais une économie. Il est nul quand le chantier n'a qu'une pièce —
+ *    c'est alors la vérité, pas une régression — et il l'est aussi, plus
+ *    rarement, quand le panachage d'E1-5 préfère plus de contenants pour moins
+ *    de volume (cf. `poolingExtraUnits`).
  *
  *    Le facteur de perte est délibérément hors de la comparaison : c'est une
  *    posture de risque que l'utilisateur choisit, pas un gain que l'outil
@@ -108,8 +110,11 @@ function poolingExtraUnits(
   const pooledUnits = item.original_units_needed ?? item.units_needed;
 
   // `max(0, …)` : le moteur choisit son assortiment au coût minimal (E1-5) et
-  // peut, sur un catalogue exotique, retenir plus de contenants que l'achat
-  // pièce par pièce. Une économie négative n'est pas une économie.
+  // peut retenir plus de contenants que l'achat pièce par pièce. Ce n'est pas
+  // une hypothèse d'école — le harnais E1-9 en trouve deux occurrences sur le
+  // catalogue réel, dont une peinture murale de débutant sur deux pièces
+  // (`estimations/__tests__/two-room-project.spec.ts`). Une économie négative
+  // n'est pas une économie.
   return Math.max(0, naiveUnits - pooledUnits);
 }
 

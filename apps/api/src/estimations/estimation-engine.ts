@@ -632,7 +632,21 @@ export class EstimationEngine {
    * Mutualise les lignes granulaires par `material_id` : somme les quantités
    * continues (`adjusted_qty`) à travers toutes les pièces et tous les work
    * items, puis sélectionne le conditionnement **une seule fois** sur le total.
-   * Cœur de la promesse ENG-2 (`ceil(Σ) ≤ Σ ceil`). Fonction pure.
+   * Fonction pure.
+   *
+   * Ce que cela garantit, exactement : la réunion des achats pièce par pièce est
+   * une solution admissible du problème mutualisé, de coût `Σ S_pièce` au sens
+   * de `selectBestPackaging`. L'optimum mutualisé ne peut donc pas coûter plus
+   * cher — c'est cela, la promesse ENG-2.
+   *
+   * Ce que cela ne garantit **pas**, contrairement à ce que ce commentaire a
+   * longtemps affirmé : que le nombre de contenants ne puisse pas augmenter.
+   * `ceil(Σ) ≤ Σ ceil` valait quand un achat tenait dans un format unique ; le
+   * panachage d'E1-5 arbitre en coût, et peut préférer plus de contenants pour
+   * moins de volume. Le cas se produit sur le catalogue réel, pas seulement en
+   * théorie : cf. `__tests__/two-room-project.spec.ts`, qui en énumère les deux
+   * occurrences. `budget-summary.ts` clampe l'économie affichée à 0 pour cette
+   * raison.
    */
   aggregatePurchases(
     lines: EstimationLineItem[],
