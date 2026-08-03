@@ -1,5 +1,7 @@
 # Chiffréo — Backlog produit priorisé
 
+> **ARCHIVE** — décrit un produit non lancé, conservé pour l'historique, ne pas utiliser comme source. Voir [REPRISE_PROJET.md](../REPRISE_PROJET.md) et [BACKLOG_V1.md](../BACKLOG_V1.md).
+
 > **Statut** : document de travail — juillet 2026
 > **Stratégie associée** : [PRODUCT_STRATEGY.md](PRODUCT_STRATEGY.md)
 

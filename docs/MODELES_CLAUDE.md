@@ -1,7 +1,7 @@
 # Modèles Claude × Backlog Chiffréo
 
 > **Objet** : quel modèle Claude et quel niveau d'effort utiliser dans Claude Code pour chaque tâche du backlog, avec la commande exacte à coller.
-> **Sources modèles** : catalogue Anthropic (cache 2026-06). **Sources tâches** : [BACKLOG.md](BACKLOG.md). **Version visuelle** : artifact « Modèles Claude × Backlog Chiffréo ».
+> **Sources modèles** : catalogue Anthropic (cache 2026-06). **Sources tâches** : [BACKLOG_V1.md](BACKLOG_V1.md). **Version visuelle** : artifact « Modèles Claude × Backlog Chiffréo ».
 > **Réglages Claude Code** : [doc officielle model-config](https://code.claude.com/docs/en/model-config).
 
 ---
@@ -60,7 +60,7 @@ Prendre **le modèle le moins cher qui tient la tâche**, monter d'un cran dès 
 ## 4. Recommandations et commandes par tâche
 
 Chaque tâche : `Modèle · effort CC · charge (S/M/L/XL)` — justification — commande à coller.
-Statut `(livré)` = déjà présent dans le repo (réf. [tasks/todo.md](../tasks/todo.md) / commits) ; la commande reste donnée pour référence/itération.
+Statut `(livré)` = déjà présent dans le repo (réf. [tasks/todo.md](archive/todo.md), archivé / commits) ; la commande reste donnée pour référence/itération.
 
 ### P0 — Lancer ce qui existe
 

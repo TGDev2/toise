@@ -1,5 +1,7 @@
 # Chiffréo — Stratégie produit : analyse d'écart, architecture cible et recommandations
 
+> **ARCHIVE** — décrit un produit non lancé, conservé pour l'historique, ne pas utiliser comme source. Voir [REPRISE_PROJET.md](../REPRISE_PROJET.md) et [BACKLOG_V1.md](../BACKLOG_V1.md).
+
 > **Statut** : document de travail — juillet 2026
 > **Complète** : [CONTEXT.md](CONTEXT.md) (brief de cadrage, mars 2026) et [ARCHITECTURE.md](ARCHITECTURE.md)
 > **Backlog associé** : [BACKLOG.md](BACKLOG.md)

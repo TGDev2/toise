@@ -146,20 +146,21 @@ Copier `.env.example` vers `.env` et renseigner les valeurs :
 
 ## Documentation
 
+- [Reprise de projet — état réel et périmètre V1](docs/REPRISE_PROJET.md)
+- [Backlog V1](docs/BACKLOG_V1.md)
 - [Architecture technique](docs/ARCHITECTURE.md)
 - [Référence API REST](docs/API.md)
 - [Contexte produit](docs/CONTEXT.md)
-- [Stratégie produit — analyse d'écart et architecture cible](docs/PRODUCT_STRATEGY.md)
-- [Backlog priorisé](docs/BACKLOG.md)
 - [Backend API](apps/api/README.md)
 - [Frontend Web](apps/web/README.md)
 - [CV Service](apps/cv-service/README.md)
 - [Guide de contribution](CONTRIBUTING.md)
+- [Archives (documents produit périmés, non sources)](docs/archive/)
 
 ## Modèle économique
 
 | Tier | Fonctionnalités |
 |------|----------------|
 | **Free** | 2 projets actifs, saisie manuelle, estimation basique, export PDF |
-| **Pro** (9,99 €/mois) | Projets illimités, analyse CV, facteurs de perte avancés, suivi budgétaire |
+| **Pro** (9,99 €/mois) | Projets illimités, facteurs de perte avancés, suivi budgétaire |
 | **Contractor** (19-49 €/mois) | Métiers de finition : gestion clients, devis conformes, suivi de chantier, facturation |
