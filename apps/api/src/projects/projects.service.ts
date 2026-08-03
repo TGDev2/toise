@@ -111,6 +111,30 @@ export class ProjectsService {
     });
   }
 
+  /**
+   * Les `FREE_TIER_PROJECT_LIMIT` projets les plus récemment modifiés — les
+   * seuls qu'un palier sans `unlimited_projects` puisse encore écrire.
+   *
+   * **`updated_at` doit figurer dans le `select`, alors qu'on ne lit que
+   * `id`.** `Project.rooms` est `eager`, donc TypeORM ne peut pas appliquer
+   * `take` par un simple `LIMIT` : il passe par une sous-requête
+   * `SELECT DISTINCT … AS distinctAlias` qui ne projette que les colonnes
+   * demandées, puis ordonne le tout sur `distinctAlias.Project_updated_at`.
+   * Omettre la colonne de tri produit donc `column
+   * distinctAlias.Project_updated_at does not exist` — une erreur SQL, à
+   * l'exécution, sur toutes les écritures d'un compte gratuit.
+   */
+  private async findMostRecentlyUpdated(
+    organizationId: string,
+  ): Promise<Project[]> {
+    return this.projectsRepo.find({
+      where: { organization_id: organizationId, deleted_at: IsNull() },
+      order: { updated_at: 'DESC' },
+      take: this.FREE_TIER_PROJECT_LIMIT,
+      select: ['id', 'updated_at'],
+    });
+  }
+
   async isProjectWritable(
     projectId: string,
     organizationId: string,
@@ -122,23 +146,13 @@ export class ProjectsService {
     );
     if (unlimitedAllowed) return true;
 
-    const topProjects = await this.projectsRepo.find({
-      where: { organization_id: organizationId, deleted_at: IsNull() },
-      order: { updated_at: 'DESC' },
-      take: this.FREE_TIER_PROJECT_LIMIT,
-      select: ['id'],
-    });
+    const topProjects = await this.findMostRecentlyUpdated(organizationId);
 
     return topProjects.some((p) => p.id === projectId);
   }
 
   async getWritableProjectIds(organizationId: string): Promise<string[]> {
-    const topProjects = await this.projectsRepo.find({
-      where: { organization_id: organizationId, deleted_at: IsNull() },
-      order: { updated_at: 'DESC' },
-      take: this.FREE_TIER_PROJECT_LIMIT,
-      select: ['id'],
-    });
+    const topProjects = await this.findMostRecentlyUpdated(organizationId);
     return topProjects.map((p) => p.id);
   }
 
