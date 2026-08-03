@@ -94,9 +94,30 @@ export interface CategoryBreakdown {
   brute_cost: number;
 }
 
+/**
+ * Résumé budgétaire d'un chantier. Calculé par `budget-summary.ts`, qui porte
+ * la justification de chaque champ ; ce qui suit en est le contrat.
+ */
 export interface BudgetSummary {
+  /**
+   * Ce qui a été dépensé : prix réel × quantité **déclarée** quand elle existe,
+   * × quantité prévue sinon (`costedUnits`, E1-8). Seule définition du « coût
+   * réel » dans l'application — le benchmark DATA-4 valorise la même quantité,
+   * sous la seule réserve qu'il refuse le repli sur la quantité prévue.
+   */
   total_real_cost: number;
+  /**
+   * Ce que le même chantier aurait coûté en achetant **pièce par pièce**, à
+   * facteur de perte, format et prix identiques (E1-8). Vaut toujours
+   * `total_real_cost + savings_amount`.
+   */
   total_brute_cost: number;
+  /**
+   * Économie de mutualisation (ENG-2) : l'arrondi au conditionnement payé une
+   * fois pour tout le chantier plutôt qu'à chaque pièce. **Jamais négative** —
+   * et indépendante du niveau de compétence, qui est une posture de risque
+   * choisie par l'utilisateur et non un gain produit par l'outil.
+   */
   savings_amount: number;
   savings_percent: number;
   items_priced: number;

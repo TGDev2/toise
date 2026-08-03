@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import type { ShoppingListMaterialItem } from '@/lib/shopping-list-types';
+import { costedUnits } from '@/lib/shopping-list-types';
 import type { BuyLinkItem } from '@/lib/price-comparison-types';
 import type { EcoRowData } from '@/lib/eco-materials-types';
 import { isMixedPackaging } from '@/lib/packaging';
@@ -301,7 +302,7 @@ function MaterialRow({
             </div>
             {hasPriceSet && (
               <span className="text-xs text-stone-400">
-                Total : {((item.real_unit_price ?? 0) * item.units_needed).toFixed(2)} EUR
+                Total : {((item.real_unit_price ?? 0) * costedUnits(item)).toFixed(2)} EUR
               </span>
             )}
           </div>

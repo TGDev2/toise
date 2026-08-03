@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { ShoppingListComplementaryItem } from '@/lib/shopping-list-types';
+import { costedQuantity } from '@/lib/shopping-list-types';
 
 interface ShoppingListComplementsProps {
   items: ShoppingListComplementaryItem[];
@@ -211,7 +212,7 @@ function ComplementRow({
             </div>
             {hasPriceSet && (
               <span className="text-xs text-stone-400">
-                Total : {((item.real_unit_price ?? 0) * item.quantity).toFixed(2)} EUR
+                Total : {((item.real_unit_price ?? 0) * costedQuantity(item)).toFixed(2)} EUR
               </span>
             )}
           </div>

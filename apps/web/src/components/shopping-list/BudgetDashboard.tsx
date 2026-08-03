@@ -65,8 +65,8 @@ export function BudgetDashboard({
     if (!summary) return [];
     return summary.by_category.map((cat) => ({
       name: cat.label,
-      'Coût optimise': Math.round(cat.real_cost * 100) / 100,
-      'Coût brut': Math.round(cat.brute_cost * 100) / 100,
+      'Coût réel': Math.round(cat.real_cost * 100) / 100,
+      'Pièce par pièce': Math.round(cat.brute_cost * 100) / 100,
     }));
   }, [summary]);
 
@@ -137,30 +137,43 @@ export function BudgetDashboard({
       </div>
 
       {/* Stat cards */}
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="mb-2 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard
-          label="Coût reel (optimise)"
+          label="Coût réel"
           value={`${summary.total_real_cost.toFixed(2)}`}
           suffix="EUR"
         />
         <StatCard
-          label="Coût brut (sans optimisation)"
+          label="Achat pièce par pièce"
           value={`${summary.total_brute_cost.toFixed(2)}`}
           suffix="EUR"
         />
         <StatCard
-          label="Economies realisees"
+          label="Économie de mutualisation"
           value={`${summary.savings_amount.toFixed(2)}`}
           suffix={`EUR (${summary.savings_percent.toFixed(1)}%)`}
           variant="savings"
         />
       </div>
+      {/*
+        E1-8 : dire ce que l'économie mesure, et rien de plus. L'écran annonçait
+        l'écart entre un achat fictif à 10 % de perte et l'achat réel au facteur
+        du niveau déclaré — un débutant y lisait une économie négative, un expert
+        une économie qui n'était que sa propre case cochée. Ce qui reste est un
+        fait : l'arrondi au conditionnement payé une fois pour tout le chantier
+        plutôt qu'à chaque pièce.
+      */}
+      <p className="mb-6 text-xs text-stone-500">
+        L&apos;économie compare vos achats à ce qu&apos;ils auraient coûté en
+        achetant pièce par pièce, à quantité et prix identiques. Elle est nulle
+        sur un chantier d&apos;une seule pièce.
+      </p>
 
       {/* Chart */}
       {chartData.length > 0 && (
         <div className="mb-6">
           <h3 className="mb-3 text-sm font-medium text-stone-700">
-            Comparaison par categorie
+            Comparaison par catégorie
           </h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -191,13 +204,9 @@ export function BudgetDashboard({
                 <Legend
                   wrapperStyle={{ fontSize: '13px' }}
                 />
+                <Bar dataKey="Coût réel" fill="#10b981" radius={[6, 6, 0, 0]} />
                 <Bar
-                  dataKey="Coût optimise"
-                  fill="#10b981"
-                  radius={[6, 6, 0, 0]}
-                />
-                <Bar
-                  dataKey="Coût brut"
+                  dataKey="Pièce par pièce"
                   fill="#d6d3d1"
                   radius={[6, 6, 0, 0]}
                 />

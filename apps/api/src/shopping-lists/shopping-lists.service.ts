@@ -8,7 +8,6 @@ import {
   ShoppingListMaterialItem,
   ShoppingListComplementaryItem,
   BudgetSummary,
-  CategoryBreakdown,
 } from './entities/shopping-list.entity';
 import { ComplementaryMaterial } from './entities/complementary-material.entity';
 import { WorkType } from '../projects/entities/work-type.entity';
@@ -31,8 +30,8 @@ import {
   type CloseoutMaterialInput,
   type CloseoutSummary,
 } from './closeout';
+import { computeBudgetSummary } from './budget-summary';
 import type { EstimationLineItem } from '../estimations/entities/estimation-result.entity';
-import { DEFAULT_WASTE_PERCENT } from '../estimations/estimation-engine';
 import { ProjectStatus } from '../projects/entities/project.entity';
 import { isShareTokenExpired, shareTokenExpiry } from './share-token';
 
@@ -445,7 +444,10 @@ export class ShoppingListsService {
     );
 
     return {
-      summary: this.computeBudgetSummary(shoppingList, estimation.items_json),
+      summary: computeBudgetSummary(
+        shoppingList.items_json,
+        estimation.items_json,
+      ),
       // COM-1 : regenerate() peut effacer budget_summary_json sur un projet
       // deja COMPLETED (prix restaures, resume non recalcule) — le live
       // recompute ci-dessus ne suffit pas a distinguer ce cas d'un budget
@@ -587,8 +589,8 @@ export class ShoppingListsService {
       shoppingList.estimation_id,
     );
 
-    const summary = this.computeBudgetSummary(
-      shoppingList,
+    const summary = computeBudgetSummary(
+      shoppingList.items_json,
       estimation.items_json,
     );
 
@@ -839,7 +841,10 @@ export class ShoppingListsService {
           store_name: item.store_name ?? null,
         }));
 
-    const summary = this.computeBudgetSummary(shoppingList, estimationItems);
+    const summary = computeBudgetSummary(
+      shoppingList.items_json,
+      estimationItems,
+    );
 
     return {
       closeout: computeCloseout(
@@ -852,114 +857,6 @@ export class ShoppingListsService {
       // ferait afficher « 0 EUR dépensé » à qui n'a rien saisi.
       budgetSummary: summary.items_priced > 0 ? summary : null,
       isFinalized: shoppingList.budget_summary_json != null,
-    };
-  }
-
-  private computeBudgetSummary(
-    shoppingList: ShoppingList,
-    estimationItems: {
-      material_id: string;
-      theoretical_qty: number;
-      packaging_qty_per_unit: number;
-    }[],
-  ): BudgetSummary {
-    const CATEGORY_LABELS: Record<string, string> = {
-      painting: 'Peinture',
-      tiling: 'Carrelage',
-      flooring: 'Parquet / Sol',
-      partition: 'Cloison',
-      wall_covering: 'Revêtement mural',
-    };
-
-    // Coût « brut » = acheteur naïf : 10 % de perte forfaitaire, arrondi au
-    // conditionnement PAR pièce (donc SANS mutualisation). L'écart réel↔brut
-    // capture ainsi le gain des facteurs de perte ET de la mutualisation ENG-2.
-    // Somme des unités naïves par matériau sur toutes les lignes granulaires.
-    const bruteUnitsByMaterial = new Map<string, number>();
-    for (const item of estimationItems) {
-      const bruteAdjustedQty =
-        item.theoretical_qty * (1 + DEFAULT_WASTE_PERCENT / 100);
-      const bruteUnits = Math.ceil(
-        bruteAdjustedQty / item.packaging_qty_per_unit,
-      );
-      bruteUnitsByMaterial.set(
-        item.material_id,
-        (bruteUnitsByMaterial.get(item.material_id) ?? 0) + bruteUnits,
-      );
-    }
-
-    const categoryTotals = new Map<
-      string,
-      { real_cost: number; brute_cost: number }
-    >();
-    let totalRealCost = 0;
-    let totalBruteCost = 0;
-    let itemsPriced = 0;
-
-    const materialItems = shoppingList.items_json.material_items;
-    const complementaryItems =
-      shoppingList.items_json.complementary_items.filter((c) => !c.is_removed);
-
-    for (const item of materialItems) {
-      if (item.real_unit_price == null) continue;
-      itemsPriced++;
-
-      const realCost = item.real_unit_price * item.units_needed;
-      totalRealCost += realCost;
-
-      // Coût brut : unités naïves cumulées de ce matériau × prix réel.
-      const bruteUnits = bruteUnitsByMaterial.get(item.material_id);
-      const bruteCost =
-        bruteUnits !== undefined ? item.real_unit_price * bruteUnits : realCost;
-      totalBruteCost += bruteCost;
-
-      const cat = item.material_category;
-      const existing = categoryTotals.get(cat) || {
-        real_cost: 0,
-        brute_cost: 0,
-      };
-      existing.real_cost += realCost;
-      existing.brute_cost += bruteCost;
-      categoryTotals.set(cat, existing);
-    }
-
-    // Complementary items contribute to real cost only (no brute concept)
-    for (const item of complementaryItems) {
-      if (item.real_unit_price == null) continue;
-      itemsPriced++;
-      const realCost = item.real_unit_price * item.quantity;
-      totalRealCost += realCost;
-      totalBruteCost += realCost; // same for complementary
-    }
-
-    const itemsTotal = materialItems.length + complementaryItems.length;
-
-    const savingsAmount =
-      Math.round((totalBruteCost - totalRealCost) * 100) / 100;
-    const savingsPercent =
-      totalBruteCost > 0
-        ? Math.round((savingsAmount / totalBruteCost) * 10000) / 100
-        : 0;
-
-    const byCategory: CategoryBreakdown[] = Array.from(
-      categoryTotals.entries(),
-    ).map(([category, totals]) => ({
-      category,
-      label: CATEGORY_LABELS[category] || category,
-      real_cost: Math.round(totals.real_cost * 100) / 100,
-      brute_cost: Math.round(totals.brute_cost * 100) / 100,
-    }));
-
-    return {
-      total_real_cost: Math.round(totalRealCost * 100) / 100,
-      total_brute_cost: Math.round(totalBruteCost * 100) / 100,
-      savings_amount: savingsAmount,
-      savings_percent: savingsPercent,
-      items_priced: itemsPriced,
-      items_total: itemsTotal,
-      is_complete: itemsPriced === itemsTotal,
-      by_category: byCategory,
-      computed_at: new Date().toISOString(),
     };
   }
 

@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { apiGet, ApiError } from '@/lib/api';
 import { WORK_TYPE_LABELS } from '@/lib/project-types';
 import type { CommunityProjectDetail } from '@/lib/community-types';
+import { costedUnits } from '@/lib/shopping-list-types';
 import { serializeJsonLd } from '@/lib/json-ld';
 import {
   buildCommunityProjectJsonLd,
@@ -212,13 +213,13 @@ export default async function CommunityDetailPage({
                     {item.material_name}
                   </p>
                   <p className="text-xs text-stone-500">
-                    {item.units_needed} x {item.packaging_label}
+                    {costedUnits(item)} x {item.packaging_label}
                     {item.store_name ? ` · ${item.store_name}` : ''}
                   </p>
                 </div>
                 {item.real_unit_price != null && (
                   <span className="text-sm font-semibold text-stone-950">
-                    {formatEuros(item.real_unit_price * item.units_needed)}
+                    {formatEuros(item.real_unit_price * costedUnits(item))}
                   </span>
                 )}
               </div>

@@ -170,6 +170,53 @@ export function declaredPurchasedUnits(item: {
   return item.is_manually_adjusted ? item.units_needed : null;
 }
 
+/** Quantité valorisée d'une ligne, et d'où elle vient. */
+export interface CostedQuantity {
+  units: number;
+  /** `true` quand la quantité vient d'une déclaration de l'utilisateur. */
+  is_declared: boolean;
+}
+
+/**
+ * E1-8 — **la** référence de quantité de tout calcul de coût : la quantité
+ * déclarée quand elle existe, la quantité prévue sinon.
+ *
+ * Deux formules valorisaient jusqu'ici deux quantités différentes — le tableau
+ * de bord multipliait le prix par `units_needed` (la liste de courses), le
+ * benchmark par la quantité déclarée — et affichaient les deux résultats sous
+ * le même mot, « coût réel ». Un chantier clôturé portait donc deux totaux
+ * contradictoires sur le même écran.
+ *
+ * `is_declared` porte la nuance que le nombre seul ne peut pas porter : sans
+ * déclaration, le montant reste une prévision. Les appelants qui **publient**
+ * un coût (benchmark DATA-4, cohorte inter-organisations) exigent le drapeau ;
+ * ceux qui montrent son budget à l'utilisateur se contentent du repli, parce
+ * qu'un écran vide avant la clôture ne rend service à personne.
+ */
+export function costedUnits(item: {
+  purchased_units?: number | null;
+  units_needed: number;
+  is_manually_adjusted: boolean;
+}): CostedQuantity {
+  const declared = declaredPurchasedUnits(item);
+  return declared === null
+    ? { units: item.units_needed, is_declared: false }
+    : { units: declared, is_declared: true };
+}
+
+/**
+ * Pendant de `costedUnits` pour les consommables, qui n'ont ni conditionnement
+ * ni correction manuelle : la quantité déclarée, ou celle du forfait.
+ */
+export function costedComplementaryQuantity(item: {
+  purchased_quantity?: number | null;
+  quantity: number;
+}): CostedQuantity {
+  return item.purchased_quantity != null
+    ? { units: item.purchased_quantity, is_declared: true }
+    : { units: item.quantity, is_declared: false };
+}
+
 function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }

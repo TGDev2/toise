@@ -534,6 +534,13 @@ Récupérer le résumé budgétaire.
 
 **Auth :** Requise (propriétaire uniquement) | **Feature gate :** `budget_tracking` (Pro+)
 
+| Champ | Sens |
+|---|---|
+| `total_real_cost` | Prix réel × quantité **déclarée** quand elle existe, × quantité prévue sinon. Seule définition du « coût réel » : le benchmark de coûts valorise la même quantité, en refusant seulement le repli sur la quantité prévue |
+| `total_brute_cost` | Ce que le même achat aurait coûté **pièce par pièce**, à facteur de perte, format et prix identiques. Vaut toujours `total_real_cost + savings_amount` |
+| `savings_amount` | Économie de mutualisation : l'arrondi au conditionnement payé une fois pour tout le chantier plutôt qu'à chaque pièce. Jamais négative, et indépendante du niveau de compétence — celui-ci est une posture de risque choisie par l'utilisateur, pas un gain produit par l'outil. Nulle sur un chantier d'une seule pièce |
+| `items_priced` / `items_total` | Lignes tarifées sur lignes retenues ; `is_complete` en découle |
+
 **Réponses :** `200 OK` | `403 Forbidden`
 
 ---

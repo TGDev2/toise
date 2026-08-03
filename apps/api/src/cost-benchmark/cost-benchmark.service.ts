@@ -8,7 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { DataSource, In, IsNull, Not, Repository } from 'typeorm';
 import { ShoppingList } from '../shopping-lists/entities/shopping-list.entity';
-import { declaredPurchasedUnits } from '../shopping-lists/closeout';
+import { costedUnits } from '../shopping-lists/closeout';
 import {
   EstimationLineItem,
   EstimationResult,
@@ -399,8 +399,13 @@ export class CostBenchmarkService {
       // on ne connaît que la quantité prévue : la publier sous le libellé
       // « coûts réels constatés » serait le même abus de langage que ce lot
       // corrige ailleurs. L'ouvrage est écarté, pas approximé.
-      const purchasedUnits = declaredPurchasedUnits(item);
-      if (item.real_unit_price == null || purchasedUnits === null) {
+      //
+      // E1-8 : même référence de quantité que le tableau de bord budgétaire
+      // (`costedUnits`), sous une exigence plus stricte — ici le repli sur la
+      // quantité prévue est refusé, parce que ce chiffre part en cohorte
+      // inter-organisations et non sous les yeux de qui l'a saisi.
+      const costed = costedUnits(item);
+      if (item.real_unit_price == null || !costed.is_declared) {
         // Un ouvrage partiellement chiffré paraîtrait moins cher qu'il n'est :
         // on l'écarte, sans écarter les autres ouvrages du chantier.
         incompleteWorkTypes.add(workType);
@@ -409,7 +414,7 @@ export class CostBenchmarkService {
       costByWorkType.set(
         workType,
         (costByWorkType.get(workType) ?? 0) +
-          item.real_unit_price * purchasedUnits,
+          item.real_unit_price * costed.units,
       );
     }
 

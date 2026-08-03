@@ -7,6 +7,7 @@ import { ShoppingList } from '../shopping-lists/entities/shopping-list.entity';
 import { EstimationResult } from '../estimations/entities/estimation-result.entity';
 import { Project } from '../projects/entities/project.entity';
 import { CostBenchmark } from './entities/cost-benchmark.entity';
+import { computeBudgetSummary } from '../shopping-lists/budget-summary';
 
 interface LineSpec {
   material_id: string;
@@ -60,6 +61,7 @@ function makeShoppingList(
     items_json: {
       material_items: items.map((i) => ({
         material_id: i.material_id,
+        material_category: 'painting',
         units_needed: i.units_needed ?? 1,
         is_manually_adjusted: false,
         purchased_units:
@@ -445,6 +447,39 @@ describe('CostBenchmarkService', () => {
         delta_percent: 20,
       });
       expect(result.computed_at).toBe('2026-08-01T00:00:00.000Z');
+    });
+
+    /**
+     * E1-8, critère de fin : « pour un même chantier clôturé, le budget et le
+     * benchmark s'accordent au centime ». Les deux valorisent désormais la même
+     * quantité (`costedUnits`) ; ce test les fait tourner tous les deux sur la
+     * même liste, quantité déclarée volontairement différente de la quantité
+     * prévue pour que l'ancienne divergence soit visible si elle revenait.
+     */
+    it('publie le même coût réel que le tableau de bord budgétaire', async () => {
+      const shoppingList = makeShoppingList(1, [
+        {
+          material_id: 'mat-paint',
+          units_needed: 3,
+          purchased_units: 4,
+          real_unit_price: 45,
+        },
+      ]);
+      const estimation = makeEstimation(1, [
+        { material_id: 'mat-paint', surface_m2: 20 },
+      ]);
+      shoppingListRepoMock.findOne.mockResolvedValue(shoppingList);
+      estimationRepoMock.findOne.mockResolvedValue(estimation);
+
+      const result = await service.getForProject('proj-1', 'org-mine');
+      const budget = computeBudgetSummary(
+        shoppingList.items_json,
+        estimation.items_json,
+      );
+
+      // 4 pots déclarés × 45 €. L'ancien budget en valorisait 3 : 135 €.
+      expect(result.overall?.cost).toBe(180);
+      expect(budget.total_real_cost).toBe(result.overall?.cost);
     });
 
     it('signale un ouvrage sans cohorte publiable au lieu de l’inventer', async () => {

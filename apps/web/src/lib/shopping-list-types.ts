@@ -15,6 +15,9 @@ export interface ShoppingListMaterialItem {
   // E1-5 : détail par format d'un achat panaché, absent si un format suffit.
   packaging_breakdown?: PackagingUnitsLine[];
   is_manually_adjusted: boolean;
+  // DATA-5 : conditionnements réellement achetés, déclarés à la clôture.
+  // `null`/absent = rien de déclaré, la ligne n'est encore qu'une prévision.
+  purchased_units?: number | null;
   // ENG-2 : nombre de pièces mutualisées sur cette ligne (≥ 2 → « N pièces »).
   room_count?: number;
   // Legacy : présent sur les listes générées avant la mutualisation ENG-2.
@@ -38,6 +41,24 @@ export interface ShoppingListComplementaryItem {
   is_calculated?: boolean;
   real_unit_price?: number | null;
   store_name?: string | null;
+  // DATA-5 : quantité réellement achetée, déclarée à la clôture.
+  purchased_quantity?: number | null;
+}
+
+/**
+ * E1-8 — la quantité que l'API valorise (`costedUnits`, `budget-summary.ts`) :
+ * la déclarée quand elle existe, la prévue sinon. Les totaux de ligne affichés
+ * doivent s'additionner jusqu'au total du tableau de bord ; ils montraient la
+ * quantité prévue même sur un chantier clôturé, et ne s'y retrouvaient plus.
+ */
+export function costedUnits(item: ShoppingListMaterialItem): number {
+  if (item.purchased_units != null) return item.purchased_units;
+  return item.units_needed;
+}
+
+/** Pendant de `costedUnits` pour les consommables. */
+export function costedQuantity(item: ShoppingListComplementaryItem): number {
+  return item.purchased_quantity ?? item.quantity;
 }
 
 export interface CategoryBreakdown {

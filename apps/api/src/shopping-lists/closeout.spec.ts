@@ -1,5 +1,7 @@
 import {
   computeCloseout,
+  costedComplementaryQuantity,
+  costedUnits,
   type CloseoutComplementaryInput,
   type CloseoutMaterialInput,
 } from './closeout';
@@ -240,6 +242,54 @@ describe('computeCloseout — ce que l’on ne sait pas', () => {
     );
 
     expect(summary.lines[0].implied_waste_percent).toBeNull();
+  });
+});
+
+/**
+ * E1-8 : une seule réponse à « quelle quantité vaut-on ? ». Le tableau de bord
+ * budgétaire et le benchmark de coûts posaient la question chacun de leur côté
+ * et affichaient deux « coûts réels » différents pour le même chantier.
+ */
+describe('costedUnits — la référence de quantité des calculs de coût', () => {
+  const line = {
+    purchased_units: null as number | null,
+    units_needed: 3,
+    is_manually_adjusted: false,
+  };
+
+  it('préfère la quantité déclarée', () => {
+    expect(costedUnits({ ...line, purchased_units: 4 })).toEqual({
+      units: 4,
+      is_declared: true,
+    });
+  });
+
+  it('retombe sur la quantité prévue, en le signalant', () => {
+    expect(costedUnits(line)).toEqual({ units: 3, is_declared: false });
+  });
+
+  it('honore une déclaration à zéro', () => {
+    expect(costedUnits({ ...line, purchased_units: 0 })).toEqual({
+      units: 0,
+      is_declared: true,
+    });
+  });
+
+  it('lit une correction manuelle comme une déclaration (repli pré-DATA-5)', () => {
+    expect(costedUnits({ ...line, is_manually_adjusted: true })).toEqual({
+      units: 3,
+      is_declared: true,
+    });
+  });
+
+  it('applique la même règle aux consommables', () => {
+    expect(costedComplementaryQuantity({ quantity: 2 })).toEqual({
+      units: 2,
+      is_declared: false,
+    });
+    expect(
+      costedComplementaryQuantity({ quantity: 2, purchased_quantity: 5 }),
+    ).toEqual({ units: 5, is_declared: true });
   });
 });
 
