@@ -52,5 +52,8 @@ apps/cv-service/yolov8n.pt
 docs/CONTEXT.md
 CLAUDE.md
 AGENTS.md
+
+# Copie locale d'une skill Anthropic bundlée : on ne la vendorise pas
+.claude/skills/frontend/
 __pycache__
 chiffreo-modele-economique.xlsx
