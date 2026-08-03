@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import type { ShoppingListMaterialItem } from '@/lib/shopping-list-types';
 import type { BuyLinkItem } from '@/lib/price-comparison-types';
 import type { EcoRowData } from '@/lib/eco-materials-types';
+import { isMixedPackaging } from '@/lib/packaging';
 import { DecimalInput } from '@/components/ui';
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -114,6 +115,16 @@ function MaterialRow({
     item.units_needed_high != null &&
     item.units_needed_low !== item.units_needed_high;
 
+  // E1-5 : achat panaché sur plusieurs formats. Le nombre affiché compte alors
+  // des contenants, pas des exemplaires d'un format.
+  const isMixed = isMixedPackaging(item.packaging_breakdown);
+
+  // Corrigée à la main, une ligne panachée n'a plus d'assortiment : « 5 » ne
+  // veut plus dire « 1 pot de 5 L + 1 de 2,5 L ». On retire le libellé plutôt
+  // que de le laisser décrire un achat qui n'est plus proposé.
+  const packagingSubtitle =
+    isMixed && item.is_manually_adjusted ? null : item.packaging_label;
+
   return (
     <div className="rounded-2xl border border-stone-200 bg-white">
       {/*
@@ -142,7 +153,9 @@ function MaterialRow({
             )}
           </div>
           <p className="mt-0.5 text-sm text-stone-500">
-            {item.work_type_label} · {item.packaging_label}
+            {packagingSubtitle
+              ? `${item.work_type_label} · ${packagingSubtitle}`
+              : item.work_type_label}
             {item.room_count && item.room_count > 1 ? (
               <span className="ml-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
                 mutualisé · {item.room_count} pièces
@@ -152,7 +165,8 @@ function MaterialRow({
           {hasRange && (
             <p className="mt-0.5 text-xs text-stone-400">
               Fourchette selon la mesure : {item.units_needed_low}–
-              {item.units_needed_high} {item.packaging_label}
+              {item.units_needed_high}{' '}
+              {isMixed ? 'contenants' : item.packaging_label}
             </p>
           )}
           {eco?.suggestion && (
@@ -232,9 +246,12 @@ function MaterialRow({
             />
           )}
           {/* Doublon du sous-titre (« … · Rouleau 150 m ») : on le garde là où
-              la place le permet, on le retire là où il casse la mise en page. */}
+              la place le permet, on le retire là où il casse la mise en page.
+              Sur un achat panaché (E1-5), le champ compte des contenants de
+              formats différents : « x Pot 5 L + Pot 2.5 L » se lirait comme
+              N fois le couple. Le détail reste dans le sous-titre. */}
           <span className="truncate text-sm text-stone-500">
-            x {item.packaging_label}
+            {isMixed ? 'contenants' : `x ${item.packaging_label}`}
           </span>
         </div>
       </div>

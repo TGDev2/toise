@@ -36,6 +36,33 @@ describe('EstimationResults', () => {
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
   });
 
+  // E1-5 : un achat panaché ne se dit pas « N × un format ». Rendu tel quel,
+  // le gabarit historique donnerait « 2 × Pot 5 L + Pot 2.5 L », qui se lit
+  // comme deux fois le couple.
+  it('détaille un achat panaché format par format', () => {
+    const items = [
+      makeLineItem({
+        packaging_label: 'Pot 5 L + Pot 2.5 L',
+        packaging_qty_per_unit: 3.75,
+        units_needed: 2,
+        packaging_breakdown: [
+          { label: 'Pot 5 L', units: 1 },
+          { label: 'Pot 2.5 L', units: 1 },
+        ],
+      }),
+    ];
+    render(<EstimationResults items={items} />);
+
+    expect(
+      screen.getByText('1 × Pot 5 L + 1 × Pot 2.5 L'),
+    ).toBeInTheDocument();
+  });
+
+  it('garde le gabarit « N × format » sans panachage', () => {
+    render(<EstimationResults items={[makeLineItem()]} />);
+    expect(screen.getByText('3 × Pot 2.5 L')).toBeInTheDocument();
+  });
+
   it('should show both surfaces when gross differs from net (wall)', () => {
     const items = [makeLineItem({ gross_surface_m2: 35, surface_m2: 31.964 })];
     render(<EstimationResults items={items} />);

@@ -41,6 +41,33 @@ describe('EstimationSummary', () => {
     expect(joints).toHaveLength(1);
   });
 
+  // E1-5 : la consolidation se fait par format, pas par libellé d'achat. Deux
+  // lignes panachées identiques cumulées telles quelles donneraient
+  // « 4 × Pot 5 L + Pot 2.5 L », qui ne veut rien dire.
+  it('consolide un achat panaché format par format', () => {
+    const mixed = {
+      packaging_label: 'Pot 5 L + Pot 2.5 L',
+      packaging_qty_per_unit: 3.75,
+      units_needed: 2,
+      packaging_breakdown: [
+        { label: 'Pot 5 L', units: 1 },
+        { label: 'Pot 2.5 L', units: 1 },
+      ],
+    };
+    const items = [
+      makeLineItem({ material_id: 'shared', material_name: 'Peinture', ...mixed }),
+      makeFloorTilingItem({
+        material_id: 'shared',
+        material_name: 'Peinture',
+        ...mixed,
+      }),
+    ];
+    render(<EstimationSummary items={items} />);
+
+    expect(screen.getByText('2 × Pot 5 L')).toBeInTheDocument();
+    expect(screen.getByText('2 × Pot 2.5 L')).toBeInTheDocument();
+  });
+
   it('should list different materials separately', () => {
     render(<EstimationSummary items={makeMultiWorkTypeItems()} />);
 

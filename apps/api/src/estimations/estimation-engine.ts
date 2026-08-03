@@ -108,15 +108,155 @@ export interface ResolvedWasteFactor {
   source: 'catalog' | 'default' | 'learned';
 }
 
+/** Un format et son nombre de contenants dans un achat (E1-5). */
+export interface PackagingUnits {
+  label: string;
+  units: number;
+}
+
 export interface SelectedPackaging {
   label: string;
   qty_per_unit: number;
   units_needed: number;
+  /**
+   * Détail de l'achat, du plus grand format au plus petit. Un seul élément
+   * quand un format suffit, vide quand il n'y a rien à acheter.
+   */
+  breakdown: PackagingUnits[];
 }
 
 const CM2_TO_M2 = 10_000;
 export const DEFAULT_WASTE_PERCENT = 10;
 const DEFAULT_COATS = 2;
+
+/** Format de conditionnement normalisé pour le choix d'achat (E1-5). */
+interface PackagingFormat {
+  label: string;
+  /** `quantity_per_unit` en millièmes d'unité — entier, base de tous les coûts. */
+  steps: number;
+}
+
+const PACKAGING_SCALE = 1000;
+
+/**
+ * Plafond de la table de programmation dynamique. Au-delà, le gros de l'achat
+ * part sur le plus grand format — le seul choix raisonnable à cette échelle —
+ * et seul le reliquat est optimisé. Hors d'atteinte sur le catalogue réel
+ * (formats à deux décimales → pas ≥ 0,01 → 100 000 pas = 1 000 unités de
+ * besoin) : garde-fou contre une donnée aberrante, pas un compromis de calcul.
+ */
+const MAX_PACKAGING_STEPS = 100_000;
+
+/**
+ * Tolérance sur le besoin, en pas de la grille. Sans elle, 7,5 L — dont la
+ * représentation flottante vaut 7500,000000000001 millièmes — demanderait
+ * 16 demi-pots au lieu de 15.
+ */
+const STEP_EPSILON = 1e-6;
+
+const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+
+/**
+ * Formats exploitables, dédoublonnés par taille et triés du plus grand au plus
+ * petit. Les quantités nulles ou non numériques sont écartées ici, une fois,
+ * plutôt que testées à chaque comparaison.
+ */
+const normalizePackagings = (
+  packagings: PackagingInput[],
+): PackagingFormat[] => {
+  const bySteps = new Map<number, PackagingFormat>();
+  for (const pkg of packagings) {
+    const steps = Math.round(Number(pkg.quantity_per_unit) * PACKAGING_SCALE);
+    if (!Number.isFinite(steps) || steps <= 0 || bySteps.has(steps)) {
+      continue;
+    }
+    bySteps.set(steps, { label: pkg.label, steps });
+  }
+  return [...bySteps.values()].sort((a, b) => b.steps - a.steps);
+};
+
+/**
+ * Nombre de contenants de chaque format, indexé comme `formats`, minimisant
+ * `S = q_min × contenants + volume` sous contrainte `volume ≥ adjustedQty`.
+ *
+ * Programmation dynamique sur le pgcd des formats : tout format est un multiple
+ * entier du pas, donc « couvrir le besoin » se dit exactement « couvrir
+ * `ceil(besoin / pas)` pas », et tous les coûts comparés sont des entiers —
+ * aucune dérive flottante ne peut départager deux achats.
+ */
+const solvePackagingMix = (
+  adjustedQty: number,
+  formats: PackagingFormat[],
+): number[] => {
+  const counts = new Array<number>(formats.length).fill(0);
+  const step = formats.reduce((acc, f) => gcd(acc, f.steps), 0);
+  const sizes = formats.map((f) => f.steps / step);
+  const smallestSteps = formats[formats.length - 1].steps;
+  // Coût d'un contenant : son contenu, plus le plus petit format offert — le
+  // prix forfaitaire du contenant, exprimé dans la seule unité dont on dispose.
+  const costs = formats.map((f) => smallestSteps + f.steps);
+
+  let remaining = Math.max(
+    0,
+    Math.ceil((adjustedQty * PACKAGING_SCALE) / step - STEP_EPSILON),
+  );
+  if (remaining === 0) {
+    return counts;
+  }
+
+  if (remaining > MAX_PACKAGING_STEPS) {
+    const bulk = Math.ceil((remaining - MAX_PACKAGING_STEPS) / sizes[0]);
+    counts[0] += bulk;
+    remaining -= bulk * sizes[0];
+  }
+
+  // best[n] : coût minimal pour couvrir n pas ; unitsAt[n] départage à coût
+  // égal ; from[n] retient le dernier format posé, pour la reconstruction.
+  const best = new Float64Array(remaining + 1);
+  const unitsAt = new Int32Array(remaining + 1);
+  const from = new Int32Array(remaining + 1);
+
+  for (let n = 1; n <= remaining; n++) {
+    let bestCost = Infinity;
+    let bestUnits = 0;
+    let bestIdx = 0;
+    // Du plus grand format au plus petit : à coût et contenants égaux, le grand
+    // format l'emporte — le choix reste déterministe et le détail trié.
+    for (let i = 0; i < formats.length; i++) {
+      const prev = Math.max(0, n - sizes[i]);
+      const cost = best[prev] + costs[i];
+      const units = unitsAt[prev] + 1;
+      if (cost < bestCost || (cost === bestCost && units < bestUnits)) {
+        bestCost = cost;
+        bestUnits = units;
+        bestIdx = i;
+      }
+    }
+    best[n] = bestCost;
+    unitsAt[n] = bestUnits;
+    from[n] = bestIdx;
+  }
+
+  for (let n = remaining; n > 0; ) {
+    const i = from[n];
+    counts[i] += 1;
+    n = Math.max(0, n - sizes[i]);
+  }
+
+  return counts;
+};
+
+/**
+ * Libellé d'un achat panaché : « 2 × Pot 10 L + Pot 5 L + Pot 2.5 L ». Un achat
+ * à format unique garde son libellé nu — le nombre de contenants est déjà porté
+ * par `units_needed`, et l'affichage historique « N × libellé » reste juste.
+ */
+const composePackagingLabel = (breakdown: PackagingUnits[]): string =>
+  breakdown.length === 1
+    ? breakdown[0].label
+    : breakdown
+        .map((b) => (b.units > 1 ? `${b.units} × ${b.label}` : b.label))
+        .join(' + ');
 
 /**
  * Résolution du facteur de perte : exact (pose, niveau) → pose `standard` du
@@ -281,40 +421,89 @@ export class EstimationEngine {
     return { qty };
   }
 
+  /**
+   * Que faut-il acheter pour couvrir `adjustedQty` ? E1-5 — le critère est
+   *
+   *     minimiser  S = q_min × (nombre de contenants) + (volume acheté)
+   *     sous       volume acheté ≥ adjustedQty
+   *
+   * où `q_min` est le plus petit format offert pour ce matériau. Plusieurs
+   * formats peuvent être panachés : 6,66 L de peinture donnent 1 pot de 5 L
+   * plus 1 de 2,5 L.
+   *
+   * Pourquoi cette forme. Le prix d'un conditionnement vaut `a + b × contenu`,
+   * avec `a > 0` — le pot, l'étiquette, la manutention. C'est ce qui fait
+   * baisser le prix au litre quand le pot grossit. Minimiser le coût revient
+   * donc à minimiser `(a/b) × contenants + volume`, dont la seule inconnue
+   * `r = a/b` est homogène à un volume. Le catalogue ne portant pas de prix, on
+   * pose `r = q_min` : **un contenant de plus doit faire économiser au moins la
+   * plus petite quantité que le magasin sait vendre**. Estimation volontairement
+   * prudente — le vrai `r` est plus grand, donc la règle penche vers moins de
+   * contenants, le côté sûr : un fond de pot se garde, un second aller-retour au
+   * magasin ne se rattrape pas. Et sans échelle : elle vaut en litres, en m² et
+   * en kg sans réglage par famille de matériau.
+   *
+   * Le critère n'est pas fragile au choix de `r` : pour 6,66 L, 5 L + 2,5 L est
+   * optimal pour tout `r` entre 0,167 et 2,5 — une plage de 1 à 15.
+   *
+   * Ce qu'il remplace : minimiser le seul surplus en volume, format unique. Ce
+   * critère achetait 14 pots de 0,5 L (7,0 L) plutôt que 5 L + 2,5 L (7,5 L)
+   * pour 6,66 L — trois à cinq fois le prix pour 0,5 L de peinture économisée.
+   * Son symétrique, minimiser le seul nombre de contenants, sature sur le plus
+   * grand format : un pot de 2,5 L pour 0,6 L de besoin. `S` pénalise les deux.
+   */
   selectBestPackaging(
     adjustedQty: number,
     packagings: PackagingInput[],
   ): SelectedPackaging {
-    if (packagings.length === 0) {
+    const formats = normalizePackagings(packagings);
+
+    if (formats.length === 0) {
+      const units = Math.max(0, Math.ceil(adjustedQty));
       return {
         label: '-',
         qty_per_unit: 1,
-        units_needed: Math.ceil(adjustedQty),
+        units_needed: units,
+        breakdown: units > 0 ? [{ label: '-', units }] : [],
       };
     }
 
-    let best: SelectedPackaging | null = null;
-    let bestSurplus = Infinity;
+    const counts = solvePackagingMix(adjustedQty, formats);
 
-    for (const pkg of packagings) {
-      const qtyPerUnit = Number(pkg.quantity_per_unit);
-      const unitsNeeded = Math.ceil(adjustedQty / qtyPerUnit);
-      const surplus = unitsNeeded * qtyPerUnit - adjustedQty;
-
-      if (
-        surplus < bestSurplus ||
-        (surplus === bestSurplus && best && unitsNeeded < best.units_needed)
-      ) {
-        best = {
-          label: pkg.label,
-          qty_per_unit: qtyPerUnit,
-          units_needed: unitsNeeded,
-        };
-        bestSurplus = surplus;
+    const breakdown: PackagingUnits[] = [];
+    let totalUnits = 0;
+    let totalSteps = 0;
+    formats.forEach((format, i) => {
+      if (counts[i] === 0) {
+        return;
       }
+      breakdown.push({ label: format.label, units: counts[i] });
+      totalUnits += counts[i];
+      totalSteps += counts[i] * format.steps;
+    });
+
+    // Rien à acheter (surface nulle) : on nomme quand même le format qu'on
+    // aurait pris, comme avant E1-5, plutôt que de renvoyer un libellé vide.
+    if (totalUnits === 0) {
+      const smallest = formats[formats.length - 1];
+      return {
+        label: smallest.label,
+        qty_per_unit: smallest.steps / PACKAGING_SCALE,
+        units_needed: 0,
+        breakdown: [],
+      };
     }
 
-    return best!;
+    return {
+      label: composePackagingLabel(breakdown),
+      // Contenu moyen par contenant : le format exact quand il n'y en a qu'un,
+      // et sinon la valeur qui préserve `units_needed × qty_per_unit = volume
+      // acheté` — l'invariant dont vivent la clôture de chantier, la
+      // comparaison de prix et la correction manuelle des quantités.
+      qty_per_unit: totalSteps / totalUnits / PACKAGING_SCALE,
+      units_needed: totalUnits,
+      breakdown,
+    };
   }
 
   computeGrossSurface(room: RoomData, surfaceTarget: string): number {
@@ -420,6 +609,9 @@ export class EstimationEngine {
           packaging_label: packaging.label,
           packaging_qty_per_unit: packaging.qty_per_unit,
           units_needed: packaging.units_needed,
+          ...(packaging.breakdown.length > 1
+            ? { packaging_breakdown: packaging.breakdown }
+            : {}),
           pose_type: poseType,
           ...(coats !== undefined ? { number_of_coats: coats } : {}),
           ...(excludedSurfaceM2 > 0
@@ -523,6 +715,9 @@ export class EstimationEngine {
         packaging_label: packaging.label,
         packaging_qty_per_unit: packaging.qty_per_unit,
         units_needed: packaging.units_needed,
+        ...(packaging.breakdown.length > 1
+          ? { packaging_breakdown: packaging.breakdown }
+          : {}),
         room_count: distinctRooms.size || 1,
         contributions,
         ...rangeFields,

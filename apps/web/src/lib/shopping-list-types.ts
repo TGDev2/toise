@@ -1,3 +1,5 @@
+import type { PackagingUnitsLine } from './packaging';
+
 export interface ShoppingListMaterialItem {
   material_id: string;
   work_type_code: string;
@@ -10,6 +12,8 @@ export interface ShoppingListMaterialItem {
   adjusted_qty: number;
   original_units_needed: number;
   units_needed: number;
+  // E1-5 : détail par format d'un achat panaché, absent si un format suffit.
+  packaging_breakdown?: PackagingUnitsLine[];
   is_manually_adjusted: boolean;
   // ENG-2 : nombre de pièces mutualisées sur cette ligne (≥ 2 → « N pièces »).
   room_count?: number;

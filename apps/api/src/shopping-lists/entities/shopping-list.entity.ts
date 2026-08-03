@@ -21,6 +21,17 @@ export interface ShoppingListMaterialItem {
   adjusted_qty: number;
   original_units_needed: number;
   units_needed: number;
+  /**
+   * E1-5 : détail de l'achat quand plusieurs formats sont panachés
+   * (« 1 pot de 5 L + 1 pot de 2,5 L »), du plus grand au plus petit. Absent
+   * sur un achat à format unique et sur les listes d'avant E1-5.
+   *
+   * Purement descriptif : `units_needed` reste le nombre total de contenants,
+   * et aucun calcul ne s'adosse à ce détail. Une correction manuelle de la
+   * quantité ne le recalcule pas — l'assortiment ne décrit alors plus l'achat,
+   * et l'affichage cesse de le montrer (`ShoppingListMaterials`).
+   */
+  packaging_breakdown?: { label: string; units: number }[];
   is_manually_adjusted: boolean;
   /**
    * DATA-5 : conditionnements **réellement achetés**, déclarés à la clôture.

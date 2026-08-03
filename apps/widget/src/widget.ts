@@ -30,6 +30,11 @@ interface AggregatedMaterialLine {
   material_unit: string;
   units_needed: number;
   packaging_label: string;
+  /**
+   * E1-5 : détail par format quand l'achat panache plusieurs conditionnements.
+   * Absent si un seul format suffit.
+   */
+  packaging_breakdown?: { label: string; units: number }[];
 }
 
 interface EstimateResponse {
@@ -270,7 +275,13 @@ function renderResults(resultsBox: HTMLDivElement, response: EstimateResponse) {
   const list = document.createElement('ul');
   for (const line of response.aggregated) {
     const item = document.createElement('li');
-    item.textContent = `${line.units_needed} × ${line.packaging_label} — ${line.material_name}`;
+    // E1-5 : un achat panaché se détaille format par format. « 2 × Pot 5 L +
+    // Pot 2.5 L » se lirait comme deux fois le couple.
+    const units = line.packaging_breakdown?.length
+      ? line.packaging_breakdown
+      : [{ label: line.packaging_label, units: line.units_needed }];
+    const purchase = units.map((u) => `${u.units} × ${u.label}`).join(' + ');
+    item.textContent = `${purchase} — ${line.material_name}`;
     list.appendChild(item);
   }
   resultsBox.appendChild(list);

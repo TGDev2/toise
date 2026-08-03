@@ -8,6 +8,16 @@ import {
 } from 'typeorm';
 import { Project } from '../../projects/entities/project.entity';
 
+/**
+ * Un format et son nombre de contenants dans un achat panaché (E1-5).
+ * Miroir de `PackagingUnits` du moteur, redéclaré ici pour que le contrat
+ * persisté ne dépende pas d'un type interne au calcul.
+ */
+export interface PackagingUnitsLine {
+  label: string;
+  units: number;
+}
+
 export interface EstimationLineItem {
   work_item_id: string;
   work_type_code: string;
@@ -22,9 +32,26 @@ export interface EstimationLineItem {
   /** `learned` : facteur recalculé sur les achats réels (DATA-3). */
   waste_factor_source: 'catalog' | 'default' | 'learned';
   adjusted_qty: number;
+  /**
+   * Libellé de l'achat : le format seul, ou l'assortiment composé quand
+   * plusieurs formats sont panachés (« Pot 5 L + Pot 2.5 L », E1-5).
+   */
   packaging_label: string;
+  /**
+   * Contenu moyen par contenant. Égal au format exact tant qu'un seul format
+   * est retenu ; sur un achat panaché, c'est la valeur qui garde vrai
+   * `units_needed × packaging_qty_per_unit = volume acheté`.
+   */
   packaging_qty_per_unit: number;
+  /** Nombre total de contenants, tous formats confondus. */
   units_needed: number;
+  /**
+   * Détail de l'achat quand plusieurs formats sont panachés (E1-5), du plus
+   * grand au plus petit. Absent sur un achat à format unique — le couple
+   * (`packaging_label`, `units_needed`) le dit alors entièrement — et sur toute
+   * ligne calculée avant E1-5.
+   */
+  packaging_breakdown?: PackagingUnitsLine[];
   pose_type: string;
   number_of_coats?: number;
   /** Aire déduite via les exclusions manuelles (ENG-3). Absent/0 → aucune. */
@@ -74,6 +101,8 @@ export interface AggregatedMaterialLine {
   packaging_label: string;
   packaging_qty_per_unit: number;
   units_needed: number;
+  /** Cf. `EstimationLineItem.packaging_breakdown` (E1-5). */
+  packaging_breakdown?: PackagingUnitsLine[];
   room_count: number;
   contributions: PurchaseContribution[];
   /**

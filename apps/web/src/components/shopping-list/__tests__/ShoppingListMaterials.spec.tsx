@@ -53,6 +53,45 @@ describe('ShoppingListMaterials', () => {
     expect(screen.getByText(/1–2/)).toBeInTheDocument();
   });
 
+  // E1-5 : sur un achat panaché, le nombre saisi compte des contenants de
+  // formats différents. « 2 x Pot 5 L + Pot 2.5 L » se lirait comme deux fois
+  // le couple ; le détail reste dans le sous-titre.
+  const mixedItem = (overrides: Partial<ShoppingListMaterialItem> = {}) =>
+    makeItem({
+      packaging_label: 'Pot 5 L + Pot 2.5 L',
+      packaging_qty_per_unit: 3.75,
+      original_units_needed: 2,
+      units_needed: 2,
+      packaging_breakdown: [
+        { label: 'Pot 5 L', units: 1 },
+        { label: 'Pot 2.5 L', units: 1 },
+      ],
+      ...overrides,
+    });
+
+  it('compte des contenants plutôt qu’un format sur un achat panaché', () => {
+    render(<ShoppingListMaterials items={[mixedItem()]} readOnly />);
+
+    expect(screen.getByText('contenants')).toBeInTheDocument();
+    expect(screen.queryByText(/x Pot 5 L/)).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/Peinture murale · Pot 5 L \+ Pot 2\.5 L/),
+    ).toBeInTheDocument();
+  });
+
+  it('retire l’assortiment dès que la quantité est corrigée à la main', () => {
+    render(
+      <ShoppingListMaterials
+        items={[mixedItem({ units_needed: 5, is_manually_adjusted: true })]}
+        readOnly
+      />,
+    );
+
+    // « 5 » ne veut plus dire « 1 pot de 5 L + 1 de 2,5 L ».
+    expect(screen.queryByText(/Pot 5 L/)).not.toBeInTheDocument();
+    expect(screen.getByText('Peinture murale')).toBeInTheDocument();
+  });
+
   it('hides the range once the quantity has been manually corrected', () => {
     render(
       <ShoppingListMaterials

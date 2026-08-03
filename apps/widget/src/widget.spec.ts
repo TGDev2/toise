@@ -212,6 +212,17 @@ describe('montage du widget', () => {
                 units_needed: 3,
                 packaging_label: 'pot de 2.5L',
               },
+              // E1-5 : achat panaché sur deux formats.
+              {
+                material_name: 'Sous-couche',
+                material_unit: 'L',
+                units_needed: 2,
+                packaging_label: 'Pot 5 L + Pot 2.5 L',
+                packaging_breakdown: [
+                  { label: 'Pot 5 L', units: 1 },
+                  { label: 'Pot 2.5 L', units: 1 },
+                ],
+              },
             ],
           }),
         );
@@ -247,7 +258,11 @@ describe('montage du widget', () => {
         },
       ],
     });
-    expect(shadow.querySelector('.results')!.textContent).toContain('Peinture blanche');
+    const results = shadow.querySelector('.results')!.textContent;
+    expect(results).toContain('3 × pot de 2.5L — Peinture blanche');
+    // Un achat panaché se détaille format par format : « 2 × Pot 5 L + Pot
+    // 2.5 L » se lirait comme deux fois le couple.
+    expect(results).toContain('1 × Pot 5 L + 1 × Pot 2.5 L — Sous-couche');
   });
 
   it("affiche un message d'erreur français quand le quota est dépassé", async () => {

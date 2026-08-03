@@ -337,43 +337,163 @@ describe('EstimationEngine', () => {
   // selectBestPackaging
   // =========================================================================
   describe('selectBestPackaging', () => {
-    it('should select packaging that minimizes surplus', () => {
+    /**
+     * E1-5 — le critère est le coût, approché par
+     *
+     *     S = q_min × (nombre de contenants) + (volume acheté)
+     *
+     * où `q_min` est le plus petit format offert : un contenant de plus doit
+     * faire économiser au moins la plus petite quantité que le magasin vend.
+     * Le détail de l'argument est porté par `selectBestPackaging`.
+     *
+     * Peinture : q_min = 0,5 L → S = 0,5 × U + V.
+     * Carrelage : q_min = 1,08 m² → S = 1,08 × U + V.
+     */
+    const purchase = (qty: number, packagings: PackagingInput[]): string =>
+      engine
+        .selectBestPackaging(qty, packagings)
+        .breakdown.map((b) => `${b.units} × ${b.label}`)
+        .join(' + ');
+
+    // Table de cas du backlog (E1-5) : chaque ligne porte l'achat attendu et la
+    // raison pour laquelle c'est celui-là, comparée aux candidats écartés.
+    it.each([
+      {
+        besoin: 0.4,
+        formats: makePaintPackagings(),
+        attendu: '1 × Pot 0.5 L',
+        raison:
+          'le plus petit pot couvre seul : il minimise à la fois les ' +
+          'contenants et le volume (S = 1,0) ; un pot de 2,5 L vaut 3,0',
+      },
+      {
+        besoin: 6.661,
+        formats: makePaintPackagings(),
+        attendu: '1 × Pot 5 L + 1 × Pot 2.5 L',
+        raison:
+          'S = 8,5, contre 9,0 pour 3 pots de 2,5 L, 9,5 pour 1 × 5 L + ' +
+          '4 × 0,5 L, 10,5 pour un pot de 10 L et 14,0 pour 14 pots de 0,5 L',
+      },
+      {
+        besoin: 27,
+        formats: makePaintPackagings(),
+        attendu: '2 × Pot 10 L + 1 × Pot 5 L + 1 × Pot 2.5 L',
+        raison:
+          'S = 29,5 contre 31,5 pour 3 pots de 10 L : le quatrième contenant ' +
+          "économise 2,5 L, largement plus que le demi-litre qu'il coûte",
+      },
+      {
+        besoin: 3,
+        formats: makeTilePackagings(),
+        attendu: '3 × Carton 1.08 m²',
+        raison:
+          'deux cartons plafonnent à 2,88 m² ; à trois cartons, 1,08 est le ' +
+          'format le plus serré (S = 6,48 contre 6,84 et 7,56)',
+      },
+      {
+        besoin: 48,
+        formats: makeTilePackagings(),
+        attendu: '32 × Carton 1.44 m² + 2 × Carton 1.08 m²',
+        raison:
+          '34 cartons est le plancher (33 × 1,44 = 47,52 < 48) et 48,24 m² le ' +
+          'volume minimal à 34 cartons : le panachage domine, quel que soit le ' +
+          'prix relatif du contenant',
+      },
+    ])('$besoin → $attendu — $raison', ({ besoin, formats, attendu }) => {
+      expect(purchase(besoin, formats)).toBe(attendu);
+    });
+
+    // Le défaut que corrige E1-5, énoncé à l'endroit exact où il était
+    // verrouillé : minimiser le seul surplus en volume achetait 14 pots de
+    // 0,5 L (7,0 L, surplus 0,34) plutôt que 5 L + 2,5 L (7,5 L, surplus 0,84).
+    // Le surplus n'est pas le coût : les 14 pots valent trois à cinq fois le
+    // couple en magasin.
+    it('renonce à 0,5 L de surplus pour ne pas acheter 12 pots de plus', () => {
       const result = engine.selectBestPackaging(6.68, makePaintPackagings());
-      // Pot 10L: 1 unit, surplus 3.32
-      // Pot 5L: 2 units, surplus 3.32
-      // Pot 2.5L: 3 units, surplus 0.82  <-- best (least surplus)
-      // Pot 0.5L: 14 units, surplus 0.32 <-- actually less surplus
-      expect(result.label).toBe('Pot 0.5 L');
-      expect(result.units_needed).toBe(14);
+
+      expect(result.breakdown).toEqual([
+        { label: 'Pot 5 L', units: 1 },
+        { label: 'Pot 2.5 L', units: 1 },
+      ]);
+      expect(result.units_needed).toBe(2);
+      expect(result.label).toBe('Pot 5 L + Pot 2.5 L');
     });
 
-    it('should prefer fewer units on tie', () => {
-      // 10L: 1 unit, surplus = 10-7.5 = 2.5
-      // 5L: 2 units, surplus = 10-7.5 = 2.5
-      // 2.5L: 3 units, surplus = 7.5-7.5 = 0
+    it('panache pour tomber pile quand un format seul ne le permet pas', () => {
+      // 7,5 L : 5 + 2,5 tombe juste en 2 contenants. Trois pots de 2,5 L
+      // tombent juste aussi, mais coûtent un contenant de plus.
       const result = engine.selectBestPackaging(7.5, makePaintPackagings());
-      expect(result.label).toBe('Pot 2.5 L');
-      expect(result.units_needed).toBe(3);
+      expect(result.breakdown).toEqual([
+        { label: 'Pot 5 L', units: 1 },
+        { label: 'Pot 2.5 L', units: 1 },
+      ]);
+      expect(result.units_needed * result.qty_per_unit).toBeCloseTo(7.5, 10);
     });
 
-    it('should handle exact fit', () => {
+    it('garde un format unique quand il est le meilleur achat', () => {
       const result = engine.selectBestPackaging(10, makePaintPackagings());
-      // Pot 10L: 1 unit, surplus 0 -- perfect
+      // Un pot de 10 L : S = 10,5, contre 11,0 pour deux pots de 5 L.
+      expect(result.breakdown).toEqual([{ label: 'Pot 10 L', units: 1 }]);
       expect(result.label).toBe('Pot 10 L');
+      expect(result.qty_per_unit).toBe(10);
       expect(result.units_needed).toBe(1);
     });
 
     it('should handle empty packagings with fallback', () => {
       const result = engine.selectBestPackaging(5.5, []);
       expect(result.units_needed).toBe(6);
+      expect(result.label).toBe('-');
+      expect(result.breakdown).toEqual([{ label: '-', units: 6 }]);
     });
 
-    it('should handle tile packaging', () => {
+    it('achète le même volume de carrelage en 3 cartons de moins', () => {
       const result = engine.selectBestPackaging(13.8, makeTilePackagings());
-      // Carton 1.08 m²: ceil(13.8/1.08) = 13 cartons, 13*1.08=14.04, surplus=0.24
-      // Carton 1.44 m²: ceil(13.8/1.44) = 10 cartons, 10*1.44=14.4, surplus=0.6
-      expect(result.label).toBe('Carton 1.08 m²');
-      expect(result.units_needed).toBe(13);
+      // 9 × 1,44 + 1 × 1,08 = 14,04 m² en 10 cartons. L'ancien critère prenait
+      // 13 cartons de 1,08 pour exactement le même volume : même surplus, trois
+      // cartons de plus à porter et à payer.
+      expect(result.breakdown).toEqual([
+        { label: 'Carton 1.44 m²', units: 9 },
+        { label: 'Carton 1.08 m²', units: 1 },
+      ]);
+      expect(result.units_needed).toBe(10);
+      expect(result.units_needed * result.qty_per_unit).toBeCloseTo(14.04, 10);
+    });
+
+    it('ne fait rien acheter quand il n’y a rien à couvrir', () => {
+      // Surface nulle (ouvertures plus grandes que le mur) : zéro contenant,
+      // mais on nomme quand même le format qu'on aurait pris.
+      const result = engine.selectBestPackaging(0, makePaintPackagings());
+      expect(result.units_needed).toBe(0);
+      expect(result.breakdown).toEqual([]);
+      expect(result.label).toBe('Pot 0.5 L');
+    });
+
+    it('retombe sur le plafond quand un seul format existe', () => {
+      const single: PackagingInput[] = [
+        { label: 'Sac 25 kg', quantity_per_unit: 25, unit: 'kg' },
+      ];
+      expect(engine.selectBestPackaging(30, single).units_needed).toBe(2);
+      expect(engine.selectBestPackaging(25, single).units_needed).toBe(1);
+      expect(engine.selectBestPackaging(0.1, single).units_needed).toBe(1);
+    });
+
+    it('ignore les conditionnements de quantité nulle ou absurde', () => {
+      const result = engine.selectBestPackaging(3, [
+        { label: 'Pot vide', quantity_per_unit: 0, unit: 'L' },
+        { label: 'Pot 2.5 L', quantity_per_unit: 2.5, unit: 'L' },
+      ]);
+      expect(result.breakdown).toEqual([{ label: 'Pot 2.5 L', units: 2 }]);
+    });
+
+    it('reste exact sur un besoin qui dépasse la table de calcul', () => {
+      // Au-delà du plafond de la table, le gros de l'achat part sur le plus
+      // grand format et seul le reliquat est optimisé — ici 1 000 000 L
+      // tombent juste en pots de 10 L.
+      const result = engine.selectBestPackaging(
+        1_000_000,
+        makePaintPackagings(),
+      );
+      expect(result.breakdown).toEqual([{ label: 'Pot 10 L', units: 100_000 }]);
     });
   });
 
@@ -508,7 +628,19 @@ describe('EstimationEngine', () => {
       // Adjusted: 5.812 * 1.15 = 6.684 L
       expect(item.adjusted_qty).toBeCloseTo(6.684, 2);
       expect(item.number_of_coats).toBe(2);
-      expect(item.units_needed).toBeGreaterThan(0);
+      // E1-5 : 6,684 L s'achètent en 1 pot de 5 L + 1 pot de 2,5 L, et la
+      // ligne porte le détail. `units_needed` compte les contenants, tous
+      // formats confondus, et le contenu moyen garde l'invariant de volume.
+      expect(item.packaging_breakdown).toEqual([
+        { label: 'Pot 5 L', units: 1 },
+        { label: 'Pot 2.5 L', units: 1 },
+      ]);
+      expect(item.units_needed).toBe(2);
+      expect(item.packaging_label).toBe('Pot 5 L + Pot 2.5 L');
+      expect(item.units_needed * item.packaging_qty_per_unit).toBeCloseTo(
+        7.5,
+        10,
+      );
       // Aucune exclusion déclarée sur cette pièce.
       expect(item.excluded_surface_m2).toBeUndefined();
       // Aucune incertitude connue sur cette pièce (CV-5) : pas de fourchette.
@@ -1103,6 +1235,49 @@ describe('EstimationEngine', () => {
       expect(agg[0].total_adjusted_qty).toBe(2.4);
       expect(agg[0].packaging_label).toBe('Pot 2.5 L');
       expect(agg[0].units_needed).toBe(1);
+    });
+
+    // E1-5 : la ligne mutualisée porte le détail du panachage — c'est elle qui
+    // alimente la liste de courses. `packaging_qty_per_unit` y devient le
+    // contenu moyen, seule valeur qui garde vrai `unités × contenu = volume`.
+    it('porte le détail du panachage sur la ligne mutualisée', () => {
+      const pkg = new Map<string, PackagingInput[]>([
+        [
+          'paint-uuid',
+          [
+            { label: 'Pot 0.5 L', quantity_per_unit: 0.5, unit: 'L' },
+            { label: 'Pot 2.5 L', quantity_per_unit: 2.5, unit: 'L' },
+            { label: 'Pot 5 L', quantity_per_unit: 5, unit: 'L' },
+            { label: 'Pot 10 L', quantity_per_unit: 10, unit: 'L' },
+          ],
+        ],
+      ]);
+      const lines = [
+        makeLine({ room_id: 'r1', adjusted_qty: 3.4 }),
+        makeLine({ room_id: 'r2', adjusted_qty: 3.261 }),
+      ];
+
+      const agg = engine.aggregatePurchases(lines, pkg);
+
+      expect(agg[0].total_adjusted_qty).toBe(6.661);
+      expect(agg[0].packaging_breakdown).toEqual([
+        { label: 'Pot 5 L', units: 1 },
+        { label: 'Pot 2.5 L', units: 1 },
+      ]);
+      expect(agg[0].units_needed).toBe(2);
+      expect(agg[0].units_needed * agg[0].packaging_qty_per_unit).toBeCloseTo(
+        7.5,
+        10,
+      );
+    });
+
+    it('laisse le détail absent quand un seul format suffit', () => {
+      const agg = engine.aggregatePurchases(
+        [makeLine({ adjusted_qty: 8 })],
+        singlePkg(),
+      );
+      expect(agg[0].packaging_breakdown).toBeUndefined();
+      expect(agg[0].packaging_label).toBe('Pot 10 L');
     });
 
     it('compte une seule pièce pour une estimation mono-pièce (sans room_id)', () => {

@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import type { EstimationLineItem } from '@/lib/estimation-types';
+import { packagingUnits } from '@/lib/packaging';
 
 interface EstimationSummaryProps {
   items: EstimationLineItem[];
@@ -19,18 +20,27 @@ export function EstimationSummary({ items }: EstimationSummaryProps) {
     const workTypes = new Set(items.map((i) => i.work_type_code));
     if (workTypes.size < 2) return null;
 
+    // Une ligne par (matériau, format) : un achat panaché (E1-5) se consolide
+    // format par format, sinon deux lignes « Pot 5 L + Pot 2.5 L » se
+    // cumuleraient en « 4 × Pot 5 L + Pot 2.5 L », qui ne veut rien dire.
     const map = new Map<string, ConsolidatedMaterial>();
     for (const item of items) {
-      const key = `${item.material_id}::${item.packaging_label}`;
-      const existing = map.get(key);
-      if (existing) {
-        existing.totalUnits += item.units_needed;
-      } else {
-        map.set(key, {
-          materialName: item.material_name,
-          packagingLabel: item.packaging_label,
-          totalUnits: item.units_needed,
-        });
+      for (const entry of packagingUnits(
+        item.units_needed,
+        item.packaging_label,
+        item.packaging_breakdown,
+      )) {
+        const key = `${item.material_id}::${entry.label}`;
+        const existing = map.get(key);
+        if (existing) {
+          existing.totalUnits += entry.units;
+        } else {
+          map.set(key, {
+            materialName: item.material_name,
+            packagingLabel: entry.label,
+            totalUnits: entry.units,
+          });
+        }
       }
     }
 

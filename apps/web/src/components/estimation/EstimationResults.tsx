@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import type { EstimationLineItem } from '@/lib/estimation-types';
+import { formatPurchase } from '@/lib/packaging';
 import { WorkTypeSection } from './WorkTypeSection';
 
 interface EstimationResultsProps {
@@ -102,7 +103,11 @@ export function EstimationResults({ items }: EstimationResultsProps) {
 
                   <div className="shrink-0 text-right">
                     <p className="text-lg font-bold text-stone-900">
-                      {item.units_needed} × {item.packaging_label}
+                      {formatPurchase(
+                        item.units_needed,
+                        item.packaging_label,
+                        item.packaging_breakdown,
+                      )}
                     </p>
                   </div>
                 </div>

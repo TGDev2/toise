@@ -1,3 +1,5 @@
+import type { PackagingUnitsLine } from './packaging';
+
 export interface EstimationLineItem {
   work_item_id: string;
   work_type_code: string;
@@ -12,9 +14,14 @@ export interface EstimationLineItem {
   /** `learned` : facteur recalculé sur les achats réels (DATA-3). */
   waste_factor_source: 'catalog' | 'default' | 'learned';
   adjusted_qty: number;
+  /** Le format seul, ou l'assortiment composé s'il y a panachage (E1-5). */
   packaging_label: string;
+  /** Contenu moyen par contenant — le format exact tant qu'il n'y en a qu'un. */
   packaging_qty_per_unit: number;
+  /** Nombre total de contenants, tous formats confondus. */
   units_needed: number;
+  /** E1-5 : détail par format, absent sur un achat à format unique. */
+  packaging_breakdown?: PackagingUnitsLine[];
   pose_type: string;
   number_of_coats?: number;
   excluded_surface_m2?: number;
