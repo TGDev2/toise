@@ -20,6 +20,8 @@ import { createReadStream, existsSync } from 'fs';
 import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { OptionalAuthGuard } from '../auth/guards/optional-auth.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
+import { RegisteredAccountGuard } from '../auth/guards/registered-account.guard';
+import { RequiresRegisteredAccount } from '../auth/decorators/requires-registered-account.decorator';
 import { FeatureGateGuard } from '../feature-gates/guards/feature-gate.guard';
 import { RequireFeature } from '../feature-gates/decorators/require-feature.decorator';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
@@ -144,9 +146,18 @@ export class CommunityController {
 
   // ── Authenticated routes ──
 
+  /**
+   * Publication et commentaires produisent du contenu **public** sous une
+   * identité que rien ne rattache à une personne : `community_gallery` étant
+   * en `min_tier = free`, la gate seule laissait un compte anonyme — gratuit,
+   * instantané et reproductible à volonté — publier dans la galerie (E2-1).
+   * Les autres écritures (retrait, like, suppression de son commentaire) ne
+   * créent aucun contenu et restent ouvertes.
+   */
   @Post()
-  @UseGuards(FirebaseAuthGuard, FeatureGateGuard)
+  @UseGuards(FirebaseAuthGuard, FeatureGateGuard, RegisteredAccountGuard)
   @RequireFeature('community_gallery')
+  @RequiresRegisteredAccount()
   async submit(
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Body() dto: CreateCommunityProjectDto,
@@ -193,7 +204,8 @@ export class CommunityController {
   }
 
   @Post(':id/comments')
-  @UseGuards(FirebaseAuthGuard)
+  @UseGuards(FirebaseAuthGuard, RegisteredAccountGuard)
+  @RequiresRegisteredAccount()
   async addComment(
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) id: string,

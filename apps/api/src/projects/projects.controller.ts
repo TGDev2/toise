@@ -17,6 +17,7 @@ import {
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
+import { isGuestToken } from '../auth/guest-token';
 import { OrgContextService } from '../organizations/org-context.service';
 import type { OrgScope } from '../organizations/org-context.service';
 import { ProjectsService } from './projects.service';
@@ -77,6 +78,7 @@ export class ProjectsController {
       scope.userId,
       dto,
       scope.effectiveTier,
+      isGuestToken(firebaseUser),
     );
     return {
       id: project.id,

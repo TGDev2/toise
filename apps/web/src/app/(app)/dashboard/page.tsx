@@ -168,6 +168,13 @@ export default function DashboardPage() {
       setGuestProjects(nextProjects);
       router.push(`/projects/${project.id}/dimensions`);
     } catch (err: unknown) {
+      // Un invité qui atteint son quota (1 projet, E2-1) n'a rien à acheter :
+      // il lui manque un compte, pas un abonnement. Lui servir le paywall Pro
+      // lui demanderait de payer ce qui est gratuit.
+      if (err instanceof ApiError && err.code === 'ACCOUNT_REQUIRED') {
+        setShowGuestPrompt(true);
+        return;
+      }
       if (err instanceof ApiError && err.code === 'PROJECT_LIMIT_REACHED') {
         showPaywall('unlimited_projects');
         return;

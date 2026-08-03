@@ -10,6 +10,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import type { DecodedIdToken } from 'firebase-admin/auth';
+import { Throttle } from '@nestjs/throttler';
 import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
 import { OrgContextService } from '../organizations/org-context.service';
@@ -70,7 +71,14 @@ export class ShoppingListsController {
     return ShoppingListResponseDto.fromEntity(shoppingList, latestEstimationId);
   }
 
+  /**
+   * Rejoue la liste depuis la dernière estimation : plus léger que le moteur,
+   * mais réécrit intégralement la liste et ses lignes à chaque appel. 15/min
+   * couvre largement l'usage réel — on ne régénère qu'après avoir changé
+   * quelque chose en amont (E2-1).
+   */
   @Post(':id/shopping-list/regenerate')
+  @Throttle({ default: { ttl: 60_000, limit: 15 } })
   async regenerate(
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) projectId: string,

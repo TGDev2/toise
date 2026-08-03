@@ -232,6 +232,9 @@ describe('ProjectsController (e2e)', () => {
       mockUserId,
       expect.objectContaining({ name: 'Renovation salon' }),
       SubscriptionTier.FREE,
+      // E2-1 : quota invité (1 projet) distinct du quota gratuit (2). Le jeton
+      // de cette suite est un compte inscrit.
+      false,
     );
   });
 

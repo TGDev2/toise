@@ -15,6 +15,7 @@ import type { CostBenchmarkResponse } from '@/lib/cost-benchmark-types';
 import { ShoppingListMaterials } from '@/components/shopping-list/ShoppingListMaterials';
 import { ShoppingListComplements } from '@/components/shopping-list/ShoppingListComplements';
 import { ShareLinkPanel } from '@/components/shopping-list/ShareLinkPanel';
+import { GuestPromptModal } from '@/components/auth/GuestPromptModal';
 import { BudgetDashboard } from '@/components/shopping-list/BudgetDashboard';
 import { CostBenchmarkPanel } from '@/components/shopping-list/CostBenchmarkPanel';
 import { PriceComparisonPanel } from '@/components/shopping-list/PriceComparisonPanel';
@@ -24,7 +25,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 export default function ShoppingListPage() {
-  const { appUser, isLoading } = useAuth();
+  const { appUser, isGuest, isLoading } = useAuth();
   const { isFeatureAllowed, showPaywall } = useFeatureGates();
   const router = useRouter();
   const params = useParams<{ id: string }>();
@@ -47,6 +48,10 @@ export default function ShoppingListPage() {
   const [regenerating, setRegenerating] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [showSharePanel, setShowSharePanel] = useState(false);
+  /** Action réservée aux comptes inscrits qu'un invité vient de tenter (E2-1). */
+  const [pendingGuestAction, setPendingGuestAction] = useState<
+    'pdf' | 'share' | null
+  >(null);
   const [budgetSummary, setBudgetSummary] = useState<BudgetSummary | null>(null);
   const [ecoData, setEcoData] = useState<EcoSuggestionsResponse | null>(null);
   const [benchmark, setBenchmark] = useState<CostBenchmarkResponse | null>(null);
@@ -150,7 +155,10 @@ export default function ShoppingListPage() {
 
   useEffect(() => {
     if (isLoading) return;
-    if (!appUser) {
+    // Même garde que `dimensions` et `work-selection` (E2-1) — cf. le
+    // commentaire de `estimate/page.tsx`. La liste d'achat est le terminus du
+    // parcours invité : c'est ce qu'il est venu chercher.
+    if (!appUser && !isGuest) {
       router.push('/login');
       return;
     }
@@ -177,7 +185,7 @@ export default function ShoppingListPage() {
     }
 
     load();
-  }, [appUser, isLoading, projectId, router]);
+  }, [appUser, isGuest, isLoading, projectId, router]);
 
   // Load budget summary when data is available
   useEffect(() => {
@@ -425,7 +433,7 @@ export default function ShoppingListPage() {
     [scheduleSave],
   );
 
-  const handleDownloadPdf = useCallback(async () => {
+  const downloadPdf = useCallback(async () => {
     setDownloading(true);
     setError('');
     try {
@@ -440,6 +448,46 @@ export default function ShoppingListPage() {
       setDownloading(false);
     }
   }, [projectId, projectName]);
+
+  /*
+   * Emporter la liste chez soi ou la publier demande un compte : ce sont les
+   * deux moments de conversion du parcours (E2-1). Les boutons restent visibles
+   * et actifs pour l'invité — les cacher supprimerait l'envie en même temps que
+   * l'action. L'API refuse de son côté (`ACCOUNT_REQUIRED`) : ces tests ne sont
+   * qu'un raccourci d'interface, jamais la barrière.
+   */
+  const handleDownloadPdf = useCallback(() => {
+    if (isGuest) {
+      setPendingGuestAction('pdf');
+      return;
+    }
+    void downloadPdf();
+  }, [isGuest, downloadPdf]);
+
+  const handleShare = useCallback(() => {
+    if (isGuest) {
+      setPendingGuestAction('share');
+      return;
+    }
+    setShowSharePanel((v) => !v);
+  }, [isGuest]);
+
+  /**
+   * Rejoue l'action qui a déclenché l'inscription. Sans cela, l'utilisateur qui
+   * vient de créer son compte retombe sur sa liste et doit deviner qu'il faut
+   * recliquer — on lui a fait payer le prix, autant lui livrer la marchandise.
+   *
+   * L'action rejouée est la version **sans garde** (`downloadPdf`) : au moment
+   * où la modale annonce le succès, le rendu qui a capturé ce callback voyait
+   * encore `isGuest === true`. Repasser par `handleDownloadPdf` rouvrirait donc
+   * la modale à l'infini.
+   */
+  const handleGuestConverted = useCallback(() => {
+    const action = pendingGuestAction;
+    setPendingGuestAction(null);
+    if (action === 'pdf') void downloadPdf();
+    if (action === 'share') setShowSharePanel(true);
+  }, [pendingGuestAction, downloadPdf]);
 
   const handleRegenerate = useCallback(async () => {
     setRegenerating(true);
@@ -564,7 +612,7 @@ export default function ShoppingListPage() {
           </button>
           <button
             type="button"
-            onClick={() => setShowSharePanel((v) => !v)}
+            onClick={handleShare}
             className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-700 shadow-sm hover:bg-stone-50"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
@@ -617,6 +665,12 @@ export default function ShoppingListPage() {
           />
         </div>
       )}
+
+      <GuestPromptModal
+        isOpen={pendingGuestAction !== null}
+        onClose={() => setPendingGuestAction(null)}
+        onSuccess={handleGuestConverted}
+      />
 
       {comparisonData && (
         <PriceComparisonPanel

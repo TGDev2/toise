@@ -274,6 +274,109 @@ describe('ProjectsService', () => {
         ),
       ).rejects.toThrow(ForbiddenException);
     });
+
+    /**
+     * Quota invité (E2-1). Un compte anonyme se crée gratuitement et à
+     * l'infini : son allocation par compte doit être le strict nécessaire au
+     * parcours, soit un projet. Le deuxième se mérite en créant son compte.
+     */
+    describe('quota invité', () => {
+      const guestDto = {
+        name: 'Renovation salon',
+        room_name: 'Salon',
+        work_type: WorkType.PAINTING,
+      };
+
+      it('refuse le deuxième projet, là où un compte gratuit y a droit', async () => {
+        featureGatesServiceMock.isFeatureAllowed.mockResolvedValue(false);
+        projectsRepoMock.count.mockResolvedValue(1);
+
+        // Compte gratuit inscrit : 1 < 2, le projet passe.
+        await expect(
+          service.createProject(
+            'org-uuid',
+            'user-uuid',
+            guestDto,
+            SubscriptionTier.FREE,
+            false,
+          ),
+        ).resolves.toEqual(mockProject);
+
+        // Même organisation, même compte : seul l'invité est refusé.
+        await expect(
+          service.createProject(
+            'org-uuid',
+            'user-uuid',
+            guestDto,
+            SubscriptionTier.FREE,
+            true,
+          ),
+        ).rejects.toThrow(ForbiddenException);
+      });
+
+      it('autorise le premier projet : le parcours doit rester ouvert', async () => {
+        featureGatesServiceMock.isFeatureAllowed.mockResolvedValue(false);
+        projectsRepoMock.count.mockResolvedValue(0);
+
+        await expect(
+          service.createProject(
+            'org-uuid',
+            'user-uuid',
+            guestDto,
+            SubscriptionTier.FREE,
+            true,
+          ),
+        ).resolves.toEqual(mockProject);
+      });
+
+      /**
+       * `ACCOUNT_REQUIRED` et non `PROJECT_LIMIT_REACHED` : le front branche le
+       * premier sur la création de compte et le second sur le paywall Pro.
+       * Servir un paywall à un invité lui ferait payer ce qui est gratuit.
+       */
+      it("annonce ACCOUNT_REQUIRED, pas le paywall d'abonnement", async () => {
+        featureGatesServiceMock.isFeatureAllowed.mockResolvedValue(false);
+        projectsRepoMock.count.mockResolvedValue(1);
+
+        let thrown: unknown;
+        try {
+          await service.createProject(
+            'org-uuid',
+            'user-uuid',
+            guestDto,
+            SubscriptionTier.FREE,
+            true,
+          );
+        } catch (error) {
+          thrown = error;
+        }
+
+        expect((thrown as ForbiddenException).getResponse()).toMatchObject({
+          error: 'ACCOUNT_REQUIRED',
+          limit: 1,
+        });
+      });
+
+      /**
+       * Le quota invité ne doit pas dépendre d'une gate qu'un réglage
+       * d'administration peut déplacer : si `unlimited_projects` s'ouvrait au
+       * palier `free`, l'invité resterait borné.
+       */
+      it("reste borné même si `unlimited_projects` s'ouvre", async () => {
+        featureGatesServiceMock.isFeatureAllowed.mockResolvedValue(true);
+        projectsRepoMock.count.mockResolvedValue(1);
+
+        await expect(
+          service.createProject(
+            'org-uuid',
+            'user-uuid',
+            guestDto,
+            SubscriptionTier.FREE,
+            true,
+          ),
+        ).rejects.toThrow(ForbiddenException);
+      });
+    });
   });
 
   describe('findByOrg', () => {

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -40,6 +41,16 @@ import { ApiEstimateRequestDto } from './dto/api-estimate-request.dto';
 import { EmailService } from '../email/email.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
+
+/**
+ * Nombre d'estimations qu'un compte invité peut faire persister sur un projet
+ * (E2-1). Le parcours nominal en consomme 1 à 4 : un calcul à l'arrivée sur
+ * l'écran, un par changement de niveau de compétence. Vingt laisse donc une
+ * marge confortable à un usage réel tout en fermant la boucle infinie.
+ *
+ * Exporté pour que le test énonce *cette* valeur et non une copie.
+ */
+export const GUEST_ESTIMATION_LIMIT = 20;
 
 export interface PublicEstimateResponse {
   work_type_code: string;
@@ -183,7 +194,28 @@ export class EstimationsService {
     organizationId: string,
     userId: string,
     skillLevelOverride?: SkillLevel,
+    isGuest = false,
   ): Promise<EstimationResult> {
+    // Chaque appel persiste une ligne, sans dédoublonnage ni purge : c'est la
+    // seule écriture non bornée qu'un compte anonyme puisse déclencher (E2-1).
+    // Le `@Throttle` de la route borne le débit **par IP** ; ce plafond-ci
+    // borne le volume **par compte**, ce qu'une rotation d'adresses ne
+    // contourne pas. Vérifié avant tout calcul : refuser après avoir dépensé
+    // le CPU qu'on prétend économiser n'aurait aucun sens.
+    if (isGuest) {
+      const persisted = await this.estimationRepo.count({
+        where: { project_id: projectId },
+      });
+      if (persisted >= GUEST_ESTIMATION_LIMIT) {
+        throw new ForbiddenException({
+          message:
+            'Créez votre compte gratuit pour continuer à recalculer ce projet.',
+          error: 'GUEST_ESTIMATE_LIMIT_REACHED',
+          limit: GUEST_ESTIMATION_LIMIT,
+        });
+      }
+    }
+
     const rooms = await this.projectsService.getRooms(
       projectId,
       organizationId,

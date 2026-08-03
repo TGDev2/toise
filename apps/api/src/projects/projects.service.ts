@@ -38,6 +38,19 @@ import { ListProjectsQueryDto } from './dto/list-projects-query.dto';
 export class ProjectsService {
   private readonly FREE_TIER_PROJECT_LIMIT = 2;
 
+  /**
+   * Un compte invité (anonyme Firebase) n'a droit qu'à **un** projet, là où un
+   * compte gratuit en a deux (E2-1).
+   *
+   * Ce n'est pas une brimade : c'est le seul quota qu'un compte anonyme rende
+   * significatif. Se créer un compte anonyme est gratuit, instantané et
+   * reproductible à l'infini — l'allocation par compte doit donc être le strict
+   * nécessaire au parcours, qui est d'un projet, de la page d'accueil à la
+   * liste d'achat. Le deuxième projet se mérite en créant son compte, ce qui
+   * est précisément la conversion que ce lot cherche à provoquer.
+   */
+  private readonly GUEST_PROJECT_LIMIT = 1;
+
   constructor(
     @InjectRepository(Project)
     private readonly projectsRepo: Repository<Project>,
@@ -65,19 +78,28 @@ export class ProjectsService {
     userId: string,
     dto: CreateProjectDto,
     userTier: SubscriptionTier = SubscriptionTier.FREE,
+    isGuest = false,
   ): Promise<Project> {
     const unlimitedAllowed = await this.featureGatesService.isFeatureAllowed(
       'unlimited_projects',
       userTier,
     );
 
-    if (!unlimitedAllowed) {
+    // Un invité reste borné même si `unlimited_projects` venait à s'ouvrir au
+    // palier `free` : son quota ne dépend pas d'une gate qu'un réglage
+    // d'administration peut déplacer.
+    if (isGuest || !unlimitedAllowed) {
+      const limit = isGuest
+        ? this.GUEST_PROJECT_LIMIT
+        : this.FREE_TIER_PROJECT_LIMIT;
       const count = await this.countActiveProjects(organizationId);
-      if (count >= this.FREE_TIER_PROJECT_LIMIT) {
+      if (count >= limit) {
         throw new ForbiddenException({
-          message: 'Limite de projets atteinte pour le forfait gratuit',
-          error: 'PROJECT_LIMIT_REACHED',
-          limit: this.FREE_TIER_PROJECT_LIMIT,
+          message: isGuest
+            ? 'Créez votre compte gratuit pour démarrer un deuxième projet.'
+            : 'Limite de projets atteinte pour le forfait gratuit',
+          error: isGuest ? 'ACCOUNT_REQUIRED' : 'PROJECT_LIMIT_REACHED',
+          limit,
           current_count: count,
         });
       }

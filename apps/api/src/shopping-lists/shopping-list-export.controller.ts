@@ -15,15 +15,27 @@ import type { DecodedIdToken } from 'firebase-admin/auth';
 import type { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
+import { RegisteredAccountGuard } from '../auth/guards/registered-account.guard';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
+import { RequiresRegisteredAccount } from '../auth/decorators/requires-registered-account.decorator';
 import { OrgContextService } from '../organizations/org-context.service';
 import type { OrgScope } from '../organizations/org-context.service';
 import { ProjectsService } from '../projects/projects.service';
 import { ShoppingListsService } from './shopping-lists.service';
 import { ShoppingListExportService } from './shopping-list-export.service';
 
+/**
+ * Sortie du parcours : le PDF et le lien de partage sont le moment de
+ * conversion d'E2-1. L'invité va jusqu'à voir sa liste à l'écran — c'est
+ * l'objet du lot — mais l'emporter chez lui ou la publier demande un compte.
+ *
+ * `@RequiresRegisteredAccount` est posé au niveau de la classe : les trois
+ * routes de ce contrôleur relèvent de la même règle, et une quatrième ajoutée
+ * plus tard en hérite sans que personne ait à y penser.
+ */
 @Controller('projects')
-@UseGuards(FirebaseAuthGuard)
+@UseGuards(FirebaseAuthGuard, RegisteredAccountGuard)
+@RequiresRegisteredAccount()
 export class ShoppingListExportController {
   constructor(
     private readonly shoppingListsService: ShoppingListsService,

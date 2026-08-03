@@ -19,7 +19,9 @@ import type { DecodedIdToken } from 'firebase-admin/auth';
 import type { Response } from 'express';
 import { createReadStream, existsSync } from 'fs';
 import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
+import { RegisteredAccountGuard } from '../auth/guards/registered-account.guard';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
+import { RequiresRegisteredAccount } from '../auth/decorators/requires-registered-account.decorator';
 import { OrgContextService } from '../organizations/org-context.service';
 import type { OrgScope } from '../organizations/org-context.service';
 import { PhotosService } from './photos.service';
@@ -78,7 +80,7 @@ function mimeFilter(
 }
 
 @Controller(PHOTOS_ROUTE_PREFIX)
-@UseGuards(FirebaseAuthGuard)
+@UseGuards(FirebaseAuthGuard, RegisteredAccountGuard)
 export class PhotosController {
   constructor(
     private readonly photosService: PhotosService,
@@ -109,7 +111,16 @@ export class PhotosController {
     };
   }
 
+  /**
+   * Seule route de ce contrôleur réservée aux comptes inscrits : elle est la
+   * seule à consommer du stockage durable, et l'analyse photo qu'elle alimente
+   * (`cv_analysis`) est de toute façon hors de portée d'un compte gratuit.
+   * Le parcours invité passe déjà à côté de l'étape photo
+   * (`photos/page.tsx` redirige vers `dimensions`) : la borne serveur ne fait
+   * qu'écrire ce que l'interface tenait seule.
+   */
   @Post(':id/photos')
+  @RequiresRegisteredAccount()
   @UseInterceptors(
     FileInterceptor('file', {
       limits: { fileSize: MAX_FILE_SIZE },

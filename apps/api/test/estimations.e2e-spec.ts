@@ -164,6 +164,10 @@ describe('EstimationsController (e2e)', () => {
       mockOrgId,
       mockUserId,
       undefined,
+      // E2-1 : le service applique un plafond d'estimations persistées aux
+      // seuls comptes invités ; le jeton de cette suite est un compte inscrit.
+      // Le cas invité est couvert par `guest-access.e2e-spec.ts`.
+      false,
     );
   });
 
@@ -178,6 +182,7 @@ describe('EstimationsController (e2e)', () => {
       mockOrgId,
       mockUserId,
       'expert',
+      false,
     );
   });
 

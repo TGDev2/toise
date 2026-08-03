@@ -1,7 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { EstimationsService } from './estimations.service';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  EstimationsService,
+  GUEST_ESTIMATION_LIMIT,
+} from './estimations.service';
 import { EstimationEngine } from './estimation-engine';
 import { EstimationResult } from './entities/estimation-result.entity';
 import { EmailCapture } from './entities/email-capture.entity';
@@ -69,6 +76,7 @@ const estimationRepoMock = {
   save: jest.fn(),
   find: jest.fn(),
   findOne: jest.fn(),
+  count: jest.fn().mockResolvedValue(0),
 };
 
 const workTypeMaterialsRepoMock = {
@@ -685,6 +693,7 @@ describe('EstimationsService.estimate', () => {
       (entity: Record<string, unknown>) =>
         Promise.resolve({ id: 'estimation-1', ...entity }),
     );
+    estimationRepoMock.count.mockResolvedValue(0);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -835,5 +844,78 @@ describe('EstimationsService.estimate', () => {
     expect(result.items_json[0].surface_m2_low!).toBeLessThan(
       result.items_json[0].surface_m2,
     );
+  });
+
+  /**
+   * Plafond d'estimations persistées pour un compte invité (E2-1). Chaque appel
+   * écrit une ligne sans dédoublonnage ni purge : c'est la seule écriture non
+   * bornée qu'un compte anonyme puisse déclencher. Le `@Throttle` de la route
+   * borne le débit par IP, ce plafond-ci le volume par compte.
+   */
+  describe('plafond invité', () => {
+    it('laisse le parcours nominal se dérouler', async () => {
+      estimationRepoMock.count.mockResolvedValue(GUEST_ESTIMATION_LIMIT - 1);
+
+      await expect(
+        service.estimate('project-1', 'org-1', 'user-1', undefined, true),
+      ).resolves.toBeDefined();
+    });
+
+    it('refuse au-delà du plafond, et seulement pour un invité', async () => {
+      estimationRepoMock.count.mockResolvedValue(GUEST_ESTIMATION_LIMIT);
+
+      await expect(
+        service.estimate('project-1', 'org-1', 'user-1', undefined, true),
+      ).rejects.toThrow(ForbiddenException);
+
+      // Même projet, même volume déjà persisté : un compte inscrit passe.
+      await expect(
+        service.estimate('project-1', 'org-1', 'user-1', undefined, false),
+      ).resolves.toBeDefined();
+    });
+
+    /**
+     * Refuser après avoir dépensé le CPU qu'on prétend économiser n'aurait
+     * aucun sens : le plafond se vérifie avant toute lecture de pièce.
+     */
+    it('refuse avant de calculer quoi que ce soit', async () => {
+      estimationRepoMock.count.mockResolvedValue(GUEST_ESTIMATION_LIMIT);
+
+      await expect(
+        service.estimate('project-1', 'org-1', 'user-1', undefined, true),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(projectsServiceMock.getRooms).not.toHaveBeenCalled();
+      expect(estimationRepoMock.save).not.toHaveBeenCalled();
+    });
+
+    it('annonce le code lu par le front', async () => {
+      estimationRepoMock.count.mockResolvedValue(GUEST_ESTIMATION_LIMIT);
+
+      let thrown: unknown;
+      try {
+        await service.estimate('project-1', 'org-1', 'user-1', undefined, true);
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect((thrown as ForbiddenException).getResponse()).toMatchObject({
+        error: 'GUEST_ESTIMATE_LIMIT_REACHED',
+        limit: GUEST_ESTIMATION_LIMIT,
+      });
+    });
+
+    /**
+     * Par défaut, personne n'est invité : un appelant qui oublie le drapeau ne
+     * doit pas se voir opposer un plafond qui ne le concerne pas.
+     */
+    it("ne s'applique pas quand l'appelant ne dit rien", async () => {
+      estimationRepoMock.count.mockResolvedValue(GUEST_ESTIMATION_LIMIT * 10);
+
+      await expect(
+        service.estimate('project-1', 'org-1', 'user-1'),
+      ).resolves.toBeDefined();
+      expect(estimationRepoMock.count).not.toHaveBeenCalled();
+    });
   });
 });

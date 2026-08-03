@@ -14,7 +14,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
 export default function EstimatePage() {
-  const { appUser, isLoading } = useAuth();
+  const { appUser, isGuest, isLoading } = useAuth();
   const { isFeatureAllowed } = useFeatureGates();
   const router = useRouter();
   const params = useParams<{ id: string }>();
@@ -54,7 +54,13 @@ export default function EstimatePage() {
 
   useEffect(() => {
     if (isLoading) return;
-    if (!appUser) {
+    // Même garde que `dimensions` et `work-selection` (E2-1). Tester `!appUser`
+    // seul éjectait vers `/login`, sans un mot, l'invité qui venait de saisir
+    // ses dimensions et de choisir ses travaux — une seconde avant son
+    // résultat, c'est-à-dire au seul endroit du parcours où il a déjà tout
+    // donné et n'a encore rien reçu. En cas d'échec API, l'écran affiche
+    // désormais l'erreur au lieu de disparaître.
+    if (!appUser && !isGuest) {
       router.push('/login');
       return;
     }
@@ -76,7 +82,7 @@ export default function EstimatePage() {
 
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appUser, isLoading, projectId, router]);
+  }, [appUser, isGuest, isLoading, projectId, router]);
 
   const handleSkillChange = useCallback(
     (level: string) => {
