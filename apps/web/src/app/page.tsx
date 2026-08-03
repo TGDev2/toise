@@ -52,7 +52,7 @@ const proofPoints = [
   {
     title: 'Des pertes calculées, pas forfaitaires',
     description:
-      'Chaque matériau a son facteur de perte selon le type de pose et votre niveau : de 5 % pour une pose droite experte à 15 % pour une pose en diagonale débutant.',
+      'Chaque matériau a son facteur de perte selon le type de pose et votre niveau : de 5 % pour une pose droite experte à 20 % pour une pose en diagonale débutant.',
   },
   {
     title: 'Un catalogue français réel',
