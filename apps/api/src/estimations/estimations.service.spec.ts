@@ -38,6 +38,7 @@ const mockWorkType: WorkType = {
   waste_factor_base: 1.1,
   contextual_questions: [],
   display_order: 1,
+  labor_minutes_per_m2: null,
   created_at: new Date('2026-03-27T00:00:00.000Z'),
   updated_at: new Date('2026-03-27T00:00:00.000Z'),
 };

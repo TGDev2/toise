@@ -1,10 +1,10 @@
 import PDFDocument from 'pdfkit';
 import { QuotePdfService } from './quote-pdf.service';
 import {
-  LaborType,
   QuoteStatus,
   type Quote,
   type QuoteLineItem,
+  type QuoteLaborLine,
 } from './entities/quote.entity';
 import type { CompanyProfile } from '../company-profiles/entities/company-profile.entity';
 import type { Client } from '../clients/entities/client.entity';
@@ -31,6 +31,23 @@ function makeItem(overrides: Partial<QuoteLineItem> = {}): QuoteLineItem {
   };
 }
 
+function makeLaborLine(
+  overrides: Partial<QuoteLaborLine> = {},
+): QuoteLaborLine {
+  return {
+    work_item_id: 'wi-1',
+    work_type_code: 'wall_painting',
+    label: 'Peinture murale',
+    room_name: 'Salon',
+    kind: 'hourly',
+    surface_m2: 25,
+    quantity: 5,
+    unit_price_ht: 45,
+    line_total_ht: 225,
+    ...overrides,
+  };
+}
+
 function makeQuote(overrides: Partial<Quote> = {}): Quote {
   return {
     id: 'quote-1',
@@ -40,10 +57,7 @@ function makeQuote(overrides: Partial<Quote> = {}): Quote {
     estimation_id: 'estimation-1',
     quote_number: 'D-2026-001',
     status: QuoteStatus.SENT,
-    labor_type: LaborType.HOURLY,
-    labor_hourly_rate: '45.00' as unknown as number,
-    labor_estimated_hours: '16.00' as unknown as number,
-    labor_flat_amount: null,
+    labor_items_json: [makeLaborLine()],
     material_margin_percent: '10.00' as unknown as number,
     discount_percent: '5.00' as unknown as number,
     payment_terms: '30 % a la commande, solde a la livraison',
@@ -51,10 +65,10 @@ function makeQuote(overrides: Partial<Quote> = {}): Quote {
     notes: 'Devis valable 30 jours',
     items_json: [makeItem()],
     subtotal_materials_ht: '151.47' as unknown as number,
-    subtotal_labor_ht: '720.00' as unknown as number,
-    total_ht: '827.90' as unknown as number,
+    subtotal_labor_ht: '225.00' as unknown as number,
+    total_ht: '357.44' as unknown as number,
     tva_rate: '10.00' as unknown as number,
-    total_ttc: '910.69' as unknown as number,
+    total_ttc: '393.18' as unknown as number,
     sent_at: new Date('2026-07-01T08:00:00.000Z'),
     accepted_at: null,
     refused_at: null,
@@ -132,14 +146,84 @@ describe('QuotePdfService', () => {
     expect(buffer.length).toBeGreaterThan(1000);
   });
 
-  it('renders a flat-rate labor quote', async () => {
+  it('rend un devis a deux ouvrages avec deux lignes de MO distinctes', async () => {
     const buffer = await service.generatePdf(
       makeQuote({
-        labor_type: LaborType.FLAT,
-        labor_hourly_rate: null,
-        labor_estimated_hours: null,
-        labor_flat_amount: '900.00' as unknown as number,
+        labor_items_json: [
+          makeLaborLine({
+            label: 'Peinture murale',
+            room_name: 'Salon',
+            surface_m2: 25,
+            quantity: 5,
+            line_total_ht: 225,
+          }),
+          makeLaborLine({
+            work_item_id: 'wi-2',
+            work_type_code: 'ceiling_painting',
+            label: 'Peinture plafond',
+            room_name: 'Salon',
+            surface_m2: 12,
+            quantity: 3,
+            line_total_ht: 135,
+          }),
+        ],
+        subtotal_labor_ht: '360.00' as unknown as number,
       }),
+      makeCompanyProfile(),
+      makeClient(),
+    );
+
+    expect(buffer.length).toBeGreaterThan(1000);
+  });
+
+  it('rend un forfait', async () => {
+    const buffer = await service.generatePdf(
+      makeQuote({
+        labor_items_json: [
+          makeLaborLine({
+            kind: 'flat',
+            surface_m2: null,
+            quantity: 1,
+            unit_price_ht: 900,
+            line_total_ht: 900,
+          }),
+        ],
+        subtotal_labor_ht: '900.00' as unknown as number,
+      }),
+      makeCompanyProfile(),
+      makeClient(),
+    );
+
+    expect(buffer.length).toBeGreaterThan(1000);
+  });
+
+  it('rend un devis migre a une seule ligne "Main d\'oeuvre" (retro-compat)', async () => {
+    const buffer = await service.generatePdf(
+      makeQuote({
+        labor_items_json: [
+          makeLaborLine({
+            work_item_id: null,
+            work_type_code: null,
+            label: "Main d'oeuvre",
+            room_name: null,
+            surface_m2: null,
+            quantity: 16,
+            unit_price_ht: 45,
+            line_total_ht: 720,
+          }),
+        ],
+        subtotal_labor_ht: '720.00' as unknown as number,
+      }),
+      makeCompanyProfile(),
+      makeClient(),
+    );
+
+    expect(buffer.length).toBeGreaterThan(1000);
+  });
+
+  it("rend un devis sans main-d'oeuvre", async () => {
+    const buffer = await service.generatePdf(
+      makeQuote({ labor_items_json: [], subtotal_labor_ht: 0 }),
       makeCompanyProfile(),
       makeClient(),
     );
@@ -169,18 +253,30 @@ describe('QuotePdfService', () => {
     expect(buffer.length).toBeGreaterThan(1000);
   });
 
-  it('paginates a quote with many line items', async () => {
+  it('paginates a quote with many materials and many labor lines', async () => {
     const items = Array.from({ length: 60 }, (_, i) =>
       makeItem({ material_name: `Materiau ${i + 1}` }),
     );
-
-    const buffer = await service.generatePdf(
-      makeQuote({ items_json: items }),
-      makeCompanyProfile(),
-      makeClient(),
+    const laborLines = Array.from({ length: 60 }, (_, i) =>
+      makeLaborLine({ work_item_id: `wi-${i}`, label: `Ouvrage ${i + 1}` }),
     );
 
-    expect(buffer.length).toBeGreaterThan(1000);
+    const addPageSpy = jest.spyOn(PDFDocument.prototype, 'addPage');
+    try {
+      const buffer = await service.generatePdf(
+        makeQuote({ items_json: items, labor_items_json: laborLines }),
+        makeCompanyProfile(),
+        makeClient(),
+      );
+
+      expect(buffer.length).toBeGreaterThan(1000);
+      // Un document qui déborderait silencieusement sur la même page passerait
+      // le seul test précédent : ici on vérifie que la pagination a vraiment eu
+      // lieu, pas seulement que le buffer est grand.
+      expect(addPageSpy).toHaveBeenCalled();
+    } finally {
+      addPageSpy.mockRestore();
+    }
   });
 
   /**
@@ -210,6 +306,14 @@ describe('QuotePdfService', () => {
       await service.generatePdf(
         makeQuote({
           items_json: [makeItem(), makeItem({ material_name: 'Enduit' })],
+          labor_items_json: [
+            makeLaborLine({ label: 'Peinture murale', room_name: 'Salon' }),
+            makeLaborLine({
+              work_item_id: 'wi-2',
+              label: 'Peinture plafond',
+              room_name: 'Salon',
+            }),
+          ],
         }),
         makeCompanyProfile(),
         makeClient(),

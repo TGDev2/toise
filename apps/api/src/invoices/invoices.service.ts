@@ -15,11 +15,7 @@ import {
   type InvoicePartySnapshot,
   type VatBreakdownEntry,
 } from './entities/invoice.entity';
-import {
-  LaborType,
-  QuoteStatus,
-  type Quote,
-} from '../quotes/entities/quote.entity';
+import { QuoteStatus, type Quote } from '../quotes/entities/quote.entity';
 import { QuotesService } from '../quotes/quotes.service';
 import { CompanyProfilesService } from '../company-profiles/company-profiles.service';
 import { ClientsService } from '../clients/clients.service';
@@ -28,13 +24,10 @@ import { UpdateInvoiceStatusDto } from './dto/update-invoice-status.dto';
 import { findMissingLegalMentions } from './invoice-legal-mentions';
 import type { CompanyProfile } from '../company-profiles/entities/company-profile.entity';
 import type { Client } from '../clients/entities/client.entity';
+import { round2 } from '../common/round2';
 
 const VAT_EXEMPTION_REASON = 'TVA non applicable, art. 293 B du CGI';
 const DEFAULT_PAYMENT_TERMS_DAYS = 30;
-
-function round2(value: number): number {
-  return Math.round(value * 100) / 100;
-}
 
 @Injectable()
 export class InvoicesService {
@@ -241,9 +234,12 @@ export class InvoicesService {
 
   /**
    * Lignes de facture. Deux écarts assumés avec le devis :
-   * - la main-d'œuvre devient une ligne (elle vit dans `labor_*` sur un devis) ;
    * - la remise, appliquée au total sur le devis, devient une ligne négative en
    *   montant, pour que `Σ line_total_ht === quote.total_ht` exactement.
+   * - chaque ligne de MO du devis (`labor_items_json`, E2-3) devient sa propre
+   *   ligne de facture — le total de MO utilisé pour la remise vient des lignes
+   *   réellement empilées ci-dessous, jamais de `quote.subtotal_labor_ht`
+   *   directement, pour que la cohérence reste locale à cette fonction.
    */
   private buildLineItems(quote: Quote, vatRate: number): InvoiceLineItem[] {
     const items: InvoiceLineItem[] = quote.items_json.map((item) => ({
@@ -257,22 +253,23 @@ export class InvoicesService {
       tva_rate: vatRate,
     }));
 
-    const laborTotal = round2(Number(quote.subtotal_labor_ht) || 0);
-    if (laborTotal !== 0) {
-      const isHourly = quote.labor_type === LaborType.HOURLY;
-      const hours = Number(quote.labor_estimated_hours) || 0;
+    let laborTotal = 0;
+    for (const line of quote.labor_items_json) {
+      const lineTotal = round2(Number(line.line_total_ht) || 0);
+      if (lineTotal === 0) continue;
+      laborTotal = round2(laborTotal + lineTotal);
+      const room = line.room_name ? ` — ${line.room_name}` : '';
       items.push({
         kind: 'labor',
-        label: "Main d'oeuvre",
-        description: isHourly
-          ? `${hours} h x ${Number(quote.labor_hourly_rate) || 0} EUR/h`
-          : 'Forfait',
-        quantity: isHourly ? hours : 1,
-        unit: isHourly ? 'h' : 'forfait',
-        unit_price_ht: isHourly
-          ? Number(quote.labor_hourly_rate) || 0
-          : laborTotal,
-        line_total_ht: laborTotal,
+        label: `${line.label}${room}`,
+        description:
+          line.kind === 'hourly'
+            ? `${Number(line.quantity)} h x ${Number(line.unit_price_ht)} EUR/h`
+            : 'Forfait',
+        quantity: line.kind === 'hourly' ? Number(line.quantity) : 1,
+        unit: line.kind === 'hourly' ? 'h' : 'forfait',
+        unit_price_ht: Number(line.unit_price_ht),
+        line_total_ht: lineTotal,
         tva_rate: vatRate,
       });
     }

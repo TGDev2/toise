@@ -1,5 +1,6 @@
 import {
-  IsEnum,
+  ArrayMaxSize,
+  IsArray,
   IsInt,
   IsNumber,
   IsOptional,
@@ -7,32 +8,28 @@ import {
   IsUUID,
   Max,
   Min,
+  ValidateNested,
 } from 'class-validator';
-import { LaborType } from '../entities/quote.entity';
+import { Type } from 'class-transformer';
+import { QuoteLaborLineDto } from './quote-labor-line.dto';
 
 export class UpdateQuoteDto {
   @IsOptional()
   @IsUUID()
   client_id?: string | null;
 
+  /**
+   * Absent ⇒ le tableau existant n'est pas touché (même contrat que
+   * `items_json`, remanié seulement si `material_margin_percent` est fourni).
+   * Fourni, même `[]`, il **remplace** entièrement le tableau — envoi complet,
+   * pas de correctif par index.
+   */
   @IsOptional()
-  @IsEnum(LaborType)
-  labor_type?: LaborType;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  labor_hourly_rate?: number | null;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  labor_estimated_hours?: number | null;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  labor_flat_amount?: number | null;
+  @IsArray()
+  @ArrayMaxSize(50)
+  @ValidateNested({ each: true })
+  @Type(() => QuoteLaborLineDto)
+  labor_items?: QuoteLaborLineDto[];
 
   @IsOptional()
   @IsNumber()

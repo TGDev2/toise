@@ -3,7 +3,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { apiGet, apiPut } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
-import { Alert, Button, Input, Skeleton, useToast } from '@/components/ui';
+import { Alert, Button, DecimalInput, Input, Skeleton, useToast } from '@/components/ui';
 import {
   LegalMentionsFields,
   EMPTY_LEGAL_MENTIONS,
@@ -38,6 +38,7 @@ interface CompanyProfile extends Partial<LegalMentions> {
   country: string;
   phone: string | null;
   specialties: string[];
+  default_labor_hourly_rate: number | null;
 }
 
 export default function CompanySettingsPage() {
@@ -57,6 +58,7 @@ export default function CompanySettingsPage() {
   const [city, setCity] = useState('');
   const [phone, setPhone] = useState('');
   const [specialties, setSpecialties] = useState<string[]>([]);
+  const [defaultLaborHourlyRate, setDefaultLaborHourlyRate] = useState('');
   const [legal, setLegal] = useState<LegalMentions>(EMPTY_LEGAL_MENTIONS);
 
   useEffect(() => {
@@ -76,6 +78,11 @@ export default function CompanySettingsPage() {
         setCity(profile.city);
         setPhone(profile.phone ?? '');
         setSpecialties(profile.specialties);
+        setDefaultLaborHourlyRate(
+          profile.default_labor_hourly_rate != null
+            ? String(profile.default_labor_hourly_rate)
+            : '',
+        );
         setLegal(fromCompanyProfile(profile));
       })
       .catch(() => {
@@ -105,6 +112,9 @@ export default function CompanySettingsPage() {
         city,
         ...(phone ? { phone } : {}),
         specialties,
+        ...(defaultLaborHourlyRate.trim()
+          ? { default_labor_hourly_rate: Number(defaultLaborHourlyRate) }
+          : {}),
         ...toLegalMentionsPayload(legal),
       });
       toast.success('Profil mis à jour avec succès.');
@@ -236,6 +246,25 @@ export default function CompanySettingsPage() {
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="space-y-2 rounded-3xl border border-stone-200 bg-white/60 p-5">
+            <h2 className="text-base font-semibold text-stone-950">
+              Chiffrage
+            </h2>
+            <p className="text-xs text-stone-500">
+              Proposé par défaut sur chaque ligne de main-d&apos;œuvre d&apos;un
+              devis, modifiable ligne à ligne.
+            </p>
+            <label htmlFor="defaultLaborHourlyRate" className="mt-2 block text-sm font-medium text-stone-700">
+              Taux horaire par défaut (EUR/h)
+            </label>
+            <DecimalInput
+              id="defaultLaborHourlyRate"
+              value={defaultLaborHourlyRate}
+              onValueChange={setDefaultLaborHourlyRate}
+              className="w-full min-h-11 rounded-2xl border border-stone-300 px-4 py-2.5 text-base sm:text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+            />
           </div>
 
           <LegalMentionsFields values={legal} onChange={setLegal} />

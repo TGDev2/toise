@@ -52,6 +52,22 @@ export class WorkType {
   @Column({ type: 'integer', default: 0 })
   display_order!: number;
 
+  /**
+   * Temps unitaire indicatif (E2-3), min/m², artisan seul. Ordre de grandeur
+   * métier — pas un rendement fabricant sourcé au sens de
+   * `docs/SOURCES_CATALOGUE.md` : voir la section dédiée de ce registre.
+   * Nullable : un 8e ouvrage sans valeur ne propose aucune ligne, il n'invente
+   * pas un temps.
+   */
+  @Column({
+    type: 'numeric',
+    precision: 6,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  labor_minutes_per_m2!: number | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   created_at!: Date;
 

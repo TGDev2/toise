@@ -14,9 +14,9 @@ import {
   OperationCategory,
 } from './entities/invoice.entity';
 import {
-  LaborType,
   QuoteStatus,
   type Quote,
+  type QuoteLaborLine,
 } from '../quotes/entities/quote.entity';
 import { QuotesService } from '../quotes/quotes.service';
 import { CompanyProfilesService } from '../company-profiles/company-profiles.service';
@@ -29,6 +29,25 @@ const ORG_ID = 'org-1';
 
 // `pg` renvoie les colonnes numeric sous forme de chaînes : les fixtures le
 // reproduisent, sinon les tests valident un comportement que la prod n'a pas.
+// `labor_items_json` est du jsonb : ses nombres reviennent en `number`, jamais
+// en chaîne — asymétrie assumée avec les autres colonnes de cette entité.
+function makeLaborLine(
+  overrides: Partial<QuoteLaborLine> = {},
+): QuoteLaborLine {
+  return {
+    work_item_id: null,
+    work_type_code: null,
+    label: "Main d'oeuvre",
+    room_name: null,
+    kind: 'hourly',
+    surface_m2: null,
+    quantity: 16,
+    unit_price_ht: 45,
+    line_total_ht: 720,
+    ...overrides,
+  };
+}
+
 function makeQuote(overrides: Partial<Quote> = {}): Quote {
   return {
     id: 'quote-1',
@@ -39,10 +58,7 @@ function makeQuote(overrides: Partial<Quote> = {}): Quote {
     estimation_id: 'estimation-1',
     quote_number: 'D-2026-001',
     status: QuoteStatus.ACCEPTED,
-    labor_type: LaborType.HOURLY,
-    labor_hourly_rate: '45.00' as unknown as number,
-    labor_estimated_hours: '16.00' as unknown as number,
-    labor_flat_amount: null,
+    labor_items_json: [makeLaborLine()],
     material_margin_percent: '10.00' as unknown as number,
     discount_percent: '0.00' as unknown as number,
     payment_terms: '30 % a la commande, solde a la livraison',
@@ -310,7 +326,7 @@ describe('InvoicesService', () => {
       expect(Number(invoice.total_ht)).toBe(827.9);
     });
 
-    it('turns labour into a billable line', async () => {
+    it('turns a retro-fitted single labour line into a billable line (retro-compat)', async () => {
       const invoice = await create();
       const labor = invoice.items_json.find((i) => i.kind === 'labor');
 
@@ -323,12 +339,86 @@ describe('InvoicesService', () => {
       });
     });
 
+    it('transforme chaque ligne de MO du devis en sa propre ligne de facture', async () => {
+      quotesServiceMock.findOneForOrg.mockResolvedValue(
+        makeQuote({
+          labor_items_json: [
+            makeLaborLine({
+              label: 'Peinture murale',
+              room_name: 'Salon',
+              quantity: 5,
+              unit_price_ht: 45,
+              line_total_ht: 225,
+            }),
+            makeLaborLine({
+              label: 'Peinture plafond',
+              room_name: 'Salon',
+              quantity: 3,
+              unit_price_ht: 45,
+              line_total_ht: 135,
+            }),
+          ],
+          subtotal_labor_ht: '360.00' as unknown as number,
+          total_ht: '511.47' as unknown as number,
+          total_ttc: '562.62' as unknown as number,
+        }),
+      );
+
+      const invoice = await create();
+      const laborLines = invoice.items_json.filter((i) => i.kind === 'labor');
+
+      expect(laborLines).toHaveLength(2);
+      expect(laborLines[0]).toMatchObject({
+        label: 'Peinture murale — Salon',
+        quantity: 5,
+        line_total_ht: 225,
+      });
+      expect(laborLines[1]).toMatchObject({
+        label: 'Peinture plafond — Salon',
+        quantity: 3,
+        line_total_ht: 135,
+      });
+    });
+
+    it('ne pousse aucune ligne "Remise (0 %)" fantome quand la remise est nulle', async () => {
+      quotesServiceMock.findOneForOrg.mockResolvedValue(
+        makeQuote({
+          labor_items_json: [
+            makeLaborLine({
+              quantity: 5,
+              unit_price_ht: 45,
+              line_total_ht: 225,
+            }),
+            makeLaborLine({
+              quantity: 3,
+              unit_price_ht: 45,
+              line_total_ht: 135,
+            }),
+            makeLaborLine({
+              kind: 'flat',
+              quantity: 1,
+              unit_price_ht: 100,
+              line_total_ht: 100,
+            }),
+          ],
+          subtotal_labor_ht: '460.00' as unknown as number,
+          discount_percent: '0.00' as unknown as number,
+          total_ht: '611.47' as unknown as number,
+          total_ttc: '672.62' as unknown as number,
+        }),
+      );
+
+      const invoice = await create();
+      expect(invoice.items_json.some((i) => i.kind === 'discount')).toBe(false);
+      const sum = invoice.items_json.reduce((s, i) => s + i.line_total_ht, 0);
+      expect(Math.round(sum * 100) / 100).toBe(611.47);
+    });
+
     it('omits the labour line when the quote has none', async () => {
       quotesServiceMock.findOneForOrg.mockResolvedValue(
         makeQuote({
+          labor_items_json: [],
           subtotal_labor_ht: '0.00' as unknown as number,
-          labor_hourly_rate: '0.00' as unknown as number,
-          labor_estimated_hours: '0.00' as unknown as number,
           total_ht: '151.47' as unknown as number,
         }),
       );

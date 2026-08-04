@@ -116,6 +116,16 @@ export class CompanyProfile {
   @Column({ type: 'integer', nullable: true })
   default_payment_terms_days!: number | null;
 
+  /** Taux horaire par défaut proposé sur une ligne de MO (E2-3). Nullable : pas de valeur plausible en repli. */
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  default_labor_hourly_rate!: number | null;
+
   @OneToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'user_id' })
   user!: User | null;

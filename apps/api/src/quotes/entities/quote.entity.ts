@@ -22,10 +22,7 @@ export enum QuoteStatus {
   NEGOTIATION = 'negotiation',
 }
 
-export enum LaborType {
-  HOURLY = 'hourly',
-  FLAT = 'flat',
-}
+export type QuoteLaborKind = 'hourly' | 'flat';
 
 export interface QuoteLineItem {
   material_name: string;
@@ -36,6 +33,45 @@ export interface QuoteLineItem {
   base_unit_price: number;
   margin_percent: number;
   unit_price_with_margin: number;
+  line_total_ht: number;
+}
+
+/**
+ * Une ligne de main-d'œuvre d'un devis (E2-3). Snapshot figé, comme
+ * `QuoteLineItem` : le devis est un document, pas une vue sur le projet.
+ *
+ * Stocké en JSONB, pas dans une table fille : `work_item_id` n'est **pas**
+ * garanti être un UUID (le moteur d'estimation émet `'public'` ou
+ * `` `${roomId}:${workTypeCode}` `` sur les parcours public/widget) et aucune
+ * politique `ON DELETE` ne serait correcte (`CASCADE` ferait disparaître une
+ * ligne d'un devis déjà accepté si l'ouvrage est supprimé du projet ;
+ * `RESTRICT` interdirait de corriger son projet). `work_item_id` est donc une
+ * trace, jamais une clé d'intégrité — jamais de `@IsUUID()`, de `ParseUUIDPipe`
+ * ni de FK sur ce champ.
+ */
+export interface QuoteLaborLine {
+  work_item_id: string | null;
+  work_type_code: string | null;
+  /** Désignation figée, p. ex. « Peinture murale — Salon ». Le PDF ne relit pas le projet. */
+  label: string;
+  room_name: string | null;
+  /** `flat` ⇒ `quantity` vaut toujours 1. */
+  kind: QuoteLaborKind;
+  /**
+   * Surface nette de l'ouvrage au moment du devis — descriptif imprimable,
+   * jamais recalculée en `quantity` que l'artisan surcharge librement. Le
+   * temps unitaire (min/m²) n'est volontairement **pas** persisté ici : le
+   * stocker à côté de `quantity` créerait deux affirmations qui peuvent
+   * diverger dès que les heures sont corrigées à la main (leçon 18 —
+   * `tasks/lessons.md`). Il se dérive à l'affichage,
+   * `quantity × 60 / surface_m2`, jamais l'inverse.
+   */
+  surface_m2: number | null;
+  /** Heures (`hourly`) ou 1 (`flat`). */
+  quantity: number;
+  /** Taux horaire (`hourly`) ou montant du forfait (`flat`). */
+  unit_price_ht: number;
+  /** `round2(quantity × unit_price_ht)` — toujours recalculé serveur, jamais accepté du client. */
   line_total_ht: number;
 }
 
@@ -71,35 +107,9 @@ export class Quote {
   @Column({ type: 'varchar', length: 20, default: QuoteStatus.DRAFT })
   status!: QuoteStatus;
 
-  @Column({ type: 'varchar', length: 10, default: LaborType.HOURLY })
-  labor_type!: LaborType;
-
-  @Column({
-    type: 'numeric',
-    precision: 10,
-    scale: 2,
-    nullable: true,
-    transformer: numericTransformer,
-  })
-  labor_hourly_rate!: number | null;
-
-  @Column({
-    type: 'numeric',
-    precision: 10,
-    scale: 2,
-    nullable: true,
-    transformer: numericTransformer,
-  })
-  labor_estimated_hours!: number | null;
-
-  @Column({
-    type: 'numeric',
-    precision: 10,
-    scale: 2,
-    nullable: true,
-    transformer: numericTransformer,
-  })
-  labor_flat_amount!: number | null;
+  /** Lignes de MO par ouvrage (E2-3). `[]` = devis sans main-d'œuvre. */
+  @Column({ type: 'jsonb', default: [] })
+  labor_items_json!: QuoteLaborLine[];
 
   @Column({
     type: 'numeric',

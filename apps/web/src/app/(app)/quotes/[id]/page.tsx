@@ -386,24 +386,56 @@ export default function QuoteDetailPage() {
         <h2 className="text-lg font-semibold text-stone-950">
           Main d&apos;oeuvre
         </h2>
-        <div className="mt-3 text-sm text-stone-700">
-          {quote.labor_type === 'hourly' ? (
-            <p>
-              {Number(quote.labor_estimated_hours)} h x{' '}
-              {formatPrice(Number(quote.labor_hourly_rate))} EUR/h ={' '}
-              <span className="font-semibold">
-                {formatPrice(Number(quote.subtotal_labor_ht))} EUR HT
-              </span>
-            </p>
-          ) : (
-            <p>
-              Forfait :{' '}
-              <span className="font-semibold">
-                {formatPrice(Number(quote.subtotal_labor_ht))} EUR HT
-              </span>
-            </p>
-          )}
-        </div>
+        {quote.labor_items_json?.length ? (
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[32rem] text-sm">
+              <thead>
+                <tr className="border-b border-stone-200 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
+                  <th className="pb-2 pr-4">Ouvrage</th>
+                  <th className="pb-2 pr-4 text-center">Qté</th>
+                  <th className="pb-2 pr-4 text-right">PU HT</th>
+                  <th className="pb-2 text-right">Total HT</th>
+                </tr>
+              </thead>
+              <tbody>
+                {quote.labor_items_json.map((line, i) => (
+                  <tr key={i} className="border-b border-stone-100">
+                    <td className="py-2 pr-4 text-stone-800">
+                      {line.label}
+                      {line.room_name && (
+                        <span className="ml-2 text-xs text-stone-400">
+                          {line.room_name}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-2 pr-4 text-center font-medium">
+                      {line.kind === 'hourly' ? `${line.quantity} h` : 'Forfait'}
+                    </td>
+                    <td className="py-2 pr-4 text-right">
+                      {formatPrice(line.unit_price_ht)} EUR
+                      {line.kind === 'hourly' ? '/h' : ''}
+                    </td>
+                    <td className="py-2 text-right font-semibold">
+                      {formatPrice(line.line_total_ht)} EUR
+                    </td>
+                  </tr>
+                ))}
+                <tr>
+                  <td colSpan={3} className="pt-3 text-right text-stone-600">
+                    Sous-total main d&apos;œuvre HT
+                  </td>
+                  <td className="pt-3 text-right font-semibold">
+                    {formatPrice(Number(quote.subtotal_labor_ht))} EUR
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="mt-3 text-sm text-stone-500">
+            Aucune main-d&apos;œuvre chiffrée.
+          </p>
+        )}
       </section>
 
       {/* Totals */}

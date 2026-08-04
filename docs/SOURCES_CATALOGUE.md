@@ -111,6 +111,33 @@ en zone douche, concerne l'étanchéité, pas les pertes). Ces valeurs sont
 facteurs **appris** sur les achats réels (DATA-3, `learned_waste_factors`) —
 c'est ce mécanisme, pas une norme, qui les rapproche du terrain.
 
+## Temps unitaires de main-d'œuvre : statut (E2-3)
+
+`work_types.labor_minutes_per_m2` (migration `…072`) propose, par ouvrage, un
+temps de pose indicatif en minutes par m² — utilisé pour préremplir une ligne
+de MO du devis à partir de la surface de l'ouvrage. **Ce ne sont pas des
+rendements sourcés au sens du registre ci-dessus** : il n'existe pas de fiche
+technique fabricant pour un temps de pose, contrairement à un rendement
+matière. Ces valeurs ont le même statut que les `waste_factors` de la section
+précédente — des ordres de grandeur métier, sans référence normative — et sont
+documentées ici pour la même raison : ne jamais laisser croire qu'un chiffre
+métier est une donnée sourcée.
+
+| Ouvrage | min/m² | Hypothèse |
+| --- | --- | --- |
+| `wall_painting` | 8 | Peinture murale, 2 couches, protection et rechampi compris, artisan seul |
+| `ceiling_painting` | 10 | Peinture plafond, 2 couches, travail en hauteur |
+| `wall_covering` | 15 | Revêtement mural, intissé, lés pleins |
+| `parquet_flooring` | 20 | Parquet/stratifié, pose flottante, sous-couche comprise |
+| `drywall` | 35 | Cloison sèche Placostil® 72/48, simple peau 2 faces, bandes comprises |
+| `floor_tiling` | 40 | Carrelage sol 45 × 45, double encollage (même hypothèse que le registre ci-dessus) |
+| `wall_tiling` | 50 | Carrelage mural, faïence 25 × 40, plus de découpes qu'au sol |
+
+Nullable et jamais un défaut à l'échelle du produit : si la colonne est vide
+pour un ouvrage (le 8e ouvrage d'une future extension, par exemple), aucune
+ligne de MO n'est proposée pour cet ouvrage plutôt que d'en inventer une à
+0 min — l'UI l'affiche comme un temps indicatif, modifiable ligne à ligne.
+
 ## Réintégrer un matériau retiré
 
 Deux portes, toutes deux hors périmètre V1 (mise à jour de

@@ -1314,9 +1314,18 @@ Créer un devis.
   "project_id": "uuid",
   "estimation_id": "uuid",
   "client_id": "uuid",
-  "labor_type": "hourly",
-  "labor_hourly_rate": 45,
-  "labor_estimated_hours": 16,
+  "labor_items": [
+    {
+      "work_item_id": "uuid",
+      "work_type_code": "wall_painting",
+      "label": "Peinture murale — Salon",
+      "room_name": "Salon",
+      "kind": "hourly",
+      "surface_m2": 25,
+      "quantity": 5,
+      "unit_price_ht": 45
+    }
+  ],
   "material_margin_percent": 10,
   "discount_percent": 5,
   "payment_terms": "30% à la commande, solde à la livraison",
@@ -1331,10 +1340,16 @@ Créer un devis.
 | `project_id` | UUID | oui | — |
 | `estimation_id` | UUID | oui | — |
 | `client_id` | UUID | non | — |
-| `labor_type` | enum | oui | `hourly`, `flat` |
-| `labor_hourly_rate` | number | non | Min 0 (requis si `hourly`) |
-| `labor_estimated_hours` | number | non | Min 0 (requis si `hourly`) |
-| `labor_flat_amount` | number | non | Min 0 (requis si `flat`) |
+| `labor_items` | array | non | Max 50 éléments — une ligne de MO par ouvrage (E2-3) |
+| `labor_items[].work_item_id` | string \| null | non | Chaîne opaque, jamais un UUID garanti |
+| `labor_items[].work_type_code` | string \| null | non | — |
+| `labor_items[].label` | string | oui | Max 255 caractères |
+| `labor_items[].room_name` | string \| null | non | — |
+| `labor_items[].kind` | enum | oui | `hourly`, `flat` — `flat` force `quantity` à 1 |
+| `labor_items[].surface_m2` | number \| null | non | Min 0 — descriptif, ne détermine jamais `quantity` |
+| `labor_items[].quantity` | number | oui | Min 0 — heures (`hourly`) ou 1 (`flat`) |
+| `labor_items[].unit_price_ht` | number | oui | Min 0 — taux horaire ou montant du forfait |
+| `labor_items[].line_total_ht` | number | non | Accepté puis **ignoré** : toujours recalculé serveur |
 | `material_margin_percent` | number | oui | 0-100 |
 | `discount_percent` | number | non | 0-100 |
 | `payment_terms` | string | non | — |
@@ -1342,7 +1357,32 @@ Créer un devis.
 | `tva_rate` | number | non | 0-100 |
 | `notes` | string | non | — |
 
+`labor_items` absent ou `[]` ⇒ devis sans main-d'œuvre (`subtotal_labor_ht = 0`) : le serveur
+n'invente jamais de ligne à l'écriture. Pour proposer des lignes à partir des ouvrages du projet,
+appeler `GET /quotes/labor-proposal` avant de construire ce corps.
+
 **Réponses :** `201 Created` | `403 Forbidden`
+
+---
+
+### `GET /quotes/labor-proposal`
+
+Proposer des lignes de MO à partir des ouvrages d'une estimation — un temps unitaire indicatif par
+ouvrage (`work_types.labor_minutes_per_m2`) multiplié par sa surface, au taux horaire par défaut du
+profil d'entreprise (`0` si non renseigné). Lecture pure : n'écrit rien, à appeler avant
+`POST /quotes` ou `PATCH /quotes/:id`.
+
+**Auth :** Requise | **Feature gate :** `export_devis`
+
+**Query params :**
+
+| Param | Type | Requis |
+|-------|------|--------|
+| `project_id` | UUID | oui |
+| `estimation_id` | UUID | oui |
+
+**Réponses :** `200 OK` — tableau de lignes (même forme que `labor_items[]` ci-dessus, avec
+`line_total_ht`) | `404 Not Found` (estimation hors du projet) | `403 Forbidden`
 
 ---
 

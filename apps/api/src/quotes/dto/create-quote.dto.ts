@@ -1,5 +1,6 @@
 import {
-  IsEnum,
+  ArrayMaxSize,
+  IsArray,
   IsInt,
   IsNumber,
   IsOptional,
@@ -7,8 +8,10 @@ import {
   IsUUID,
   Max,
   Min,
+  ValidateNested,
 } from 'class-validator';
-import { LaborType } from '../entities/quote.entity';
+import { Type } from 'class-transformer';
+import { QuoteLaborLineDto } from './quote-labor-line.dto';
 
 export class CreateQuoteDto {
   @IsUUID()
@@ -21,23 +24,18 @@ export class CreateQuoteDto {
   @IsUUID()
   client_id?: string;
 
-  @IsEnum(LaborType)
-  labor_type!: LaborType;
-
+  /**
+   * Absent ⇒ devis sans main-d'œuvre (`[]`) : le serveur n'invente jamais de
+   * ligne à l'écriture (leçon 18). La proposition est un acte de lecture
+   * distinct, `GET /quotes/labor-proposal`, que le web appelle avant de
+   * construire ce payload.
+   */
   @IsOptional()
-  @IsNumber()
-  @Min(0)
-  labor_hourly_rate?: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  labor_estimated_hours?: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  labor_flat_amount?: number;
+  @IsArray()
+  @ArrayMaxSize(50)
+  @ValidateNested({ each: true })
+  @Type(() => QuoteLaborLineDto)
+  labor_items?: QuoteLaborLineDto[];
 
   @IsNumber()
   @Min(0)

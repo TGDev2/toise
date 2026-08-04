@@ -9,14 +9,20 @@ import {
   Quote,
   QuoteStatus,
   QuoteLineItem,
-  LaborType,
+  QuoteLaborLine,
 } from './entities/quote.entity';
-import { EstimationResult } from '../estimations/entities/estimation-result.entity';
+import {
+  EstimationResult,
+  EstimationLineItem,
+} from '../estimations/entities/estimation-result.entity';
 import { ShoppingListsService } from '../shopping-lists/shopping-lists.service';
 import { ProjectsService } from '../projects/projects.service';
 import { ClientsService } from '../clients/clients.service';
+import { CompanyProfilesService } from '../company-profiles/company-profiles.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
 import { UpdateQuoteDto } from './dto/update-quote.dto';
+import { QuoteLaborLineDto } from './dto/quote-labor-line.dto';
+import { round2 } from '../common/round2';
 
 @Injectable()
 export class QuotesService {
@@ -29,6 +35,7 @@ export class QuotesService {
     private readonly shoppingListsService: ShoppingListsService,
     private readonly projectsService: ProjectsService,
     private readonly clientsService: ClientsService,
+    private readonly companyProfilesService: CompanyProfilesService,
   ) {}
 
   async create(
@@ -87,7 +94,10 @@ export class QuotesService {
       (sum, i) => sum + i.line_total_ht,
       0,
     );
-    const subtotalLabor = this.computeLaborTotal(dto);
+    const laborLines = dto.labor_items
+      ? this.normaliseLaborLines(dto.labor_items)
+      : [];
+    const subtotalLabor = this.sumLaborLines(laborLines);
     const discountPercent = dto.discount_percent ?? 0;
     const totalHt =
       (subtotalMaterials + subtotalLabor) * (1 - discountPercent / 100);
@@ -111,10 +121,7 @@ export class QuotesService {
         estimation_id: dto.estimation_id,
         quote_number: quoteNumber,
         status: QuoteStatus.DRAFT,
-        labor_type: dto.labor_type,
-        labor_hourly_rate: dto.labor_hourly_rate ?? null,
-        labor_estimated_hours: dto.labor_estimated_hours ?? null,
-        labor_flat_amount: dto.labor_flat_amount ?? null,
+        labor_items_json: laborLines,
         material_margin_percent: marginPercent,
         discount_percent: discountPercent,
         payment_terms: dto.payment_terms ?? null,
@@ -182,13 +189,13 @@ export class QuotesService {
       }
       quote.client_id = dto.client_id;
     }
-    if (dto.labor_type !== undefined) quote.labor_type = dto.labor_type;
-    if (dto.labor_hourly_rate !== undefined)
-      quote.labor_hourly_rate = dto.labor_hourly_rate;
-    if (dto.labor_estimated_hours !== undefined)
-      quote.labor_estimated_hours = dto.labor_estimated_hours;
-    if (dto.labor_flat_amount !== undefined)
-      quote.labor_flat_amount = dto.labor_flat_amount;
+    // `labor_items` absent : le tableau existant n'est pas touché (même
+    // contrat que `items_json`, remanié seulement si `material_margin_percent`
+    // est fourni) — sans cette règle, changer la TVA effacerait une saisie
+    // manuelle d'heures. Fourni, même `[]`, il remplace tout le tableau.
+    if (dto.labor_items !== undefined) {
+      quote.labor_items_json = this.normaliseLaborLines(dto.labor_items);
+    }
     if (dto.payment_terms !== undefined)
       quote.payment_terms = dto.payment_terms;
     if (dto.validity_days !== undefined)
@@ -220,7 +227,7 @@ export class QuotesService {
       (sum, i) => sum + i.line_total_ht,
       0,
     );
-    const subtotalLabor = this.computeLaborTotalFromQuote(quote);
+    const subtotalLabor = this.sumLaborLines(quote.labor_items_json);
     const discountPercent = Number(quote.discount_percent) || 0;
     const totalHt =
       (subtotalMaterials + subtotalLabor) * (1 - discountPercent / 100);
@@ -267,21 +274,106 @@ export class QuotesService {
     await this.repo.remove(quote);
   }
 
-  private computeLaborTotal(dto: CreateQuoteDto): number {
-    if (dto.labor_type === LaborType.FLAT) {
-      return dto.labor_flat_amount ?? 0;
+  /**
+   * Propose les lignes de MO d'un devis à partir des ouvrages de son estimation.
+   * Lecture pure, aucune écriture : `POST /quotes` n'utilise jamais cette
+   * méthode implicitement, il n'accepte que ce que le client envoie
+   * explicitement (leçon 18 — le serveur propose, il n'invente pas sur
+   * l'écriture). Exposée par `GET /quotes/labor-proposal`.
+   */
+  async proposeLaborLines(
+    organizationId: string,
+    projectId: string,
+    estimationId: string,
+  ): Promise<QuoteLaborLine[]> {
+    await this.projectsService.findOneForOrg(projectId, organizationId);
+    const estimation = await this.estimationRepo.findOne({
+      where: { id: estimationId, project_id: projectId },
+    });
+    if (!estimation) {
+      throw new NotFoundException('Estimation non trouvee pour ce projet');
     }
-    return (dto.labor_hourly_rate ?? 0) * (dto.labor_estimated_hours ?? 0);
+    return this.buildProposedLaborLines(organizationId, estimation);
   }
 
-  private computeLaborTotalFromQuote(quote: Quote): number {
-    if (quote.labor_type === LaborType.FLAT) {
-      return Number(quote.labor_flat_amount) || 0;
-    }
-    return (
-      (Number(quote.labor_hourly_rate) || 0) *
-      (Number(quote.labor_estimated_hours) || 0)
+  private async buildProposedLaborLines(
+    organizationId: string,
+    estimation: EstimationResult,
+  ): Promise<QuoteLaborLine[]> {
+    const profile =
+      await this.companyProfilesService.findByOrganizationId(organizationId);
+    const rate = Number(profile?.default_labor_hourly_rate) || 0;
+
+    const workTypes = await this.projectsService.getWorkTypes();
+    const minutesByCode = new Map(
+      workTypes.map((wt) => [wt.code, wt.labor_minutes_per_m2]),
     );
+
+    return this.dedupeByWorkItem(estimation.items_json)
+      .filter((item) => item.surface_m2 !== 0)
+      .map((item) => {
+        const minutes = minutesByCode.get(item.work_type_code) ?? null;
+        const quantity =
+          minutes == null ? 0 : round2((item.surface_m2 * minutes) / 60);
+        return {
+          work_item_id: item.work_item_id ?? null,
+          work_type_code: item.work_type_code,
+          label: item.work_type_label,
+          room_name: item.room_name ?? null,
+          kind: 'hourly' as const,
+          surface_m2: item.surface_m2,
+          quantity,
+          unit_price_ht: rate,
+          line_total_ht: round2(quantity * rate),
+        };
+      });
+  }
+
+  /**
+   * Dédoublonne par ouvrage, jamais par somme : plusieurs matériaux d'un même
+   * work item répètent le même `surface_m2` (calculé une fois par ouvrage dans
+   * le moteur d'estimation), en garder plusieurs sommerait une surface qui n'a
+   * jamais existé. Clé de repli `room_id:work_type_code` pour les estimations
+   * antérieures à ENG-2 ou sans `work_item_id`.
+   */
+  private dedupeByWorkItem(items: EstimationLineItem[]): EstimationLineItem[] {
+    const seen = new Set<string>();
+    const result: EstimationLineItem[] = [];
+    for (const item of items) {
+      const key =
+        item.work_item_id ?? `${item.room_id ?? ''}:${item.work_type_code}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push(item);
+    }
+    return result;
+  }
+
+  /**
+   * Normalise les lignes envoyées par le client : `line_total_ht` n'est
+   * jamais accepté tel quel (falsification de prix triviale sinon), et
+   * `quantity` vaut toujours 1 sur un forfait.
+   */
+  private normaliseLaborLines(lines: QuoteLaborLineDto[]): QuoteLaborLine[] {
+    return lines.map((line) => {
+      const quantity = line.kind === 'flat' ? 1 : Number(line.quantity) || 0;
+      const unitPriceHt = Number(line.unit_price_ht) || 0;
+      return {
+        work_item_id: line.work_item_id ?? null,
+        work_type_code: line.work_type_code ?? null,
+        label: line.label,
+        room_name: line.room_name ?? null,
+        kind: line.kind,
+        surface_m2: line.surface_m2 ?? null,
+        quantity,
+        unit_price_ht: unitPriceHt,
+        line_total_ht: round2(quantity * unitPriceHt),
+      };
+    });
+  }
+
+  private sumLaborLines(lines: QuoteLaborLine[]): number {
+    return round2(lines.reduce((sum, line) => sum + line.line_total_ht, 0));
   }
 
   /**

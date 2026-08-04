@@ -130,7 +130,13 @@ export class PdfBuilder {
     return this.resetX();
   }
 
-  /** Ligne libellé/montant du bloc de totaux, aligné à droite de la page. */
+  /**
+   * Ligne libellé/montant du bloc de totaux, aligné à droite de la page.
+   *
+   * Hauteur dérivée de `heightOfString`, comme `tableRow` : un libellé qui
+   * passe à la ligne (« Sous-total main d'oeuvre HT » sur 120 pt de large)
+   * ne chevauchait plus la ligne de totaux suivante autrement.
+   */
   totalsRow(
     label: string,
     value: string,
@@ -139,6 +145,7 @@ export class PdfBuilder {
     const size = options.size ?? 10;
     const labelX = this.left + 250;
     const valueX = this.left + 380;
+    const labelWidth = valueX - labelX - 10;
     const valueWidth = this.left + this.contentWidth - valueX;
     const y = this.doc.y;
 
@@ -146,10 +153,14 @@ export class PdfBuilder {
       .fontSize(size)
       .font(options.bold ? 'Helvetica-Bold' : 'Helvetica')
       .fillColor('#000000');
-    this.doc.text(label, labelX, y, { width: valueX - labelX - 10 });
+    const height = Math.max(
+      this.doc.heightOfString(label, { width: labelWidth }),
+      size + 4,
+    );
+    this.doc.text(label, labelX, y, { width: labelWidth });
     this.doc.text(value, valueX, y, { width: valueWidth, align: 'right' });
 
-    this.doc.y = y + size + 4;
+    this.doc.y = y + height;
     return this.resetX();
   }
 

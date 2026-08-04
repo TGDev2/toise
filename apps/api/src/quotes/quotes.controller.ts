@@ -56,6 +56,23 @@ export class QuotesController {
     return this.quotesService.create(scope.organizationId, scope.userId, dto);
   }
 
+  // Déclarée avant `@Get(':id')` : sinon `ParseUUIDPipe` sur `:id` avale
+  // `labor-proposal` et le rend inatteignable.
+  @Get('labor-proposal')
+  @RequireFeature('export_devis')
+  async laborProposal(
+    @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
+    @Query('project_id', ParseUUIDPipe) projectId: string,
+    @Query('estimation_id', ParseUUIDPipe) estimationId: string,
+  ) {
+    const scope = await this.resolveScope(firebaseUser);
+    return this.quotesService.proposeLaborLines(
+      scope.organizationId,
+      projectId,
+      estimationId,
+    );
+  }
+
   @Get()
   @RequireFeature('export_devis')
   async findAll(

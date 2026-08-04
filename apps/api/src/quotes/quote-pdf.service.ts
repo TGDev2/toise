@@ -1,9 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { LaborType } from './entities/quote.entity';
-import type { Quote, QuoteLineItem } from './entities/quote.entity';
+import type {
+  Quote,
+  QuoteLineItem,
+  QuoteLaborLine,
+} from './entities/quote.entity';
 import type { CompanyProfile } from '../company-profiles/entities/company-profile.entity';
 import type { Client } from '../clients/entities/client.entity';
 import { PdfBuilder, type PdfColumn } from '../common/pdf/pdf-builder';
+import { round2 } from '../common/round2';
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Brouillon',
@@ -15,6 +19,15 @@ const STATUS_LABELS: Record<string, string> = {
 
 const COLUMNS: PdfColumn[] = [
   { label: 'Designation', offset: 0, width: 200 },
+  { label: 'Qte', offset: 210, width: 40, align: 'center' },
+  { label: 'PU HT', offset: 260, width: 80, align: 'right' },
+  { label: 'Total HT', offset: 360, width: 85, align: 'right' },
+];
+
+// Mêmes offsets que COLUMNS : les deux tableaux s'alignent verticalement et se
+// lisent comme un seul document.
+const LABOR_COLUMNS: PdfColumn[] = [
+  { label: 'Ouvrage', offset: 0, width: 200 },
   { label: 'Qte', offset: 210, width: 40, align: 'center' },
   { label: 'PU HT', offset: 260, width: 80, align: 'right' },
   { label: 'Total HT', offset: 360, width: 85, align: 'right' },
@@ -127,25 +140,32 @@ export class QuotePdfService {
       this.drawMaterialRow(pdf, item);
     }
 
-    // ── Labor section ──
+    // ── Labor table ──
     doc.moveDown(0.8);
+    // Titre + hr + en-tête + 1 ligne : jamais orphelins en bas de page.
+    pdf.checkPageBreak(70);
     pdf.sectionTitle("Main d'oeuvre");
     doc.moveDown(0.3);
 
-    doc.fontSize(10).font('Helvetica');
-    if (quote.labor_type === LaborType.HOURLY) {
-      const rate = Number(quote.labor_hourly_rate) || 0;
-      const hours = Number(quote.labor_estimated_hours) || 0;
-      pdf.text(
-        `${hours} h x ${PdfBuilder.formatPrice(rate)} EUR/h = ${PdfBuilder.formatPrice(rate * hours)} EUR HT`,
-      );
+    if (quote.labor_items_json.length === 0) {
+      doc.fontSize(9).font('Helvetica').fillColor('#666666');
+      pdf.text("Aucune main-d'oeuvre chiffree.");
+      doc.fillColor('#000000');
     } else {
-      const amount = Number(quote.labor_flat_amount) || 0;
-      pdf.text(`Forfait : ${PdfBuilder.formatPrice(amount)} EUR HT`);
+      pdf.tableHeader(LABOR_COLUMNS);
+      for (const line of quote.labor_items_json) {
+        // 40 et non 30 (comme les matériaux) : la désignation, augmentée du
+        // détail ouvrage/surface, tient plus souvent sur 2 lignes.
+        pdf.checkPageBreak(40);
+        this.drawLaborRow(pdf, line);
+      }
     }
 
     // ── Totals block ──
     doc.moveDown(1);
+    // 6 lignes de totaux ~14-17 pt + la règle : un bloc coupé entre deux
+    // lignes est le seul saut de page qu'un client remarque.
+    pdf.checkPageBreak(140);
     pdf.hr();
     doc.moveDown(0.5);
 
@@ -224,6 +244,29 @@ export class QuotePdfService {
       { text: String(item.units_needed) },
       { text: `${PdfBuilder.formatPrice(item.unit_price_with_margin)} EUR` },
       { text: `${PdfBuilder.formatPrice(item.line_total_ht)} EUR`, bold: true },
+    ]);
+  }
+
+  private drawLaborRow(pdf: PdfBuilder, line: QuoteLaborLine): void {
+    const room = line.room_name ? ` — ${line.room_name}` : '';
+    // Le temps unitaire n'est pas persisté (cf. quote.entity.ts) : il se
+    // dérive ici pour l'affichage, jamais l'inverse.
+    const detail =
+      line.kind === 'flat'
+        ? ' (forfait)'
+        : line.surface_m2
+          ? ` (${line.surface_m2} m² x ${round2((line.quantity * 60) / line.surface_m2)} min/m²)`
+          : '';
+    pdf.tableRow(LABOR_COLUMNS, [
+      { text: `${line.label}${room}${detail}` },
+      { text: line.kind === 'flat' ? '1' : `${line.quantity} h` },
+      {
+        text:
+          line.kind === 'flat'
+            ? `${PdfBuilder.formatPrice(line.unit_price_ht)} EUR`
+            : `${PdfBuilder.formatPrice(line.unit_price_ht)} EUR/h`,
+      },
+      { text: `${PdfBuilder.formatPrice(line.line_total_ht)} EUR`, bold: true },
     ]);
   }
 }

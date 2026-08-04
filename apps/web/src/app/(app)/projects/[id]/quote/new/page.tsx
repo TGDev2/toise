@@ -7,13 +7,14 @@ import { useFeatureGates } from '@/contexts/FeatureGateContext';
 import { apiGet, apiPost } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { ClientSelect } from '@/components/quotes/ClientSelect';
+import { LaborLinesEditor } from '@/components/quotes/LaborLinesEditor';
 import { FlowProgress } from '@/components/quote-flow/FlowProgress';
 import { DecimalInput, StickyActionBar } from '@/components/ui';
 import type { EstimationResponse } from '@/lib/estimation-types';
 import type {
   Client,
   Quote,
-  LaborType,
+  QuoteLaborLineInput,
   CreateQuotePayload,
 } from '@/lib/quote-types';
 
@@ -64,10 +65,7 @@ export default function NewQuotePage() {
 
   // Form state
   const [clientId, setClientId] = useState('');
-  const [laborType, setLaborType] = useState<LaborType>('hourly');
-  const [hourlyRate, setHourlyRate] = useState('45');
-  const [estimatedHours, setEstimatedHours] = useState('8');
-  const [flatAmount, setFlatAmount] = useState('500');
+  const [laborLines, setLaborLines] = useState<QuoteLaborLineInput[]>([]);
   const [marginPercent, setMarginPercent] = useState('20');
   const [discountPercent, setDiscountPercent] = useState('0');
   const [tvaRate, setTvaRate] = useState('20');
@@ -105,6 +103,13 @@ export default function NewQuotePage() {
       setEstimation(est);
       setShoppingList(sl);
       setClients(cls);
+
+      // La proposition dépend de l'estimation (elle en dérive les ouvrages) :
+      // ne peut être demandée en même temps que les trois appels ci-dessus.
+      const proposal = await apiGet<QuoteLaborLineInput[]>(
+        `/quotes/labor-proposal?project_id=${projectId}&estimation_id=${est.id}`,
+      );
+      setLaborLines(proposal);
     } catch (err: unknown) {
       setError(
         getErrorMessage(err, 'Impossible de charger les données du projet'),
@@ -143,16 +148,44 @@ export default function NewQuotePage() {
   }, [pricedItems, margin]);
 
   const subtotalLabor = useMemo(() => {
-    if (laborType === 'flat') return parseFloat(flatAmount) || 0;
-    return (parseFloat(hourlyRate) || 0) * (parseFloat(estimatedHours) || 0);
-  }, [laborType, hourlyRate, estimatedHours, flatAmount]);
+    return laborLines.reduce(
+      (sum, line) =>
+        sum + (line.kind === 'flat' ? 1 : line.quantity) * line.unit_price_ht,
+      0,
+    );
+  }, [laborLines]);
 
   const totalHt = (subtotalMaterials + subtotalLabor) * (1 - discount / 100);
   const totalTtc = totalHt * (1 + tva / 100);
 
+  // Une ligne à 0 EUR est incomplète, pas gratuite : forcer sa saisie avant
+  // l'envoi plutôt que produire un devis qui offre la MO sans le vouloir.
+  const laborRateMissing = laborLines.some((line) => line.unit_price_ht <= 0);
+
+  const addLaborLine = () =>
+    setLaborLines((prev) => [
+      ...prev,
+      {
+        work_item_id: null,
+        work_type_code: null,
+        label: '',
+        room_name: null,
+        kind: 'hourly',
+        surface_m2: null,
+        quantity: 0,
+        unit_price_ht: 0,
+      },
+    ]);
+
+  const updateLaborLine = (index: number, line: (typeof laborLines)[number]) =>
+    setLaborLines((prev) => prev.map((l, i) => (i === index ? line : l)));
+
+  const removeLaborLine = (index: number) =>
+    setLaborLines((prev) => prev.filter((_, i) => i !== index));
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!estimation || !shoppingList) return;
+    if (!estimation || !shoppingList || laborRateMissing) return;
 
     setSubmitting(true);
     setError('');
@@ -160,7 +193,7 @@ export default function NewQuotePage() {
       const payload: CreateQuotePayload = {
         project_id: projectId,
         estimation_id: estimation.id,
-        labor_type: laborType,
+        labor_items: laborLines,
         material_margin_percent: margin,
         discount_percent: discount,
         tva_rate: tva,
@@ -169,12 +202,6 @@ export default function NewQuotePage() {
         notes: notes.trim() || undefined,
       };
       if (clientId) payload.client_id = clientId;
-      if (laborType === 'hourly') {
-        payload.labor_hourly_rate = parseFloat(hourlyRate) || 0;
-        payload.labor_estimated_hours = parseFloat(estimatedHours) || 0;
-      } else {
-        payload.labor_flat_amount = parseFloat(flatAmount) || 0;
-      }
 
       const created = await apiPost<Quote>('/quotes', payload);
       router.push(`/quotes/${created.id}`);
@@ -305,67 +332,17 @@ export default function NewQuotePage() {
           <h2 className="text-lg font-semibold text-stone-950">
             Main d&apos;oeuvre
           </h2>
-          <div className="mt-4 space-y-4">
-            <div className="flex gap-4">
-              <button
-                type="button"
-                onClick={() => setLaborType('hourly')}
-                className={`inline-flex min-h-11 items-center justify-center rounded-full px-4 py-2 text-sm font-semibold ${
-                  laborType === 'hourly'
-                    ? 'bg-stone-950 text-white'
-                    : 'border border-stone-300 text-stone-700 hover:bg-white'
-                }`}
-              >
-                Taux horaire
-              </button>
-              <button
-                type="button"
-                onClick={() => setLaborType('flat')}
-                className={`inline-flex min-h-11 items-center justify-center rounded-full px-4 py-2 text-sm font-semibold ${
-                  laborType === 'flat'
-                    ? 'bg-stone-950 text-white'
-                    : 'border border-stone-300 text-stone-700 hover:bg-white'
-                }`}
-              >
-                Forfait
-              </button>
-            </div>
-
-            {laborType === 'hourly' ? (
-              <div className="grid grid-cols-2 gap-4">
-                <label className="space-y-2">
-                  <span className="text-sm font-medium text-stone-700">
-                    Taux horaire (EUR/h)
-                  </span>
-                  <DecimalInput
-                    value={hourlyRate}
-                    onValueChange={setHourlyRate}
-                    className={NUMBER_FIELD}
-                  />
-                </label>
-                <label className="space-y-2">
-                  <span className="text-sm font-medium text-stone-700">
-                    Heures estimées
-                  </span>
-                  <DecimalInput
-                    value={estimatedHours}
-                    onValueChange={setEstimatedHours}
-                    className={NUMBER_FIELD}
-                  />
-                </label>
-              </div>
-            ) : (
-              <label className="block space-y-2">
-                <span className="text-sm font-medium text-stone-700">
-                  Montant forfaitaire (EUR)
-                </span>
-                <DecimalInput
-                  value={flatAmount}
-                  onValueChange={setFlatAmount}
-                  className={NUMBER_FIELD}
-                />
-              </label>
-            )}
+          <p className="mt-1 text-sm text-stone-500">
+            Une ligne par ouvrage, proposée à partir des surfaces du projet —
+            ajustez librement les heures et le taux.
+          </p>
+          <div className="mt-4">
+            <LaborLinesEditor
+              lines={laborLines}
+              onAdd={addLaborLine}
+              onUpdate={updateLaborLine}
+              onRemove={removeLaborLine}
+            />
           </div>
         </section>
 
@@ -471,7 +448,12 @@ export default function NewQuotePage() {
         >
           <button
             type="submit"
-            disabled={submitting || pricedItems.length === 0}
+            disabled={submitting || pricedItems.length === 0 || laborRateMissing}
+            title={
+              laborRateMissing
+                ? "Renseignez le taux de chaque ligne de main-d'œuvre"
+                : undefined
+            }
             className="inline-flex min-h-12 items-center justify-center rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitting ? 'Creation...' : 'Créer le devis'}

@@ -37,9 +37,10 @@ export enum OperationCategory {
 export type InvoiceLineKind = 'material' | 'labor' | 'discount';
 
 /**
- * Ligne de facture. Distincte de `QuoteLineItem` : sur un devis la main-d'œuvre
- * n'est pas une ligne (elle vit dans `labor_*`) et la remise s'applique au total,
- * alors qu'une facture doit vérifier `Σ line_total_ht === total_ht`.
+ * Ligne de facture. Distincte de `QuoteLineItem`/`QuoteLaborLine` : sur un
+ * devis la remise s'applique au total, alors qu'une facture doit vérifier
+ * `Σ line_total_ht === total_ht` — d'où la ligne `discount` en montant négatif
+ * (`InvoicesService.buildLineItems`).
  */
 export interface InvoiceLineItem {
   kind: InvoiceLineKind;

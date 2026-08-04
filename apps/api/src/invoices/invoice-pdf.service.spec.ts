@@ -194,6 +194,36 @@ describe('InvoicePdfService', () => {
     expect(buffer.length).toBeGreaterThan(1000);
   });
 
+  it('renders an invoice with two labor lines (E2-3)', async () => {
+    const buffer = await service.generatePdf(
+      makeInvoice({
+        items_json: [
+          makeLine(),
+          makeLine({
+            kind: 'labor',
+            label: 'Peinture murale — Salon',
+            description: '5 h x 45 EUR/h',
+            quantity: 5,
+            unit: 'h',
+            unit_price_ht: 45,
+            line_total_ht: 225,
+          }),
+          makeLine({
+            kind: 'labor',
+            label: 'Peinture plafond — Salon',
+            description: '3 h x 45 EUR/h',
+            quantity: 3,
+            unit: 'h',
+            unit_price_ht: 45,
+            line_total_ht: 135,
+          }),
+        ],
+      }),
+    );
+
+    expect(buffer.length).toBeGreaterThan(1000);
+  });
+
   it('renders a discount line and a paid invoice', async () => {
     const buffer = await service.generatePdf(
       makeInvoice({

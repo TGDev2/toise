@@ -5,7 +5,7 @@ export type QuoteStatus =
   | 'refused'
   | 'negotiation';
 
-export type LaborType = 'hourly' | 'flat';
+export type QuoteLaborKind = 'hourly' | 'flat';
 
 export interface QuoteLineItem {
   material_name: string;
@@ -19,6 +19,26 @@ export interface QuoteLineItem {
   line_total_ht: number;
 }
 
+/**
+ * Une ligne de MO du devis (E2-3). `line_total_ht` est présent sur la ligne
+ * lue (`Quote`, réponse de `/quotes/labor-proposal`) mais absent sur la ligne
+ * envoyée (`QuoteLaborLineInput`) : le serveur le recalcule toujours, il ne
+ * fait jamais confiance à celui du client.
+ */
+export interface QuoteLaborLine {
+  work_item_id: string | null;
+  work_type_code: string | null;
+  label: string;
+  room_name: string | null;
+  kind: QuoteLaborKind;
+  surface_m2: number | null;
+  quantity: number;
+  unit_price_ht: number;
+  line_total_ht: number;
+}
+
+export type QuoteLaborLineInput = Omit<QuoteLaborLine, 'line_total_ht'>;
+
 export interface Quote {
   id: string;
   user_id: string;
@@ -27,10 +47,7 @@ export interface Quote {
   estimation_id: string;
   quote_number: string;
   status: QuoteStatus;
-  labor_type: LaborType;
-  labor_hourly_rate: number | null;
-  labor_estimated_hours: number | null;
-  labor_flat_amount: number | null;
+  labor_items_json: QuoteLaborLine[];
   material_margin_percent: number;
   discount_percent: number;
   payment_terms: string | null;
@@ -74,10 +91,7 @@ export interface CreateQuotePayload {
   project_id: string;
   estimation_id: string;
   client_id?: string;
-  labor_type: LaborType;
-  labor_hourly_rate?: number;
-  labor_estimated_hours?: number;
-  labor_flat_amount?: number;
+  labor_items?: QuoteLaborLineInput[];
   material_margin_percent: number;
   discount_percent?: number;
   payment_terms?: string;

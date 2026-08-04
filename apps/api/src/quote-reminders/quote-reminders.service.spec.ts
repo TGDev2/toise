@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { QuoteRemindersService } from './quote-reminders.service';
-import { Quote, QuoteStatus, LaborType } from '../quotes/entities/quote.entity';
+import { Quote, QuoteStatus } from '../quotes/entities/quote.entity';
 import { FeatureGatesService } from '../feature-gates/feature-gates.service';
 import { CompanyProfilesService } from '../company-profiles/company-profiles.service';
 import { EmailService } from '../email/email.service';
@@ -17,10 +17,7 @@ function makeQuote(overrides: Partial<Quote> = {}): Quote {
     estimation_id: 'estimation-1',
     quote_number: 'D-2026-001',
     status: QuoteStatus.SENT,
-    labor_type: LaborType.HOURLY,
-    labor_hourly_rate: null,
-    labor_estimated_hours: null,
-    labor_flat_amount: null,
+    labor_items_json: [],
     material_margin_percent: 0,
     discount_percent: 0,
     payment_terms: null,

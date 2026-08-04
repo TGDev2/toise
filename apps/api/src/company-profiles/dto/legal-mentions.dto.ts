@@ -94,4 +94,11 @@ export class LegalMentionsDto {
   @Min(0)
   @Max(90)
   default_payment_terms_days?: number | null;
+
+  /** Taux horaire par défaut proposé sur une ligne de MO (E2-3). */
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(1000)
+  default_labor_hourly_rate?: number | null;
 }
