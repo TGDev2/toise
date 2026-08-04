@@ -19,7 +19,7 @@ describe('FlowProgress', () => {
   it('states where the user is in the tunnel', () => {
     render(<FlowProgress step="work" projectId="p1" />);
 
-    expect(screen.getByText('Étape 3 / 6 · Travaux')).toBeInTheDocument();
+    expect(screen.getByText('Étape 2 / 5 · Travaux')).toBeInTheDocument();
   });
 
   it('exposes progress to assistive technology', () => {
@@ -28,8 +28,8 @@ describe('FlowProgress', () => {
     const bar = screen.getByRole('progressbar', {
       name: 'Progression du parcours',
     });
-    expect(bar).toHaveAttribute('aria-valuenow', '4');
-    expect(bar).toHaveAttribute('aria-valuemax', '6');
+    expect(bar).toHaveAttribute('aria-valuenow', '3');
+    expect(bar).toHaveAttribute('aria-valuemax', '5');
   });
 
   it('defaults the back link to the previous step of the tunnel', () => {
@@ -41,7 +41,7 @@ describe('FlowProgress', () => {
   });
 
   it('falls back to the dashboard on the first step', () => {
-    render(<FlowProgress step="photos" projectId="p1" />);
+    render(<FlowProgress step="dimensions" projectId="p1" />);
 
     expect(
       screen.getByRole('link', { name: 'Retour au tableau de bord' }),
@@ -65,7 +65,7 @@ describe('FlowProgress', () => {
 
   it('shows the project name when given one', () => {
     render(
-      <FlowProgress step="photos" projectId="p1" projectName="Salle de bain" />,
+      <FlowProgress step="dimensions" projectId="p1" projectName="Salle de bain" />,
     );
 
     expect(screen.getByText('Salle de bain')).toBeInTheDocument();
@@ -81,9 +81,9 @@ describe('FlowProgress', () => {
 
     render(<FlowProgress step="prices" projectId="p1" />);
 
-    expect(screen.getByText('Étape 5 / 5 · Prix')).toBeInTheDocument();
+    expect(screen.getByText('Étape 4 / 4 · Prix')).toBeInTheDocument();
     const bar = screen.getByRole('progressbar');
-    expect(bar).toHaveAttribute('aria-valuemax', '5');
+    expect(bar).toHaveAttribute('aria-valuemax', '4');
   });
 
   it("compte l'étape Devis dans le total pour un palier qui l'atteint", () => {
@@ -91,7 +91,7 @@ describe('FlowProgress', () => {
 
     render(<FlowProgress step="prices" projectId="p1" />);
 
-    expect(screen.getByText('Étape 5 / 6 · Prix')).toBeInTheDocument();
+    expect(screen.getByText('Étape 4 / 5 · Prix')).toBeInTheDocument();
   });
 
   it('reste prudent (étape Devis masquée) pendant le chargement des gates', () => {
@@ -100,6 +100,6 @@ describe('FlowProgress', () => {
 
     render(<FlowProgress step="prices" projectId="p1" />);
 
-    expect(screen.getByText('Étape 5 / 5 · Prix')).toBeInTheDocument();
+    expect(screen.getByText('Étape 4 / 4 · Prix')).toBeInTheDocument();
   });
 });

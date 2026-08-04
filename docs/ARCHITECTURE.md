@@ -20,23 +20,21 @@ Chiffréo est un **monorepo pnpm** composé de 3 applications communicant via RE
                         │    Firebase Auth (Admin SDK)     │
                         │    Stripe · PDFKit · Sharp       │
                         │    :3001/api/v1                  │
-                        └───────┬──────────────┬───────────┘
-                                │              │
-                    HTTP POST   │              │  SQL
-                    /analyze    │              │
-                                ▼              ▼
-                 ┌────────────────┐  ┌─────────────────────┐
-                 │  CV Service    │  │   PostgreSQL 16      │
-                 │  FastAPI       │  │                      │
-                 │  Depth Any. V2 │  │   65 migrations      │
-                 │  YOLOv8n       │  │   25+ entités        │
-                 │  :8000         │  │                      │
-                 └────────────────┘  └─────────────────────┘
-                         │                     ▲
-                         │     Résultats       │
-                         └─────────────────────┘
-                           (via API, stockés en DB)
+                        └───────────────┬───────────────────┘
+                                        │  SQL
+                                        ▼
+                        ┌──────────────────────────────────┐
+                        │           PostgreSQL 16           │
+                        │        65 migrations · 25+        │
+                        │             entités                │
+                        └──────────────────────────────────┘
 ```
+
+`apps/cv-service` (vision par ordinateur, FastAPI + Depth Anything V2 +
+YOLOv8n) reste dans le dépôt mais n'est plus sollicité en production
+(débranché, ADR 0001 §D2, `CV_ENABLED=false`) : la boîte et la liaison
+`POST /analyze` qui apparaissaient ici ont disparu du schéma. Condition de
+réouverture : ADR 0001 §5.2.
 
 ## Stack technique
 
@@ -53,9 +51,9 @@ Chiffréo est un **monorepo pnpm** composé de 3 applications communicant via RE
 | Paiements | Stripe | 21.0.1 |
 | Images | Sharp | 0.34.5 |
 | PDF | PDFKit | 0.18.0 |
-| CV - Framework | FastAPI | 0.115.6 |
-| CV - Depth | Depth Anything V2 Small | HuggingFace Transformers |
-| CV - Détection | YOLOv8n (poids = artefact GitHub Release `cv-model-vN`, hors git ; repli heuristique OpenCV si absents) | Ultralytics |
+| CV - Framework *(débranché de la prod, ADR 0001)* | FastAPI | 0.115.6 |
+| CV - Depth *(débranché de la prod, ADR 0001)* | Depth Anything V2 Small | HuggingFace Transformers |
+| CV - Détection *(débranché de la prod, ADR 0001)* | YOLOv8n (poids = artefact GitHub Release `cv-model-vN`, hors git ; repli heuristique OpenCV si absents) | Ultralytics |
 | Charts | Recharts | 3.8.1 |
 | Package manager | pnpm | 9+ |
 | Tests | Jest | — |
@@ -129,6 +127,10 @@ Utilisateur
 ```
 
 ### 2. Analyse par vision par ordinateur
+
+> Débranché de la production (ADR 0001 §D2, `CV_ENABLED=false`) : ce flux ne
+> s'exécute plus en prod. Documenté ici pour référence et pour la condition
+> de réouverture (ADR §5.2).
 
 ```
 Utilisateur
@@ -310,8 +312,8 @@ supplier_price_cache   (cache prix fournisseurs)
 | IP réelle | `TRUST_PROXY` (`app.set('trust proxy')`). Non renseigné = `req.ip` est l'IP du reverse proxy, et tous les compteurs de rate limiting sont partagés par l'ensemble du trafic |
 | CORS | Origine configurable via `CORS_ORIGIN` |
 | Upload fichiers | JPEG/PNG/HEIC uniquement, max 20 MB, validation MIME type |
-| Path traversal | CV service : validation des chemins d'images (pas de `..`, pas de chemins absolus, vérification `relative_to()`) |
-| Accès au CV service | Isolement réseau (pas de `ports:` en prod, loopback en dev) **et** secret partagé `CV_SERVICE_TOKEN` sur `POST /analyze`. Le service refuse de démarrer sans ce secret dès que `CV_SERVICE_ENV != development` : l'isolement seul est une hypothèse qu'un `ports:` ajouté pour un débogage annule sans bruit |
+| Path traversal *(débranché de la prod, ADR 0001)* | CV service : validation des chemins d'images (pas de `..`, pas de chemins absolus, vérification `relative_to()`) |
+| Accès au CV service *(débranché de la prod, ADR 0001)* | Isolement réseau (pas de `ports:` en prod, loopback en dev) **et** secret partagé `CV_SERVICE_TOKEN` sur `POST /analyze`. Le service refuse de démarrer sans ce secret dès que `CV_SERVICE_ENV != development` : l'isolement seul est une hypothèse qu'un `ports:` ajouté pour un débogage annule sans bruit. En production, `CV_ENABLED=false` refuse toute demande d'analyse avant même d'atteindre ce service |
 | Upload : contenu réel | Octets de signature vérifiés (`detectImageFormat`) **avant** que le fichier n'atteigne sharp/libvips ; le `mime_type` stocké et resservi est celui qu'a constaté le décodage, jamais l'en-tête déclaré par le client |
 | Injection SQL | TypeORM avec requêtes paramétrées |
 | Webhook Stripe | Vérification de signature avec `rawBody` |

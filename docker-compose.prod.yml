@@ -5,8 +5,12 @@
 #   - web  (port 3000)  → https://votre-domaine.fr
 #   - api  (port 3001)  → https://api.votre-domaine.fr (ou /api sur le même domaine)
 # Voir docs/DEPLOY.md — section "Déploiement continu (CD)" pour le flux automatisé
-# (api/web/cv-service sont alors mis à jour via `image:`/IMAGE_TAG plutôt que
-# reconstruits ici).
+# (api/web sont alors mis à jour via `image:`/IMAGE_TAG plutôt que reconstruits
+# ici).
+#
+# Le service de vision par ordinateur (apps/cv-service) est débranché de la
+# production (ADR 0001 D2) : il reste dans le dépôt mais ne fait plus partie
+# de cette pile. Condition de réouverture : docs/adr/0001-cible-et-perimetre-v1.md §5.2.
 
 name: chiffreo
 
@@ -39,8 +43,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      cv-service:
-        condition: service_started
     environment:
       NODE_ENV: production
       PORT: 3001
@@ -68,9 +70,9 @@ services:
       BREVO_API_KEY: ${BREVO_API_KEY:?}
       BREVO_SENDER_EMAIL: ${BREVO_SENDER_EMAIL:?}
       BREVO_SENDER_NAME: ${BREVO_SENDER_NAME:-Chiffréo}
-      CV_SERVICE_URL: http://cv-service:8000
-      CV_SERVICE_TOKEN: ${CV_SERVICE_TOKEN:?CV_SERVICE_TOKEN requis}
-      CV_SERVICE_TIMEOUT_MS: ${CV_SERVICE_TIMEOUT_MS:-120000}
+      # Débranché de la production (ADR 0001 D2) : coupure-circuit lu par
+      # apps/api/src/analysis/, indépendant de la gate DB `cv_analysis`.
+      CV_ENABLED: ${CV_ENABLED:-false}
       STORAGE_PROVIDER: local
       STORAGE_LOCAL_PATH: /app/uploads
       MANOMANO_ENABLED: ${MANOMANO_ENABLED:-false}
@@ -116,41 +118,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
-
-  cv-service:
-    # Voir le commentaire sur `api.image` : même logique CD/secours. Le CV fait
-    # partie de l'unité de livraison — il partage avec l'API un contrat HTTP non
-    # versionné, donc les deux doivent porter le même `IMAGE_TAG`. Les poids YOLO
-    # sont récupérés par la CD au moment du build (cf. .github/workflows/deploy.yml).
-    image: ghcr.io/tgdev2/chiffreo-cv:${IMAGE_TAG:-latest}
-    build:
-      context: ./apps/cv-service
-      dockerfile: Dockerfile
-    container_name: chiffreo-cv
-    restart: unless-stopped
-    volumes:
-      # Le CV service ne fait que lire les images uploadées ; montage en
-      # lecture seule pour limiter l'impact d'un éventuel path traversal.
-      - uploads:/data/uploads:ro
-    environment:
-      - UPLOADS_PATH=/data/uploads
-      # Isolement reseau + secret partage : la seconde barriere ne
-      # depend pas d'un `ports:` que personne ne relit.
-      - CV_SERVICE_ENV=production
-      - CV_SERVICE_TOKEN=${CV_SERVICE_TOKEN:?CV_SERVICE_TOKEN requis}
-    healthcheck:
-      test:
-        - CMD-SHELL
-        - python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 120s
-    deploy:
-      resources:
-        limits:
-          # torch + transformers + inférence : 2G est trop juste.
-          memory: 4G
 
 volumes:
   pgdata:

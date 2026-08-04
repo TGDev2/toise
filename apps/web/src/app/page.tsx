@@ -27,9 +27,9 @@ const demoListItems = [
 
 const steps = [
   {
-    title: 'Photographiez votre pièce',
+    title: 'Mesurez votre pièce',
     description:
-      "L'analyse photo (bêta) pré-remplit les dimensions : murs, sol, plafond, ouvertures. Vous pouvez aussi tout saisir à la main.",
+      'Longueur, largeur, hauteur, ouvertures : la saisie guidée gère les pièces en L, T ou U et déduit portes et fenêtres.',
   },
   {
     title: 'Décrivez vos travaux',
@@ -65,9 +65,9 @@ const proofPoints = [
       'Portes et fenêtres sont soustraites des surfaces à traiter, pièce par pièce. C’est souvent là que se cache le pot de trop.',
   },
   {
-    title: 'Honnêtes sur la photo',
+    title: 'Des pièces réelles, pas des rectangles',
     description:
-      'L’analyse photo est en bêta : chaque mesure est affichée avec son niveau de confiance et reste corrigeable en un clic. Nous publierons la précision mesurée sur de vrais chantiers.',
+      'Formes en L, T ou U, ouvertures déduites et zones à exclure : la saisie colle à la pièce telle qu’elle est, pas à une approximation rectangulaire.',
   },
 ];
 
@@ -122,7 +122,7 @@ export default function HomePage() {
         <section className="mt-6 grid items-center gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:gap-14">
           <div>
             <p className="inline-flex items-center rounded-full border border-emerald-900/10 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-900">
-              Estimation de matériaux par photo
+              Estimation de matériaux précise
             </p>
 
             <h1 className="mt-6 text-4xl font-semibold leading-tight text-stone-950 sm:text-5xl">
@@ -131,8 +131,8 @@ export default function HomePage() {
 
             <p className="mt-5 max-w-xl text-lg leading-8 text-stone-700">
               Sur un chantier amateur, une part des pots, cartons et rouleaux
-              finit à la cave. Chiffréo photographie votre pièce, calcule les
-              quantités exactes — ouvertures déduites, pertes de coupe, couches —
+              finit à la cave. Chiffréo calcule les quantités exactes à partir
+              de vos mesures — ouvertures déduites, pertes de coupe, couches —
               et génère votre liste d&apos;achats chiffrée.
             </p>
 
@@ -202,7 +202,7 @@ export default function HomePage() {
         {/* Parcours */}
         <section className="mt-24">
           <h2 className="max-w-2xl text-3xl font-semibold text-stone-950">
-            De la photo à la liste d&apos;achats en quatre étapes
+            De la mesure à la liste d&apos;achats en quatre étapes
           </h2>
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {steps.map((step, index) => (

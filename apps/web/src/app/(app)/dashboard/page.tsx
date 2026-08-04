@@ -122,7 +122,7 @@ export default function DashboardPage() {
           name: form.name.trim(),
           room_name: form.room_name.trim(),
         });
-        router.push(`/projects/${created.id}/photos`);
+        router.push(`/projects/${created.id}/dimensions`);
         return;
       }
 

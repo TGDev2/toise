@@ -1,16 +1,19 @@
 /**
  * Le tunnel « devis-minute » (PRO-5).
  *
- * Les six écrans qui mènent d'une photo prise chez le client à un devis PDF
- * existaient déjà, mais comme six pages indépendantes : chacune réimplémentait
+ * Les cinq écrans qui mènent de la mesure d'une pièce à un devis PDF
+ * existaient déjà, mais comme des pages indépendantes : chacune réimplémentait
  * son lien retour et aucune n'indiquait où l'on en était ni ce qu'il restait.
+ *
+ * L'étape photo/analyse automatique a été retirée du tunnel (ADR 0001 D2, le
+ * service de vision par ordinateur est débranché de la production) : la
+ * saisie manuelle des dimensions est désormais la première étape.
  *
  * Source unique de vérité de l'enchaînement, pour que `FlowProgress` et les
  * pages elles-mêmes ne puissent pas diverger sur l'ordre ou les libellés.
  */
 
 export const QUOTE_FLOW_STEPS = [
-  { key: 'photos', label: 'Photos', segment: 'photos' },
   { key: 'dimensions', label: 'Mesures', segment: 'dimensions' },
   { key: 'work', label: 'Travaux', segment: 'work-selection' },
   { key: 'estimate', label: 'Estimation', segment: 'estimate' },

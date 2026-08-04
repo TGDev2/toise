@@ -42,6 +42,11 @@ export default () => ({
     token: process.env.CV_SERVICE_TOKEN ?? '',
     // L'inférence CPU sur 3-5 photos peut dépasser 60 s : défaut à 120 s.
     timeoutMs: parseInt(process.env.CV_SERVICE_TIMEOUT_MS ?? '120000', 10),
+    // Débranché de la production par défaut (ADR 0001 D2) : le service n'est
+    // plus dans docker-compose.prod.yml. Coupe-circuit indépendant de la gate
+    // DB `cv_analysis`, pour que le pipeline reste fermé même si la gate est
+    // un jour réactivée par erreur.
+    enabled: process.env.CV_ENABLED === 'true',
   },
   stripe: {
     secretKey: process.env.STRIPE_SECRET_KEY,

@@ -4,7 +4,9 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, LessThan, QueryFailedError, Repository } from 'typeorm';
 import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
@@ -44,6 +46,9 @@ const STALE_JOB_MESSAGE =
 /** Code PostgreSQL d'une violation de contrainte d'unicité. */
 const PG_UNIQUE_VIOLATION = '23505';
 
+const CV_DISABLED_MESSAGE =
+  "L'analyse photo par intelligence artificielle n'est pas disponible actuellement. Merci de saisir les dimensions manuellement.";
+
 function isUniqueViolation(err: unknown): boolean {
   return (
     err instanceof QueryFailedError &&
@@ -62,6 +67,7 @@ export class AnalysisService {
     private readonly projectsService: ProjectsService,
     private readonly photosService: PhotosService,
     private readonly cvAccuracyService: CvAccuracyService,
+    private readonly configService: ConfigService,
   ) {}
 
   async startAnalysis(
@@ -69,6 +75,12 @@ export class AnalysisService {
     organizationId: string,
     referenceObject?: CvAnalysisRequest['reference_object'],
   ): Promise<AnalysisJob> {
+    // Coupe-circuit infra (ADR 0001 D2), indépendant de la gate DB
+    // `cv_analysis` : le service n'est plus déployé en production.
+    if (!this.configService.get<boolean>('cvService.enabled', false)) {
+      throw new ServiceUnavailableException(CV_DISABLED_MESSAGE);
+    }
+
     // Verify project ownership
     await this.projectsService.findOneForOrg(projectId, organizationId);
 

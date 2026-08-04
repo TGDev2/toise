@@ -9,7 +9,7 @@ import { COVERED_TRADES, TRADES_NOT_COVERED } from '@/lib/work-types';
 export const metadata: Metadata = {
   title: 'Chiffréo pour les métiers de finition',
   description:
-    'Peintre, carreleur, plaquiste, solier : photo de la pièce chez le client, quantités calculées, devis PDF conforme envoyé sur place. Contractor dès 19 €/mois.',
+    'Peintre, carreleur, plaquiste, solier : mesures prises chez le client, quantités calculées, devis PDF conforme envoyé sur place. Contractor dès 19 €/mois.',
   alternates: { canonical: '/artisans' },
   openGraph: {
     title: 'Chiffréo pour les métiers de finition',
@@ -28,9 +28,9 @@ const CONTRACTOR_PLANS = plansForAudience(AUDIENCE);
 
 const QUOTE_FLOW = [
   {
-    title: 'Photo de la pièce chez le client',
+    title: 'Mesures prises chez le client',
     description:
-      'L’analyse photo (bêta) pré-remplit murs, sol, plafond et ouvertures. Chaque mesure reste corrigeable en un geste, sur place.',
+      'Longueur, largeur, hauteur : la saisie guidée gère les pièces en L, T ou U, les ouvertures et les zones à exclure, sur place.',
   },
   {
     title: 'Quantités et marge matériaux calculées',
@@ -87,7 +87,7 @@ export default function ArtisansPage() {
             </h1>
 
             <p className="mt-5 max-w-xl text-lg leading-8 text-stone-700">
-              Photo de la pièce, estimation des matériaux, devis PDF conforme
+              Mesures de la pièce, estimation des matériaux, devis PDF conforme
               (TVA, HT/TTC, mentions) envoyé avant de repartir. Fichier clients
               et facturation suivent derrière.
             </p>

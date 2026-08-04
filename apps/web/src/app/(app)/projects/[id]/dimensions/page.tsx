@@ -1,8 +1,6 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { useFeatureGate } from '@/hooks/useFeatureGate';
-import { ProBadge } from '@/components/paywall/ProBadge';
 import { apiGet, apiPost, apiPut, apiDelete, apiPatch } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { readGuestDrafts, writeGuestDrafts } from '@/lib/guest-drafts';
@@ -11,11 +9,6 @@ import type { Room } from '@/lib/room-types';
 import { DimensionsForm } from '@/components/dimensions/DimensionsForm';
 import { FlowProgress } from '@/components/quote-flow/FlowProgress';
 import { RoomSwitcher } from '@/components/rooms/RoomSwitcher';
-import { AnalyzeButton } from '@/components/analysis/AnalyzeButton';
-import { AnalysisResultPanel } from '@/components/analysis/AnalysisResultPanel';
-import { ReferenceObjectPrompt } from '@/components/analysis/ReferenceObjectPrompt';
-import { useAnalysis } from '@/hooks/useAnalysis';
-import type { ReferenceType } from '@/hooks/useAnalysis';
 import { Alert, Skeleton } from '@/components/ui';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -49,11 +42,6 @@ export default function DimensionsPage() {
   const [roomBusy, setRoomBusy] = useState(false);
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
-  const [hasPhotos, setHasPhotos] = useState(false);
-  const [showManualForm, setShowManualForm] = useState(false);
-
-  const analysis = useAnalysis(projectId);
-  const cvGate = useFeatureGate('cv_analysis');
 
   const roomParam = searchParams.get('room');
   const activeRoomId = useMemo(() => {
@@ -61,7 +49,6 @@ export default function DimensionsPage() {
     if (roomParam && rooms.some((r) => r.id === roomParam)) return roomParam;
     return rooms[0].id;
   }, [rooms, roomParam]);
-  const isDefaultRoom = rooms.length > 0 && activeRoomId === rooms[0].id;
   const isReadOnly = false;
 
   const seedFromRoom = useCallback((room: Room | undefined) => {
@@ -91,7 +78,6 @@ export default function DimensionsPage() {
       })),
     );
     setExistingOpeningIds(ops.map((o) => o.id));
-    setShowManualForm(false);
   }, []);
 
   useEffect(() => {
@@ -110,16 +96,6 @@ export default function DimensionsPage() {
           ]);
           setProjectName(project.name);
           setRooms(roomList);
-
-          // Check if project has photos
-          try {
-            const photos = await apiGet<{ id: string }[]>(
-              `/projects/${projectId}/photos`,
-            );
-            setHasPhotos(photos.length > 0);
-          } catch {
-            // Photos check is non-critical
-          }
         } else {
           const project = readGuestDrafts().find((p) => p.id === projectId);
           if (project) {
@@ -162,64 +138,6 @@ export default function DimensionsPage() {
     seededRoomIdRef.current = activeRoomId;
     seedFromRoom(room);
   }, [appUser, activeRoomId, rooms, seedFromRoom]);
-
-  // Auto-trigger analysis from ?analyze=true query param (default room only)
-  useEffect(() => {
-    if (
-      loaded &&
-      hasPhotos &&
-      cvGate.allowed &&
-      searchParams.get('analyze') === 'true' &&
-      analysis.status === 'idle' &&
-      !initialDims &&
-      isDefaultRoom
-    ) {
-      analysis.startAnalysis();
-    }
-  }, [
-    loaded,
-    hasPhotos,
-    cvGate.allowed,
-    searchParams,
-    analysis,
-    initialDims,
-    isDefaultRoom,
-  ]);
-
-  const handleAcceptCvDimensions = useCallback(() => {
-    if (analysis.dimensions) {
-      setInitialDims({ ...analysis.dimensions, source: 'cv' });
-      if (analysis.detectedOpenings.length > 0) {
-        setInitialOpenings(
-          analysis.detectedOpenings.map((o) => ({
-            type: o.type,
-            width_cm: o.width_cm,
-            height_cm: o.height_cm,
-            count: o.count,
-          })),
-        );
-      }
-      setShowManualForm(true);
-    }
-  }, [analysis.dimensions, analysis.detectedOpenings]);
-
-  const handleManualFallback = useCallback(() => {
-    setShowManualForm(true);
-    analysis.reset();
-  }, [analysis]);
-
-  const handleRetryAnalysis = useCallback(async () => {
-    analysis.reset();
-    await analysis.startAnalysis();
-  }, [analysis]);
-
-  const handleRetryWithReference = useCallback(
-    async (type: ReferenceType) => {
-      analysis.reset();
-      await analysis.startAnalysis({ type });
-    },
-    [analysis],
-  );
 
   const goToRoom = useCallback(
     (roomId: string) => {
@@ -362,13 +280,6 @@ export default function DimensionsPage() {
     );
   }
 
-  // Determine if we should show the analysis section (default room only)
-  const canUseCv = cvGate.allowed;
-  const showAnalysis =
-    appUser && hasPhotos && !showManualForm && !initialDims && isDefaultRoom;
-  const showResult =
-    analysis.status === 'completed' && analysis.dimensions && !showManualForm;
-
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
       <FlowProgress
@@ -401,103 +312,27 @@ export default function DimensionsPage() {
         </Alert>
       )}
 
-      {/* CV Analysis Section */}
-      {showAnalysis && canUseCv && (
-        <div className="mb-6">
-          {analysis.status === 'no_reference' ? (
-            <ReferenceObjectPrompt
-              onRetry={handleRetryAnalysis}
-              onRetryWithReference={handleRetryWithReference}
-              onManualFallback={handleManualFallback}
-            />
-          ) : (
-            <AnalyzeButton
-              status={analysis.status}
-              progressPct={analysis.progressPct}
-              hasPhotos={hasPhotos}
-              onStart={analysis.startAnalysis}
-              onManualFallback={handleManualFallback}
-            />
-          )}
-        </div>
-      )}
-
-      {/* CV Analysis Gated (Pro feature) */}
-      {showAnalysis && !canUseCv && (
-        <div className="mb-6">
-          <div className="rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-semibold text-stone-950">
-                    Analyse automatique
-                  </h3>
-                  <ProBadge />
-                </div>
-                <p className="mt-2 text-sm text-stone-600">
-                  Détectez automatiquement les dimensions de votre pièce à partir de vos photos.
-                </p>
-              </div>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => cvGate.guardAction(() => {})}
-                className="rounded-full bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white opacity-75 hover:-translate-y-0.5"
-              >
-                Analyser les photos
-              </button>
-              <button
-                type="button"
-                onClick={handleManualFallback}
-                className="rounded-full border border-stone-300 px-5 py-2.5 text-sm font-semibold text-stone-700 hover:-translate-y-0.5 hover:bg-white"
-              >
-                Saisie manuelle
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Analysis Result */}
-      {showResult && analysis.dimensions && (
-        <div className="mb-6">
-          <AnalysisResultPanel
-            lengthCm={analysis.dimensions.length_cm}
-            widthCm={analysis.dimensions.width_cm}
-            heightCm={analysis.dimensions.height_cm}
-            confidence={analysis.confidence}
-            lengthUncertaintyCm={analysis.dimensions.length_cm_uncertainty}
-            widthUncertaintyCm={analysis.dimensions.width_cm_uncertainty}
-            heightUncertaintyCm={analysis.dimensions.height_cm_uncertainty}
-            openings={analysis.detectedOpenings}
-            openingDetector={analysis.openingDetector}
-            onAccept={handleAcceptCvDimensions}
-            onEdit={handleManualFallback}
-          />
-        </div>
-      )}
-
-      {/* Manual Dimensions Form */}
-      {(showManualForm || initialDims || !showAnalysis) && (
-        <section className="rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
-          <DimensionsForm
-            key={activeRoomId ?? 'guest'}
-            initialLengthCm={initialDims?.length_cm ?? 0}
-            initialWidthCm={initialDims?.width_cm ?? 0}
-            initialHeightCm={initialDims?.height_cm ?? 0}
-            initialOpenings={initialOpenings}
-            initialSegments={initialDims?.segments ?? undefined}
-            initialExclusions={initialExclusions}
-            sourceIsCv={initialDims?.source === 'cv'}
-            lengthUncertaintyCm={initialDims?.length_cm_uncertainty}
-            widthUncertaintyCm={initialDims?.width_cm_uncertainty}
-            heightUncertaintyCm={initialDims?.height_cm_uncertainty}
-            onSave={handleSave}
-            isSaving={isSaving}
-          />
-        </section>
-      )}
+      {/* Saisie manuelle des dimensions — seul chemin (l'analyse photo est
+          débranchée de la production, ADR 0001 D2). `sourceIsCv` reste
+          transmis pour afficher, le cas échéant, la provenance de dimensions
+          déjà persistées par une analyse antérieure. */}
+      <section className="rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
+        <DimensionsForm
+          key={activeRoomId ?? 'guest'}
+          initialLengthCm={initialDims?.length_cm ?? 0}
+          initialWidthCm={initialDims?.width_cm ?? 0}
+          initialHeightCm={initialDims?.height_cm ?? 0}
+          initialOpenings={initialOpenings}
+          initialSegments={initialDims?.segments ?? undefined}
+          initialExclusions={initialExclusions}
+          sourceIsCv={initialDims?.source === 'cv'}
+          lengthUncertaintyCm={initialDims?.length_cm_uncertainty}
+          widthUncertaintyCm={initialDims?.width_cm_uncertainty}
+          heightUncertaintyCm={initialDims?.height_cm_uncertainty}
+          onSave={handleSave}
+          isSaving={isSaving}
+        />
+      </section>
     </main>
   );
 }

@@ -109,7 +109,7 @@ export function ContractorDashboard() {
         name: form.name.trim(),
         room_name: form.room_name.trim(),
       });
-      router.push(`/projects/${created.id}/photos`);
+      router.push(`/projects/${created.id}/dimensions`);
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Impossible de créer le projet'));
     }
@@ -118,11 +118,12 @@ export function ContractorDashboard() {
   /**
    * Entrée du parcours « devis-minute » (PRO-5).
    *
-   * Chez le client, nommer le chantier avant de pouvoir photographier est une
-   * étape sans valeur : le nom se corrige à froid, la photo non — le client
+   * Chez le client, nommer le chantier avant de pouvoir mesurer est une
+   * étape sans valeur : le nom se corrige à froid, la mesure non — le client
    * attend. On crée donc le chantier avec un libellé daté et on part droit sur
-   * l'appareil photo. Le composer « Nouveau chantier » reste là pour qui veut
-   * nommer d'emblée.
+   * la saisie des dimensions (l'analyse photo automatique est débranchée de
+   * la production, ADR 0001 D2 — la saisie manuelle est le seul chemin). Le
+   * composer « Nouveau chantier » reste là pour qui veut nommer d'emblée.
    */
   const handleQuickQuote = async () => {
     setError('');
@@ -137,7 +138,7 @@ export function ContractorDashboard() {
         name: `Devis du ${stamp}`,
         room_name: 'Pièce 1',
       });
-      router.push(`/projects/${created.id}/photos`);
+      router.push(`/projects/${created.id}/dimensions`);
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Impossible de démarrer le devis'));
       setQuickStarting(false);

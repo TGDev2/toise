@@ -53,10 +53,12 @@ describe('ContractorDashboard', () => {
     });
   });
 
-  // PRO-5 : le pitch n°1 du tier Contractor est « photo chez le client → devis
-  // PDF avant de partir ». Nommer le chantier avant de pouvoir photographier
-  // est une étape sans valeur pendant que le client attend.
-  it('starts the devis-minute flow straight at the camera', async () => {
+  // PRO-5 : le pitch n°1 du tier Contractor est « mesure chez le client → devis
+  // PDF avant de partir ». Nommer le chantier avant de pouvoir mesurer
+  // est une étape sans valeur pendant que le client attend. L'analyse photo
+  // automatique est débranchée de la production (ADR 0001 D2) : la saisie
+  // manuelle des dimensions est le seul chemin.
+  it('starts the devis-minute flow straight at manual dimensions entry', async () => {
     mockApiPost.mockResolvedValue({ id: 'new-project' } as never);
     render(<ContractorDashboard />);
 
@@ -67,7 +69,7 @@ describe('ContractorDashboard', () => {
         '/projects',
         expect.objectContaining({ room_name: 'Pièce 1' }),
       );
-      expect(mockPush).toHaveBeenCalledWith('/projects/new-project/photos');
+      expect(mockPush).toHaveBeenCalledWith('/projects/new-project/dimensions');
     });
   });
 

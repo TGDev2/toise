@@ -8,10 +8,9 @@ import {
 } from '../quote-flow';
 
 describe('quote-flow', () => {
-  it('describes the six steps from photo to quote', () => {
-    expect(QUOTE_FLOW_TOTAL).toBe(6);
+  it('describes the five steps from dimensions to quote', () => {
+    expect(QUOTE_FLOW_TOTAL).toBe(5);
     expect(QUOTE_FLOW_STEPS.map((s) => s.key)).toEqual([
-      'photos',
       'dimensions',
       'work',
       'estimate',
@@ -21,7 +20,7 @@ describe('quote-flow', () => {
   });
 
   it('numbers steps from 1 for display', () => {
-    expect(quoteFlowStepNumber('photos')).toBe(1);
+    expect(quoteFlowStepNumber('dimensions')).toBe(1);
     expect(quoteFlowStepNumber('quote')).toBe(QUOTE_FLOW_TOTAL);
   });
 
@@ -47,7 +46,6 @@ describe('quote-flow', () => {
 
   it('drops the Devis step from the reachable list when the tier lacks export_devis', () => {
     expect(quoteFlowReachableSteps(false).map((s) => s.key)).toEqual([
-      'photos',
       'dimensions',
       'work',
       'estimate',
@@ -55,7 +53,7 @@ describe('quote-flow', () => {
     ]);
   });
 
-  it('keeps all six steps reachable when the tier has export_devis', () => {
+  it('keeps all five steps reachable when the tier has export_devis', () => {
     expect(quoteFlowReachableSteps(true)).toEqual(QUOTE_FLOW_STEPS);
   });
 });

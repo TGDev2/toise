@@ -1,5 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { ConfigService } from '@nestjs/config';
+import { ServiceUnavailableException } from '@nestjs/common';
 import { AnalysisService } from './analysis.service';
 import { AnalysisJob, AnalysisJobStatus } from './entities/analysis-job.entity';
 import { CvClientService } from './cv-client/cv-client.service';
@@ -65,6 +67,7 @@ const projectsServiceMock = {
 };
 const photosServiceMock = { getProjectPhotos: jest.fn() };
 const cvAccuracyServiceMock = { getReport: jest.fn() };
+const configServiceMock = { get: jest.fn() };
 
 describe('AnalysisService', () => {
   let service: AnalysisService;
@@ -75,6 +78,10 @@ describe('AnalysisService', () => {
     projectsServiceMock.findOneForOrg.mockResolvedValue({ id: 'project-uuid' });
     projectsServiceMock.applyCvAnalysis.mockResolvedValue(undefined);
     cvAccuracyServiceMock.getReport.mockResolvedValue(makeReport());
+    // `processAnalysis`/`getJobStatus` ne passent pas par le coupure-circuit
+    // CV_ENABLED (posé dans `startAnalysis`) : ce défaut à `true` ne les
+    // affecte pas, seul le describe dédié ci-dessous le fait varier.
+    configServiceMock.get.mockReturnValue(true);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -84,6 +91,7 @@ describe('AnalysisService', () => {
         { provide: ProjectsService, useValue: projectsServiceMock },
         { provide: PhotosService, useValue: photosServiceMock },
         { provide: CvAccuracyService, useValue: cvAccuracyServiceMock },
+        { provide: ConfigService, useValue: configServiceMock },
       ],
     }).compile();
 
@@ -324,6 +332,25 @@ describe('AnalysisService', () => {
         width_cm: 310,
         height_cm: 250,
       });
+    });
+  });
+
+  describe('startAnalysis (coupure-circuit CV_ENABLED)', () => {
+    it('refuse proprement quand le service CV est débranché, sans toucher au projet ni au job', async () => {
+      configServiceMock.get.mockReturnValue(false);
+
+      await expect(
+        service.startAnalysis('project-uuid', 'user-uuid'),
+      ).rejects.toBeInstanceOf(ServiceUnavailableException);
+      await expect(
+        service.startAnalysis('project-uuid', 'user-uuid'),
+      ).rejects.toThrow(
+        "L'analyse photo par intelligence artificielle n'est pas disponible actuellement. Merci de saisir les dimensions manuellement.",
+      );
+
+      expect(projectsServiceMock.findOneForOrg).not.toHaveBeenCalled();
+      expect(photosServiceMock.getProjectPhotos).not.toHaveBeenCalled();
+      expect(cvClientMock.analyze).not.toHaveBeenCalled();
     });
   });
 });

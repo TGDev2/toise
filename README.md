@@ -14,15 +14,18 @@ Application d'estimation de matériaux pour projets de rénovation. Scannez votr
 ┌─────────────────────────────────────────────┐
 │     Backend API (NestJS 11 + TypeORM)       │
 │       http://localhost:3001/api/v1          │
-└────┬──────────────────────────┬─────────────┘
-     │ HTTP                     │ SQL
-     ▼                          ▼
-┌──────────────────┐  ┌──────────────────┐
-│ CV Service       │  │ PostgreSQL 16    │
-│ (Python FastAPI) │  │                  │
-│ :8000            │  │                  │
-└──────────────────┘  └──────────────────┘
+└────────────────┬────────────────────────────┘
+                 │ SQL
+                 ▼
+┌─────────────────────────────────────────────┐
+│              PostgreSQL 16                   │
+└─────────────────────────────────────────────┘
 ```
+
+`apps/cv-service` (vision par ordinateur) reste dans le dépôt mais n'est plus
+déployé en production (débranché, voir
+[`docs/adr/0001-cible-et-perimetre-v1.md`](docs/adr/0001-cible-et-perimetre-v1.md)
+pour la condition de réouverture).
 
 **3 applications** dans un monorepo pnpm :
 
@@ -30,7 +33,7 @@ Application d'estimation de matériaux pour projets de rénovation. Scannez votr
 |-----|-------|------|
 | `apps/api` | NestJS 11, TypeORM, PostgreSQL | API REST, moteur d'estimation, auth Firebase, paiements Stripe |
 | `apps/web` | Next.js 16, React 19, Tailwind CSS 4 | Interface utilisateur web |
-| `apps/cv-service` | Python FastAPI, Depth Anything V2, YOLOv8 | Analyse de photos par vision par ordinateur |
+| `apps/cv-service` | Python FastAPI, Depth Anything V2, YOLOv8 | Analyse de photos par vision par ordinateur — **débranché de la prod**, voir ci-dessus |
 
 ## Prérequis
 
@@ -109,7 +112,7 @@ Chiffreo/
 ├── apps/
 │   ├── api/                # Backend NestJS (16 modules, 27 migrations)
 │   ├── web/                # Frontend Next.js (App Router)
-│   └── cv-service/         # Microservice Python (Depth Anything V2 + YOLOv8)
+│   └── cv-service/         # Microservice Python — débranché de la prod (ADR 0001)
 ├── docs/
 │   ├── CONTEXT.md          # Brief produit (personas, epics, modèle économique)
 │   ├── ARCHITECTURE.md     # Architecture technique détaillée
@@ -138,7 +141,8 @@ Copier `.env.example` vers `.env` et renseigner les valeurs :
 | `FIREBASE_CLIENT_EMAIL` | Email du service account | — |
 | `FIREBASE_PRIVATE_KEY` | Clé privée Firebase | — |
 | `NEXT_PUBLIC_FIREBASE_*` | Config Firebase client (4 variables) | — |
-| `CV_SERVICE_URL` | URL du CV service | `http://localhost:8000` |
+| `CV_ENABLED` | Active le pipeline d'analyse photo (débranché en prod, ADR 0001) | `false` |
+| `CV_SERVICE_URL` | URL du CV service (utile seulement si `CV_ENABLED=true`) | `http://localhost:8000` |
 | `CV_SERVICE_TIMEOUT_MS` | Timeout du CV service | `60000` |
 | `NEXT_PUBLIC_API_URL` | URL de l'API pour le frontend | `http://localhost:3001/api/v1` |
 | `MANOMANO_ENABLED` | Activer l'adaptateur d'affiliation ManoMano | `false` |

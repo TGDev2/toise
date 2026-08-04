@@ -5,8 +5,11 @@ avec Docker Compose et Caddy comme reverse proxy (TLS automatique).
 
 ## Prérequis
 
-- Un VPS Linux Ubuntu/Debian (4 Go de RAM minimum — le service CV consomme
-  jusqu'à 4 Go pendant l'inférence ; 8 Go recommandés, ex. Hetzner CX32).
+- Un VPS Linux Ubuntu/Debian (2 Go de RAM minimum ; 4 Go recommandés, ex.
+  Hetzner CX22). Le service de vision par ordinateur (`apps/cv-service`),
+  qui portait l'essentiel de cette exigence, est débranché de la production
+  (ADR 0001 §D2) — il reste dans le dépôt, condition de réouverture au §5.2
+  de l'ADR.
 - Un nom de domaine pointant vers le VPS via des enregistrements DNS `A` (et
   `AAAA` en IPv6) — ex. `chiffreo.fr` et `api.chiffreo.fr`.
 - Exécuter [`docs/deploy/provision.sh`](deploy/provision.sh) sur le VPS neuf
@@ -56,16 +59,12 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 - Les **migrations TypeORM s'exécutent automatiquement** au démarrage du
   conteneur API (avant `node dist/main.js`).
-- Premier démarrage du service CV : le modèle de profondeur est déjà embarqué
-  dans l'image (pré-téléchargé au build), mais l'initialisation peut prendre
-  1 à 2 minutes (`start_period` de 120 s sur le healthcheck).
 
 Vérifier l'état :
 
 ```bash
 docker compose -f docker-compose.prod.yml ps          # tous "healthy"
 curl -s localhost:3001/api/v1/health                  # {"status":"ok"}
-curl -s localhost:8000/health                         # état des modèles CV
 ```
 
 Les ports 3000 (web) et 3001 (api) ne sont exposés que sur `127.0.0.1` :
@@ -121,6 +120,12 @@ sans eux, les sauvegardes vivent sur le disque qu'elles protègent et un échec
 cron reste muet. Voir `BACKUP.md` §4 et §5.
 
 ## 6. Déploiement continu (CD)
+
+> ⚠️ `cv-service` a été retiré de `docker-compose.prod.yml` (débranché, ADR
+> 0001 §D2), mais `.github/workflows/deploy.yml` construit et déploie encore
+> une image `cv-service` à ce jour — son `docker compose up -d ... cv-service`
+> échouera sur le VPS (service inconnu) tant que ce workflow n'est pas mis à
+> jour en conséquence (backlog `docs/BACKLOG_V1.md` §E3-2).
 
 Une fois les sections 1 à 3 faites au moins une fois (VPS provisionné, `.env`
 renseigné, premier `docker compose up -d --build` réussi), les mises à jour sont
@@ -182,8 +187,8 @@ durable n'est stocké sur le VPS.
 
 ```bash
 # Sur le VPS, dans /opt/chiffreo :
-IMAGE_TAG=v1.0.0 docker compose -f docker-compose.prod.yml pull api web cv-service
-IMAGE_TAG=v1.0.0 docker compose -f docker-compose.prod.yml up -d api web cv-service
+IMAGE_TAG=v1.0.0 docker compose -f docker-compose.prod.yml pull api web
+IMAGE_TAG=v1.0.0 docker compose -f docker-compose.prod.yml up -d api web
 ```
 
 ### Limites connues
@@ -195,6 +200,10 @@ IMAGE_TAG=v1.0.0 docker compose -f docker-compose.prod.yml up -d api web cv-serv
   épingle toujours `IMAGE_TAG` explicitement.
 
 ### Poids du modèle portes/fenêtres (`cv-service`)
+
+> ℹ️ `cv-service` est débranché de la production (ADR 0001 §D2) : cette
+> sous-section documente son ancien flux de déploiement, gardée pour
+> référence et pour la condition de réouverture (ADR §5.2).
 
 Les poids YOLO portes/fenêtres (`models/door-window-yolov8n.pt`) ne sont **pas
 dans git** : ce sont des artefacts de GitHub Release (tags `cv-model-vN`,
@@ -292,6 +301,6 @@ panne, webhook Stripe qui échoue) ne se voit qu'en allant lire les logs.
 |---|---|
 | L'API refuse de démarrer avec « Configuration invalide » | une variable requise manque dans `.env` (le message liste lesquelles) |
 | Checkout Stripe → 503 | `STRIPE_SECRET_KEY` absente (l'API tourne mais les paiements sont désactivés) |
-| Analyse CV systématiquement en échec | vérifier `docker logs chiffreo-cv` ; augmenter `CV_SERVICE_TIMEOUT_MS` ou la limite mémoire (4 G par défaut) |
+| Analyse photo refusée avec un message d'indisponibilité | comportement attendu : `CV_ENABLED=false` par défaut (débranché, ADR 0001 §D2), l'API refuse proprement toute demande d'analyse — la saisie manuelle des dimensions est le seul chemin en production |
 | Images de la galerie cassées | `NEXT_PUBLIC_API_URL` au build web ne correspond pas à l'URL publique de l'API |
 | Rien n'apparaît dans Sentry | `SENTRY_DSN`/`NEXT_PUBLIC_SENTRY_DSN` absente (voir le warn au boot de l'API) ou DSN erroné — le SDK avale silencieusement les échecs d'envoi, jamais d'erreur bruyante |
