@@ -13,6 +13,11 @@ import { apiPost, apiPut } from '@/lib/api';
 import type { CalculatorConfig, CalculatorVariant } from '@/lib/calculators';
 import { getErrorMessage } from '@/lib/errors';
 import type { EstimationLineItem } from '@/lib/estimation-types';
+import {
+  readGuestDrafts,
+  writeGuestDrafts,
+  type GuestProjectDraft,
+} from '@/lib/guest-drafts';
 import type { Opening, RectSegment, SurfaceExclusion } from '@/lib/surface';
 
 interface PublicCalculatorProps {
@@ -35,8 +40,6 @@ interface SavedDimensions {
   segments: RectSegment[];
   exclusions: SurfaceExclusion[];
 }
-
-const LOCAL_PROJECTS_KEY = 'chiffreo_local_projects';
 
 function defaultParamValues(variant: CalculatorVariant): Record<string, string> {
   const values: Record<string, string> = {};
@@ -208,7 +211,7 @@ export function PublicCalculator({ config }: PublicCalculatorProps) {
         return;
       }
 
-      const draft = {
+      const draft: GuestProjectDraft = {
         id:
           typeof crypto !== 'undefined' && 'randomUUID' in crypto
             ? crypto.randomUUID()
@@ -226,18 +229,7 @@ export function PublicCalculator({ config }: PublicCalculatorProps) {
         updated_at: new Date().toISOString(),
       };
 
-      let existing: unknown[] = [];
-      try {
-        const raw = localStorage.getItem(LOCAL_PROJECTS_KEY);
-        const parsed = raw ? JSON.parse(raw) : [];
-        existing = Array.isArray(parsed) ? parsed : [];
-      } catch {
-        existing = [];
-      }
-      localStorage.setItem(
-        LOCAL_PROJECTS_KEY,
-        JSON.stringify([draft, ...existing]),
-      );
+      writeGuestDrafts([draft, ...readGuestDrafts()]);
 
       if (!isGuest) {
         await startGuestSession();

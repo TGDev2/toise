@@ -9,41 +9,15 @@ import { useFeatureGates } from '@/contexts/FeatureGateContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import { apiDelete, apiGet, apiPost, ApiError } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
+import {
+  readGuestDrafts,
+  writeGuestDrafts,
+  type GuestProjectDraft,
+} from '@/lib/guest-drafts';
 import type { PaginatedProjects, ProjectSummary } from '@/lib/project-types';
 import { WORK_TYPE_LABELS } from '@/lib/project-types';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-
-type WorkType = 'painting' | 'tiling' | 'flooring' | 'partition';
-
-interface ProjectDraft {
-  id: string;
-  name: string;
-  room_name: string;
-  work_type: WorkType;
-  length_m?: number;
-  width_m?: number;
-  height_m?: number;
-  updated_at: string;
-}
-
-const STORAGE_KEY = 'chiffreo_local_projects';
-
-function readStoredProjects(): ProjectDraft[] {
-  if (typeof window === 'undefined') return [];
-  const rawProjects = localStorage.getItem(STORAGE_KEY);
-  if (!rawProjects) return [];
-  try {
-    const parsedProjects = JSON.parse(rawProjects);
-    return Array.isArray(parsedProjects) ? parsedProjects : [];
-  } catch {
-    return [];
-  }
-}
-
-function persistProjects(projects: ProjectDraft[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
-}
 
 function formatProjectDate(value: string): string {
   return new Intl.DateTimeFormat('fr-FR', {
@@ -61,7 +35,7 @@ export default function DashboardPage() {
   const router = useRouter();
 
   // Guest state (localStorage)
-  const [guestProjects, setGuestProjects] = useState<ProjectDraft[]>([]);
+  const [guestProjects, setGuestProjects] = useState<GuestProjectDraft[]>([]);
 
   // Authenticated state (API)
   const [apiProjects, setApiProjects] = useState<ProjectSummary[]>([]);
@@ -92,7 +66,7 @@ export default function DashboardPage() {
   // Load guest projects
   useEffect(() => {
     if (isGuest) {
-      setGuestProjects(readStoredProjects());
+      setGuestProjects(readGuestDrafts());
     }
   }, [isGuest]);
 
@@ -152,19 +126,19 @@ export default function DashboardPage() {
         return;
       }
 
-      const project: ProjectDraft = {
+      const project: GuestProjectDraft = {
         id:
           typeof crypto !== 'undefined' && 'randomUUID' in crypto
             ? crypto.randomUUID()
             : `${Date.now()}`,
         name: form.name.trim(),
         room_name: form.room_name.trim(),
-        work_type: 'painting' as WorkType,
+        work_type: 'painting',
         updated_at: new Date().toISOString(),
       };
 
       const nextProjects = [project, ...guestProjects];
-      persistProjects(nextProjects);
+      writeGuestDrafts(nextProjects);
       setGuestProjects(nextProjects);
       router.push(`/projects/${project.id}/dimensions`);
     } catch (err: unknown) {

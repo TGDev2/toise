@@ -3,6 +3,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { apiGet, apiPost } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
+import { readGuestDrafts, writeGuestDrafts } from '@/lib/guest-drafts';
 import type {
   WorkTypeRef,
   WorkItemSelection,
@@ -14,17 +15,6 @@ import { FlowProgress } from '@/components/quote-flow/FlowProgress';
 import { RoomSwitcher } from '@/components/rooms/RoomSwitcher';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-
-const STORAGE_KEY = 'chiffreo_local_projects';
-
-interface LocalProject {
-  id: string;
-  name: string;
-  room_name: string;
-  work_type?: string;
-  work_items?: WorkItemSelection[];
-  updated_at: string;
-}
 
 export default function WorkSelectionPage() {
   const { appUser, isGuest, isLoading } = useAuth();
@@ -69,9 +59,7 @@ export default function WorkSelectionPage() {
           setProjectName(project.name);
           setRooms(roomList);
         } else {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          const projects: LocalProject[] = raw ? JSON.parse(raw) : [];
-          const project = projects.find((p) => p.id === projectId);
+          const project = readGuestDrafts().find((p) => p.id === projectId);
           if (project) {
             setProjectName(project.name);
           }
@@ -121,13 +109,12 @@ export default function WorkSelectionPage() {
           const roomQ = activeRoomId ? `?room=${activeRoomId}` : '';
           await apiPost(`/projects/${projectId}/work-items${roomQ}`, { items });
         } else {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          const projects: LocalProject[] = raw ? JSON.parse(raw) : [];
+          const projects = readGuestDrafts();
           const idx = projects.findIndex((p) => p.id === projectId);
           if (idx !== -1) {
             projects[idx].work_items = items;
             projects[idx].updated_at = new Date().toISOString();
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+            writeGuestDrafts(projects);
           }
         }
         router.push(`/projects/${projectId}/estimate`);

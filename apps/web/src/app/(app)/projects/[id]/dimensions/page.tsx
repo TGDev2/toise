@@ -5,6 +5,7 @@ import { useFeatureGate } from '@/hooks/useFeatureGate';
 import { ProBadge } from '@/components/paywall/ProBadge';
 import { apiGet, apiPost, apiPut, apiDelete, apiPatch } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
+import { readGuestDrafts, writeGuestDrafts } from '@/lib/guest-drafts';
 import type { Opening, RectSegment, SurfaceExclusion } from '@/lib/surface';
 import type { Room } from '@/lib/room-types';
 import { DimensionsForm } from '@/components/dimensions/DimensionsForm';
@@ -19,8 +20,6 @@ import { Alert, Skeleton } from '@/components/ui';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-const STORAGE_KEY = 'chiffreo_local_projects';
-
 interface DimensionsData {
   length_cm: number;
   width_cm: number;
@@ -31,20 +30,6 @@ interface DimensionsData {
   length_cm_uncertainty?: number | null;
   width_cm_uncertainty?: number | null;
   height_cm_uncertainty?: number | null;
-}
-
-interface LocalProject {
-  id: string;
-  name: string;
-  room_name: string;
-  work_type: string;
-  length_m?: number;
-  width_m?: number;
-  height_m?: number;
-  openings?: Opening[];
-  segments?: RectSegment[];
-  exclusions?: SurfaceExclusion[];
-  updated_at: string;
 }
 
 export default function DimensionsPage() {
@@ -136,9 +121,7 @@ export default function DimensionsPage() {
             // Photos check is non-critical
           }
         } else {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          const projects: LocalProject[] = raw ? JSON.parse(raw) : [];
-          const project = projects.find((p) => p.id === projectId);
+          const project = readGuestDrafts().find((p) => p.id === projectId);
           if (project) {
             setProjectName(project.name);
             if (project.length_m && project.width_m && project.height_m) {
@@ -346,8 +329,7 @@ export default function DimensionsPage() {
             ),
           );
         } else {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          const projects: LocalProject[] = raw ? JSON.parse(raw) : [];
+          const projects = readGuestDrafts();
           const idx = projects.findIndex((p) => p.id === projectId);
           if (idx !== -1) {
             projects[idx].length_m = lengthCm / 100;
@@ -357,7 +339,7 @@ export default function DimensionsPage() {
             projects[idx].segments = segments.length > 0 ? segments : undefined;
             projects[idx].exclusions = exclusions.length > 0 ? exclusions : undefined;
             projects[idx].updated_at = new Date().toISOString();
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+            writeGuestDrafts(projects);
           }
         }
         const nextQ = activeRoomId ? `?room=${activeRoomId}` : '';

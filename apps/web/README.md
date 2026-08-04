@@ -158,7 +158,9 @@ Fournit l'état d'authentification à toute l'application. Wrappé dans `layout.
 | `forgotPassword(email)` | Réinitialisation du mot de passe |
 | `syncWithBackend()` | Synchroniser le profil avec le backend |
 
-**Migration des projets guest :** Lors de la conversion d'un compte invité, les projets stockés en `localStorage` (clé `chiffreo_local_projects`) sont automatiquement migrés vers le backend via `migrateLocalProjects()`.
+**Migration des projets guest :** Lors de la conversion d'un compte invité, les projets stockés en `localStorage` sont automatiquement migrés vers le backend via `migrateLocalProjects()` — nom, dimensions, décrochés, exclusions, ouvertures et ouvrages retenus.
+
+La forme du brouillon et sa clé de stockage sont déclarées **une seule fois**, dans `lib/guest-drafts.ts` (`GuestProjectDraft`) : tout écran du parcours invité écrit à travers ce type, et `guest-drafts.spec.ts` échoue si la clé est redéclarée ailleurs. Un champ ajouté au brouillon doit donc être repris par la migration, sous peine de faire échouer sa couverture champ par champ (`AuthContext.guest-migration.spec.tsx`).
 
 ### FeatureGateContext
 

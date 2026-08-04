@@ -27,10 +27,12 @@ import {
 import { apiDelete, apiPost, apiPut } from '@/lib/api';
 import { errorHasCode } from '@/lib/errors';
 import { getFirebaseAuth } from '@/lib/firebase';
+import {
+  clearGuestDrafts,
+  readGuestDrafts,
+  type GuestProjectDraft,
+} from '@/lib/guest-drafts';
 import { REFERRAL_CODE_STORAGE_KEY } from '@/lib/referral';
-import type { RectSegment, SurfaceExclusion } from '@/lib/surface';
-
-const LOCAL_PROJECTS_KEY = 'chiffreo_local_projects';
 
 // Préfixes de caches dupliqués depuis public/sw.js (SW_VERSION) — ce fichier n'est pas importable
 // par un module TS. Sur un appareil partagé, un cache non vidé resterait lisible hors connexion
@@ -114,30 +116,6 @@ async function syncOfflineCachesWithIdentity(uid: string | null): Promise<void> 
   if (readLastIdentity() === uid) return;
   await clearOfflineCaches();
   writeLastIdentity(uid);
-}
-
-interface LocalProjectDraft {
-  id: string;
-  name: string;
-  room_name: string;
-  work_type?: string;
-  length_m?: number;
-  width_m?: number;
-  height_m?: number;
-  openings?: Array<{
-    type: 'door' | 'window';
-    width_cm: number;
-    height_cm: number;
-    count: number;
-  }>;
-  /**
-   * Décrochés et zones exclues saisis en mode invité. Le brouillon les portait
-   * déjà (`dimensions/page.tsx` les relit) mais la migration vers un compte les
-   * laissait tomber : un invité qui s'inscrivait perdait sa pièce en L et ses
-   * exclusions, donc sa surface nette (GTM-9).
-   */
-  segments?: RectSegment[];
-  exclusions?: SurfaceExclusion[];
 }
 
 export interface CompanyProfilePayload {
@@ -227,18 +205,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await redeemPendingReferralCode();
   }, [redeemPendingReferralCode]);
 
+  /**
+   * Rejoue vers l'API les brouillons laissés en `localStorage` par le parcours
+   * invité, puis vide la clé.
+   *
+   * **Tout ce que déclare `GuestProjectDraft` doit être repris ici** — un champ
+   * saisi par l'invité et non rejoué est une saisie perdue, silencieusement, au
+   * moment même où il crée son compte. `guest-drafts.spec.ts` en tient la
+   * couverture, champ par champ et exhaustive par le type.
+   */
   const migrateLocalProjects = useCallback(async () => {
     if (typeof window === 'undefined') return;
-    const raw = localStorage.getItem(LOCAL_PROJECTS_KEY);
-    if (!raw) return;
 
-    let drafts: LocalProjectDraft[];
-    try {
-      const parsed = JSON.parse(raw);
-      drafts = Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return;
-    }
+    const drafts: GuestProjectDraft[] = readGuestDrafts();
     if (drafts.length === 0) return;
 
     for (const draft of drafts) {
@@ -269,12 +248,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
           }
         }
+
+        // Les ouvrages retenus à l'étape « Sélection des travaux ». Sans eux,
+        // l'invité qui s'inscrivait retrouvait une pièce mesurée mais vide,
+        // impossible à chiffrer sans tout resaisir. La route refuse une liste
+        // vide (`ArrayMinSize(1)`) : ne l'appeler que s'il y a quelque chose.
+        if (draft.work_items?.length) {
+          await apiPost(`/projects/${created.id}/work-items`, {
+            items: draft.work_items,
+          });
+        }
       } catch (err) {
         console.error(`Failed to migrate guest project "${draft.name}":`, err);
       }
     }
 
-    localStorage.removeItem(LOCAL_PROJECTS_KEY);
+    clearGuestDrafts();
   }, []);
 
   useEffect(() => {
@@ -481,7 +470,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const deleteAccount = useCallback(async () => {
     await apiDelete('/auth/me');
     if (typeof window !== 'undefined') {
-      localStorage.removeItem(LOCAL_PROJECTS_KEY);
+      clearGuestDrafts();
     }
     await Promise.all([signOut(getFirebaseAuth()).catch(() => undefined), clearOfflineCaches()]);
     setFirebaseUser(null);
