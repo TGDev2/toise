@@ -1,4 +1,5 @@
 import { ConflictException, HttpException } from '@nestjs/common';
+import type { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import { migratedDataSource, truncateUserData } from './test-database';
 import { User } from '../../src/users/entities/user.entity';
@@ -169,6 +170,10 @@ describe("Jobs d'analyse CV (intégration, PostgreSQL réel)", () => {
       {
         getReport: () => Promise.resolve({ groups: [], overall: {} }),
       } as unknown as CvAccuracyService,
+      // Le coupe-circuit `cvService.enabled` (ADR 0001 D2) est ouvert ici : ce
+      // qu'on mesure dans ce fichier, c'est l'exclusivité et la durabilité des
+      // jobs, qui n'existent que si `startAnalysis` va jusqu'au bout.
+      { get: () => true } as unknown as ConfigService,
     );
   });
 
