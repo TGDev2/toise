@@ -22,6 +22,20 @@ export type QuoteFlowStepKey = (typeof QUOTE_FLOW_STEPS)[number]['key'];
 
 export const QUOTE_FLOW_TOTAL = QUOTE_FLOW_STEPS.length;
 
+/**
+ * Étapes réellement atteignables par l'utilisateur courant.
+ *
+ * Seule l'étape « Devis » est gardée par un palier (`export_devis`) : un
+ * particulier ou un Pro ne l'atteint jamais, un Contractor Essentiel et plus
+ * si. `FlowProgress` s'en sert pour ne jamais annoncer un total que
+ * l'utilisateur ne pourra pas atteindre.
+ */
+export function quoteFlowReachableSteps(quoteAllowed: boolean) {
+  return quoteAllowed
+    ? QUOTE_FLOW_STEPS
+    : QUOTE_FLOW_STEPS.filter((s) => s.key !== 'quote');
+}
+
 /** Rang 1-indexé de l'étape, tel qu'affiché (« Étape 3 / 6 »). */
 export function quoteFlowStepNumber(key: QuoteFlowStepKey): number {
   return QUOTE_FLOW_STEPS.findIndex((s) => s.key === key) + 1;
@@ -43,6 +57,9 @@ export function quoteFlowStepHref(
   projectId: string,
 ): string {
   const step = QUOTE_FLOW_STEPS.find((s) => s.key === key);
-  if (!step) return `/projects/${projectId}`;
+  // `key` est typé `QuoteFlowStepKey` : ce repli ne s'exécute jamais en
+  // pratique. Il évite seulement de construire `/projects/{id}`, qui n'a
+  // jamais eu de page (404) -- le tableau de bord reste la destination sûre.
+  if (!step) return '/dashboard';
   return `/projects/${projectId}/${step.segment}`;
 }

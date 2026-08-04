@@ -1,11 +1,10 @@
 'use client';
 
 import Link from 'next/link';
+import { useFeatureGates } from '@/contexts/FeatureGateContext';
 import {
-  QUOTE_FLOW_STEPS,
-  QUOTE_FLOW_TOTAL,
+  quoteFlowReachableSteps,
   quoteFlowStepLabel,
-  quoteFlowStepNumber,
   type QuoteFlowStepKey,
 } from '@/lib/quote-flow';
 
@@ -38,8 +37,17 @@ export function FlowProgress({
   backHref,
   projectName,
 }: FlowProgressProps) {
-  const current = quoteFlowStepNumber(step);
-  const previous = QUOTE_FLOW_STEPS[current - 2];
+  const { isFeatureAllowed, isLoading: gatesLoading } = useFeatureGates();
+  // Si on est déjà sur l'étape « Devis », elle est atteignable par
+  // définition -- ça évite un total incohérent le temps que les gates
+  // chargent. Sinon, pendant le chargement on reste prudent (étape masquée)
+  // plutôt que d'annoncer un total qui redescendrait ensuite.
+  const quoteReachable =
+    step === 'quote' || (!gatesLoading && isFeatureAllowed('export_devis'));
+  const steps = quoteFlowReachableSteps(quoteReachable);
+  const total = steps.length;
+  const current = steps.findIndex((s) => s.key === step) + 1;
+  const previous = steps[current - 2];
   const resolvedBack =
     backHref ??
     (previous
@@ -74,7 +82,7 @@ export function FlowProgress({
 
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-stone-900">
-            Étape {current} / {QUOTE_FLOW_TOTAL} · {quoteFlowStepLabel(step)}
+            Étape {current} / {total} · {quoteFlowStepLabel(step)}
           </p>
           {projectName && (
             <p className="truncate text-xs text-stone-500">{projectName}</p>
@@ -85,12 +93,12 @@ export function FlowProgress({
       <div
         role="progressbar"
         aria-valuemin={1}
-        aria-valuemax={QUOTE_FLOW_TOTAL}
+        aria-valuemax={total}
         aria-valuenow={current}
-        aria-label="Progression du devis"
+        aria-label="Progression du parcours"
         className="flex gap-1 pb-2"
       >
-        {QUOTE_FLOW_STEPS.map((s, index) => (
+        {steps.map((s, index) => (
           <span
             key={s.key}
             className={`h-1 flex-1 rounded-full ${

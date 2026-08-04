@@ -222,12 +222,10 @@ export default function NewQuotePage() {
 
   if (!quotingAllowed) {
     // Le paywall est déjà ouvert par l'effet ci-dessus ; on ne rend rien
-    // derrière lui plutôt qu'un formulaire que l'API refuserait.
-    return (
-      <main className="mx-auto w-full max-w-4xl px-4 py-8">
-        <FlowProgress step="quote" projectId={projectId} />
-      </main>
-    );
+    // derrière lui plutôt qu'un formulaire que l'API refuserait. Pas de
+    // `FlowProgress` non plus : cette étape n'est pas atteignable par ce
+    // palier, elle ne doit pas apparaître dans le fil de progression.
+    return <main className="mx-auto w-full max-w-4xl px-4 py-8" />;
   }
 
   if (error && !estimation) {
