@@ -7,7 +7,6 @@ import { UsersService } from '../users/users.service';
 import { CompanyProfilesService } from '../company-profiles/company-profiles.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { OrgContextService } from '../organizations/org-context.service';
-import { SsoSessionService } from './sso-session.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 import {
@@ -58,11 +57,6 @@ describe('AuthService', () => {
 
   const subscriptionsMock = {
     cancelForAccountDeletion: jest.fn(),
-  };
-
-  const ssoSessionMock = {
-    provisionFromSsoLogin: jest.fn(),
-    invalidateEnforcementCache: jest.fn(),
   };
 
   let usersService: typeof usersServiceMock;
@@ -138,10 +132,6 @@ describe('AuthService', () => {
         {
           provide: OrgContextService,
           useValue: orgContextMock,
-        },
-        {
-          provide: SsoSessionService,
-          useValue: ssoSessionMock,
         },
         {
           provide: SubscriptionsService,

@@ -30,9 +30,6 @@ import { ReferralsModule } from './referrals/referrals.module';
 import { LogbookModule } from './logbook/logbook.module';
 import { LifecycleEmailsModule } from './lifecycle-emails/lifecycle-emails.module';
 import { OrganizationsModule } from './organizations/organizations.module';
-import { ApiKeysModule } from './api-keys/api-keys.module';
-import { EnterpriseModule } from './enterprise/enterprise.module';
-import { WidgetModule } from './widget/widget.module';
 import { WasteLearningModule } from './waste-learning/waste-learning.module';
 import { CostBenchmarkModule } from './cost-benchmark/cost-benchmark.module';
 import configuration from './config/configuration';
@@ -86,9 +83,6 @@ import { THROTTLER_CONFIG } from './config/throttler.config';
     LogbookModule,
     LifecycleEmailsModule,
     OrganizationsModule,
-    ApiKeysModule,
-    EnterpriseModule,
-    WidgetModule,
     WasteLearningModule,
     CostBenchmarkModule,
   ],

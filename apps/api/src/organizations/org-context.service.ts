@@ -4,18 +4,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import {
-  LessThanOrEqual,
-  MoreThan,
-  Not,
-  QueryFailedError,
-  Repository,
-} from 'typeorm';
+import { Not, QueryFailedError, Repository } from 'typeorm';
 import { SubscriptionTier, User } from '../users/entities/user.entity';
-import {
-  EnterpriseAgreement,
-  EnterpriseAgreementStatus,
-} from '../enterprise/entities/enterprise-agreement.entity';
 import { Organization } from './entities/organization.entity';
 import {
   OrganizationMembership,
@@ -60,8 +50,6 @@ export class OrgContextService {
     private readonly orgsRepo: Repository<Organization>,
     @InjectRepository(OrganizationMembership)
     private readonly membershipsRepo: Repository<OrganizationMembership>,
-    @InjectRepository(EnterpriseAgreement)
-    private readonly agreementsRepo: Repository<EnterpriseAgreement>,
   ) {}
 
   async resolveForFirebaseUid(firebaseUid: string): Promise<OrgScope> {
@@ -135,33 +123,6 @@ export class OrgContextService {
       if (!created) throw error;
       return created;
     }
-  }
-
-  /**
-   * Palier porté par une organisation, **sans utilisateur appelant** — le cas
-   * d'une clé d'API, qui appartient à l'organisation et non à une personne
-   * (BACKLOG PLAT-5 D1). Même règle que `resolveEffectiveTier` : c'est le palier
-   * du propriétaire qui fait foi. Elle vit ici, et nulle part ailleurs : la
-   * réécrire dans le guard des clés la ferait diverger au premier changement.
-   *
-   * Fail-closed : organisation ou propriétaire introuvable ⇒ `free`, palier
-   * auquel la gate `public_api` refuse l'accès.
-   */
-  async resolveTierForOrganization(
-    organizationId: string,
-  ): Promise<SubscriptionTier> {
-    if (await this.hasCurrentEnterpriseAgreement(organizationId)) {
-      return SubscriptionTier.ENTERPRISE;
-    }
-
-    const row = await this.orgsRepo
-      .createQueryBuilder('o')
-      .innerJoin(User, 'u', 'u.id = o.owner_user_id')
-      .where('o.id = :organizationId', { organizationId })
-      .select('u.subscription_tier', 'subscription_tier')
-      .getRawOne<{ subscription_tier: SubscriptionTier }>();
-
-    return row?.subscription_tier ?? SubscriptionTier.FREE;
   }
 
   /**
@@ -245,18 +206,11 @@ export class OrgContextService {
    * Le palier suit l'organisation : un salarié `free` invité chez un Contractor
    * Premium travaille avec les capacités Premium tant qu'il est dans cette org,
    * et retrouve son propre palier dans son espace personnel.
-   *
-   * Un contrat Enterprise courant l'emporte sur tout le reste (PLAT-6 D1) : il
-   * est porté par l'organisation, donc il survit à un changement de propriétaire
-   * comme à une rétrogradation Stripe de la personne qui l'a signé.
    */
   private async resolveEffectiveTier(
     user: User,
     organization: Organization,
   ): Promise<SubscriptionTier> {
-    if (await this.hasCurrentEnterpriseAgreement(organization.id)) {
-      return SubscriptionTier.ENTERPRISE;
-    }
     if (organization.owner_user_id === user.id) {
       return user.subscription_tier;
     }
@@ -265,30 +219,5 @@ export class OrgContextService {
       select: ['id', 'subscription_tier'],
     });
     return owner?.subscription_tier ?? SubscriptionTier.FREE;
-  }
-
-  /**
-   * Un contrat n'habilite que s'il est `active` **et** que la date du jour tombe
-   * dans sa période : l'expiration se dérive de `ends_at`, elle n'est jamais
-   * stockée (PLAT-6 D14) — un statut `expired` à maintenir aurait ouvert une
-   * fenêtre pendant laquelle la base ment sur l'habilitation.
-   *
-   * Une seule lecture d'index (`UQ_enterprise_agreements_active_org`, partiel sur
-   * `status = 'active'`), donc pas de cache : il rendrait la révocation d'un
-   * contrat effective avec du retard, ce qu'on ne veut pas sur une habilitation.
-   */
-  private async hasCurrentEnterpriseAgreement(
-    organizationId: string,
-  ): Promise<boolean> {
-    const now = new Date();
-    const count = await this.agreementsRepo.count({
-      where: {
-        organization_id: organizationId,
-        status: EnterpriseAgreementStatus.ACTIVE,
-        starts_at: LessThanOrEqual(now),
-        ends_at: MoreThan(now),
-      },
-    });
-    return count > 0;
   }
 }

@@ -10,7 +10,6 @@ const mockAuth = {
   login: jest.fn(),
   loginWithGoogle: jest.fn(),
   loginWithApple: jest.fn(),
-  loginWithSso: jest.fn(),
   startGuestSession: jest.fn(),
   firebaseUser: null,
   appUser: null,
@@ -26,12 +25,6 @@ const mockAuth = {
 
 jest.mock('@/contexts/AuthContext', () => ({
   useAuth: () => mockAuth,
-}));
-
-// `LoginForm` rend `SsoLoginForm` (PLAT-6), qui importe le client API — lequel
-// charge le SDK Firebase, indisponible sous jsdom.
-jest.mock('@/lib/api', () => ({
-  apiGet: jest.fn(),
 }));
 
 describe('LoginForm', () => {

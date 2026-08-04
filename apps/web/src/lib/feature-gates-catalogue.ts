@@ -71,12 +71,10 @@ export const KNOWN_FEATURE_GATES: KnownFeatureGate[] = [
   { key: 'site_tracking', label: 'Suivi de chantier', minTier: 'contractor_standard', enabled: false, since: '065' },
   { key: 'quote_reminders', label: 'Relances de devis', minTier: 'contractor_standard', enabled: false, since: '065' },
   { key: 'multi_user', label: 'Multi-utilisateurs', minTier: 'contractor_premium', enabled: false, since: '065' },
-  { key: 'public_api', label: 'API publique', minTier: 'contractor_premium', enabled: false, since: '065' },
   // 1711468800045 / 049 / 053 / 056 / 060
   { key: 'invoicing', label: 'Facturation', minTier: 'contractor_essentiel', enabled: true, since: '045' },
   { key: 'logbook', label: 'Carnet du logement', minTier: 'pro', enabled: true, since: '049' },
   { key: 'eco_materials', label: 'Matériaux éco-responsables', minTier: 'pro', enabled: false, since: '065' },
-  { key: 'enterprise_sso', label: 'Authentification SSO', minTier: 'enterprise', enabled: false, since: '065' },
   { key: 'cost_benchmark', label: 'Benchmark de coûts', minTier: 'pro', enabled: false, since: '065' },
   // 1711468800064 — DATA-5. Seule gate `free` en dehors de la galerie : la
   // clôture est l'unique source de DATA-3, DATA-4, COM-1 et PLAT-1, et un
@@ -113,10 +111,6 @@ export const GATES_NOT_MARKETED: Record<string, string> = {
   // `is_enabled = false`. Les critères de dégel sont écrits à l'ADR §5.
   cv_analysis:
     "Gelée (ADR 0001 D2) : la précision de l'analyse photo n'a jamais été mesurée sur une seule photo réelle, et le service sort de la production. Dégel : erreur médiane sous 5 % sur 50 à 100 photos relevées au télémètre.",
-  public_api:
-    "Gelée (ADR 0001 D3) : l'API et le widget embarquable étaient facturés sans qu'aucun écran ne permette de créer une clé. Dégel : deux prospects distincts, non sollicités, prêts à contractualiser.",
-  enterprise_sso:
-    "Gelée (ADR 0001 D3) : le SSO est appliqué dans `FirebaseAuthGuard`, donc sur le chemin critique de toute requête authentifiée, pour zéro client. Dégel : une organisation de plus de dix utilisateurs avec un besoin d'annuaire formulé par elle.",
   multi_user:
     "Gelée (ADR 0001 D3) : le multi-utilisateurs était vendu au palier Premium sans qu'aucun écran ne permette d'inviter qui que ce soit. Le modèle `organizations` reste en base, l'interface reste gelée.",
   cost_benchmark:

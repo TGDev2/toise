@@ -153,25 +153,6 @@ jobs:
           path: apps/web/playwright-report/
           retention-days: 7
 
-  widget:
-    name: Widget (lint, tests, build)
-    runs-on: ubuntu-latest
-    # Le widget s'exécute chez des tiers, sur leurs pages : c'est la seule
-    # surface dont une régression est vue par un client avant d'être vue par
-    # nous. `apps/widget/src/widget.spec.ts` existait sans qu'aucun job ne
-    # l'exécute.
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @chiffreo/widget lint
-      - run: pnpm --filter @chiffreo/widget test
-      - run: pnpm --filter @chiffreo/widget build
-
   audit:
     name: Dépendances (audit)
     runs-on: ubuntu-latest

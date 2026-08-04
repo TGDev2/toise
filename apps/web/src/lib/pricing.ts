@@ -129,11 +129,11 @@ export interface OfferPlan {
  * couverture partielle n'autorise pas un premium de prix. Le palier d'entrée doit
  * rester sous ce plafond ; il valait 50 € avant GTM-8. Les paliers supérieurs
  * peuvent le dépasser, mais seulement en portant des capacités que ces outils ne
- * vendent pas à ce prix (multi-utilisateurs, API, widget).
+ * vendent pas à ce prix.
  *
- * Ces trois capacités étant gelées par l'ADR 0001 (D3), plus aucun palier
- * artisan ne peut aujourd'hui dépasser le plafond : le palier Premium à 49 € a
- * été retiré avec elles.
+ * Les capacités qui le justifiaient ayant été gelées par l'ADR 0001 (D3), plus
+ * aucun palier artisan ne peut aujourd'hui dépasser le plafond : le palier
+ * Premium à 49 € a été retiré avec elles.
  */
 export const GENERALIST_MARKET_CEILING_EUR = 30;
 

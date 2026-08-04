@@ -12,7 +12,6 @@ import {
   EmailAuthProvider,
   GoogleAuthProvider,
   OAuthProvider,
-  SAMLAuthProvider,
   linkWithCredential,
   linkWithPopup,
   onIdTokenChanged,
@@ -154,7 +153,6 @@ interface AuthContextType {
   ) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   loginWithApple: () => Promise<void>;
-  loginWithSso: (providerId: string) => Promise<void>;
   startGuestSession: () => Promise<void>;
   convertGuestAccount: (email: string, password: string) => Promise<void>;
   convertGuestWithGoogle: () => Promise<void>;
@@ -333,21 +331,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /**
-   * Connexion fédérée d'entreprise (BACKLOG PLAT-6). `providerId` vient de
-   * `GET /sso/discover` et n'est jamais saisi par l'utilisateur : c'est
-   * l'identifiant que l'API a émis en créant le fournisseur.
-   *
-   * Aucun contrôle de vérification d'e-mail ici, contrairement à `login` : c'est
-   * l'IdP de l'entreprise qui fait autorité sur ses propres comptes.
-   */
-  const loginWithSso = useCallback(async (providerId: string) => {
-    const provider = providerId.startsWith('saml.')
-      ? new SAMLAuthProvider(providerId)
-      : new OAuthProvider(providerId);
-    await signInWithPopup(getFirebaseAuth(), provider);
-  }, []);
-
-  /**
    * Ouverture d'une session invité.
    *
    * **`isLoading` est réarmé avant l'appel Firebase, et c'est le cœur du
@@ -500,7 +483,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         loginWithGoogle,
         loginWithApple,
-        loginWithSso,
         startGuestSession,
         convertGuestAccount,
         convertGuestWithGoogle,

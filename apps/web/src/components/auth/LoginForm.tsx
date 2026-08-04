@@ -7,7 +7,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/lib/errors';
 import { Alert, Button, Input } from '@/components/ui';
 import { OAuthButtons } from './OAuthButtons';
-import { SsoLoginForm } from './SsoLoginForm';
 
 export function LoginForm() {
   const { login, loginWithGoogle, loginWithApple, startGuestSession } =
@@ -123,8 +122,6 @@ export function LoginForm() {
           Se connecter
         </Button>
       </form>
-
-      <SsoLoginForm />
 
       <div className="space-y-3 text-center text-sm">
         <p className="text-stone-600">

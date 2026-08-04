@@ -17,7 +17,6 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { MergeGuestDto } from './dto/merge-guest.dto';
 import { RegisterDto } from './dto/register.dto';
 import { CurrentFirebaseUser } from './decorators/current-user.decorator';
-import { SsoExempt } from './decorators/sso-exempt.decorator';
 import { FirebaseAuthGuard } from './guards/firebase-auth.guard';
 
 @Controller('auth')
@@ -38,13 +37,7 @@ export class AuthController {
     };
   }
 
-  /**
-   * Dispensée d'enforcement SSO (PLAT-6 D10) : c'est la route qui *matérialise*
-   * le rattachement JIT — l'exiger déjà rattaché serait circulaire — et la seule
-   * par laquelle un membre bloqué peut apprendre pourquoi.
-   */
   @Post('sync')
-  @SsoExempt()
   @UseGuards(FirebaseAuthGuard)
   async sync(@CurrentFirebaseUser() firebaseUser: DecodedIdToken) {
     const user = await this.authService.syncUser(firebaseUser);
@@ -74,7 +67,6 @@ export class AuthController {
   }
 
   @Get('me')
-  @SsoExempt()
   @UseGuards(FirebaseAuthGuard)
   async getProfile(@CurrentFirebaseUser() firebaseUser: DecodedIdToken) {
     const user = await this.authService.getProfile(firebaseUser.uid);

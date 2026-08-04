@@ -20,8 +20,8 @@ import type { ValueTransformer } from 'typeorm';
  * `Number` perd des chiffres. Aucune colonne de ce schéma n'en approche : les
  * précisions vont de 4 à 10, les montants sont en euros, les facteurs en
  * pourcentage. Le jour où une colonne aurait besoin de la précision arbitraire,
- * elle doit être déclarée `string` et manipulée comme telle — c'est le cas de
- * `enterprise_agreements.sla_uptime_target`, laissée volontairement en `string`.
+ * elle doit être déclarée `string` et manipulée comme telle, sans passer par ce
+ * transformeur.
  */
 export const numericTransformer: ValueTransformer = {
   /** Écriture : `pg` sérialise correctement un `number`, rien à faire. */

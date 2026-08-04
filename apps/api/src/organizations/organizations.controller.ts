@@ -16,7 +16,6 @@ import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { FeatureGateGuard } from '../feature-gates/guards/feature-gate.guard';
 import { RequireFeature } from '../feature-gates/decorators/require-feature.decorator';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
-import { SsoExempt } from '../auth/decorators/sso-exempt.decorator';
 import { OrgContextService } from './org-context.service';
 import type { OrgScope } from './org-context.service';
 import { OrganizationsService } from './organizations.service';
@@ -56,14 +55,7 @@ export class OrganizationsController {
     };
   }
 
-  /**
-   * Dispensée d'enforcement SSO, comme `activate` (PLAT-6 D10) : ces deux routes
-   * forment la seule sortie d'un membre connecté par mot de passe dans une
-   * organisation qui exige son IdP. Sans elles, il serait refusé y compris sur
-   * le geste qui le ramènerait à son espace personnel.
-   */
   @Get('mine')
-  @SsoExempt()
   async listMine(@CurrentFirebaseUser() firebaseUser: DecodedIdToken) {
     const scope = await this.resolveScope(firebaseUser);
     return this.organizationsService.listMyOrganizations(scope.user);
@@ -80,7 +72,6 @@ export class OrganizationsController {
   }
 
   @Post(':id/activate')
-  @SsoExempt()
   @HttpCode(HttpStatus.NO_CONTENT)
   async activate(
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
