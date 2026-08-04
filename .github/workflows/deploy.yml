@@ -77,34 +77,6 @@ jobs:
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
 
-      # Les poids YOLO ne sont pas dans git (cf. .gitignore) : ce sont des
-      # artefacts de release `cv-model-vN`, et le Dockerfile fait `COPY models/`.
-      # Sans cette étape, l'image publiée serait construite avec un `models/`
-      # vide et le service basculerait en mode heuristique — un conteneur
-      # dégradé prenant silencieusement la place d'un conteneur équipé.
-      # L'étape est donc **bloquante** : mieux vaut un déploiement qui s'arrête
-      # qu'une précision qui baisse sans que rien ne le dise.
-      - name: Récupère les poids du détecteur portes/fenêtres
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          # `bash …` et non `./…` : les scripts du dépôt sont committés en 644.
-          bash apps/cv-service/scripts/fetch-model.sh ${{ vars.CV_MODEL_TAG }}
-          test -s apps/cv-service/models/door-window-yolov8n.pt
-
-      - name: Build & push cv-service
-        uses: docker/build-push-action@v6
-        with:
-          context: apps/cv-service
-          file: apps/cv-service/Dockerfile
-          push: true
-          tags: |
-            ${{ env.CV_IMAGE }}:${{ github.ref_name }}
-            ${{ env.CV_IMAGE }}:latest
-          cache-from: type=gha,scope=cv
-          cache-to: type=gha,mode=max,scope=cv
-
   deploy:
     name: Déploiement VPS
     needs: build-push
@@ -141,7 +113,7 @@ jobs:
             "set -euo pipefail
              docker login ghcr.io -u '${{ github.actor }}' --password-stdin
              cd /opt/chiffreo
-             IMAGE_TAG='$IMAGE_TAG' docker compose -f docker-compose.prod.yml pull api web cv-service
-             IMAGE_TAG='$IMAGE_TAG' docker compose -f docker-compose.prod.yml up -d api web cv-service
+             IMAGE_TAG='$IMAGE_TAG' docker compose -f docker-compose.prod.yml pull api web
+             IMAGE_TAG='$IMAGE_TAG' docker compose -f docker-compose.prod.yml up -d api web
              docker image prune -f
              docker logout ghcr.io"
