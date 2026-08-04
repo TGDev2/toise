@@ -9,7 +9,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { ClientSelect } from '@/components/quotes/ClientSelect';
 import { LaborLinesEditor } from '@/components/quotes/LaborLinesEditor';
 import { FlowProgress } from '@/components/quote-flow/FlowProgress';
-import { DecimalInput, StickyActionBar } from '@/components/ui';
+import { Alert, DecimalInput, Skeleton, StickyActionBar } from '@/components/ui';
 import type { EstimationResponse } from '@/lib/estimation-types';
 import type {
   Client,
@@ -197,8 +197,9 @@ export default function NewQuotePage() {
 
   if (isLoading || gatesLoading || (quotingAllowed && loading)) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <p className="text-gray-500">Chargement...</p>
+      <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="mt-6 h-96 rounded-[2rem]" />
       </main>
     );
   }
@@ -214,9 +215,7 @@ export default function NewQuotePage() {
   if (error && !estimation) {
     return (
       <main className="mx-auto w-full max-w-4xl px-4 py-8">
-        <div className="rounded-3xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
-          {error}
-        </div>
+        <Alert variant="error">{error}</Alert>
         <button
           type="button"
           onClick={() => router.back()}
@@ -243,9 +242,9 @@ export default function NewQuotePage() {
       </div>
 
       {error && (
-        <div className="mt-6 rounded-3xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+        <Alert variant="error" className="mt-6">
           {error}
-        </div>
+        </Alert>
       )}
 
       {pricedItems.length === 0 && (

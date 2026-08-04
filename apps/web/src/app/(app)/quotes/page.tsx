@@ -10,6 +10,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { QuoteStatusBadge } from '@/components/quotes/QuoteStatusBadge';
 import type { Quote, QuoteStatus } from '@/lib/quote-types';
 import { QUOTE_STATUS_LABELS } from '@/lib/quote-types';
+import { Alert, Skeleton } from '@/components/ui';
 
 const STATUS_FILTERS: (QuoteStatus | 'all')[] = [
   'all',
@@ -76,8 +77,13 @@ export default function QuotesListPage() {
 
   if (isLoading) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <p className="text-gray-500">Chargement...</p>
+      <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
+        <Skeleton className="h-32 rounded-[2rem]" />
+        <div className="mt-6 space-y-4">
+          <Skeleton className="h-28 rounded-[2rem]" />
+          <Skeleton className="h-28 rounded-[2rem]" />
+          <Skeleton className="h-28 rounded-[2rem]" />
+        </div>
       </main>
     );
   }
@@ -122,14 +128,16 @@ export default function QuotesListPage() {
       </div>
 
       {error && (
-        <div className="mt-6 rounded-3xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+        <Alert variant="error" className="mt-6">
           {error}
-        </div>
+        </Alert>
       )}
 
       {loading && (
-        <div className="mt-6 flex justify-center">
-          <p className="text-sm text-stone-500">Chargement des devis...</p>
+        <div className="mt-6 space-y-4">
+          <Skeleton className="h-28 rounded-[2rem]" />
+          <Skeleton className="h-28 rounded-[2rem]" />
+          <Skeleton className="h-28 rounded-[2rem]" />
         </div>
       )}
 

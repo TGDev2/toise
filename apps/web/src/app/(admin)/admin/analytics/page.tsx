@@ -2,11 +2,13 @@
 
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { apiGet } from '@/lib/api';
+import { getErrorMessage } from '@/lib/errors';
 import { useCallback, useEffect, useState } from 'react';
 import { StatTile } from '@/components/admin/StatTile';
 import { WeeklyShoppingListsChart } from '@/components/admin/WeeklyShoppingListsChart';
 import { FunnelChart } from '@/components/admin/FunnelChart';
 import { MrrChart } from '@/components/admin/MrrChart';
+import { Alert, Skeleton } from '@/components/ui';
 
 interface FunnelStep {
   event_name: string;
@@ -66,16 +68,19 @@ export default function AdminAnalyticsPage() {
   const { isAdmin } = useAdminAuth();
   const [data, setData] = useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const fetchDashboard = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
       const result = await apiGet<DashboardResponse>(
         '/admin/analytics/dashboard?weeks=8&days=30',
       );
       setData(result);
-    } catch {
+    } catch (err: unknown) {
       setData(null);
+      setError(getErrorMessage(err, 'Impossible de charger le tableau de bord'));
     } finally {
       setLoading(false);
     }
@@ -89,18 +94,22 @@ export default function AdminAnalyticsPage() {
 
   if (loading) {
     return (
-      <p className="py-8 text-center text-[var(--foreground)]/60">
-        Chargement...
-      </p>
+      <div>
+        <Skeleton className="h-40 rounded-[2rem]" />
+        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          <Skeleton className="h-48 rounded-[2rem]" />
+          <Skeleton className="h-48 rounded-[2rem]" />
+        </div>
+      </div>
     );
   }
 
   if (!data) {
     return (
       <div className="rounded-2xl bg-[var(--surface)] p-8 text-center">
-        <p className="text-[var(--foreground)]/60">
-          Impossible de charger le tableau de bord.
-        </p>
+        <Alert variant="error">
+          {error || 'Impossible de charger le tableau de bord.'}
+        </Alert>
       </div>
     );
   }

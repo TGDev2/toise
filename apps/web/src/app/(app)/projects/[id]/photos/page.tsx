@@ -7,7 +7,7 @@ import { usePhotoUpload } from '@/hooks/usePhotoUpload';
 import type { ServerPhoto } from '@/hooks/usePhotoUpload';
 import { PhotoUploadPanel } from '@/components/photos/PhotoUploadPanel';
 import { FlowProgress } from '@/components/quote-flow/FlowProgress';
-import { StickyActionBar } from '@/components/ui';
+import { Alert, Skeleton, StickyActionBar } from '@/components/ui';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -68,8 +68,11 @@ export default function PhotosPage() {
 
   if (isLoading || !loaded) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[var(--background)]">
-        <p className="text-stone-500">Chargement...</p>
+      <div className="min-h-screen bg-[var(--background)] px-4 py-8">
+        <div className="mx-auto max-w-2xl">
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="mt-6 h-72 rounded-[2rem]" />
+        </div>
       </div>
     );
   }
@@ -81,9 +84,9 @@ export default function PhotosPage() {
 
         <div className="rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)] sm:p-8">
           {error && (
-            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <Alert variant="error" className="mb-4">
               {error}
-            </div>
+            </Alert>
           )}
 
           <PhotoUploadPanel

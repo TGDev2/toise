@@ -3,6 +3,8 @@
 import { CategoryTabs } from '@/components/admin/CategoryTabs';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { apiGet } from '@/lib/api';
+import { getErrorMessage } from '@/lib/errors';
+import { Alert, Skeleton } from '@/components/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -37,12 +39,14 @@ export default function MaterialsListPage() {
   const { isAdmin } = useAdminAuth();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [category, setCategory] = useState('');
   const [showAll, setShowAll] = useState(false);
   const [ecoOnly, setEcoOnly] = useState(false);
 
   const fetchMaterials = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
       const params = new URLSearchParams();
       if (category) params.set('category', category);
@@ -51,8 +55,9 @@ export default function MaterialsListPage() {
       const query = params.toString() ? `?${params.toString()}` : '';
       const data = await apiGet<Material[]>(`/admin/materials${query}`);
       setMaterials(data);
-    } catch {
+    } catch (err: unknown) {
       setMaterials([]);
+      setError(getErrorMessage(err, 'Impossible de charger les matériaux'));
     } finally {
       setLoading(false);
     }
@@ -102,10 +107,20 @@ export default function MaterialsListPage() {
         </div>
       </div>
 
+      {error && (
+        <Alert variant="error" className="mb-4">
+          {error}
+        </Alert>
+      )}
+
       {loading ? (
-        <p className="py-8 text-center text-[var(--foreground)]/60">
-          Chargement...
-        </p>
+        <div className="space-y-2">
+          <Skeleton className="h-10 rounded-xl" />
+          <Skeleton className="h-10 rounded-xl" />
+          <Skeleton className="h-10 rounded-xl" />
+          <Skeleton className="h-10 rounded-xl" />
+          <Skeleton className="h-10 rounded-xl" />
+        </div>
       ) : materials.length === 0 ? (
         <div className="rounded-2xl bg-[var(--surface)] p-8 text-center">
           <p className="text-[var(--foreground)]/60">

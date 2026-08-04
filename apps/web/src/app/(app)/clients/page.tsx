@@ -60,8 +60,13 @@ export default function ClientsListPage() {
 
   if (isLoading) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <p className="text-gray-500">Chargement...</p>
+      <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
+        <Skeleton className="h-32 rounded-[2rem]" />
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Skeleton className="h-24 rounded-[2rem]" />
+          <Skeleton className="h-24 rounded-[2rem]" />
+          <Skeleton className="h-24 rounded-[2rem]" />
+        </div>
       </main>
     );
   }

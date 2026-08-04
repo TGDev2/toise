@@ -10,6 +10,7 @@ import type {
   ShoppingListComplementaryItem,
   BudgetSummary,
 } from '@/lib/shopping-list-types';
+import { Alert, Skeleton } from '@/components/ui';
 
 interface PendingProject {
   id: string;
@@ -131,9 +132,9 @@ export default function AdminCommunityPage() {
       </p>
 
       {error && (
-        <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <Alert variant="error" className="mt-4">
           {error}
-        </div>
+        </Alert>
       )}
 
       {feedback && (
@@ -143,9 +144,11 @@ export default function AdminCommunityPage() {
       )}
 
       {loading && (
-        <p className="mt-6 text-sm text-[var(--foreground)]/60">
-          Chargement...
-        </p>
+        <div className="mt-6 space-y-4">
+          <Skeleton className="h-32 rounded-xl" />
+          <Skeleton className="h-32 rounded-xl" />
+          <Skeleton className="h-32 rounded-xl" />
+        </div>
       )}
 
       {!loading && projects.length === 0 && (

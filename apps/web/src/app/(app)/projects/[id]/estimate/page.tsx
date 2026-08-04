@@ -9,7 +9,7 @@ import { EstimationResults } from '@/components/estimation/EstimationResults';
 import { EstimationSummary } from '@/components/estimation/EstimationSummary';
 import { SkillLevelSelector } from '@/components/estimation/SkillLevelSelector';
 import { FlowProgress } from '@/components/quote-flow/FlowProgress';
-import { StickyActionBar } from '@/components/ui';
+import { Alert, Skeleton, StickyActionBar } from '@/components/ui';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -94,8 +94,9 @@ export default function EstimatePage() {
 
   if (isLoading || !loaded) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <p className="text-gray-500">Chargement...</p>
+      <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="mt-6 h-96 rounded-[2rem]" />
       </main>
     );
   }
@@ -113,9 +114,9 @@ export default function EstimatePage() {
       </h1>
 
       {error && (
-        <div className="mb-6 rounded-3xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+        <Alert variant="error" className="mb-6">
           {error}
-        </div>
+        </Alert>
       )}
 
       <section className="mb-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">

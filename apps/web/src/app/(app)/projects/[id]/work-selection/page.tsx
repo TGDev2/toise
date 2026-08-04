@@ -13,6 +13,7 @@ import type { Room } from '@/lib/room-types';
 import { WorkSelectionForm } from '@/components/work-selection/WorkSelectionForm';
 import { FlowProgress } from '@/components/quote-flow/FlowProgress';
 import { RoomSwitcher } from '@/components/rooms/RoomSwitcher';
+import { Alert, Skeleton } from '@/components/ui';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -131,8 +132,9 @@ export default function WorkSelectionPage() {
 
   if (isLoading || !loaded) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <p className="text-gray-500">Chargement...</p>
+      <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="mt-6 h-96 rounded-[2rem]" />
       </main>
     );
   }
@@ -165,9 +167,9 @@ export default function WorkSelectionPage() {
       )}
 
       {error && (
-        <div className="mb-6 rounded-3xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+        <Alert variant="error" className="mb-6">
           {error}
-        </div>
+        </Alert>
       )}
 
       {workTypes.length > 0 && (

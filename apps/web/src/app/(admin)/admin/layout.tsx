@@ -1,6 +1,7 @@
 'use client';
 
 import { useAdminAuth } from '@/hooks/useAdminAuth';
+import { Skeleton } from '@/components/ui';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
@@ -9,8 +10,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[var(--background)]">
-        <p className="text-lg text-[var(--foreground)]/60">Chargement...</p>
+      <div className="flex min-h-screen bg-[var(--background)]">
+        <aside className="w-64 border-r border-[var(--foreground)]/10 bg-[var(--surface)] p-6">
+          <Skeleton className="h-6 w-32" />
+        </aside>
+        <main className="flex-1 p-8">
+          <Skeleton className="h-40 rounded-2xl" />
+        </main>
       </div>
     );
   }

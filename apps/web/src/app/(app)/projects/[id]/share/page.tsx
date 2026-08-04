@@ -10,6 +10,7 @@ import type { BudgetSummary } from '@/lib/shopping-list-types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeatureGates } from '@/contexts/FeatureGateContext';
 import { CommunityShareForm } from '@/components/community/CommunityShareForm';
+import { Alert, Skeleton } from '@/components/ui';
 
 interface PhotoResponse {
   id: string;
@@ -117,8 +118,9 @@ export default function ShareProjectPage() {
 
   if (authLoading || loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <p className="text-gray-500">Chargement...</p>
+      <main className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="mt-6 h-64 rounded-[2rem]" />
       </main>
     );
   }
@@ -171,9 +173,7 @@ export default function ShareProjectPage() {
   if (error || !project) {
     return (
       <main className="mx-auto max-w-2xl px-4 py-8">
-        <div className="rounded-3xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
-          {error || 'Projet non trouve'}
-        </div>
+        <Alert variant="error">{error || 'Projet non trouve'}</Alert>
         <Link
           href="/dashboard"
           className="mt-4 inline-block text-sm text-stone-500 hover:text-stone-700"

@@ -8,6 +8,7 @@ import type {
   ShoppingListMaterialItem,
   ShoppingListComplementaryItem,
 } from '@/lib/shopping-list-types';
+import { Alert, Skeleton } from '@/components/ui';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
@@ -81,8 +82,9 @@ export default function SharedShoppingListPage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <p className="text-gray-500">Chargement...</p>
+      <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="mt-6 h-64 rounded-[2rem]" />
       </main>
     );
   }
@@ -90,11 +92,13 @@ export default function SharedShoppingListPage() {
   if (error || !data) {
     return (
       <main className="flex min-h-screen items-center justify-center px-4">
-        <div className="text-center">
+        <div className="w-full max-w-md text-center">
           <h1 className="text-2xl font-semibold text-stone-900">
             Liste introuvable
           </h1>
-          <p className="mt-2 text-stone-500">{error}</p>
+          <Alert variant="error" className="mt-4 text-left">
+            {error}
+          </Alert>
         </div>
       </main>
     );
