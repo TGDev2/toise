@@ -1,5 +1,11 @@
 'use client';
 
+/**
+ * Orphelin depuis le débranchement de la CV (ADR 0001 D2) : aucune route ne
+ * l'importe, `dimensions/page.tsx` n'utilise que la saisie manuelle. Conservé
+ * pour une reprise éventuelle du service d'analyse photo.
+ */
+
 import { RoomPreview } from '@/components/dimensions/RoomPreview';
 import type {
   DetectedOpening,

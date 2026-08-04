@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     template: '%s | Chiffréo',
   },
   description:
-    'Estimez précisément vos matériaux de rénovation grâce à la vision par ordinateur et des calculs intelligents.',
+    'Estimez précisément vos matériaux de rénovation grâce à des calculs intelligents.',
   openGraph: {
     type: 'website',
     locale: 'fr_FR',

@@ -11,13 +11,11 @@ import type {
   BuyLinksResponse,
 } from '@/lib/price-comparison-types';
 import type { EcoSuggestionsResponse, EcoRowData } from '@/lib/eco-materials-types';
-import type { CostBenchmarkResponse } from '@/lib/cost-benchmark-types';
 import { ShoppingListMaterials } from '@/components/shopping-list/ShoppingListMaterials';
 import { ShoppingListComplements } from '@/components/shopping-list/ShoppingListComplements';
 import { ShareLinkPanel } from '@/components/shopping-list/ShareLinkPanel';
 import { GuestPromptModal } from '@/components/auth/GuestPromptModal';
 import { BudgetDashboard } from '@/components/shopping-list/BudgetDashboard';
-import { CostBenchmarkPanel } from '@/components/shopping-list/CostBenchmarkPanel';
 import { PriceComparisonPanel } from '@/components/shopping-list/PriceComparisonPanel';
 import { FlowProgress } from '@/components/quote-flow/FlowProgress';
 import { Alert, ConfirmDialog, Skeleton, StickyActionBar } from '@/components/ui';
@@ -35,7 +33,6 @@ export default function ShoppingListPage() {
   const priceComparisonAllowed = isFeatureAllowed('price_comparison');
   const canQuote = isFeatureAllowed('export_devis');
   const ecoAllowed = isFeatureAllowed('eco_materials');
-  const benchmarkAllowed = isFeatureAllowed('cost_benchmark');
   // DATA-5 : gate `free`. La clôture alimente DATA-3, DATA-4, COM-1 et PLAT-1 ;
   // la réserver aux abonnés reviendrait à n'apprendre que d'eux.
   const closeoutAllowed = isFeatureAllowed('project_closeout');
@@ -54,11 +51,6 @@ export default function ShoppingListPage() {
   >(null);
   const [budgetSummary, setBudgetSummary] = useState<BudgetSummary | null>(null);
   const [ecoData, setEcoData] = useState<EcoSuggestionsResponse | null>(null);
-  const [benchmark, setBenchmark] = useState<CostBenchmarkResponse | null>(null);
-  // Sans cet état, une panne réseau et une cohorte insuffisante produisent le
-  // même écran : rien. L'utilisateur ne peut alors pas distinguer une fonction
-  // qui attend des données d'une fonction cassée.
-  const [benchmarkFailed, setBenchmarkFailed] = useState(false);
   const [comparing, setComparing] = useState(false);
   const [comparisonData, setComparisonData] = useState<PriceComparisonResponse | null>(null);
   const [buyLinks, setBuyLinks] = useState<Map<string, BuyLinkItem>>(new Map());
@@ -104,22 +96,6 @@ export default function ShoppingListPage() {
     }
   }, [ecoAllowed, projectId]);
 
-  const loadBenchmark = useCallback(async () => {
-    if (!benchmarkAllowed) return;
-    try {
-      const result = await apiGet<CostBenchmarkResponse>(
-        `/projects/${projectId}/cost-benchmark`,
-      );
-      setBenchmark(result);
-      setBenchmarkFailed(false);
-    } catch {
-      // DATA-4 : comparaison secondaire, un échec ne doit jamais bloquer la
-      // liste — mais il doit se voir, sous peine de passer pour une pénurie de
-      // cohorte qui, elle, ne se répare pas en rechargeant la page.
-      setBenchmarkFailed(true);
-    }
-  }, [benchmarkAllowed, projectId]);
-
   const flushUpdates = useCallback(async () => {
     const updates = pendingUpdatesRef.current;
     if (!updates.material_items?.length && !updates.complementary_items?.length) {
@@ -137,14 +113,14 @@ export default function ShoppingListPage() {
       );
       setData(result);
       if (hadPriceUpdates) {
-        await Promise.all([loadBudgetSummary(), loadBenchmark()]);
+        await loadBudgetSummary();
       }
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Impossible de sauvegarder'));
     } finally {
       setSaving(false);
     }
-  }, [projectId, loadBudgetSummary, loadBenchmark]);
+  }, [projectId, loadBudgetSummary]);
 
   const scheduleSave = useCallback(() => {
     if (saveTimeoutRef.current) {
@@ -200,13 +176,6 @@ export default function ShoppingListPage() {
       loadEcoSuggestions();
     }
   }, [data, ecoAllowed, loadEcoSuggestions]);
-
-  // Load cost benchmark when data is available (DATA-4)
-  useEffect(() => {
-    if (data && benchmarkAllowed) {
-      loadBenchmark();
-    }
-  }, [data, benchmarkAllowed, loadBenchmark]);
 
   const ecoByMaterialId = useMemo(() => {
     const map = new Map<string, EcoRowData>();
@@ -549,11 +518,11 @@ export default function ShoppingListPage() {
       );
       setData(result);
       setComparisonData(null);
-      await Promise.all([loadBudgetSummary(), loadBenchmark()]);
+      await loadBudgetSummary();
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Impossible de recharger la liste'));
     }
-  }, [projectId, loadBudgetSummary, loadBenchmark]);
+  }, [projectId, loadBudgetSummary]);
 
   const handleShowPaywall = useCallback(() => {
     showPaywall('budget_tracking');
@@ -561,10 +530,6 @@ export default function ShoppingListPage() {
 
   const handleShowEcoPaywall = useCallback(() => {
     showPaywall('eco_materials');
-  }, [showPaywall]);
-
-  const handleShowBenchmarkPaywall = useCallback(() => {
-    showPaywall('cost_benchmark');
   }, [showPaywall]);
 
   if (isLoading || loading) {
@@ -710,13 +675,6 @@ export default function ShoppingListPage() {
             budgetAllowed={budgetAllowed}
             onFinalize={() => setShowFinalizeConfirm(true)}
             onShowPaywall={handleShowPaywall}
-          />
-
-          <CostBenchmarkPanel
-            benchmark={benchmark}
-            benchmarkFailed={benchmarkFailed}
-            benchmarkAllowed={benchmarkAllowed}
-            onShowPaywall={handleShowBenchmarkPaywall}
           />
 
           <section className="mb-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">

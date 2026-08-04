@@ -1,5 +1,12 @@
 'use client';
 
+/**
+ * Gelé (ADR 0001 D3, §5) : `cost_benchmark` est refusée à tous les paliers en
+ * base, donc plus branché sur `shopping-list/page.tsx` — l'afficher ne
+ * produirait qu'une promesse « Passer à Pro » qui ne se débloque jamais.
+ * Conservé pour une réouverture éventuelle, conditionnée aux données.
+ */
+
 import type {
   BenchmarkPosition,
   CostBenchmarkResponse,

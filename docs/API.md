@@ -722,6 +722,9 @@ Servir la miniature de la photo.
 
 ## Analysis (CV)
 
+> Gelé en production (ADR 0001 D2, `CV_ENABLED=false`) : la requête retourne un
+> message d'indisponibilité (`CV_DISABLED_MESSAGE`), quel que soit le palier.
+
 ### `POST /projects/:id/analyze`
 
 Lancer l'analyse par vision par ordinateur des photos du projet.
