@@ -67,18 +67,32 @@ describe('EstimationResults', () => {
     const items = [makeLineItem({ gross_surface_m2: 35, surface_m2: 31.964 })];
     render(<EstimationResults items={items} />);
 
-    expect(screen.getByText(/Surface brute : 35 m²/)).toBeInTheDocument();
-    expect(screen.getByText(/Surface nette : 31.964 m²/)).toBeInTheDocument();
+    // Le résumé de groupe et le détail par ligne montrent tous deux la
+    // surface brute/nette (le détail est nécessaire dès qu'un groupe a
+    // plusieurs matériaux, cf. le fixture makeMultiWorkTypeItems).
+    expect(
+      screen.getAllByText(/Surface brute : 35 m²/).length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText(/Surface nette : 31.964 m²/).length,
+    ).toBeGreaterThanOrEqual(1);
   });
 
   it('should show single surface when gross equals net (floor)', () => {
     const items = [makeFloorTilingItem({ gross_surface_m2: 12, surface_m2: 12 })];
     render(<EstimationResults items={items} />);
 
-    // Both the section header and material card show "Surface : 12 m²"
+    // Section header collapses to a single "Surface : 12 m²" when equal.
     const surfaceTexts = screen.getAllByText(/Surface : 12 m²/);
     expect(surfaceTexts.length).toBeGreaterThanOrEqual(1);
-    expect(screen.queryByText(/Surface brute/)).not.toBeInTheDocument();
+    // Per-line detail always spells out both steps of the chain explicitly,
+    // even when brute and nette are equal.
+    expect(
+      screen.getAllByText(/Surface brute : 12 m²/).length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText(/Surface nette : 12 m²/).length,
+    ).toBeGreaterThanOrEqual(1);
   });
 
   it('should mention the excluded surface when a wall exclusion was applied', () => {
@@ -104,19 +118,29 @@ describe('EstimationResults', () => {
   it('should display material detail: theoretical, waste, adjusted', () => {
     render(<EstimationResults items={[makeLineItem()]} />);
 
-    expect(screen.getByText(/Theorique : 5.81 L/)).toBeInTheDocument();
+    expect(screen.getByText(/Quantité théorique : 5.81 L/)).toBeInTheDocument();
     expect(screen.getByText(/Perte : 15%/)).toBeInTheDocument();
-    expect(screen.getByText(/Ajuste : 6.68 L/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Quantité ajustée \(après perte\) : 6.68 L/),
+    ).toBeInTheDocument();
+  });
+
+  it('should display the pose type as part of the waste factor reason', () => {
+    render(
+      <EstimationResults items={[makeLineItem({ pose_type: 'diagonal' })]} />,
+    );
+
+    expect(screen.getByText(/Perte : 15% · Pose diagonal/)).toBeInTheDocument();
   });
 
   it('should display coats for painting items', () => {
     render(<EstimationResults items={[makeLineItem({ number_of_coats: 2 })]} />);
-    expect(screen.getByText(/2 couches/)).toBeInTheDocument();
+    expect(screen.getByText(/Nombre de couches : 2/)).toBeInTheDocument();
   });
 
   it('should not display coats for non-painting items', () => {
     render(<EstimationResults items={[makeFloorTilingItem()]} />);
-    expect(screen.queryByText(/couche/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/couches/)).not.toBeInTheDocument();
   });
 
   it('should display packaging info', () => {
@@ -131,9 +155,16 @@ describe('EstimationResults', () => {
     delete (item as any).gross_surface_m2;
     render(<EstimationResults items={[item]} />);
 
-    // Should fall back to surface_m2 and show single surface (appears in header and card)
+    // Section header falls back to a single "Surface : X m²" (gross === net).
     const surfaceTexts = screen.getAllByText(/Surface : 31.964 m²/);
     expect(surfaceTexts.length).toBeGreaterThanOrEqual(1);
+    // Per-line detail also falls back gross -> net for "Surface brute".
+    expect(
+      screen.getAllByText(/Surface brute : 31.964 m²/).length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText(/Surface nette : 31.964 m²/).length,
+    ).toBeGreaterThanOrEqual(1);
   });
 
   it('should hide the calculation detail by default and expand it on click', () => {
@@ -168,5 +199,62 @@ describe('EstimationResults', () => {
     ];
     render(<EstimationResults items={items} />);
     expect(screen.queryByText(/Fourchette selon la mesure/)).not.toBeInTheDocument();
+  });
+
+  // E4-2 : le détail doit permettre de reconstituer le chiffre à la main,
+  // dans l'ordre — pas seulement afficher chaque nombre isolément.
+  it("recompose la chaîne complète du calcul jusqu'au nombre d'unités", () => {
+    const items = [
+      makeLineItem({
+        gross_surface_m2: 35,
+        surface_m2: 31.964,
+        excluded_surface_m2: 3,
+        number_of_coats: 2,
+        waste_factor_percent: 15,
+        waste_factor_source: 'catalog',
+        theoretical_qty: 5.812,
+        adjusted_qty: 6.684,
+        packaging_label: 'Pot 2.5 L',
+        packaging_qty_per_unit: 2.5,
+        units_needed: 3,
+      }),
+    ];
+    const { container } = render(<EstimationResults items={items} />);
+
+    const detailToggle = screen.getByRole('button', {
+      name: /Détail du calcul/,
+    });
+    fireEvent.click(detailToggle);
+    expect(detailToggle).toHaveAttribute('aria-expanded', 'true');
+
+    const text = container.textContent ?? '';
+    const steps = [
+      'Surface brute : 35 m²',
+      'Surfaces exclues (saisies) : -3 m²',
+      'Surface nette : 31.964 m²',
+      'Nombre de couches : 2',
+      'Perte : 15% · Pose standard',
+      'Quantité théorique : 5.81 L',
+      'Quantité ajustée (après perte) : 6.68 L',
+      'Conditionnement retenu : 3 × Pot 2.5 L',
+    ];
+
+    // La section de résumé (WorkTypeSection) répète brute/nette/exclusion
+    // avant le détail par ligne : on cherche chaque étape après la
+    // précédente pour verrouiller sur la séquence propre à la ligne.
+    let previousIndex = -1;
+    for (const step of steps) {
+      const index = text.indexOf(step, previousIndex + 1);
+      expect(index).toBeGreaterThan(-1);
+      expect(index).toBeGreaterThan(previousIndex);
+      previousIndex = index;
+    }
+
+    // 3 unités × 2.5 L = 7.5 L achetés pour 6.684 L nécessaires -> 0.82 L de surplus.
+    expect(
+      screen.getByText(
+        /7.5 L achetés pour 6.68 L nécessaires \(surplus : 0.82 L\)/,
+      ),
+    ).toBeInTheDocument();
   });
 });

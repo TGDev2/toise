@@ -102,6 +102,13 @@ export function EstimationResults({ items }: EstimationResultsProps) {
               const detailKey = `${item.material_id}-${idx}`;
               const isDetailOpen = openDetails.has(detailKey);
               const excludedSurface = item.excluded_surface_m2 ?? 0;
+              const grossSurface = item.gross_surface_m2 ?? item.surface_m2;
+              const totalBoughtQty =
+                item.units_needed * item.packaging_qty_per_unit;
+              const surplusQty = Math.max(
+                0,
+                totalBoughtQty - item.adjusted_qty,
+              );
               const hasRange =
                 item.units_needed_low != null &&
                 item.units_needed_high != null &&
@@ -166,20 +173,20 @@ export function EstimationResults({ items }: EstimationResultsProps) {
                     }}
                   >
                     <div style={{ overflow: 'hidden' }}>
-                      <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1.5 border-t border-stone-100 pt-3 text-xs text-stone-500 sm:grid-cols-3">
-                        <span>
-                          Surface : {item.surface_m2} m²
-                          {item.number_of_coats
-                            ? ` · ${item.number_of_coats} couche${item.number_of_coats > 1 ? 's' : ''}`
-                            : ''}
-                        </span>
+                      <ol className="mt-3 space-y-1.5 border-t border-stone-100 pt-3 text-xs text-stone-500">
+                        <li>Surface brute : {grossSurface} m²</li>
                         {excludedSurface > 0 && (
-                          <span>
-                            Ouvertures déduites : -{excludedSurface} m²
-                          </span>
+                          <li>
+                            Surfaces exclues (saisies) : -{excludedSurface} m²
+                          </li>
                         )}
-                        <span className="flex items-center gap-1">
-                          Perte : {item.waste_factor_percent}%
+                        <li>Surface nette : {item.surface_m2} m²</li>
+                        {item.number_of_coats && (
+                          <li>Nombre de couches : {item.number_of_coats}</li>
+                        )}
+                        <li className="flex items-center gap-1">
+                          Perte : {item.waste_factor_percent}% · Pose{' '}
+                          {item.pose_type}
                           {item.waste_factor_source === 'default' && (
                             <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
                               generique
@@ -193,16 +200,29 @@ export function EstimationResults({ items }: EstimationResultsProps) {
                               appris
                             </span>
                           )}
-                        </span>
-                        <span>
-                          Theorique :{' '}
+                        </li>
+                        <li>
+                          Quantité théorique :{' '}
                           {formatQty(item.theoretical_qty, item.material_unit)}
-                        </span>
-                        <span>
-                          Ajuste :{' '}
+                        </li>
+                        <li>
+                          Quantité ajustée (après perte) :{' '}
                           {formatQty(item.adjusted_qty, item.material_unit)}
-                        </span>
-                      </div>
+                        </li>
+                        <li>
+                          Conditionnement retenu :{' '}
+                          {formatPurchase(
+                            item.units_needed,
+                            item.packaging_label,
+                            item.packaging_breakdown,
+                          )}{' '}
+                          — {formatQty(totalBoughtQty, item.material_unit)}{' '}
+                          achetés pour{' '}
+                          {formatQty(item.adjusted_qty, item.material_unit)}{' '}
+                          nécessaires (surplus :{' '}
+                          {formatQty(surplusQty, item.material_unit)})
+                        </li>
+                      </ol>
                     </div>
                   </div>
                 </div>
