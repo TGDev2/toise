@@ -28,7 +28,7 @@ interface ApiPlan {
  */
 const CONTRACTOR_PLANS = plansForAudience('artisan');
 
-const DEFAULT_RECOMMENDED_PLAN = 'contractor_standard';
+const DEFAULT_RECOMMENDED_PLAN = 'contractor_essentiel';
 
 export function ContractorPricingModal({
   onClose,

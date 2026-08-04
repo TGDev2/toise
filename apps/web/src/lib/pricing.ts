@@ -12,7 +12,7 @@ export { TIER_ORDER };
  * page réécrivait son propre découpage et la landing finissait par parler au
  * particulier dans son hero et à l'artisan dans sa section suivante.
  */
-export const AUDIENCES = ['diy', 'artisan', 'enterprise'] as const;
+export const AUDIENCES = ['diy', 'artisan'] as const;
 export type Audience = (typeof AUDIENCES)[number];
 
 export interface AudienceDefinition {
@@ -51,13 +51,6 @@ export const AUDIENCE_DEFINITIONS: Record<Audience, AudienceDefinition> = {
       'Peintre, carreleur, plaquiste, solier : chiffrez et envoyez un devis conforme depuis le chantier, pas le soir au bureau.',
     switchLabel: 'Vous êtes artisan ?',
   },
-  enterprise: {
-    landingPath: '/pricing#enterprise',
-    title: 'Enseignes et grands comptes',
-    tagline:
-      'Intégrez l’estimation Chiffréo à vos propres outils, sous contrat annuel.',
-    switchLabel: 'Vous êtes une enseigne ?',
-  },
 };
 
 /**
@@ -70,12 +63,8 @@ export type NonGateReason =
   | 'quota'
   /** Socle produit disponible à tous les paliers, jamais gaté. */
   | 'socle'
-  /** Renvoi au palier inférieur (« Tout Essentiel + »). */
-  | 'heritage'
-  /** Engagement humain (support prioritaire, accompagnement). */
-  | 'support'
-  /** Clause contractuelle (SLA, environnement dédié, facturation annuelle). */
-  | 'contrat';
+  /** Renvoi au palier inférieur (« Tout Pro compris »). */
+  | 'heritage';
 
 export interface PlanFeature {
   label: string;
@@ -87,25 +76,21 @@ export interface PlanFeature {
 
 export interface OfferPlan {
   /**
-   * `contractor_premium` a existé ici jusqu'au gel de l'ADR 0001 (D3) : ses deux
-   * lignes — multi-utilisateurs et API publique — étaient ses seuls
-   * différenciateurs, et le palier ne justifiait plus 49 € sans elles. Le rang
-   * reste dans `TIER_ORDER` : des comptes peuvent le porter en base.
+   * `contractor_premium` (49 €) et `contractor_standard` (29 €) ont existé ici
+   * jusqu'au gel de l'ADR 0001 (D3) puis à la fusion en palier unique (D4,
+   * E3-4) : leurs différenciateurs propres (multi-utilisateurs, API publique,
+   * suivi de chantier, relances de devis) sont gelés, et aucun ne justifiait
+   * plus son prix sans eux. Leurs rangs restent dans `TIER_ORDER` : des
+   * comptes peuvent encore les porter en base.
    */
-  key:
-    | 'free'
-    | 'pro'
-    | 'contractor_essentiel'
-    | 'contractor_standard'
-    | 'enterprise';
+  key: 'free' | 'pro' | 'contractor_essentiel';
   /**
    * Clé correspondante dans GET /subscriptions/plans (résolue en price_id
    * Stripe à l'exécution pour un utilisateur connecté). Absente pour le plan
-   * gratuit et pour l'enterprise (contrat annuel, hors Stripe). Les prix
-   * affichés ici sont indicatifs : le checkout n'envoie jamais un montant,
-   * uniquement un price_id fourni par l'API.
+   * gratuit. Les prix affichés ici sont indicatifs : le checkout n'envoie
+   * jamais un montant, uniquement un price_id fourni par l'API.
    */
-  apiPlanKey?: 'pro' | 'contractor_essentiel' | 'contractor_standard';
+  apiPlanKey?: 'pro' | 'contractor_essentiel';
   tier: PlanTier;
   audience: Audience;
   name: string;
@@ -233,61 +218,7 @@ export const OFFER_PLANS: OfferPlan[] = [
     ],
     ctaLabel: 'Choisir Essentiel',
   },
-  {
-    key: 'contractor_standard',
-    apiPlanKey: 'contractor_standard',
-    tier: 'contractor_standard',
-    audience: 'artisan',
-    name: 'Standard',
-    priceLabel: '29 €',
-    priceNumber: 29,
-    period: '/mois',
-    description: 'Le quotidien d’un artisan organisé.',
-    // Le suivi de chantier et les relances de devis, ses deux différenciateurs,
-    // sont gelés par l'ADR 0001 (D3) : le palier ne tient plus que par son
-    // engagement de support en attendant sa fusion avec Essentiel (D4, E3-4).
-    features: [
-      { label: 'Tout Essentiel +', gateKey: null, nonGateReason: 'heritage' },
-      { label: 'Support prioritaire', gateKey: null, nonGateReason: 'support' },
-    ],
-    highlighted: true,
-    ctaLabel: 'Choisir Standard',
-  },
-  {
-    key: 'enterprise',
-    tier: 'enterprise',
-    audience: 'enterprise',
-    name: 'Enterprise',
-    priceLabel: 'Sur devis',
-    // Aucun prix public : l'offre est portée par `enterprise_agreements`
-    // (contrat annuel rattaché à l'organisation), pas par un abonnement Stripe.
-    // `null` la tient hors des agrégats de prix du JSON-LD.
-    priceNumber: null,
-    period: '',
-    description:
-      'Pour les enseignes et les réseaux qui intègrent Chiffréo à leur propre système.',
-    // Le SSO, seule capacité propre de ce palier, est gelé par l'ADR 0001 (D3) :
-    // ne restent que des clauses de contrat. Le palier lui-même disparaît des
-    // surfaces en E3-4.
-    features: [
-      { label: 'Tout Standard +', gateKey: null, nonGateReason: 'heritage' },
-      {
-        label: 'Contrat annuel et engagements de SLA',
-        gateKey: null,
-        nonGateReason: 'contrat',
-      },
-      {
-        label: 'Environnement dédié',
-        gateKey: null,
-        nonGateReason: 'contrat',
-      },
-    ],
-    ctaLabel: 'Nous contacter',
-  },
 ];
-
-/** Destinataire du CTA enterprise : adresse déjà publiée en mentions légales et CGV. */
-export const ENTERPRISE_CONTACT_EMAIL = 'contact@chiffreo.fr';
 
 export function plansForAudience(audience: Audience): OfferPlan[] {
   return OFFER_PLANS.filter((plan) => plan.audience === audience);

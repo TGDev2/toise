@@ -232,21 +232,15 @@ export default function ArtisansPage() {
         {/* Offres Contractor */}
         <section id="offres" className="mt-24 scroll-mt-8">
           <h2 className="text-3xl font-semibold text-stone-950">
-            Deux niveaux selon votre activité
+            Une offre, tout le parcours
           </h2>
           <p className="mt-3 max-w-xl text-base text-stone-700">
-            L&apos;Essentiel porte tout le parcours : chiffrage, devis conforme,
-            fichier clients et facturation. Le Standard n&apos;ajoute que le
-            support prioritaire.
+            Chiffrage, devis conforme, fichier clients et facturation : tout est
+            inclus, sans palier supérieur à débloquer.
           </p>
-          <div className="mt-8 grid gap-5 md:grid-cols-2">
+          <div className="mt-8 max-w-sm">
             {CONTRACTOR_PLANS.map((plan) => (
-              <PlanCard
-                key={plan.key}
-                plan={plan}
-                tone={plan.highlighted ? 'highlighted' : 'surface'}
-                badge={plan.highlighted ? 'Populaire' : undefined}
-              />
+              <PlanCard key={plan.key} plan={plan} tone="highlighted" />
             ))}
           </div>
           <p className="mt-4 text-center text-xs text-stone-500">

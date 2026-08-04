@@ -3,35 +3,29 @@ import Link from 'next/link';
 import { MarketingHeader } from '@/components/marketing/MarketingHeader';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 import { PlanCard } from '@/components/marketing/PlanCard';
-import {
-  AUDIENCE_DEFINITIONS,
-  ENTERPRISE_CONTACT_EMAIL,
-  OFFER_PLANS,
-  plansForAudience,
-} from '@/lib/pricing';
+import { AUDIENCE_DEFINITIONS, OFFER_PLANS, plansForAudience } from '@/lib/pricing';
 import { serializeJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title: 'Tarifs',
   description:
-    'Comparez les offres Chiffréo : Gratuit, Pro à 9,99 €/mois avec 7 jours d’essai, Contractor dès 19 €/mois pour les métiers de finition, Enterprise sur devis.',
+    'Comparez les offres Chiffréo : Gratuit, Pro à 9,99 €/mois avec 7 jours d’essai, Contractor à 19 €/mois pour les métiers de finition.',
   alternates: { canonical: '/pricing' },
   openGraph: {
     title: 'Tarifs Chiffréo',
     description:
-      'Gratuit, Pro à 9,99 €/mois avec essai de 7 jours, Contractor dès 19 €/mois, Enterprise sur devis.',
+      'Gratuit, Pro à 9,99 €/mois avec essai de 7 jours, Contractor à 19 €/mois.',
     url: '/pricing',
   },
 };
 
 const DIY_PLANS = plansForAudience('diy');
 const ARTISAN_PLANS = plansForAudience('artisan');
-const [ENTERPRISE_PLAN] = plansForAudience('enterprise');
 
 /**
- * L'offre Enterprise est portée par un contrat annuel (`enterprise_agreements`),
- * pas par un prix Stripe : elle n'a pas de montant public et reste donc hors des
- * agrégats. Les inclure avec un `priceNumber` fictif fausserait `lowPrice`.
+ * `priceNumber` reste `number | null` dans `OfferPlan` (une offre sur devis
+ * pourrait revenir), donc le filtre reste nécessaire même si tous les paliers
+ * actuels ont un prix public depuis le retrait d'Enterprise (E3-4).
  */
 const PRICED_PLANS = OFFER_PLANS.filter(
   (plan): plan is typeof plan & { priceNumber: number } =>
@@ -91,11 +85,6 @@ const FAQ_ITEMS = [
     answer:
       'Le paiement est géré par Stripe, par carte bancaire, en toute sécurité. Nous ne stockons jamais vos données de paiement.',
   },
-  {
-    question: 'Comment fonctionne l’offre Enterprise ?',
-    answer:
-      'Elle repose sur un contrat annuel rattaché à votre organisation, et non sur un abonnement individuel : engagements de SLA et environnement dédié. Elle se met en place après échange avec nous.',
-  },
 ];
 
 function AudienceHeading({
@@ -129,13 +118,12 @@ export default function PricingPage() {
         {/* Hero */}
         <section className="mt-6 text-center">
           <h1 className="mx-auto max-w-2xl text-4xl font-semibold leading-tight text-stone-950 sm:text-5xl">
-            Une échelle, trois publics
+            Une échelle, deux publics
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-stone-700">
             Le même moteur d&apos;estimation pour tout le monde. Ce qui change
             d&apos;un palier à l&apos;autre, c&apos;est ce que vous en faites
-            ensuite : une liste d&apos;achats, un devis client, ou une
-            intégration à vos propres outils.
+            ensuite : une liste d&apos;achats, ou un devis client.
           </p>
         </section>
 
@@ -161,14 +149,9 @@ export default function PricingPage() {
         {/* Artisans */}
         <section id="artisans" className="mt-24 scroll-mt-8">
           <AudienceHeading audience="artisan" />
-          <div className="mt-8 grid gap-5 md:grid-cols-2 lg:max-w-3xl">
+          <div className="mt-8 max-w-sm">
             {ARTISAN_PLANS.map((plan) => (
-              <PlanCard
-                key={plan.key}
-                plan={plan}
-                tone={plan.highlighted ? 'highlighted' : 'surface'}
-                badge={plan.highlighted ? 'Populaire' : undefined}
-              />
+              <PlanCard key={plan.key} plan={plan} tone="highlighted" />
             ))}
           </div>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-stone-600">
@@ -186,50 +169,6 @@ export default function PricingPage() {
             </Link>
           </p>
         </section>
-
-        {/* Enterprise */}
-        {ENTERPRISE_PLAN && (
-          <section
-            id="enterprise"
-            className="mt-24 scroll-mt-8 rounded-[2rem] bg-stone-950 p-8 text-stone-50 shadow-[0_25px_80px_rgba(26,15,7,0.28)] sm:p-10"
-          >
-            <div className="grid items-center gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-amber-200/80">
-                  {AUDIENCE_DEFINITIONS.enterprise.title}
-                </p>
-                <h2 className="mt-4 text-3xl font-semibold text-white">
-                  {ENTERPRISE_PLAN.name} — {ENTERPRISE_PLAN.priceLabel}
-                </h2>
-                <p className="mt-4 max-w-xl text-base leading-7 text-stone-300">
-                  {AUDIENCE_DEFINITIONS.enterprise.tagline}{' '}
-                  {ENTERPRISE_PLAN.description}
-                </p>
-                <a
-                  href={`mailto:${ENTERPRISE_CONTACT_EMAIL}?subject=${encodeURIComponent(
-                    'Offre Enterprise Chiffréo',
-                  )}`}
-                  className="mt-7 inline-block rounded-full bg-white px-6 py-3 text-sm font-semibold text-stone-950 transition-all hover:-translate-y-0.5 hover:bg-stone-100 hover:shadow-md"
-                >
-                  {ENTERPRISE_PLAN.ctaLabel}
-                </a>
-                <p className="mt-3 text-xs text-stone-400">
-                  {ENTERPRISE_CONTACT_EMAIL}
-                </p>
-              </div>
-              <ul className="space-y-2 rounded-2xl border border-white/10 bg-white/5 p-6 text-sm leading-6 text-stone-300">
-                {ENTERPRISE_PLAN.features.map((feature) => (
-                  <li key={feature.label} className="flex gap-2">
-                    <span aria-hidden className="text-amber-200">
-                      ✓
-                    </span>
-                    {feature.label}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </section>
-        )}
 
         {/* FAQ */}
         <section className="mt-24">

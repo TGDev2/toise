@@ -67,10 +67,12 @@ export const KNOWN_FEATURE_GATES: KnownFeatureGate[] = [
   // 1711468800026
   { key: 'community_gallery', label: 'Galerie communautaire', minTier: 'free', enabled: true, since: '026' },
   // 1711468800037 — différenciateurs Standard/Premium, allumés un par un avec
-  // leur code (039, 041, 054, 055), puis tous gelés par 065 (ADR 0001 D3)
-  { key: 'site_tracking', label: 'Suivi de chantier', minTier: 'contractor_standard', enabled: false, since: '065' },
-  { key: 'quote_reminders', label: 'Relances de devis', minTier: 'contractor_standard', enabled: false, since: '065' },
-  { key: 'multi_user', label: 'Multi-utilisateurs', minTier: 'contractor_premium', enabled: false, since: '065' },
+  // leur code (039, 041, 054, 055), puis tous gelés par 065 (ADR 0001 D3).
+  // `min_tier` recalé sur `contractor_essentiel` par 075 (ADR 0001 D4) : leur
+  // palier d'origine ne vend plus rien depuis la fusion en palier unique.
+  { key: 'site_tracking', label: 'Suivi de chantier', minTier: 'contractor_essentiel', enabled: false, since: '065' },
+  { key: 'quote_reminders', label: 'Relances de devis', minTier: 'contractor_essentiel', enabled: false, since: '065' },
+  { key: 'multi_user', label: 'Multi-utilisateurs', minTier: 'contractor_essentiel', enabled: false, since: '065' },
   // 1711468800045 / 049 / 053 / 056 / 060
   { key: 'invoicing', label: 'Facturation', minTier: 'contractor_essentiel', enabled: true, since: '045' },
   { key: 'logbook', label: 'Carnet du logement', minTier: 'pro', enabled: true, since: '049' },
@@ -118,7 +120,7 @@ export const GATES_NOT_MARKETED: Record<string, string> = {
   eco_materials:
     "Gelée (ADR 0001 D3, §3.1) : argument destiné au particulier, hors de la cible artisan de la V1. Le catalogue d'équivalences reste en base.",
   site_tracking:
-    "Gelée (ADR 0001 D3) : différenciateur du palier Standard, que la réduction à un palier payant unique (D4) fait disparaître. Rien du parcours V1 — chiffrer, acheter, devis — n'en dépend.",
+    "Gelée (ADR 0001 D3) : différenciateur du palier Standard, disparu avec la réduction à un palier payant unique (D4). Rien du parcours V1 — chiffrer, acheter, devis — n'en dépend.",
   quote_reminders:
     "Gelée (ADR 0001 D3) : même raison que `site_tracking`, et une relance automatique suppose un volume de devis envoyés qu'aucun compte n'a encore.",
 };
