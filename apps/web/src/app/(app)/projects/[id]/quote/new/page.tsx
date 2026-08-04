@@ -17,24 +17,7 @@ import type {
   QuoteLaborLineInput,
   CreateQuotePayload,
 } from '@/lib/quote-types';
-
-interface ShoppingListMaterialItem {
-  material_name: string;
-  material_category: string;
-  work_type_label: string;
-  packaging_label: string;
-  units_needed: number;
-  real_unit_price?: number | null;
-}
-
-interface ShoppingListResponse {
-  id: string;
-  estimation_id: string;
-  items_json: {
-    material_items: ShoppingListMaterialItem[];
-    complementary_items: unknown[];
-  };
-}
+import type { ShoppingListResponse } from '@/lib/shopping-list-types';
 
 function formatPrice(v: number): string {
   return v.toFixed(2).replace('.', ',');
@@ -131,7 +114,7 @@ export default function NewQuotePage() {
   // Live totals
   const pricedItems = useMemo(() => {
     if (!shoppingList) return [];
-    return shoppingList.items_json.material_items.filter(
+    return shoppingList.material_items.filter(
       (i) => i.real_unit_price != null && i.real_unit_price > 0,
     );
   }, [shoppingList]);

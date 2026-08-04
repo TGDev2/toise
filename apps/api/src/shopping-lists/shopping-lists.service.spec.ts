@@ -52,6 +52,9 @@ const shoppingListRepoMock = {
  * mais tout à dire de ce qui est lu et écrit sous ce verrou.
  */
 const transactionManagerMock = {
+  // Verrou advisory PostgreSQL sérialisant les créations concurrentes — un
+  // no-op suffit ici, cf. le commentaire au-dessus de ce mock.
+  query: jest.fn().mockResolvedValue(undefined),
   findOne: (_entity: unknown, options: unknown): unknown =>
     shoppingListRepoMock.findOne(options) as unknown,
   create: (_entity: unknown, data: unknown): unknown =>

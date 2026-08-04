@@ -287,6 +287,19 @@ export class ShoppingListsService {
     data: ShoppingListData,
     preserveRealPrices: boolean,
   ): Promise<ShoppingList> {
+    // Sérialise les créations concurrentes de la même liste : le front tire
+    // `GET /shopping-list` et `GET /shopping-list/buy-links` en `Promise.all`
+    // au premier chargement de la page, et les deux passent par
+    // `getOrGenerate`. Sans ce verrou, sur un projet sans liste encore, les
+    // deux `findOne` ci-dessous voient `null` — `FOR UPDATE` ne verrouille
+    // aucune ligne quand il n'y en a pas — et les deux tentent l'INSERT ; le
+    // second viole `UQ_shopping_lists_project`. Verrou transactionnel : la
+    // seconde transaction attend ici que la première committe, puis relit et
+    // trouve la ligne déjà créée.
+    await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
+      projectId,
+    ]);
+
     const existing = await manager.findOne(ShoppingList, {
       where: { project_id: projectId },
       lock: { mode: 'pessimistic_write' },
