@@ -108,4 +108,11 @@ describe('ContractorDashboard', () => {
 
     expect(screen.getByLabelText('Nom du chantier')).toBeInTheDocument();
   });
+
+  it('links the Clients tile to the clients list', () => {
+    render(<ContractorDashboard />);
+
+    const clientsTile = screen.getByText('Clients').closest('a');
+    expect(clientsTile).toHaveAttribute('href', '/clients');
+  });
 });

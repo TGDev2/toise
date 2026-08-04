@@ -314,14 +314,17 @@ export function ContractorDashboard() {
           </p>
           <p className="mt-1 text-2xl font-bold text-stone-900">{meta.total}</p>
         </div>
-        <div className="rounded-2xl border border-stone-200 bg-white/85 p-4">
+        <Link
+          href="/clients"
+          className="rounded-2xl border border-stone-200 bg-white/85 p-4 transition-colors hover:border-stone-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+        >
           <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
             Clients
           </p>
           <p className="mt-1 text-2xl font-bold text-stone-900">
             {clientsCount ?? '-'}
           </p>
-        </div>
+        </Link>
         <Link
           href="/quotes"
           className="rounded-2xl border border-stone-200 bg-white/85 p-4 transition-colors hover:border-stone-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"

@@ -113,6 +113,20 @@ export interface CreateClientPayload {
   vat_number?: string;
 }
 
+export interface UpdateClientPayload {
+  name?: string;
+  email?: string;
+  phone?: string;
+  address_line1?: string;
+  address_line2?: string;
+  postal_code?: string;
+  city?: string;
+  is_company?: boolean;
+  siret?: string | null;
+  vat_number?: string | null;
+  country?: string;
+}
+
 export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
   draft: 'Brouillon',
   sent: 'Envoyé',
