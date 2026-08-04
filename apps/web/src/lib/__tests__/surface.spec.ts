@@ -9,6 +9,7 @@ import {
   compositePerimeter,
   compositeWallArea,
   compositeNetWallArea,
+  boundingRectFromSegments,
   sectionsToSegments,
   segmentsToSections,
 } from '../surface';
@@ -162,6 +163,42 @@ describe('surface', () => {
   describe('compositePerimeter', () => {
     it('computes the union outline perimeter (not the sum of perimeters)', () => {
       expect(compositePerimeter(lSegments)).toBe(1_800);
+    });
+  });
+
+  describe('boundingRectFromSegments', () => {
+    it('returns the segment itself for a single rectangle', () => {
+      expect(
+        boundingRectFromSegments([
+          { x_cm: 0, y_cm: 0, length_cm: 400, width_cm: 300 },
+        ]),
+      ).toEqual({ lengthCm: 400, widthCm: 300 });
+    });
+
+    it('encloses an L-shaped room in its bounding rectangle', () => {
+      // main 400x300 + a 200x150 wing on the right → 600x300 overall
+      expect(boundingRectFromSegments(lSegments)).toEqual({
+        lengthCm: 600,
+        widthCm: 300,
+      });
+    });
+
+    it('handles a wing that extends past the origin (negative coordinates)', () => {
+      const segments = [
+        { x_cm: 0, y_cm: 0, length_cm: 400, width_cm: 300 },
+        { x_cm: -150, y_cm: 100, length_cm: 150, width_cm: 100 },
+      ];
+      expect(boundingRectFromSegments(segments)).toEqual({
+        lengthCm: 550,
+        widthCm: 300,
+      });
+    });
+
+    it('returns zero for an empty or degenerate segment list', () => {
+      expect(boundingRectFromSegments([])).toEqual({ lengthCm: 0, widthCm: 0 });
+      expect(
+        boundingRectFromSegments([{ x_cm: 0, y_cm: 0, length_cm: 0, width_cm: 300 }]),
+      ).toEqual({ lengthCm: 0, widthCm: 0 });
     });
   });
 

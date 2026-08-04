@@ -20,10 +20,18 @@ const TYPE_LABELS: Record<ExclusionType, string> = {
   other: 'Autre',
 };
 
-const QUICK_ADD: { type: ExclusionType; area_m2: number }[] = [
+interface QuickAddOption {
+  type: ExclusionType;
+  /** Description pré-remplie (type `other` uniquement) : sert aussi de libellé du bouton. */
+  label?: string;
+  area_m2: number;
+}
+
+const QUICK_ADD: QuickAddOption[] = [
   { type: 'credence', area_m2: 2 },
   { type: 'half_wall', area_m2: 3 },
   { type: 'baseboard', area_m2: 1 },
+  { type: 'other', label: 'Baie vitrée', area_m2: 3 },
   { type: 'other', area_m2: 1 },
 ];
 
@@ -45,27 +53,27 @@ export function ExclusionsSection({
       <div>
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-stone-800">
-            Surfaces à exclure
+            Une zone à ne pas traiter ?
           </h3>
-          <div className="flex flex-wrap justify-end gap-2">
-            {QUICK_ADD.map(({ type, area_m2 }) => (
-              <button
-                key={type}
-                type="button"
-                onClick={() =>
-                  onAdd({ surface_target: 'wall', type, area_m2 })
-                }
-                className="inline-flex min-h-11 items-center rounded-xl bg-stone-100 px-4 py-1.5 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-200"
-              >
-                + {TYPE_LABELS[type]}
-              </button>
-            ))}
-          </div>
         </div>
         <p className="mt-1 text-xs text-stone-500">
-          Zones non traitées par les travaux (crédence, demi-mur, plinthes…) :
-          leur aire sera retirée du calcul des murs.
+          Crédence, demi-mur, baie vitrée… : ce que vous ne traitez pas est
+          retiré du calcul des murs. Cas courants :
         </p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {QUICK_ADD.map(({ type, label, area_m2 }) => (
+            <button
+              key={label ?? type}
+              type="button"
+              onClick={() =>
+                onAdd({ surface_target: 'wall', type, label, area_m2 })
+              }
+              className="inline-flex min-h-11 items-center rounded-xl bg-stone-100 px-4 py-1.5 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-200"
+            >
+              + {label ?? TYPE_LABELS[type]}
+            </button>
+          ))}
+        </div>
       </div>
 
       {exclusions.length === 0 && (
@@ -106,6 +114,10 @@ interface ExclusionRowProps {
 
 function ExclusionRow({ exclusion, index, onUpdate, onRemove }: ExclusionRowProps) {
   const prefix = `exclusion-${index}`;
+  const displayLabel =
+    exclusion.type === 'other' && exclusion.label
+      ? exclusion.label
+      : TYPE_LABELS[exclusion.type];
 
   return (
     /*
@@ -117,7 +129,7 @@ function ExclusionRow({ exclusion, index, onUpdate, onRemove }: ExclusionRowProp
     */
     <div className="grid grid-cols-[auto_1fr_auto] items-end gap-2 rounded-2xl border border-stone-200 bg-stone-50 p-3 sm:grid-cols-[auto_6rem_1fr_auto]">
       <span className="self-center rounded-lg bg-stone-200 px-2 py-1.5 text-xs font-medium text-stone-700">
-        {TYPE_LABELS[exclusion.type]}
+        {displayLabel}
       </span>
 
       <div className="min-w-0">
@@ -137,7 +149,7 @@ function ExclusionRow({ exclusion, index, onUpdate, onRemove }: ExclusionRowProp
       <button
         type="button"
         onClick={onRemove}
-        aria-label={`Supprimer ${TYPE_LABELS[exclusion.type]} ${index + 1}`}
+        aria-label={`Supprimer ${displayLabel} ${index + 1}`}
         className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-stone-400 transition-colors hover:bg-red-50 hover:text-red-500 sm:order-last"
       >
         <svg

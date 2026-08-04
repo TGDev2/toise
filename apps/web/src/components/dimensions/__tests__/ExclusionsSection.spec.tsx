@@ -45,6 +45,42 @@ describe('ExclusionsSection', () => {
     });
   });
 
+  it('offers a pre-filled "Baie vitrée" quick add alongside the other common cases', () => {
+    render(
+      <ExclusionsSection
+        exclusions={[]}
+        onAdd={mockAdd}
+        onUpdate={mockUpdate}
+        onRemove={mockRemove}
+        netWallAreaCm2={450000}
+      />,
+    );
+    fireEvent.click(screen.getByText(/\+ baie vitrée/i));
+    expect(mockAdd).toHaveBeenCalledWith({
+      surface_target: 'wall',
+      type: 'other',
+      label: 'Baie vitrée',
+      area_m2: 3,
+    });
+  });
+
+  it('shows the custom label instead of "Autre" for a labelled "other" exclusion', () => {
+    const exclusions: SurfaceExclusion[] = [
+      { surface_target: 'wall', type: 'other', label: 'Baie vitrée', area_m2: 3 },
+    ];
+    render(
+      <ExclusionsSection
+        exclusions={exclusions}
+        onAdd={mockAdd}
+        onUpdate={mockUpdate}
+        onRemove={mockRemove}
+        netWallAreaCm2={450000}
+      />,
+    );
+    expect(screen.getByText('Baie vitrée')).toBeInTheDocument();
+    expect(screen.queryByText('Autre')).not.toBeInTheDocument();
+  });
+
   it('renders one row per exclusion with its type label', () => {
     const exclusions: SurfaceExclusion[] = [
       { surface_target: 'wall', type: 'credence', area_m2: 2 },

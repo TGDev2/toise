@@ -13,6 +13,7 @@ import {
   compositeFloorArea,
   compositeWallArea,
   compositeNetWallArea,
+  boundingRectFromSegments,
   sectionsToSegments,
   segmentsToSections,
 } from '@/lib/surface';
@@ -236,6 +237,57 @@ export function DimensionsForm({
 
   const surfaceM2 = surfaceCm2 / 10_000;
   const isValid = missingFields.length === 0;
+
+  // E4-3 : ce qu'une calculette d'enseigne aurait donné — le rectangle
+  // englobant (aucun décroché, aucune exclusion), ouvertures déduites comme
+  // n'importe quel outil standard le ferait. Le total (sol + plafond + murs)
+  // est la bonne base de comparaison, pas les seuls murs : un décroché
+  // « à plat » sur un bord (le cas le plus courant) ne change pas le
+  // périmètre — donc pas la surface de murs à peindre — mais réduit bien le
+  // sol et le plafond réels par rapport au rectangle qui l'englobe.
+  const naiveFloorCm2 = useMemo(() => {
+    if (!hasDimensions) return 0;
+    if (!isComposite) return floorCm2;
+    const box = boundingRectFromSegments(segments);
+    return box.lengthCm * box.widthCm;
+  }, [hasDimensions, isComposite, segments, floorCm2]);
+
+  const naiveNetWallCm2 = useMemo(() => {
+    if (!hasDimensions) return 0;
+    const box = isComposite
+      ? boundingRectFromSegments(segments)
+      : { lengthCm, widthCm };
+    const grossCm2 = wallArea(box.lengthCm, box.widthCm, heightCm);
+    return Math.max(0, grossCm2 - openingsAreaCm2);
+  }, [hasDimensions, isComposite, segments, lengthCm, widthCm, heightCm, openingsAreaCm2]);
+
+  const netTotalCm2 = 2 * floorCm2 + netWallCm2;
+  const naiveNetTotalCm2 = 2 * naiveFloorCm2 + naiveNetWallCm2;
+  const totalGapCm2 = naiveNetTotalCm2 - netTotalCm2;
+  const totalGapM2 = totalGapCm2 / 10_000;
+
+  // `DecimalInput` normalise déjà la virgule en point (cf. `normalizeDecimalInput`).
+  const [pricePerM2, setPricePerM2] = useState('');
+  const pricePerM2Value = Number.parseFloat(pricePerM2);
+  const hasKnownPrice = Number.isFinite(pricePerM2Value) && pricePerM2Value > 0;
+  const totalGapEur = hasKnownPrice ? totalGapM2 * pricePerM2Value : null;
+
+  const totalGapEurSuffix =
+    hasKnownPrice && totalGapEur !== null
+      ? ` (${Math.abs(totalGapEur).toFixed(2).replace('.', ',')} €)`
+      : '';
+  const totalGapLabel =
+    totalGapCm2 === 0
+      ? "Identique à un rectangle simple pour l'instant."
+      : totalGapCm2 > 0
+        ? `Vous évitez d'acheter ${totalGapM2.toFixed(1)} m² en trop${totalGapEurSuffix}.`
+        : `Un rectangle simple aurait sous-estimé de ${Math.abs(totalGapM2).toFixed(1)} m²${totalGapEurSuffix}.`;
+  const totalGapClassName =
+    totalGapCm2 === 0
+      ? 'text-xs text-stone-500 italic'
+      : totalGapCm2 > 0
+        ? 'text-sm font-semibold text-emerald-700'
+        : 'text-sm font-semibold text-amber-700';
 
   const handleUnitChange = (newUnit: UnitSystem) => {
     if (newUnit === unitSystem) return;
@@ -495,6 +547,51 @@ export function DimensionsForm({
             className="w-full"
           />
         </div>
+
+        {/*
+          E4-3 : « c'est l'argument » — l'écart entre la surface nette réelle
+          (décrochés + exclusions pris en compte) et ce qu'un simple
+          rectangle aurait donné. Démarre à 0 m² d'écart et bouge en direct
+          dès qu'on répond aux deux questions guidées ci-contre.
+        */}
+        {hasDimensions && (
+          <div className="space-y-3 rounded-2xl border border-[var(--accent)]/30 bg-[var(--accent)]/5 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-700">
+              Comparé à un simple rectangle
+            </p>
+
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs text-stone-600">
+                <span>Surface nette obtenue (décroché et exclusions pris en compte)</span>
+                <span className="font-semibold text-stone-900">
+                  {(netTotalCm2 / 10_000).toFixed(1)} m&sup2;
+                </span>
+              </div>
+              <div className="flex justify-between text-xs text-stone-500">
+                <span>Rectangle simple équivalent (sans décroché ni exclusion)</span>
+                <span>{(naiveNetTotalCm2 / 10_000).toFixed(1)} m&sup2;</span>
+              </div>
+            </div>
+
+            <p className={totalGapClassName}>{totalGapLabel}</p>
+
+            <div className="border-t border-stone-200 pt-3">
+              <label htmlFor="price-per-m2" className="text-xs text-stone-500">
+                Vous connaissez le prix au m² du matériau ? (optionnel)
+              </label>
+              <div className="mt-1 flex max-w-[12rem] items-center gap-2">
+                <DecimalInput
+                  id="price-per-m2"
+                  value={pricePerM2}
+                  onValueChange={setPricePerM2}
+                  placeholder="ex. 12"
+                  className={inputClass}
+                />
+                <span className="shrink-0 text-xs text-stone-500">€/m²</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {surfaceM2 > 0 && (
           <div className="rounded-2xl bg-stone-50 border border-stone-200 p-4 space-y-3">

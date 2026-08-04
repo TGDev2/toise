@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import type { ShapeSection, ShapeSide } from '@/lib/surface';
 
 interface ShapeSectionsProps {
@@ -28,37 +29,43 @@ const DEFAULT_SECTION: ShapeSection = {
 const inputClass =
   'w-full min-h-11 rounded-2xl border border-stone-300 px-3 py-2 text-base sm:text-sm text-stone-900 focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]';
 
+const ORDINALS = ['second', 'troisième'] as const;
+/** Nombre de décrochés au-delà duquel la saisie guidée cède la place à un simple lien. */
+const GUIDED_LIMIT = ORDINALS.length + 1;
+
+const primaryButtonClass =
+  'inline-flex min-h-11 items-center justify-center rounded-xl bg-stone-900 px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-stone-700';
+const secondaryButtonClass =
+  'inline-flex min-h-11 items-center justify-center rounded-xl border border-stone-300 bg-white px-4 py-1.5 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-100';
+
 export function ShapeSections({
   sections,
   onAdd,
   onUpdate,
   onRemove,
 }: ShapeSectionsProps) {
+  // Répond « non » à la question initiale : bascule vers l'affichage
+  // « pièce simple », avec un moyen discret de revenir dessus.
+  const [declinedFirst, setDeclinedFirst] = useState(false);
+  // Répond « non » à une relance (2ᵉ ou 3ᵉ décroché) : arrête de guider,
+  // mais laisse un ajout libre pour les formes en U (4 rectangles et plus).
+  const [declinedMore, setDeclinedMore] = useState(false);
+
+  const addDefault = () => {
+    onAdd({ ...DEFAULT_SECTION });
+    setDeclinedFirst(false);
+  };
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-semibold text-stone-800">
-            Votre pièce a-t-elle un décroché ?
-          </h3>
-          <p className="text-xs text-stone-500">
-            Ajoutez chaque partie non rectangulaire (aile en L, décroché en T…).
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => onAdd({ ...DEFAULT_SECTION })}
-          className="inline-flex min-h-11 shrink-0 items-center rounded-xl bg-stone-100 px-4 py-1.5 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-200"
-        >
-          + Décroché
-        </button>
-      </div>
-
-      {sections.length === 0 && (
-        <p className="text-xs text-stone-400 italic">
-          Aucun décroché — la pièce est un simple rectangle.
+      <div>
+        <h3 className="text-sm font-semibold text-stone-800">
+          Votre pièce a-t-elle un décroché ?
+        </h3>
+        <p className="text-xs text-stone-500">
+          Un L, un T, une alcôve : ajoutez chaque partie non rectangulaire, une par une.
         </p>
-      )}
+      </div>
 
       {sections.map((section, index) => (
         <ShapeSectionRow
@@ -69,6 +76,64 @@ export function ShapeSections({
           onRemove={() => onRemove(index)}
         />
       ))}
+
+      {sections.length === 0 && !declinedFirst && (
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={addDefault} className={primaryButtonClass}>
+            Oui, ajouter un décroché
+          </button>
+          <button
+            type="button"
+            onClick={() => setDeclinedFirst(true)}
+            className={secondaryButtonClass}
+          >
+            Non, c&apos;est un rectangle simple
+          </button>
+        </div>
+      )}
+
+      {sections.length === 0 && declinedFirst && (
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-stone-400 italic">Pièce simple (rectangle).</p>
+          <button
+            type="button"
+            onClick={() => setDeclinedFirst(false)}
+            className="text-xs font-medium text-stone-500 underline underline-offset-2 hover:text-stone-700"
+          >
+            + Ajouter un décroché
+          </button>
+        </div>
+      )}
+
+      {sections.length >= 1 && sections.length < GUIDED_LIMIT && !declinedMore && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-dashed border-stone-300 p-3">
+          <p className="text-xs text-stone-600">
+            Ajouter un {ORDINALS[sections.length - 1]} décroché ?
+          </p>
+          <div className="flex gap-2">
+            <button type="button" onClick={addDefault} className={primaryButtonClass}>
+              Oui, ajouter
+            </button>
+            <button
+              type="button"
+              onClick={() => setDeclinedMore(true)}
+              className={secondaryButtonClass}
+            >
+              Non, c&apos;est tout
+            </button>
+          </div>
+        </div>
+      )}
+
+      {sections.length >= 1 && (sections.length >= GUIDED_LIMIT || declinedMore) && (
+        <button
+          type="button"
+          onClick={addDefault}
+          className="text-xs font-medium text-stone-500 underline underline-offset-2 hover:text-stone-700"
+        >
+          + Ajouter un autre décroché
+        </button>
+      )}
     </div>
   );
 }

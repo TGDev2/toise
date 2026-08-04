@@ -176,6 +176,93 @@ describe('DimensionsForm', () => {
     });
   });
 
+  // E4-3 : l'écart avec un rectangle simple — « c'est l'argument ».
+  describe('comparison with a simple rectangle', () => {
+    it('shows no gap for a plain rectangle with no décroché or exclusion', () => {
+      render(
+        <DimensionsForm
+          initialLengthCm={500}
+          initialWidthCm={400}
+          initialHeightCm={250}
+          onSave={mockSave}
+        />,
+      );
+      expect(
+        screen.getByText(/identique à un rectangle simple pour l'instant/i),
+      ).toBeInTheDocument();
+    });
+
+    it('shows a positive m² gap once a décroché is added', () => {
+      render(
+        <DimensionsForm
+          initialLengthCm={400}
+          initialWidthCm={300}
+          initialHeightCm={250}
+          onSave={mockSave}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /décroché/i }));
+      fireEvent.change(screen.getByLabelText(/depuis le coin/i), {
+        target: { value: '0' },
+      });
+      fireEvent.change(screen.getByLabelText(/largeur \(cm\)/i), {
+        target: { value: '150' },
+      });
+      fireEvent.change(screen.getByLabelText(/profondeur \(cm\)/i), {
+        target: { value: '200' },
+      });
+
+      // Le décroché ne change pas le périmètre des murs ici (extension à
+      // plat sur un bord), mais le sol + plafond réels (15 m² d'union) sont
+      // plus petits que ceux du rectangle englobant 6 m × 3 m (18 m²) :
+      // écart = 2 × (18 − 15) = 6 m².
+      expect(
+        screen.getByText(/vous évitez d'acheter 6\.0 m² en trop/i),
+      ).toBeInTheDocument();
+    });
+
+    it('shows the exclusion area as the gap when there is no décroché', () => {
+      render(
+        <DimensionsForm
+          initialLengthCm={500}
+          initialWidthCm={400}
+          initialHeightCm={250}
+          onSave={mockSave}
+        />,
+      );
+
+      fireEvent.click(screen.getByText(/\+ crédence/i));
+
+      // 2 m² de crédence, aucun décroché : l'écart correspond exactement.
+      expect(
+        screen.getByText(/vous évitez d'acheter 2\.0 m² en trop/i),
+      ).toBeInTheDocument();
+    });
+
+    it('converts the gap to euros once a price per m² is entered', () => {
+      render(
+        <DimensionsForm
+          initialLengthCm={500}
+          initialWidthCm={400}
+          initialHeightCm={250}
+          onSave={mockSave}
+        />,
+      );
+
+      fireEvent.click(screen.getByText(/\+ crédence/i));
+      fireEvent.change(
+        screen.getByLabelText(/vous connaissez le prix au m² du matériau/i),
+        { target: { value: '12' } },
+      );
+
+      // 2 m² × 12 €/m² = 24,00 €
+      expect(
+        screen.getByText(/vous évitez d'acheter 2\.0 m² en trop \(24,00 €\)/i),
+      ).toBeInTheDocument();
+    });
+  });
+
   it('displays surface area when dimensions are filled', () => {
     render(
       <DimensionsForm

@@ -155,6 +155,24 @@ export function compositeFloorArea(segments: RectSegment[]): number {
   return area;
 }
 
+/**
+ * Rectangle englobant d'une pièce composée : la référence « rectangle simple »
+ * qu'une calculette d'enseigne aurait utilisée en ignorant les décrochés.
+ */
+export function boundingRectFromSegments(
+  segments: RectSegment[],
+): { lengthCm: number; widthCm: number } {
+  const valid = validSegments(segments);
+  if (valid.length === 0) return { lengthCm: 0, widthCm: 0 };
+
+  const minX = Math.min(...valid.map((s) => s.x_cm));
+  const maxX = Math.max(...valid.map((s) => s.x_cm + s.length_cm));
+  const minY = Math.min(...valid.map((s) => s.y_cm));
+  const maxY = Math.max(...valid.map((s) => s.y_cm + s.width_cm));
+
+  return { lengthCm: maxX - minX, widthCm: maxY - minY };
+}
+
 /** Périmètre du contour de l'union des rectangles, en cm. */
 export function compositePerimeter(segments: RectSegment[]): number {
   const { xs, ys, grid } = buildGrid(segments);
