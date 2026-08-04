@@ -13,6 +13,13 @@
 # testing
 /coverage
 
+# playwright (e2e)
+/playwright-report/
+/test-results/
+/e2e/.firebase/
+firebase-debug.log
+ui-debug.log
+
 # next.js
 /.next/
 /out/

@@ -95,6 +95,64 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
 
+  web-e2e:
+    name: Web (E2E navigateur)
+    runs-on: ubuntu-latest
+    # Les deux seuls scénarios navigateur du dépôt (E2-6) : parcours invité
+    # jusqu'à la liste d'achat, et parcours artisan jusqu'au PDF du devis.
+    # Postgres et Playwright montent ici une pile complète (API compilée,
+    # émulateur Firebase Auth, Next en mode dev) — c'est le seul job qui
+    # exerce le produit par un vrai navigateur plutôt que par ses tests.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: chiffreo
+          POSTGRES_USER: chiffreo
+          POSTGRES_PASSWORD: chiffreo_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U chiffreo"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @chiffreo/api build
+      - name: Migre la base
+        run: node apps/api/dist/scripts/migrate.js
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USERNAME: chiffreo
+          DB_PASSWORD: chiffreo_dev
+          DB_NAME: chiffreo
+      - run: pnpm --filter @chiffreo/web exec playwright install --with-deps chromium
+      - run: pnpm --filter @chiffreo/web test:e2e
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USERNAME: chiffreo
+          DB_PASSWORD: chiffreo_dev
+          DB_NAME: chiffreo
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7
+
   widget:
     name: Widget (lint, tests, build)
     runs-on: ubuntu-latest
