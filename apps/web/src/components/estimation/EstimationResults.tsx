@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import type { EstimationLineItem } from '@/lib/estimation-types';
-import { formatPurchase } from '@/lib/packaging';
+import { formatPurchase, isMixedPackaging } from '@/lib/packaging';
 import { WorkTypeSection } from './WorkTypeSection';
 
 interface EstimationResultsProps {
@@ -47,6 +47,9 @@ export function EstimationResults({ items }: EstimationResultsProps) {
   const [openSections, setOpenSections] = useState<Set<string>>(
     () => new Set(grouped.map((g) => g.code)),
   );
+  const [openDetails, setOpenDetails] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   if (items.length === 0) {
     return (
@@ -68,6 +71,18 @@ export function EstimationResults({ items }: EstimationResultsProps) {
     });
   }
 
+  function toggleDetail(key: string) {
+    setOpenDetails((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }
+
   return (
     <div className="space-y-6">
       {grouped.map((group) => (
@@ -83,61 +98,116 @@ export function EstimationResults({ items }: EstimationResultsProps) {
           onToggle={() => toggleSection(group.code)}
         >
           <div className="space-y-3">
-            {group.items.map((item, idx) => (
-              <div
-                key={`${item.material_id}-${idx}`}
-                className="rounded-2xl border border-stone-200 bg-white px-5 py-4"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-stone-900">
-                      {item.material_name}
-                    </p>
-                    <p className="mt-1 text-sm text-stone-500">
-                      Surface : {item.surface_m2} m²
-                      {item.number_of_coats
-                        ? ` · ${item.number_of_coats} couche${item.number_of_coats > 1 ? 's' : ''}`
-                        : ''}
-                    </p>
-                  </div>
+            {group.items.map((item, idx) => {
+              const detailKey = `${item.material_id}-${idx}`;
+              const isDetailOpen = openDetails.has(detailKey);
+              const excludedSurface = item.excluded_surface_m2 ?? 0;
+              const hasRange =
+                item.units_needed_low != null &&
+                item.units_needed_high != null &&
+                item.units_needed_low !== item.units_needed_high;
+              const isMixed = isMixedPackaging(item.packaging_breakdown);
 
-                  <div className="shrink-0 text-right">
-                    <p className="text-lg font-bold text-stone-900">
-                      {formatPurchase(
-                        item.units_needed,
-                        item.packaging_label,
-                        item.packaging_breakdown,
+              return (
+                <div
+                  key={detailKey}
+                  className="rounded-2xl border border-stone-200 bg-white px-5 py-4"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-stone-900">
+                        {item.material_name}
+                      </p>
+                      {hasRange && (
+                        <p className="mt-0.5 text-xs text-stone-400">
+                          Fourchette selon la mesure : {item.units_needed_low}–
+                          {item.units_needed_high}{' '}
+                          {isMixed ? 'contenants' : item.packaging_label}
+                        </p>
                       )}
-                    </p>
+                    </div>
+
+                    <div className="shrink-0 text-right">
+                      <p className="text-lg font-bold text-stone-900">
+                        {formatPurchase(
+                          item.units_needed,
+                          item.packaging_label,
+                          item.packaging_breakdown,
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => toggleDetail(detailKey)}
+                    aria-expanded={isDetailOpen}
+                    className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-stone-400 transition-colors hover:text-stone-600"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="transition-transform duration-200"
+                      style={{
+                        transform: isDetailOpen
+                          ? 'rotate(90deg)'
+                          : 'rotate(0deg)',
+                      }}
+                    >
+                      ▸
+                    </span>
+                    Détail du calcul
+                  </button>
+
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateRows: isDetailOpen ? '1fr' : '0fr',
+                      transition: 'grid-template-rows 200ms ease',
+                    }}
+                  >
+                    <div style={{ overflow: 'hidden' }}>
+                      <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1.5 border-t border-stone-100 pt-3 text-xs text-stone-500 sm:grid-cols-3">
+                        <span>
+                          Surface : {item.surface_m2} m²
+                          {item.number_of_coats
+                            ? ` · ${item.number_of_coats} couche${item.number_of_coats > 1 ? 's' : ''}`
+                            : ''}
+                        </span>
+                        {excludedSurface > 0 && (
+                          <span>
+                            Ouvertures déduites : -{excludedSurface} m²
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1">
+                          Perte : {item.waste_factor_percent}%
+                          {item.waste_factor_source === 'default' && (
+                            <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
+                              generique
+                            </span>
+                          )}
+                          {item.waste_factor_source === 'learned' && (
+                            <span
+                              className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700"
+                              title="Ajuste sur les achats reels de chantiers termines"
+                            >
+                              appris
+                            </span>
+                          )}
+                        </span>
+                        <span>
+                          Theorique :{' '}
+                          {formatQty(item.theoretical_qty, item.material_unit)}
+                        </span>
+                        <span>
+                          Ajuste :{' '}
+                          {formatQty(item.adjusted_qty, item.material_unit)}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-
-                <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 border-t border-stone-100 pt-3 text-xs text-stone-500">
-                  <span>
-                    Theorique : {formatQty(item.theoretical_qty, item.material_unit)}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    Perte : {item.waste_factor_percent}%
-                    {item.waste_factor_source === 'default' && (
-                      <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
-                        generique
-                      </span>
-                    )}
-                    {item.waste_factor_source === 'learned' && (
-                      <span
-                        className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700"
-                        title="Ajuste sur les achats reels de chantiers termines"
-                      >
-                        appris
-                      </span>
-                    )}
-                  </span>
-                  <span>
-                    Ajuste : {formatQty(item.adjusted_qty, item.material_unit)}
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </WorkTypeSection>
       ))}

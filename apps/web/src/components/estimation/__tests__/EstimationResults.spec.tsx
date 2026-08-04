@@ -135,4 +135,38 @@ describe('EstimationResults', () => {
     const surfaceTexts = screen.getAllByText(/Surface : 31.964 m²/);
     expect(surfaceTexts.length).toBeGreaterThanOrEqual(1);
   });
+
+  it('should hide the calculation detail by default and expand it on click', () => {
+    render(<EstimationResults items={[makeLineItem()]} />);
+
+    const detailToggle = screen.getByRole('button', {
+      name: /Détail du calcul/,
+    });
+    expect(detailToggle).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(detailToggle);
+    expect(detailToggle).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('should show the low/high range when it exists and differs', () => {
+    const items = [
+      makeLineItem({ units_needed: 3, units_needed_low: 2, units_needed_high: 3 }),
+    ];
+    render(<EstimationResults items={items} />);
+
+    expect(
+      screen.getByText(/Fourchette selon la mesure : 2–3 Pot 2.5 L/),
+    ).toBeInTheDocument();
+  });
+
+  it('should not show the range when bounds are absent or equal', () => {
+    render(<EstimationResults items={[makeLineItem()]} />);
+    expect(screen.queryByText(/Fourchette selon la mesure/)).not.toBeInTheDocument();
+
+    const items = [
+      makeLineItem({ units_needed_low: 3, units_needed_high: 3 }),
+    ];
+    render(<EstimationResults items={items} />);
+    expect(screen.queryByText(/Fourchette selon la mesure/)).not.toBeInTheDocument();
+  });
 });
