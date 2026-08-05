@@ -3,6 +3,12 @@ import { validate } from './env.validation';
 /**
  * Configuration minimale mais valide pour un démarrage en production,
  * utilisée comme base que chaque test dérive en cassant une seule règle.
+ *
+ * Elle ne porte **pas** `CV_SERVICE_TOKEN`, délibérément : c'est exactement ce
+ * que `docker-compose.prod.yml` transmet au conteneur API depuis que
+ * `cv-service` a été débranché (ADR 0001 §D2). Tant que cette variable était
+ * exigée sans condition, la pile de production refusait de démarrer alors que
+ * ce jeu de valeurs est complet.
  */
 const VALID_PRODUCTION_CONFIG: Record<string, string> = {
   NODE_ENV: 'production',
@@ -22,7 +28,6 @@ const VALID_PRODUCTION_CONFIG: Record<string, string> = {
   STRIPE_PRO_PRICE_ID: 'price_xxx',
   BREVO_API_KEY: 'xkeysib-xxx',
   BREVO_SENDER_EMAIL: 'contact@chiffreo.fr',
-  CV_SERVICE_TOKEN: 'un-secret-partage',
   NEXT_PUBLIC_API_URL: 'https://api.chiffreo.fr/api/v1',
   NEXT_PUBLIC_SITE_URL: 'https://chiffreo.fr',
 };
@@ -107,6 +112,42 @@ describe('validate (env.validation)', () => {
         DB_PASSWORD: '1234567890123456',
       };
       expect(() => validate(config)).not.toThrow();
+    });
+  });
+
+  describe('CV_SERVICE_TOKEN, required only when the CV service is wired in', () => {
+    it('starts without the shared secret while CV_ENABLED is absent (production default)', () => {
+      expect(() => validate({ ...VALID_PRODUCTION_CONFIG })).not.toThrow();
+    });
+
+    it('starts without the shared secret while CV_ENABLED is false', () => {
+      const config = { ...VALID_PRODUCTION_CONFIG, CV_ENABLED: 'false' };
+      expect(() => validate(config)).not.toThrow();
+    });
+
+    it('rejects a missing shared secret once CV_ENABLED is true', () => {
+      const config = { ...VALID_PRODUCTION_CONFIG, CV_ENABLED: 'true' };
+      expect(() => validate(config)).toThrow(
+        /CV_SERVICE_TOKEN.*CV_ENABLED=true/,
+      );
+    });
+
+    it('accepts CV_ENABLED=true when the shared secret is provided', () => {
+      const config = {
+        ...VALID_PRODUCTION_CONFIG,
+        CV_ENABLED: 'true',
+        CV_SERVICE_TOKEN: 'un-secret-partage',
+      };
+      expect(() => validate(config)).not.toThrow();
+    });
+
+    it('still rejects a CHANGEME shared secret once CV_ENABLED is true', () => {
+      const config = {
+        ...VALID_PRODUCTION_CONFIG,
+        CV_ENABLED: 'true',
+        CV_SERVICE_TOKEN: 'CHANGEME',
+      };
+      expect(() => validate(config)).toThrow(/CV_SERVICE_TOKEN.*CHANGEME/);
     });
   });
 

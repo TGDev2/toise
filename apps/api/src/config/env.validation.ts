@@ -14,11 +14,19 @@ const PRODUCTION_REQUIRED_VARS = [
   'STRIPE_PRO_PRICE_ID',
   'BREVO_API_KEY',
   'BREVO_SENDER_EMAIL',
-  // Le service CV n'était protégé que par son isolement réseau. Le secret
-  // partagé n'est une garantie que s'il est exigé des deux côtés : ici au
-  // démarrage de l'API, et dans `Settings.validate_runtime()` côté Python.
-  'CV_SERVICE_TOKEN',
 ] as const;
+
+// Le service CV n'est protégé que par son isolement réseau. Le secret partagé
+// n'est une garantie que s'il est exigé des deux côtés : ici au démarrage de
+// l'API, et dans `Settings.validate_runtime()` côté Python.
+//
+// Exigé **seulement quand l'API parle au service CV**. Il figurait dans
+// PRODUCTION_REQUIRED_VARS inconditionnellement, alors que `cv-service` a été
+// débranché de la production (ADR 0001 §D2) et retiré de
+// `docker-compose.prod.yml` — qui ne transmet donc pas cette variable. La pile
+// de production ne pouvait littéralement pas démarrer : « CV_SERVICE_TOKEN est
+// requise en production », pour un service qui ne tourne pas.
+const CV_CONDITIONAL_REQUIRED_VARS = ['CV_SERVICE_TOKEN'] as const;
 
 // Variables portant une URL censée être joignable depuis l'extérieur en
 // production (reverse proxy, redirections Stripe, build web) : un hôte
@@ -85,15 +93,27 @@ export function validate(
   const errors: string[] = [];
 
   if (config.NODE_ENV === 'production') {
-    for (const key of PRODUCTION_REQUIRED_VARS) {
+    const cvEnabled =
+      config.CV_ENABLED === 'true' || config.CV_ENABLED === true;
+    const requiredVars: readonly string[] = cvEnabled
+      ? [...PRODUCTION_REQUIRED_VARS, ...CV_CONDITIONAL_REQUIRED_VARS]
+      : PRODUCTION_REQUIRED_VARS;
+
+    for (const key of requiredVars) {
       const value = config[key];
       if (value === undefined || value === '') {
-        errors.push(`${key} est requise en production`);
+        errors.push(
+          CV_CONDITIONAL_REQUIRED_VARS.includes(
+            key as (typeof CV_CONDITIONAL_REQUIRED_VARS)[number],
+          )
+            ? `${key} est requise en production quand CV_ENABLED=true`
+            : `${key} est requise en production`,
+        );
       }
     }
 
     const changemeCandidates: readonly string[] = [
-      ...PRODUCTION_REQUIRED_VARS,
+      ...requiredVars,
       ...PRODUCTION_URL_VARS,
     ];
     for (const key of changemeCandidates) {
