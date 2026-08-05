@@ -11,7 +11,7 @@ import { FlowProgress } from '@/components/quote-flow/FlowProgress';
 import { RoomSwitcher } from '@/components/rooms/RoomSwitcher';
 import { Alert, Skeleton } from '@/components/ui';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface DimensionsData {
   length_cm: number;
@@ -127,17 +127,28 @@ export default function DimensionsPage() {
     load();
   }, [appUser, isGuest, isLoading, projectId, router]);
 
-  // Seed the form once per selected room (logged-in). Guarded so that renaming a
-  // room (which changes `rooms` but not the active id) never resets an edit.
-  const seededRoomIdRef = useRef<string | null>(null);
+  /**
+   * Seed the form once per selected room (logged-in). Tracked as state, not a
+   * ref: `DimensionsForm` reads its initial values once, at mount
+   * (`useState(initialLengthCm)`), and `key={activeRoomId}` only forces a
+   * remount on a **room change** — the very first time a room loads,
+   * `activeRoomId` already equals the real room id in the same render that
+   * mounts the form, before this effect has run. The mount therefore always
+   * saw `initialDims === null` (zeroed fields) and, because the key hadn't
+   * changed since, never remounted once the real dimensions arrived. A
+   * project reopened for editing looked wiped, even though the dimensions
+   * were intact server-side. Gating the form's render on this state (below)
+   * closes that window; a ref wouldn't, since it doesn't trigger a re-render.
+   */
+  const [seededRoomId, setSeededRoomId] = useState<string | null>(null);
   useEffect(() => {
     if (!appUser || !activeRoomId) return;
-    if (seededRoomIdRef.current === activeRoomId) return;
+    if (seededRoomId === activeRoomId) return;
     const room = rooms.find((r) => r.id === activeRoomId);
     if (!room) return;
-    seededRoomIdRef.current = activeRoomId;
     seedFromRoom(room);
-  }, [appUser, activeRoomId, rooms, seedFromRoom]);
+    setSeededRoomId(activeRoomId);
+  }, [appUser, activeRoomId, rooms, seedFromRoom, seededRoomId]);
 
   const goToRoom = useCallback(
     (roomId: string) => {
@@ -271,7 +282,9 @@ export default function DimensionsPage() {
     [appUser, projectId, router, existingOpeningIds, activeRoomId],
   );
 
-  if (isLoading || !loaded) {
+  const formReady = !appUser || (activeRoomId != null && seededRoomId === activeRoomId);
+
+  if (isLoading || !loaded || !formReady) {
     return (
       <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
         <Skeleton className="h-10 w-64" />
