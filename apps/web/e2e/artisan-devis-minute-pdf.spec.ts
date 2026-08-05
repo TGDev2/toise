@@ -35,9 +35,9 @@ test('un artisan connecté génère un devis-minute et télécharge le PDF', asy
   });
   await page.getByRole('button', { name: /Devis-minute/i }).click();
 
-  await expect(page.getByRole('button', { name: 'Passer cette étape' })).toBeVisible();
-  await page.getByRole('button', { name: 'Passer cette étape' }).click();
-
+  // « Devis-minute » crée le chantier et part droit sur les dimensions : l'étape
+  // photo (et son bouton « Passer cette étape ») a quitté le tunnel avec le
+  // débranchement du service de vision par ordinateur (ADR 0001 D2).
   await expect(page.getByRole('heading', { name: 'Dimensions de la pièce' })).toBeVisible();
   await page.getByLabel('Longueur (m)').fill('4');
   await page.getByLabel('Largeur (m)').fill('3');
