@@ -37,6 +37,19 @@ const DEFAULT_PAST_DUE_GRACE_DAYS = 14;
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+/** Une ligne de l'historique de facturation Stripe (E6-2, export RGPD). */
+export interface BillingHistoryEntry {
+  id: string;
+  number: string | null;
+  status: string | null;
+  amount_due: number;
+  amount_paid: number;
+  currency: string;
+  created: string;
+  hosted_invoice_url: string | null;
+  invoice_pdf: string | null;
+}
+
 @Injectable()
 export class SubscriptionsService {
   private readonly stripeClient: Stripe | null;
@@ -237,6 +250,43 @@ export class SubscriptionsService {
     });
 
     return { url: session.url };
+  }
+
+  /**
+   * Historique réel des factures Stripe d'un client (E6-2, export RGPD art. 20).
+   *
+   * `subscriptions`/`invoices` locaux ne portent que l'état courant de
+   * l'abonnement et les documents métier générés par l'app — aucune table ne
+   * mirror les transactions Stripe elles-mêmes. C'est la seule source d'un
+   * véritable historique de facturation.
+   *
+   * L'itération asynchrone du SDK Stripe pagine elle-même (`autoPagingEach`
+   * implicite via `Symbol.asyncIterator`) : exhaustif quel que soit le nombre
+   * de factures, sans gestion manuelle de curseur. N'avale pas ses erreurs —
+   * c'est à l'appelant (l'export, qui ne doit pas échouer entièrement pour un
+   * incident Stripe) de décider de la dégradation.
+   */
+  async listBillingHistory(
+    stripeCustomerId: string,
+  ): Promise<BillingHistoryEntry[]> {
+    const entries: BillingHistoryEntry[] = [];
+    for await (const invoice of this.stripe.invoices.list({
+      customer: stripeCustomerId,
+      limit: 100,
+    })) {
+      entries.push({
+        id: invoice.id ?? invoice.number ?? `unknown-${invoice.created}`,
+        number: invoice.number ?? null,
+        status: invoice.status ?? null,
+        amount_due: invoice.amount_due,
+        amount_paid: invoice.amount_paid,
+        currency: invoice.currency,
+        created: new Date(invoice.created * 1000).toISOString(),
+        hosted_invoice_url: invoice.hosted_invoice_url ?? null,
+        invoice_pdf: invoice.invoice_pdf ?? null,
+      });
+    }
+    return entries;
   }
 
   /**
