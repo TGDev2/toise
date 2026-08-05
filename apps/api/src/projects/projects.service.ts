@@ -728,6 +728,48 @@ export class ProjectsService {
     });
   }
 
+  /**
+   * E4-4 — les ouvrages et le niveau de compétence du dernier chantier de
+   * l'organisation, pour pré-remplir l'étape « Travaux » d'un chantier neuf.
+   *
+   * L'artisan de finition refait les mêmes ouvrages, et son niveau ne change
+   * pas d'un chantier à l'autre : la sélection était pourtant repartie de zéro
+   * à chaque pièce de chaque chantier, pour 15,3 s par pièce mesurées à 390 px
+   * (`docs/AUDIT_PARCOURS_10MIN.md`).
+   *
+   * Le chantier courant est exclu : à l'intérieur d'un même chantier, le web
+   * reprend la pièce précédente depuis les données qu'il a déjà en main, sans
+   * appel supplémentaire.
+   *
+   * **Lecture pure**, et le web annonce à l'écran que la sélection est reprise :
+   * un pré-remplissage muet mettrait un choix dans la bouche de l'artisan alors
+   * que `skill_level` pilote le facteur de perte, donc les quantités.
+   */
+  async findLastWorkSelection(
+    organizationId: string,
+    excludeProjectId: string,
+  ): Promise<ProjectWorkItem[]> {
+    const latest = await this.workItemsRepo
+      .createQueryBuilder('wi')
+      .innerJoin(Room, 'r', 'r.id = wi.room_id')
+      .innerJoin(Project, 'p', 'p.id = r.project_id')
+      .where('p.organization_id = :organizationId', { organizationId })
+      .andWhere('p.deleted_at IS NULL')
+      .andWhere('r.project_id != :excludeProjectId', { excludeProjectId })
+      .orderBy('wi.created_at', 'DESC')
+      .select('wi.room_id', 'room_id')
+      .limit(1)
+      .getRawOne<{ room_id: string }>();
+
+    if (!latest?.room_id) return [];
+
+    return this.workItemsRepo.find({
+      where: { room_id: latest.room_id },
+      relations: ['work_type'],
+      order: { work_type: { display_order: 'ASC' } },
+    });
+  }
+
   async getWorkItems(
     projectId: string,
     organizationId: string,

@@ -227,6 +227,146 @@ describe('WorkSelectionForm', () => {
     });
   });
 
+  /*
+    E4-4 — reprise de la pièce précédente ou du dernier chantier. L'artisan de
+    finition refait les mêmes ouvrages et ne change pas de niveau : la sélection
+    repartait pourtant de zéro à chaque pièce, pour 15,3 s mesurées à 390 px.
+  */
+  describe('reprise du dernier chantier (E4-4)', () => {
+    const suggestion = {
+      work_type_ids: ['wt-1', 'wt-2'],
+      skill_level: 'expert',
+      custom_params: {},
+      source: 'project' as const,
+    };
+
+    it('pré-coche les ouvrages et le niveau repris, et le dit', () => {
+      render(
+        <WorkSelectionForm
+          workTypes={mockWorkTypes}
+          suggestion={suggestion}
+          onSave={mockSave}
+          isSaving={false}
+        />,
+      );
+
+      expect(
+        screen.getByRole('button', { name: /peinture murale/i }),
+      ).toHaveAttribute('aria-pressed', 'true');
+      expect(
+        screen.getByRole('button', { name: /peinture plafond/i }),
+      ).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByLabelText(/confirme/i)).toBeChecked();
+      expect(screen.getByText(/votre dernier chantier/i)).toBeInTheDocument();
+    });
+
+    it('annonce la pièce précédente quand la reprise vient du même chantier', () => {
+      render(
+        <WorkSelectionForm
+          workTypes={mockWorkTypes}
+          suggestion={{ ...suggestion, source: 'room' }}
+          onSave={mockSave}
+          isSaving={false}
+        />,
+      );
+      expect(screen.getByText(/la pièce précédente/i)).toBeInTheDocument();
+    });
+
+    it('soumet la reprise sans geste supplémentaire', async () => {
+      render(
+        <WorkSelectionForm
+          workTypes={mockWorkTypes}
+          suggestion={suggestion}
+          onSave={mockSave}
+          isSaving={false}
+        />,
+      );
+
+      fireEvent.click(screen.getByText('Calculer'));
+
+      await waitFor(() => {
+        expect(mockSave).toHaveBeenCalledWith(
+          expect.arrayContaining([
+            expect.objectContaining({
+              work_type_id: 'wt-1',
+              skill_level: 'expert',
+            }),
+            expect.objectContaining({
+              work_type_id: 'wt-2',
+              skill_level: 'expert',
+            }),
+          ]),
+        );
+      });
+    });
+
+    it('reprend aussi les réponses contextuelles', async () => {
+      render(
+        <WorkSelectionForm
+          workTypes={mockWorkTypes}
+          suggestion={{
+            work_type_ids: ['wt-3'],
+            skill_level: 'expert',
+            custom_params: {
+              'wt-3': { tile_format: '60x60', laying_pattern: 'straight' },
+            },
+            source: 'project',
+          }}
+          onSave={mockSave}
+          isSaving={false}
+        />,
+      );
+
+      fireEvent.click(screen.getByText('Calculer'));
+
+      await waitFor(() => {
+        expect(mockSave).toHaveBeenCalledWith([
+          {
+            work_type_id: 'wt-3',
+            skill_level: 'expert',
+            custom_params: {
+              tile_format: '60x60',
+              laying_pattern: 'straight',
+            },
+          },
+        ]);
+      });
+    });
+
+    /*
+      Ce que l'artisan a enregistré pour CETTE pièce prime toujours : une
+      reprise qui écraserait une sélection existante changerait les quantités
+      d'une pièce déjà chiffrée, en silence.
+    */
+    it("ne touche pas à une pièce qui a déjà ses propres travaux", () => {
+      render(
+        <WorkSelectionForm
+          workTypes={mockWorkTypes}
+          initialSelections={[
+            {
+              id: 'wi-1',
+              work_type: mockWorkTypes[3],
+              skill_level: 'beginner',
+              custom_params: {},
+            },
+          ]}
+          suggestion={suggestion}
+          onSave={mockSave}
+          isSaving={false}
+        />,
+      );
+
+      expect(
+        screen.getByRole('button', { name: /carrelage mural/i }),
+      ).toHaveAttribute('aria-pressed', 'true');
+      expect(
+        screen.getByRole('button', { name: /peinture murale/i }),
+      ).toHaveAttribute('aria-pressed', 'false');
+      expect(screen.getByLabelText(/debutant/i)).toBeChecked();
+      expect(screen.queryByText(/Repris de/i)).not.toBeInTheDocument();
+    });
+  });
+
   it('supports multiple work type selections', async () => {
     render(<WorkSelectionForm workTypes={mockWorkTypes} onSave={mockSave} isSaving={false} />);
 

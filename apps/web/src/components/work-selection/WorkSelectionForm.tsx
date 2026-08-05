@@ -5,6 +5,7 @@ import type {
   WorkTypeRef,
   WorkItemSelection,
   SavedWorkItem,
+  WorkSelectionSuggestion,
 } from '@/lib/work-types';
 import { SKILL_LEVELS, WORK_TYPE_ICONS } from '@/lib/work-types';
 import { StickyActionBar } from '@/components/ui';
@@ -13,6 +14,12 @@ import { ContextualQuestions } from './ContextualQuestions';
 interface WorkSelectionFormProps {
   workTypes: WorkTypeRef[];
   initialSelections?: SavedWorkItem[];
+  /**
+   * E4-4 — reprise de la pièce précédente ou du dernier chantier, appliquée
+   * **uniquement** à une pièce encore vierge : ce que l'artisan a déjà
+   * enregistré pour cette pièce prime toujours.
+   */
+  suggestion?: WorkSelectionSuggestion;
   onSave: (items: WorkItemSelection[]) => Promise<void>;
   isSaving: boolean;
 }
@@ -20,20 +27,26 @@ interface WorkSelectionFormProps {
 export function WorkSelectionForm({
   workTypes,
   initialSelections = [],
+  suggestion,
   onSave,
   isSaving,
 }: WorkSelectionFormProps) {
+  const applied = initialSelections.length === 0 ? suggestion : undefined;
+
   const [selectedTypeIds, setSelectedTypeIds] = useState<Set<string>>(() => {
+    if (applied) return new Set(applied.work_type_ids);
     return new Set(initialSelections.map((s) => s.work_type.id));
   });
 
   const [skillLevel, setSkillLevel] = useState<string>(() => {
+    if (applied) return applied.skill_level;
     return initialSelections[0]?.skill_level ?? '';
   });
 
   const [customParams, setCustomParams] = useState<
     Record<string, Record<string, unknown>>
   >(() => {
+    if (applied) return { ...applied.custom_params };
     const params: Record<string, Record<string, unknown>> = {};
     for (const s of initialSelections) {
       if (Object.keys(s.custom_params).length > 0) {
@@ -110,6 +123,23 @@ export function WorkSelectionForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
+      {/*
+        E4-4 : la reprise est annoncée. Des tuiles pré-cochées sans un mot
+        seraient un choix que l'artisan n'a pas fait — et `skill_level` change
+        les quantités.
+      */}
+      {applied && (
+        <p className="rounded-2xl border border-[var(--accent)]/30 bg-[var(--accent)]/5 px-4 py-3 text-sm text-stone-700">
+          Repris de{' '}
+          <span className="font-semibold text-stone-900">
+            {applied.source === 'room'
+              ? 'la pièce précédente'
+              : 'votre dernier chantier'}
+          </span>{' '}
+          — modifiable.
+        </p>
+      )}
+
       {/* Work type selection */}
       <div>
         <h2 className="mb-4 text-lg font-semibold text-stone-900">

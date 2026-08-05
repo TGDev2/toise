@@ -33,6 +33,28 @@ export interface SavedWorkItem {
   custom_params: Record<string, unknown>;
 }
 
+/**
+ * E4-4 — sélection d'ouvrages reprise d'ailleurs, proposée à l'étape
+ * « Travaux » d'une pièce encore vierge.
+ *
+ * `source` n'est pas décoratif : ce qui est repris est **annoncé à l'écran**.
+ * `skill_level` pilote le facteur de perte donc les quantités ; pré-cocher en
+ * silence mettrait un choix dans la bouche de l'artisan.
+ */
+export interface WorkSelectionSuggestion {
+  work_type_ids: string[];
+  skill_level: string;
+  custom_params: Record<string, Record<string, unknown>>;
+  source: 'room' | 'project';
+}
+
+/** Réponse de `GET /projects/:id/work-items/last-selection`. */
+export interface LastWorkSelectionItem {
+  work_type_id: string;
+  skill_level: string;
+  custom_params: Record<string, unknown>;
+}
+
 export const SKILL_LEVELS = [
   {
     value: 'beginner',

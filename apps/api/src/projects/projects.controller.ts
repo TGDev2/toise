@@ -514,6 +514,29 @@ export class ProjectsController {
     }));
   }
 
+  /**
+   * E4-4 — sélection d'ouvrages du dernier chantier de l'organisation, pour
+   * pré-remplir l'étape « Travaux » d'un chantier neuf. Chantier courant exclu :
+   * à l'intérieur d'un chantier, le web reprend la pièce précédente depuis les
+   * pièces qu'il a déjà chargées.
+   */
+  @Get(':id/work-items/last-selection')
+  async getLastWorkSelection(
+    @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    const scope = await this.resolveScope(firebaseUser);
+    const items = await this.projectsService.findLastWorkSelection(
+      scope.organizationId,
+      id,
+    );
+    return items.map((item) => ({
+      work_type_id: item.work_type_id,
+      skill_level: item.skill_level,
+      custom_params: item.custom_params,
+    }));
+  }
+
   // ---------------------------------------------------------------------------
   // Pièces (ENG-2 Phase 2)
   // ---------------------------------------------------------------------------

@@ -8,6 +8,8 @@ import type {
   WorkTypeRef,
   WorkItemSelection,
   SavedWorkItem,
+  WorkSelectionSuggestion,
+  LastWorkSelectionItem,
 } from '@/lib/work-types';
 import type { Room } from '@/lib/room-types';
 import { WorkSelectionForm } from '@/components/work-selection/WorkSelectionForm';
@@ -15,7 +17,7 @@ import { FlowProgress } from '@/components/quote-flow/FlowProgress';
 import { RoomSwitcher } from '@/components/rooms/RoomSwitcher';
 import { Alert, Skeleton } from '@/components/ui';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export default function WorkSelectionPage() {
   const { appUser, isGuest, isLoading } = useAuth();
@@ -26,13 +28,13 @@ export default function WorkSelectionPage() {
 
   const [rooms, setRooms] = useState<Room[]>([]);
   const [workTypes, setWorkTypes] = useState<WorkTypeRef[]>([]);
-  const [initialSelections, setInitialSelections] = useState<SavedWorkItem[]>(
-    [],
-  );
   const [projectName, setProjectName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
+  const [lastProjectSelection, setLastProjectSelection] = useState<
+    LastWorkSelectionItem[] | null
+  >(null);
 
   const roomParam = searchParams.get('room');
   const activeRoomId = useMemo(() => {
@@ -51,19 +53,29 @@ export default function WorkSelectionPage() {
     async function load() {
       try {
         if (appUser) {
-          const [types, project, roomList] = await Promise.all([
+          // E4-4 : la reprise du dernier chantier part avec les trois autres
+          // appels, jamais après — elle ne doit pas ajouter d'aller-retour à
+          // l'écran qu'elle sert à raccourcir. Optionnelle par construction :
+          // un échec laisse simplement la sélection vide.
+          const [types, project, roomList, lastSelection] = await Promise.all([
             apiGet<WorkTypeRef[]>('/projects/work-types'),
             apiGet<{ name: string }>(`/projects/${projectId}`),
             apiGet<Room[]>(`/projects/${projectId}/rooms`),
+            apiGet<LastWorkSelectionItem[]>(
+              `/projects/${projectId}/work-items/last-selection`,
+            ).catch(() => [] as LastWorkSelectionItem[]),
           ]);
           setWorkTypes(types);
           setProjectName(project.name);
           setRooms(roomList);
+          setLastProjectSelection(lastSelection);
         } else {
           const project = readGuestDrafts().find((p) => p.id === projectId);
           if (project) {
             setProjectName(project.name);
           }
+          // L'invité est mono-projet et mono-pièce : rien à reprendre.
+          setLastProjectSelection([]);
           try {
             const types = await apiGet<WorkTypeRef[]>('/projects/work-types');
             setWorkTypes(types);
@@ -83,15 +95,19 @@ export default function WorkSelectionPage() {
     load();
   }, [appUser, isGuest, isLoading, projectId, router]);
 
-  // Seed the selection from the active room's work items (once per room).
-  const seededRoomIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!appUser || !activeRoomId) return;
-    if (seededRoomIdRef.current === activeRoomId) return;
-    const room = rooms.find((r) => r.id === activeRoomId);
-    if (!room) return;
-    seededRoomIdRef.current = activeRoomId;
-    setInitialSelections(room.work_items ?? []);
+  /*
+    Sélection déjà enregistrée pour la pièce active.
+
+    Dérivée de `rooms` plutôt que posée par un effet : un effet ne s'exécute
+    qu'**après** le premier rendu, or `WorkSelectionForm` fige son état dans ses
+    initialiseurs `useState` et ne se remonte qu'au changement de `key`. Le
+    formulaire naissait donc systématiquement vide, y compris en revenant sur
+    une pièce dont les travaux étaient enregistrés — ce que le parcours
+    multi-pièces fait à chaque correction.
+  */
+  const initialSelections = useMemo<SavedWorkItem[]>(() => {
+    if (!appUser || !activeRoomId) return [];
+    return rooms.find((r) => r.id === activeRoomId)?.work_items ?? [];
   }, [appUser, activeRoomId, rooms]);
 
   const goToRoom = useCallback(
@@ -100,6 +116,48 @@ export default function WorkSelectionPage() {
     },
     [projectId, router],
   );
+
+  /**
+   * E4-4 — ce qu'on propose à une pièce encore vierge.
+   *
+   * La pièce précédente du **même** chantier passe avant le dernier chantier :
+   * elle est plus proche, et elle ne coûte aucun appel — `GET /rooms` porte
+   * déjà les `work_items` de toutes les pièces. La plus récemment ajoutée
+   * (`sort_order` le plus élevé, hors pièce courante) fait foi.
+   */
+  const suggestion = useMemo<WorkSelectionSuggestion | undefined>(() => {
+    const activeRoom = rooms.find((r) => r.id === activeRoomId);
+    if (!activeRoom || (activeRoom.work_items?.length ?? 0) > 0) return undefined;
+
+    const sibling = rooms
+      .filter((r) => r.id !== activeRoomId && (r.work_items?.length ?? 0) > 0)
+      .sort((a, b) => b.sort_order - a.sort_order)[0];
+
+    if (sibling) {
+      return {
+        work_type_ids: sibling.work_items.map((w) => w.work_type.id),
+        skill_level: sibling.work_items[0].skill_level,
+        custom_params: Object.fromEntries(
+          sibling.work_items
+            .filter((w) => Object.keys(w.custom_params).length > 0)
+            .map((w) => [w.work_type.id, w.custom_params]),
+        ),
+        source: 'room',
+      };
+    }
+
+    if (!lastProjectSelection?.length) return undefined;
+    return {
+      work_type_ids: lastProjectSelection.map((w) => w.work_type_id),
+      skill_level: lastProjectSelection[0].skill_level,
+      custom_params: Object.fromEntries(
+        lastProjectSelection
+          .filter((w) => Object.keys(w.custom_params).length > 0)
+          .map((w) => [w.work_type_id, w.custom_params]),
+      ),
+      source: 'project',
+    };
+  }, [rooms, activeRoomId, lastProjectSelection]);
 
   const handleSave = useCallback(
     async (items: WorkItemSelection[]) => {
@@ -178,6 +236,7 @@ export default function WorkSelectionPage() {
             key={activeRoomId ?? 'guest'}
             workTypes={workTypes}
             initialSelections={initialSelections}
+            suggestion={suggestion}
             onSave={handleSave}
             isSaving={isSaving}
           />
