@@ -7,6 +7,18 @@ export interface StoredFile {
 export interface StorageProvider {
   save(buffer: Buffer, filename: string, mimetype: string): Promise<string>;
 
+  /**
+   * Écrit un flux de longueur inconnue à l'avance (une archive en cours de
+   * compression, typiquement) sans jamais matérialiser son contenu entier en
+   * mémoire — contrairement à `save`, qui suppose un `Buffer` déjà complet.
+   * Même atomicité que `save` (fichier temporaire puis `rename`).
+   */
+  saveStream(
+    stream: NodeJS.ReadableStream,
+    filename: string,
+    mimetype: string,
+  ): Promise<StoredFile>;
+
   delete(storedPath: string): Promise<void>;
 
   /**

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
+import { createWriteStream } from 'fs';
 import {
   mkdir,
   readdir,
@@ -11,6 +12,7 @@ import {
   writeFile,
 } from 'fs/promises';
 import { isAbsolute, join, dirname, relative } from 'path';
+import { pipeline } from 'stream/promises';
 import { StoredFile, StorageProvider } from './storage.interface';
 
 @Injectable()
@@ -58,6 +60,34 @@ export class LocalStorageService implements StorageProvider {
     }
 
     return filename;
+  }
+
+  /**
+   * Même atomicité que `save` (fichier temporaire du même répertoire, puis
+   * `rename`), mais en flux : `pipeline` consomme `stream` chunk par chunk
+   * plutôt que d'exiger un `Buffer` complet, seule façon d'écrire une archive
+   * de taille arbitraire sans la matérialiser entière en mémoire.
+   */
+  async saveStream(
+    stream: NodeJS.ReadableStream,
+    filename: string,
+    _mimetype: string,
+  ): Promise<StoredFile> {
+    const filePath = join(this.basePath, filename);
+    const dir = dirname(filePath);
+    await mkdir(dir, { recursive: true });
+
+    const tmpPath = `${filePath}.${randomUUID()}.part`;
+    try {
+      await pipeline(stream, createWriteStream(tmpPath));
+      await rename(tmpPath, filePath);
+    } catch (err: unknown) {
+      await unlink(tmpPath).catch(() => undefined);
+      throw err;
+    }
+
+    const { size } = await stat(filePath);
+    return { path: filename, bytes: size };
   }
 
   async delete(storedPath: string): Promise<void> {
