@@ -22,6 +22,8 @@ import {
   ProjectWorkItem,
   SkillLevel,
 } from './entities/project-work-item.entity';
+import { AnalyticsService } from '../analytics/analytics.service';
+import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 
 const mockProject: Project = {
   id: 'project-uuid',
@@ -193,6 +195,10 @@ const featureGatesServiceMock = {
   isFeatureAllowed: jest.fn().mockResolvedValue(true),
 };
 
+const analyticsServiceMock = {
+  track: jest.fn(),
+};
+
 // Seul `applyCvAnalysis` s'en sert, et ce qu'il garantit ne s'observe que
 // contre une vraie base (cf. le commentaire plus bas) : ici, de quoi satisfaire
 // l'injection, rien de plus.
@@ -229,6 +235,7 @@ describe('ProjectsService', () => {
           useValue: featureGatesServiceMock,
         },
         { provide: getDataSourceToken(), useValue: dataSourceMock },
+        { provide: AnalyticsService, useValue: analyticsServiceMock },
       ],
     }).compile();
 
@@ -578,6 +585,7 @@ describe('ProjectsService', () => {
       await service.updateDimensions(
         'project-uuid',
         'org-uuid',
+        'user-uuid',
         { length_cm: 300, width_cm: 300, height_cm: 250 },
         undefined,
         'room-uuid',
@@ -593,7 +601,7 @@ describe('ProjectsService', () => {
     it('creates dimensions on the default room when none exist', async () => {
       dimensionsRepoMock.findOne.mockResolvedValueOnce(null);
 
-      await service.updateDimensions('project-uuid', 'org-uuid', {
+      await service.updateDimensions('project-uuid', 'org-uuid', 'user-uuid', {
         length_cm: 500,
         width_cm: 400,
         height_cm: 250,
@@ -616,6 +624,22 @@ describe('ProjectsService', () => {
       expect(dimensionsRepoMock.save).toHaveBeenCalled();
     });
 
+    it('tracks dimensions_entered (BACKLOG_V1 revenue funnel)', async () => {
+      dimensionsRepoMock.findOne.mockResolvedValueOnce(null);
+
+      await service.updateDimensions('project-uuid', 'org-uuid', 'user-uuid', {
+        length_cm: 500,
+        width_cm: 400,
+        height_cm: 250,
+      });
+
+      expect(analyticsServiceMock.track).toHaveBeenCalledWith(
+        AnalyticsEventName.DIMENSIONS_ENTERED,
+        'user-uuid',
+        { project_id: 'project-uuid', room_id: 'room-uuid' },
+      );
+    });
+
     // CV-5 : incertitude par champ, persistée quand fournie par l'appelant
     // (flux CV) et remise à null en son absence (sauvegarde manuelle).
     it('persists the CV uncertainty overrides when provided', async () => {
@@ -624,6 +648,7 @@ describe('ProjectsService', () => {
       await service.updateDimensions(
         'project-uuid',
         'org-uuid',
+        'user-uuid',
         { length_cm: 420, width_cm: 310, height_cm: 250 },
         {
           source: DimensionSource.CV,
@@ -653,7 +678,7 @@ describe('ProjectsService', () => {
 
       // Appel manuel : aucun override d'incertitude, comme le fait le
       // contrôleur sur PUT /:id/dimensions.
-      await service.updateDimensions('project-uuid', 'org-uuid', {
+      await service.updateDimensions('project-uuid', 'org-uuid', 'user-uuid', {
         length_cm: 421,
         width_cm: 311,
         height_cm: 250,
@@ -672,7 +697,7 @@ describe('ProjectsService', () => {
     it('updates existing dimensions', async () => {
       dimensionsRepoMock.findOne.mockResolvedValueOnce({ ...mockDimensions });
 
-      await service.updateDimensions('project-uuid', 'org-uuid', {
+      await service.updateDimensions('project-uuid', 'org-uuid', 'user-uuid', {
         length_cm: 600,
         width_cm: 500,
         height_cm: 300,
@@ -691,7 +716,7 @@ describe('ProjectsService', () => {
     it('persists exclusions_json when exclusions are provided', async () => {
       dimensionsRepoMock.findOne.mockResolvedValueOnce(null);
 
-      await service.updateDimensions('project-uuid', 'org-uuid', {
+      await service.updateDimensions('project-uuid', 'org-uuid', 'user-uuid', {
         length_cm: 500,
         width_cm: 400,
         height_cm: 250,
@@ -721,7 +746,7 @@ describe('ProjectsService', () => {
         ],
       });
 
-      await service.updateDimensions('project-uuid', 'org-uuid', {
+      await service.updateDimensions('project-uuid', 'org-uuid', 'user-uuid', {
         length_cm: 600,
         width_cm: 500,
         height_cm: 300,

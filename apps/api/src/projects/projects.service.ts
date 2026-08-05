@@ -25,6 +25,8 @@ import { WorkType } from './entities/work-type.entity';
 import { ProjectWorkItem } from './entities/project-work-item.entity';
 import { SubscriptionTier } from '../users/entities/user.entity';
 import { FeatureGatesService } from '../feature-gates/feature-gates.service';
+import { AnalyticsService } from '../analytics/analytics.service';
+import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
@@ -67,6 +69,7 @@ export class ProjectsService {
     private readonly featureGatesService: FeatureGatesService,
     @InjectDataSource()
     private readonly dataSource: DataSource,
+    private readonly analyticsService: AnalyticsService,
   ) {}
 
   /**
@@ -389,6 +392,7 @@ export class ProjectsService {
   async updateDimensions(
     projectId: string,
     organizationId: string,
+    userId: string,
     dto: UpdateDimensionsDto,
     overrides?: {
       source?: DimensionSource;
@@ -411,7 +415,22 @@ export class ProjectsService {
     await this.findOneForOrg(projectId, organizationId);
     const room = await this.resolveRoomForWrite(projectId, roomId);
 
-    return this.writeDimensions(this.dimensionsRepo, room.id, dto, overrides);
+    const dimensions = await this.writeDimensions(
+      this.dimensionsRepo,
+      room.id,
+      dto,
+      overrides,
+    );
+
+    // Marche « dimensions saisies » du funnel de revenu (BACKLOG_V1) : ne
+    // couvre que la saisie manuelle. Les dimensions détectées par CV passent
+    // par `writeDimensions` via `applyCvAnalysis`, jamais par ici.
+    this.analyticsService.track(AnalyticsEventName.DIMENSIONS_ENTERED, userId, {
+      project_id: projectId,
+      room_id: room.id,
+    });
+
+    return dimensions;
   }
 
   /**

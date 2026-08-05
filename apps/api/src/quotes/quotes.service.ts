@@ -23,6 +23,8 @@ import { CreateQuoteDto } from './dto/create-quote.dto';
 import { UpdateQuoteDto } from './dto/update-quote.dto';
 import { QuoteLaborLineDto } from './dto/quote-labor-line.dto';
 import { round2 } from '../common/round2';
+import { AnalyticsService } from '../analytics/analytics.service';
+import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 
 @Injectable()
 export class QuotesService {
@@ -36,6 +38,7 @@ export class QuotesService {
     private readonly projectsService: ProjectsService,
     private readonly clientsService: ClientsService,
     private readonly companyProfilesService: CompanyProfilesService,
+    private readonly analyticsService: AnalyticsService,
   ) {}
 
   async create(
@@ -106,14 +109,14 @@ export class QuotesService {
 
     // Numéro alloué et devis inséré dans la même transaction : un échec rend le
     // numéro au lieu de le consommer.
-    return this.dataSource.transaction(async (manager) => {
+    const quote = await this.dataSource.transaction(async (manager) => {
       const quoteNumber = await this.allocateQuoteNumber(
         manager,
         organizationId,
         new Date().getFullYear(),
       );
 
-      const quote = manager.create(Quote, {
+      const created = manager.create(Quote, {
         organization_id: organizationId,
         user_id: userId,
         project_id: dto.project_id,
@@ -135,8 +138,15 @@ export class QuotesService {
         total_ttc: Math.round(totalTtc * 100) / 100,
       });
 
-      return manager.save(quote);
+      return manager.save(created);
     });
+
+    this.analyticsService.track(AnalyticsEventName.QUOTE_GENERATED, userId, {
+      project_id: dto.project_id,
+      quote_id: quote.id,
+    });
+
+    return quote;
   }
 
   async findAllForOrg(

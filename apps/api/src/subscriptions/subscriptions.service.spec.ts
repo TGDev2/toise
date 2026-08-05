@@ -361,6 +361,203 @@ describe('SubscriptionsService.handleWebhookEvent (invoice.paid)', () => {
       referralsServiceMock.handleReferredUserConverted,
     ).not.toHaveBeenCalled();
   });
+
+  it('tracks paid_subscription_active on a real transition into active (trial conversion, BACKLOG_V1)', async () => {
+    mockUpdateAffecting(1);
+    subscriptionsRepoMock.findOne.mockResolvedValue({
+      id: 'row-1',
+      user_id: 'user-1',
+      stripe_subscription_id: 'sub_123',
+      status: SubscriptionStatus.TRIALING,
+    });
+    mockStripeInstance.subscriptions.retrieve.mockResolvedValue({
+      status: 'active',
+      trial_end: null,
+      cancel_at_period_end: false,
+      items: {
+        data: [
+          {
+            price: { id: 'price_pro' },
+            current_period_start: 1700000000,
+            current_period_end: 1702592000,
+          },
+        ],
+      },
+    });
+
+    await service.handleWebhookEvent(buildInvoicePaidEvent('sub_123'));
+
+    expect(analyticsServiceMock.track).toHaveBeenCalledWith(
+      AnalyticsEventName.PAID_SUBSCRIPTION_ACTIVE,
+      'user-1',
+      expect.objectContaining({ plan: 'pro' }),
+    );
+  });
+
+  it('does not re-track paid_subscription_active on an ordinary renewal invoice', async () => {
+    mockUpdateAffecting(1);
+    subscriptionsRepoMock.findOne.mockResolvedValue({
+      id: 'row-1',
+      user_id: 'user-1',
+      stripe_subscription_id: 'sub_123',
+      status: SubscriptionStatus.ACTIVE,
+    });
+    mockStripeInstance.subscriptions.retrieve.mockResolvedValue({
+      status: 'active',
+      trial_end: null,
+      cancel_at_period_end: false,
+      items: {
+        data: [
+          {
+            price: { id: 'price_pro' },
+            current_period_start: 1700000000,
+            current_period_end: 1702592000,
+          },
+        ],
+      },
+    });
+
+    await service.handleWebhookEvent(buildInvoicePaidEvent('sub_123'));
+
+    expect(analyticsServiceMock.track).not.toHaveBeenCalledWith(
+      AnalyticsEventName.PAID_SUBSCRIPTION_ACTIVE,
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+});
+
+/**
+ * Marches « essai démarré » / « abonnement payant actif » du funnel de revenu
+ * (BACKLOG_V1), sur le webhook `checkout.session.completed`.
+ */
+describe('SubscriptionsService.handleWebhookEvent (checkout.session.completed)', () => {
+  let service: SubscriptionsService;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        SubscriptionsService,
+        {
+          provide: getRepositoryToken(Subscription),
+          useValue: subscriptionsRepoMock,
+        },
+        {
+          provide: getRepositoryToken(StripeEvent),
+          useValue: stripeEventsRepoMock,
+        },
+        { provide: UsersService, useValue: usersServiceMock },
+        { provide: AnalyticsService, useValue: analyticsServiceMock },
+        { provide: ReferralsService, useValue: referralsServiceMock },
+        { provide: ConfigService, useValue: configServiceMock },
+      ],
+    }).compile();
+
+    service = module.get(SubscriptionsService);
+    subscriptionsRepoMock.findOne.mockResolvedValue(null);
+    subscriptionsRepoMock.upsert.mockResolvedValue(undefined);
+  });
+
+  function buildCheckoutCompletedEvent() {
+    return {
+      type: 'checkout.session.completed',
+      created: 1_700_000_000,
+      data: {
+        object: {
+          metadata: { user_id: 'user-1' },
+          subscription: 'sub_123',
+          customer: 'cus_123',
+        },
+      },
+    } as unknown as Parameters<SubscriptionsService['handleWebhookEvent']>[0];
+  }
+
+  it('tracks trial_started when the subscription enters trialing', async () => {
+    mockStripeInstance.subscriptions.retrieve.mockResolvedValue({
+      status: 'trialing',
+      trial_end: 1_702_000_000,
+      cancel_at_period_end: false,
+      items: {
+        data: [
+          {
+            price: { id: 'price_pro' },
+            current_period_start: 1700000000,
+            current_period_end: 1702592000,
+          },
+        ],
+      },
+    });
+
+    await service.handleWebhookEvent(buildCheckoutCompletedEvent());
+
+    expect(analyticsServiceMock.track).toHaveBeenCalledWith(
+      AnalyticsEventName.TRIAL_STARTED,
+      'user-1',
+      { plan: 'pro' },
+    );
+    expect(analyticsServiceMock.track).not.toHaveBeenCalledWith(
+      AnalyticsEventName.PAID_SUBSCRIPTION_ACTIVE,
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  it('tracks paid_subscription_active when the checkout skips straight to active (no trial on the plan)', async () => {
+    mockStripeInstance.subscriptions.retrieve.mockResolvedValue({
+      status: 'active',
+      trial_end: null,
+      cancel_at_period_end: false,
+      items: {
+        data: [
+          {
+            price: { id: 'price_pro' },
+            current_period_start: 1700000000,
+            current_period_end: 1702592000,
+          },
+        ],
+      },
+    });
+
+    await service.handleWebhookEvent(buildCheckoutCompletedEvent());
+
+    expect(analyticsServiceMock.track).toHaveBeenCalledWith(
+      AnalyticsEventName.PAID_SUBSCRIPTION_ACTIVE,
+      'user-1',
+      { plan: 'pro' },
+    );
+    expect(analyticsServiceMock.track).not.toHaveBeenCalledWith(
+      AnalyticsEventName.TRIAL_STARTED,
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  it('still tracks subscription_started alongside the new funnel events', async () => {
+    mockStripeInstance.subscriptions.retrieve.mockResolvedValue({
+      status: 'trialing',
+      trial_end: 1_702_000_000,
+      cancel_at_period_end: false,
+      items: {
+        data: [
+          {
+            price: { id: 'price_pro' },
+            current_period_start: 1700000000,
+            current_period_end: 1702592000,
+          },
+        ],
+      },
+    });
+
+    await service.handleWebhookEvent(buildCheckoutCompletedEvent());
+
+    expect(analyticsServiceMock.track).toHaveBeenCalledWith(
+      AnalyticsEventName.SUBSCRIPTION_STARTED,
+      'user-1',
+      { plan: 'pro', trial: true },
+    );
+  });
 });
 
 /**

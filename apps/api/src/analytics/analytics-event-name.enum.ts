@@ -10,6 +10,18 @@ export enum AnalyticsEventName {
   // conversion qui dira si l'hypothèse « le demandeur de devis bascule vers le
   // parcours DIY » tient. Les confondre rendrait la question indécidable.
   QUOTE_CHECK_VIEWED = 'quote_check_viewed',
+  // Entonnoir de revenu V1 (BACKLOG_V1) : visite calculateur → calcul public →
+  // session invité → dimensions → estimation → liste d'achat → compte → devis →
+  // essai → abonnement payant → résiliation. Superset de DATA-1 ci-dessus, pas
+  // un remplacement : l'ordre y diffère (account_created y arrive après
+  // estimate_created/shopping_list_generated). Voir revenue_funnel dans
+  // admin-analytics.service.ts.
+  PUBLIC_CALCULATION_COMPLETED = 'public_calculation_completed',
+  GUEST_SESSION_STARTED = 'guest_session_started',
+  DIMENSIONS_ENTERED = 'dimensions_entered',
+  QUOTE_GENERATED = 'quote_generated',
+  TRIAL_STARTED = 'trial_started',
+  PAID_SUBSCRIPTION_ACTIVE = 'paid_subscription_active',
   ACCOUNT_CREATED = 'account_created',
   ESTIMATE_CREATED = 'estimate_created',
   SHOPPING_LIST_GENERATED = 'shopping_list_generated',

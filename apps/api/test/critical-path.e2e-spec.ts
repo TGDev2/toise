@@ -94,6 +94,7 @@ const projectsServiceMock = {
   updateDimensions: jest.fn().mockImplementation(
     (
       _id: string,
+      _organizationId: string,
       _userId: string,
       dto: {
         length_cm: number;

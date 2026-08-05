@@ -4,7 +4,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { MoreThanOrEqual, Repository } from 'typeorm';
 import { AnalyticsEvent } from '../analytics/entities/analytics-event.entity';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
-import { ProjectPhoto } from '../photos/entities/project-photo.entity';
 import {
   Subscription,
   SubscriptionStatus,
@@ -30,17 +29,42 @@ const FUNNEL_STEPS = [
 // rien payé (exposé à part via trialing_count, hors MRR).
 const MRR_STATUSES = [SubscriptionStatus.ACTIVE, SubscriptionStatus.PAST_DUE];
 
-// Entonnoir d'installation PWA (MOB-1), dans l'ordre.
-const PWA_INSTALL_STEPS = [
-  AnalyticsEventName.PWA_INSTALL_PROMPTED,
-  AnalyticsEventName.PWA_INSTALL_ACCEPTED,
-  AnalyticsEventName.PWA_INSTALLED,
+// Entonnoir de revenu V1 (BACKLOG_V1), dans l'ordre demandé. Superset de
+// FUNNEL_STEPS (DATA-1) ci-dessus, pas un remplacement : l'ordre y diffère
+// (account_created y arrive après estimate_created/shopping_list_generated,
+// puisqu'il mesure une conversion invité → compte réel plutôt qu'une
+// inscription immédiate). `checkout_started` existe et est déjà tracké
+// (subscriptions.service.ts) mais n'a volontairement pas été inclus ici : la
+// liste ci-dessous suit exactement les marches demandées ; il prendrait
+// naturellement place entre quote_generated et trial_started.
+const REVENUE_FUNNEL_STEPS = [
+  AnalyticsEventName.CALCULATOR_VIEWED,
+  AnalyticsEventName.PUBLIC_CALCULATION_COMPLETED,
+  AnalyticsEventName.GUEST_SESSION_STARTED,
+  AnalyticsEventName.DIMENSIONS_ENTERED,
+  AnalyticsEventName.ESTIMATE_CREATED,
+  AnalyticsEventName.SHOPPING_LIST_GENERATED,
+  AnalyticsEventName.ACCOUNT_CREATED,
+  AnalyticsEventName.QUOTE_GENERATED,
+  AnalyticsEventName.TRIAL_STARTED,
+  AnalyticsEventName.PAID_SUBSCRIPTION_ACTIVE,
+  AnalyticsEventName.SUBSCRIPTION_CANCELED,
 ];
 
-// Volume minimal de sessions en dessous duquel on refuse de conclure : la
-// décision MOB-2 (app native, XL) ne doit pas se prendre sur une poignée de
-// sessions. Même garde-fou que `sufficient_data` dans cv-accuracy.service.ts.
-const MIN_PWA_SESSIONS = 200;
+// Marches comptées en événements bruts (anonymes, sans user_id fiable) plutôt
+// qu'en utilisateurs distincts — même logique que CALCULATOR_VIEWED dans
+// getFunnel().
+const REVENUE_FUNNEL_ANONYMOUS_STEPS = new Set<AnalyticsEventName>([
+  AnalyticsEventName.CALCULATOR_VIEWED,
+  AnalyticsEventName.PUBLIC_CALCULATION_COMPLETED,
+]);
+
+// Volume minimal de la marche précédente en dessous duquel un taux de
+// conversion ne veut rien dire : ni les 200 sessions du PWA retiré, ni les 5
+// échantillons de cv-accuracy.service.ts ne correspondent à l'échelle d'un
+// funnel de revenu. Même garde-fou dans son principe (sufficient_data),
+// seuil propre à cette marche.
+const MIN_FUNNEL_STEP_SAMPLE = 30;
 
 // Correspondance entre la clé de plan (plans.constants.ts) et le tier utilisateur
 // qu'elle attribue (cf. subscriptions.service.ts syncSubscriptionTier).
@@ -84,8 +108,6 @@ export class AdminAnalyticsService {
     private readonly subscriptionsRepo: Repository<Subscription>,
     @InjectRepository(User)
     private readonly usersRepo: Repository<User>,
-    @InjectRepository(ProjectPhoto)
-    private readonly photosRepo: Repository<ProjectPhoto>,
     private readonly config: ConfigService,
   ) {
     for (const plan of PLANS) {
@@ -95,19 +117,20 @@ export class AdminAnalyticsService {
   }
 
   async getDashboard(weeks: number, days: number) {
-    const [weekly_shopping_lists, funnel, mrr, pwa] = await Promise.all([
-      this.getWeeklyShoppingLists(weeks),
-      this.getFunnel(days),
-      this.getMrr(),
-      this.getPwa(days),
-    ]);
+    const [weekly_shopping_lists, funnel, revenue_funnel, mrr] =
+      await Promise.all([
+        this.getWeeklyShoppingLists(weeks),
+        this.getFunnel(days),
+        this.getRevenueFunnel(days),
+        this.getMrr(),
+      ]);
 
     return {
       generated_at: new Date().toISOString(),
       weekly_shopping_lists,
       funnel,
+      revenue_funnel,
       mrr,
-      pwa,
     };
   }
 
@@ -191,138 +214,86 @@ export class AdminAnalyticsService {
     };
   }
 
-  // MOB-1 : mesure de l'adoption PWA. Sert exclusivement à trancher MOB-2 (app
-  // native) sur des faits — voir la règle de décision inscrite dans BACKLOG.md.
-  private async getPwa(days: number) {
+  /**
+   * Entonnoir de revenu V1 (BACKLOG_V1) : volume et conversion de chaque
+   * marche, de la visite du calculateur public à la résiliation.
+   *
+   * `sufficient_data` est calculé par marche sur le volume de la marche
+   * **précédente** — c'est le dénominateur de `conversion_from_previous`, et
+   * donc la donnée dont l'absence rend le taux trompeur. Sous le seuil, les
+   * deux taux de la marche sont nullés plutôt qu'affichés (convention
+   * cv-accuracy.service.ts) : un taux de conversion pilote une décision
+   * produit, contrairement au simple drapeau du bloc PWA retiré. Les marches
+   * basses (résiliation, abonnement payant actif) afficheront légitimement
+   * `sufficient_data: false` sur une petite base — c'est le comportement
+   * correct, pas un défaut.
+   */
+  private async getRevenueFunnel(days: number) {
     const since = new Date(Date.now() - days * DAY_MS);
 
-    const [
-      sessionRows,
-      installRows,
-      offlineViews,
-      rejectionRows,
-      acceptedPhotos,
-    ] = await Promise.all([
-      this.eventsRepo
-        .createQueryBuilder('e')
-        .select("e.properties->>'display_mode'", 'display_mode')
-        .addSelect("e.properties->>'platform'", 'platform')
-        .addSelect('COUNT(*)', 'count')
-        .where('e.event_name = :eventName', {
-          eventName: AnalyticsEventName.PWA_SESSION_START,
-        })
-        .andWhere('e.created_at >= :since', { since })
-        .groupBy("e.properties->>'display_mode'")
-        .addGroupBy("e.properties->>'platform'")
-        .getRawMany<{
-          display_mode: string | null;
-          platform: string | null;
-          count: string;
-        }>(),
+    const anonymousEventNames = [...REVENUE_FUNNEL_ANONYMOUS_STEPS];
+    const distinctEventNames = REVENUE_FUNNEL_STEPS.filter(
+      (eventName) => !REVENUE_FUNNEL_ANONYMOUS_STEPS.has(eventName),
+    );
+
+    const [anonymousCounts, distinctRows] = await Promise.all([
+      Promise.all(
+        anonymousEventNames.map((eventName) =>
+          this.eventsRepo.count({
+            where: {
+              event_name: eventName,
+              created_at: MoreThanOrEqual(since),
+            },
+          }),
+        ),
+      ),
       this.eventsRepo
         .createQueryBuilder('e')
         .select('e.event_name', 'event_name')
-        .addSelect('COUNT(*)', 'count')
+        .addSelect('COUNT(DISTINCT e.user_id)', 'count')
         .where('e.event_name IN (:...eventNames)', {
-          eventNames: PWA_INSTALL_STEPS,
+          eventNames: distinctEventNames,
         })
         .andWhere('e.created_at >= :since', { since })
         .groupBy('e.event_name')
         .getRawMany<{ event_name: string; count: string }>(),
-      this.eventsRepo.count({
-        where: {
-          event_name: AnalyticsEventName.PWA_OFFLINE_VIEW,
-          created_at: MoreThanOrEqual(since),
-        },
-      }),
-      this.eventsRepo
-        .createQueryBuilder('e')
-        .select("e.properties->>'reason'", 'reason')
-        .addSelect('COUNT(*)', 'count')
-        .where('e.event_name = :eventName', {
-          eventName: AnalyticsEventName.PHOTO_QUALITY_REJECTED,
-        })
-        .andWhere('e.created_at >= :since', { since })
-        .groupBy("e.properties->>'reason'")
-        .getRawMany<{ reason: string | null; count: string }>(),
-      this.photosRepo.count({
-        where: { created_at: MoreThanOrEqual(since) },
-      }),
     ]);
 
-    let totalSessions = 0;
-    let standaloneSessions = 0;
-    const byPlatform = new Map<
-      string,
-      { sessions: number; standalone: number }
-    >();
-    for (const row of sessionRows) {
-      const count = parseInt(row.count, 10);
-      const platform = row.platform ?? 'unknown';
-      const isStandalone = row.display_mode === 'standalone';
-      totalSessions += count;
-      if (isStandalone) standaloneSessions += count;
-      const entry = byPlatform.get(platform) ?? { sessions: 0, standalone: 0 };
-      entry.sessions += count;
-      if (isStandalone) entry.standalone += count;
-      byPlatform.set(platform, entry);
-    }
-
-    const installCounts = new Map(
-      installRows.map((row): [string, number] => [
+    const countByEvent = new Map<string, number>([
+      ...anonymousEventNames.map((eventName, i): [string, number] => [
+        eventName,
+        anonymousCounts[i],
+      ]),
+      ...distinctRows.map((row): [string, number] => [
         row.event_name,
         parseInt(row.count, 10),
       ]),
-    );
-    const installSteps = PWA_INSTALL_STEPS.map(
-      (eventName) => installCounts.get(eventName) ?? 0,
-    );
+    ]);
 
-    const rejectionsByReason = rejectionRows.map((row) => ({
-      reason: row.reason ?? 'unknown',
-      count: parseInt(row.count, 10),
-    }));
-    const rejectedPhotos = rejectionsByReason.reduce(
-      (sum, row) => sum + row.count,
-      0,
+    const counts = REVENUE_FUNNEL_STEPS.map(
+      (eventName) => countByEvent.get(eventName) ?? 0,
     );
-    const uploadAttempts = rejectedPhotos + acceptedPhotos;
 
     return {
       since: since.toISOString(),
       days,
-      // En dessous du seuil, les parts ci-dessous ne veulent rien dire : ne pas
-      // arbitrer MOB-2 tant que ce drapeau est faux.
-      sufficient_data: totalSessions >= MIN_PWA_SESSIONS,
-      min_sample_size: MIN_PWA_SESSIONS,
-      sessions: {
-        total: totalSessions,
-        standalone: standaloneSessions,
-        standalone_share: toPercent(standaloneSessions, totalSessions),
-        by_platform: [...byPlatform.entries()]
-          .map(([platform, entry]) => ({
-            platform,
-            sessions: entry.sessions,
-            session_share: toPercent(entry.sessions, totalSessions),
-            standalone: entry.standalone,
-            standalone_share: toPercent(entry.standalone, entry.sessions),
-          }))
-          .sort((a, b) => b.sessions - a.sessions),
-      },
-      install_funnel: PWA_INSTALL_STEPS.map((eventName, i) => ({
-        event_name: eventName,
-        count: installSteps[i],
-        conversion_from_previous:
-          i === 0 ? null : toPercent(installSteps[i], installSteps[i - 1]),
-      })),
-      offline_views: offlineViews,
-      photo_quality: {
-        upload_attempts: uploadAttempts,
-        accepted: acceptedPhotos,
-        rejected: rejectedPhotos,
-        rejection_rate: toPercent(rejectedPhotos, uploadAttempts),
-        by_reason: rejectionsByReason.sort((a, b) => b.count - a.count),
-      },
+      min_sample_size: MIN_FUNNEL_STEP_SAMPLE,
+      steps: REVENUE_FUNNEL_STEPS.map((eventName, i) => {
+        const sufficientData =
+          i === 0 || counts[i - 1] >= MIN_FUNNEL_STEP_SAMPLE;
+        return {
+          event_name: eventName,
+          count: counts[i],
+          sufficient_data: sufficientData,
+          conversion_from_previous:
+            i === 0 || !sufficientData
+              ? null
+              : toPercent(counts[i], counts[i - 1]),
+          conversion_from_start: sufficientData
+            ? toPercent(counts[i], counts[0])
+            : null,
+        };
+      }),
     };
   }
 

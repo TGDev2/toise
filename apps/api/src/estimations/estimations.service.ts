@@ -376,7 +376,14 @@ export class EstimationsService {
     };
   }
 
-  async estimatePublic(
+  /**
+   * Cœur de calcul du calculateur public, partagé par `estimatePublic`
+   * (calculateur), `checkQuotePublic` (GTM-10) et `emailEstimate` (capture
+   * e-mail). Ne track rien : seul `estimatePublic` représente la marche
+   * « calcul public effectué » du funnel de revenu (BACKLOG_V1) — le
+   * comptabiliser ici conflaterait ces trois surfaces distinctes.
+   */
+  private async computePublicEstimate(
     dto: PublicEstimateRequestDto,
   ): Promise<PublicEstimateResponse> {
     const workType = await this.workTypesRepo.findOne({
@@ -412,6 +419,23 @@ export class EstimationsService {
     };
   }
 
+  async estimatePublic(
+    dto: PublicEstimateRequestDto,
+  ): Promise<PublicEstimateResponse> {
+    const result = await this.computePublicEstimate(dto);
+
+    this.analyticsService.track(
+      AnalyticsEventName.PUBLIC_CALCULATION_COMPLETED,
+      null,
+      {
+        work_type_code: result.work_type_code,
+        skill_level: result.skill_level,
+      },
+    );
+
+    return result;
+  }
+
   /**
    * Contrôle de cohérence d'un devis reçu (GTM-10) : la quantité qu'il facture
    * face à celle que la pièce demande.
@@ -427,7 +451,7 @@ export class EstimationsService {
   async checkQuotePublic(
     dto: PublicQuoteCheckRequestDto,
   ): Promise<PublicQuoteCheckResponse> {
-    const estimate = await this.estimatePublic(dto);
+    const estimate = await this.computePublicEstimate(dto);
 
     const workType = await this.workTypesRepo.findOne({
       where: { code: dto.work_type_code },
@@ -614,7 +638,7 @@ export class EstimationsService {
 
     // Ne jamais faire confiance à un résultat fourni par le client : on
     // recalcule toujours côté serveur avant de l'inclure dans l'e-mail.
-    const result = await this.estimatePublic(dto);
+    const result = await this.computePublicEstimate(dto);
 
     const entry = this.emailCaptureRepo.create({
       email: dto.email,

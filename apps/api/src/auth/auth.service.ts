@@ -90,17 +90,26 @@ export class AuthService {
 
   async syncUser(decodedToken: DecodedIdToken): Promise<User> {
     const provider = this.resolveProvider(decodedToken);
-    const { user, isNewAccount } = await this.usersService.upsertFromFirebase(
-      decodedToken.uid,
-      decodedToken.email ?? null,
-      provider,
-      decodedToken.email_verified ?? false,
-    );
+    const { user, isNewAccount, isNewGuestSession } =
+      await this.usersService.upsertFromFirebase(
+        decodedToken.uid,
+        decodedToken.email ?? null,
+        provider,
+        decodedToken.email_verified ?? false,
+      );
 
     if (isNewAccount) {
       this.analyticsService.track(AnalyticsEventName.ACCOUNT_CREATED, user.id, {
         auth_provider: user.auth_provider,
       });
+    }
+
+    if (isNewGuestSession) {
+      this.analyticsService.track(
+        AnalyticsEventName.GUEST_SESSION_STARTED,
+        user.id,
+        { auth_provider: user.auth_provider },
+      );
     }
 
     return user;

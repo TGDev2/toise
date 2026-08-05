@@ -31,7 +31,16 @@ export class UsersService {
     email: string | null,
     provider: AuthProvider,
     emailVerified: boolean,
-  ): Promise<{ user: User; isNewAccount: boolean }> {
+  ): Promise<{
+    user: User;
+    isNewAccount: boolean;
+    /**
+     * Marche « session invité démarrée » du funnel de revenu (BACKLOG_V1) :
+     * vrai uniquement à la toute première ligne d'un compte anonyme. Un
+     * invité qui revient n'en démarre pas une nouvelle.
+     */
+    isNewGuestSession: boolean;
+  }> {
     let user = await this.findByFirebaseUid(firebaseUid);
 
     if (user) {
@@ -43,6 +52,7 @@ export class UsersService {
       return {
         user: saved,
         isNewAccount: wasAnonymous && provider !== AuthProvider.ANONYMOUS,
+        isNewGuestSession: false,
       };
     }
 
@@ -53,7 +63,11 @@ export class UsersService {
       email_verified: emailVerified,
     });
     const saved = await this.usersRepo.save(user);
-    return { user: saved, isNewAccount: provider !== AuthProvider.ANONYMOUS };
+    return {
+      user: saved,
+      isNewAccount: provider !== AuthProvider.ANONYMOUS,
+      isNewGuestSession: provider === AuthProvider.ANONYMOUS,
+    };
   }
 
   /**

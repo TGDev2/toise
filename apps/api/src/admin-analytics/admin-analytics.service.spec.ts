@@ -3,7 +3,6 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { AdminAnalyticsService } from './admin-analytics.service';
 import { AnalyticsEvent } from '../analytics/entities/analytics-event.entity';
-import { ProjectPhoto } from '../photos/entities/project-photo.entity';
 import { Subscription } from '../subscriptions/entities/subscription.entity';
 import { PLANS } from '../subscriptions/plans.constants';
 import { User } from '../users/entities/user.entity';
@@ -32,10 +31,10 @@ const configServiceMock = {
 };
 
 // `getDashboard` lance désormais plusieurs agrégations concurrentes sur le même
-// repo d'événements (funnel, sessions PWA, entonnoir d'installation, rejets
-// photo). Un mock unique et partagé leur servirait les mêmes lignes : chaque
-// appel reçoit donc son propre builder, qui retient le(s) nom(s) d'événement
-// passé(s) au `where` et répond depuis ce registre.
+// repo d'événements (funnel DATA-1, entonnoir de revenu). Un mock unique et
+// partagé leur servirait les mêmes lignes : chaque appel reçoit donc son
+// propre builder, qui retient le(s) nom(s) d'événement passé(s) au `where` et
+// répond depuis ce registre.
 const rawRowsByEvent: Record<string, unknown[]> = {};
 
 interface EventsQueryBuilderMock {
@@ -75,8 +74,8 @@ function makeEventsQueryBuilder(): EventsQueryBuilderMock {
   return builder;
 }
 
-// Idem pour les `count` : le funnel compte `calculator_viewed`, le bloc PWA
-// compte `pwa_offline_view`.
+// Idem pour les `count` : le funnel DATA-1 compte `calculator_viewed`, le
+// funnel de revenu compte aussi `public_calculation_completed`.
 const countsByEvent: Record<string, number> = {};
 
 const subscriptionsQueryBuilderMock = {
@@ -93,10 +92,6 @@ const eventsRepoMock = {
     Promise.resolve(countsByEvent[where.event_name] ?? 0),
   ),
   createQueryBuilder: jest.fn(() => makeEventsQueryBuilder()),
-};
-
-const photosRepoMock = {
-  count: jest.fn(),
 };
 
 const subscriptionsRepoMock = {
@@ -119,7 +114,6 @@ describe('AdminAnalyticsService', () => {
     eventsRepoMock.find.mockResolvedValue([]);
     subscriptionsRepoMock.count.mockResolvedValue(0);
     usersRepoMock.count.mockResolvedValue(0);
-    photosRepoMock.count.mockResolvedValue(0);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -133,7 +127,6 @@ describe('AdminAnalyticsService', () => {
           useValue: subscriptionsRepoMock,
         },
         { provide: getRepositoryToken(User), useValue: usersRepoMock },
-        { provide: getRepositoryToken(ProjectPhoto), useValue: photosRepoMock },
         { provide: ConfigService, useValue: configServiceMock },
       ],
     }).compile();
@@ -214,107 +207,145 @@ describe('AdminAnalyticsService', () => {
     });
   });
 
-  describe('pwa', () => {
-    it('ventile les sessions par plateforme et calcule la part standalone (MOB-2)', async () => {
-      rawRowsByEvent['pwa_session_start'] = [
-        { display_mode: 'standalone', platform: 'android', count: '30' },
-        { display_mode: 'browser', platform: 'android', count: '70' },
-        { display_mode: 'browser', platform: 'ios', count: '150' },
+  describe('revenue_funnel', () => {
+    it('computes conversion from previous and from start across all 11 steps when every step clears the minimum sample', async () => {
+      countsByEvent['calculator_viewed'] = 500;
+      countsByEvent['public_calculation_completed'] = 400;
+      rawRowsByEvent['guest_session_started'] = [
+        { event_name: 'guest_session_started', count: '300' },
+        { event_name: 'dimensions_entered', count: '150' },
+        { event_name: 'estimate_created', count: '100' },
+        { event_name: 'shopping_list_generated', count: '80' },
+        { event_name: 'account_created', count: '40' },
+        { event_name: 'quote_generated', count: '35' },
+        { event_name: 'trial_started', count: '32' },
+        { event_name: 'paid_subscription_active', count: '31' },
+        { event_name: 'subscription_canceled', count: '5' },
       ];
 
-      const { pwa } = await service.getDashboard(4, 30);
+      const result = await service.getDashboard(4, 30);
 
-      expect(pwa.sessions.total).toBe(250);
-      expect(pwa.sessions.standalone).toBe(30);
-      expect(pwa.sessions.standalone_share).toBe(12);
-      // Trié par volume décroissant.
-      expect(pwa.sessions.by_platform).toEqual([
+      expect(result.revenue_funnel.min_sample_size).toBe(30);
+      expect(result.revenue_funnel.steps).toEqual([
         {
-          platform: 'ios',
-          sessions: 150,
-          session_share: 60,
-          standalone: 0,
-          // Aucune installation possible sur iOS (pas de beforeinstallprompt) :
-          // c'est précisément le signal « le store est le seul canal » de MOB-2.
-          standalone_share: 0,
+          event_name: 'calculator_viewed',
+          count: 500,
+          sufficient_data: true,
+          conversion_from_previous: null,
+          conversion_from_start: 100,
         },
         {
-          platform: 'android',
-          sessions: 100,
-          session_share: 40,
-          standalone: 30,
-          standalone_share: 30,
+          event_name: 'public_calculation_completed',
+          count: 400,
+          sufficient_data: true,
+          conversion_from_previous: 80,
+          conversion_from_start: 80,
+        },
+        {
+          event_name: 'guest_session_started',
+          count: 300,
+          sufficient_data: true,
+          conversion_from_previous: 75,
+          conversion_from_start: 60,
+        },
+        {
+          event_name: 'dimensions_entered',
+          count: 150,
+          sufficient_data: true,
+          conversion_from_previous: 50,
+          conversion_from_start: 30,
+        },
+        {
+          event_name: 'estimate_created',
+          count: 100,
+          sufficient_data: true,
+          conversion_from_previous: 66.67,
+          conversion_from_start: 20,
+        },
+        {
+          event_name: 'shopping_list_generated',
+          count: 80,
+          sufficient_data: true,
+          conversion_from_previous: 80,
+          conversion_from_start: 16,
+        },
+        {
+          event_name: 'account_created',
+          count: 40,
+          sufficient_data: true,
+          conversion_from_previous: 50,
+          conversion_from_start: 8,
+        },
+        {
+          event_name: 'quote_generated',
+          count: 35,
+          sufficient_data: true,
+          conversion_from_previous: 87.5,
+          conversion_from_start: 7,
+        },
+        {
+          event_name: 'trial_started',
+          count: 32,
+          sufficient_data: true,
+          conversion_from_previous: 91.43,
+          conversion_from_start: 6.4,
+        },
+        {
+          event_name: 'paid_subscription_active',
+          count: 31,
+          sufficient_data: true,
+          conversion_from_previous: 96.88,
+          conversion_from_start: 6.2,
+        },
+        {
+          event_name: 'subscription_canceled',
+          count: 5,
+          sufficient_data: true,
+          conversion_from_previous: 16.13,
+          conversion_from_start: 1,
         },
       ]);
     });
 
-    it("signale un échantillon insuffisant tant que le seuil de sessions n'est pas atteint", async () => {
-      rawRowsByEvent['pwa_session_start'] = [
-        { display_mode: 'standalone', platform: 'android', count: '199' },
-      ];
+    it('defaults to 0, never NaN, when a step has zero events but the previous one clears the threshold', async () => {
+      countsByEvent['calculator_viewed'] = 50;
+      countsByEvent['public_calculation_completed'] = 0;
 
-      const { pwa } = await service.getDashboard(4, 30);
+      const result = await service.getDashboard(4, 30);
 
-      expect(pwa.sufficient_data).toBe(false);
-      expect(pwa.min_sample_size).toBe(200);
-    });
-
-    it('calcule le taux de rejet photo sur les tentatives, pas sur les seuls rejets', async () => {
-      rawRowsByEvent['photo_quality_rejected'] = [
-        { reason: 'too_blurry', count: '15' },
-        { reason: 'too_dark', count: '5' },
-      ];
-      photosRepoMock.count.mockResolvedValue(80); // photos acceptées = stockées
-
-      const { pwa } = await service.getDashboard(4, 30);
-
-      expect(pwa.photo_quality).toEqual({
-        upload_attempts: 100,
-        accepted: 80,
-        rejected: 20,
-        rejection_rate: 20,
-        by_reason: [
-          { reason: 'too_blurry', count: 15 },
-          { reason: 'too_dark', count: 5 },
-        ],
+      expect(result.revenue_funnel.steps[1]).toEqual({
+        event_name: 'public_calculation_completed',
+        count: 0,
+        sufficient_data: true,
+        conversion_from_previous: 0,
+        conversion_from_start: 0,
       });
     });
 
-    it("ne renvoie jamais NaN quand aucune photo n'a été envoyée", async () => {
-      const { pwa } = await service.getDashboard(4, 30);
+    it('flags sufficient_data as false and nulls both rates once the previous step falls below the minimum sample', async () => {
+      countsByEvent['calculator_viewed'] = 500;
+      countsByEvent['public_calculation_completed'] = 400;
+      rawRowsByEvent['guest_session_started'] = [
+        { event_name: 'guest_session_started', count: '10' }, // < 30 : sous le seuil
+      ];
 
-      expect(pwa.photo_quality.rejection_rate).toBe(0);
-      expect(pwa.sessions.standalone_share).toBe(0);
+      const result = await service.getDashboard(4, 30);
+
+      // dimensions_entered arrive juste après guest_session_started (10 < 30) :
+      // son taux serait trompeur, il est nullé plutôt qu'affiché.
+      expect(result.revenue_funnel.steps[3]).toEqual({
+        event_name: 'dimensions_entered',
+        count: 0,
+        sufficient_data: false,
+        conversion_from_previous: null,
+        conversion_from_start: null,
+      });
     });
 
-    it("chaîne l'entonnoir d'installation et compte les vues hors ligne", async () => {
-      rawRowsByEvent['pwa_install_prompted'] = [
-        { event_name: 'pwa_install_prompted', count: '40' },
-        { event_name: 'pwa_install_accepted', count: '10' },
-        { event_name: 'pwa_installed', count: '8' },
-      ];
-      countsByEvent['pwa_offline_view'] = 12;
+    it("n'expose plus de bloc pwa", async () => {
+      const result = await service.getDashboard(4, 30);
 
-      const { pwa } = await service.getDashboard(4, 30);
-
-      expect(pwa.install_funnel).toEqual([
-        {
-          event_name: 'pwa_install_prompted',
-          count: 40,
-          conversion_from_previous: null,
-        },
-        {
-          event_name: 'pwa_install_accepted',
-          count: 10,
-          conversion_from_previous: 25,
-        },
-        {
-          event_name: 'pwa_installed',
-          count: 8,
-          conversion_from_previous: 80,
-        },
-      ]);
-      expect(pwa.offline_views).toBe(12);
+      expect((result as Record<string, unknown>).pwa).toBeUndefined();
     });
   });
 

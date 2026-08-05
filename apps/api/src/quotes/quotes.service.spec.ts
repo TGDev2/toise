@@ -13,6 +13,8 @@ import { ProjectsService } from '../projects/projects.service';
 import { ClientsService } from '../clients/clients.service';
 import { CompanyProfilesService } from '../company-profiles/company-profiles.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
+import { AnalyticsService } from '../analytics/analytics.service';
+import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 
 const ORG_ID = 'org-1';
 const USER_ID = 'user-1';
@@ -129,6 +131,7 @@ describe('QuotesService', () => {
   };
   const clientsServiceMock = { findOneForOrg: jest.fn() };
   const companyProfilesServiceMock = { findByOrganizationId: jest.fn() };
+  const analyticsServiceMock = { track: jest.fn() };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -173,6 +176,7 @@ describe('QuotesService', () => {
           provide: CompanyProfilesService,
           useValue: companyProfilesServiceMock,
         },
+        { provide: AnalyticsService, useValue: analyticsServiceMock },
       ],
     }).compile();
 
@@ -205,6 +209,16 @@ describe('QuotesService', () => {
       );
 
       expect(quote.labor_items_json).toEqual([]);
+    });
+
+    it('tracks quote_generated (BACKLOG_V1 revenue funnel)', async () => {
+      await service.create(ORG_ID, USER_ID, baseDto());
+
+      expect(analyticsServiceMock.track).toHaveBeenCalledWith(
+        AnalyticsEventName.QUOTE_GENERATED,
+        USER_ID,
+        expect.objectContaining({ project_id: PROJECT_ID }),
+      );
     });
   });
 

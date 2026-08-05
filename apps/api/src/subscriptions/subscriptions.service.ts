@@ -718,6 +718,21 @@ export class SubscriptionsService {
         trial: stripeSub.status === 'trialing',
       },
     );
+
+    // Marches « essai démarré » / « abonnement payant actif » du funnel de
+    // revenu (BACKLOG_V1) : un même checkout complété tombe dans l'une ou
+    // l'autre selon que le plan souscrit porte un essai.
+    if (stripeSub.status === 'trialing') {
+      this.analyticsService.track(AnalyticsEventName.TRIAL_STARTED, userId, {
+        plan: planName,
+      });
+    } else if (stripeSub.status === 'active') {
+      this.analyticsService.track(
+        AnalyticsEventName.PAID_SUBSCRIPTION_ACTIVE,
+        userId,
+        { plan: planName },
+      );
+    }
   }
 
   private async handleInvoicePaid(
@@ -762,6 +777,20 @@ export class SubscriptionsService {
 
     if (applied) {
       await this.syncSubscriptionTier(subscription.user_id, 'active', priceId);
+
+      // Marche « abonnement payant actif » du funnel de revenu (BACKLOG_V1) :
+      // ne tracker que sur une transition réelle vers `active` (conversion
+      // d'essai, ou reprise après impayé) — `subscription` a été lu *avant*
+      // `applyEventState` ci-dessus, son `status` est donc l'état précédent.
+      // Sans cette garde, chaque facture de renouvellement re-déclencherait
+      // la marche (même idiome que `sweepExpiredGracePeriods`).
+      if (subscription.status !== SubscriptionStatus.ACTIVE) {
+        this.analyticsService.track(
+          AnalyticsEventName.PAID_SUBSCRIPTION_ACTIVE,
+          subscription.user_id,
+          { plan: this.resolvePlanName(priceId) },
+        );
+      }
     }
 
     // COM-3 : premier paiement réel (pas un simple essai) — déclencheur du

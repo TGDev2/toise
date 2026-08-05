@@ -230,6 +230,7 @@ export class ProjectsController {
     const dimensions = await this.projectsService.updateDimensions(
       id,
       scope.organizationId,
+      scope.userId,
       dto,
       undefined,
       roomId,

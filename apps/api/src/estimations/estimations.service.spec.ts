@@ -188,6 +188,16 @@ describe('EstimationsService.estimatePublic', () => {
     expect(projectsServiceMock.updateStatus).not.toHaveBeenCalled();
   });
 
+  it('tracks public_calculation_completed (BACKLOG_V1 revenue funnel)', async () => {
+    await service.estimatePublic(makeDto());
+
+    expect(analyticsServiceMock.track).toHaveBeenCalledWith(
+      AnalyticsEventName.PUBLIC_CALCULATION_COMPLETED,
+      null,
+      { work_type_code: 'wall_painting', skill_level: 'intermediate' },
+    );
+  });
+
   it('defaults skill level to intermediate and painting to 2 coats', async () => {
     const result = await service.estimatePublic(makeDto());
 
@@ -529,6 +539,16 @@ describe('EstimationsService.checkQuotePublic', () => {
       NotFoundException,
     );
   });
+
+  it('never tracks public_calculation_completed — GTM-10 is a distinct surface (BACKLOG_V1)', async () => {
+    await service.checkQuotePublic(makeQuoteCheckDto());
+
+    expect(analyticsServiceMock.track).not.toHaveBeenCalledWith(
+      AnalyticsEventName.PUBLIC_CALCULATION_COMPLETED,
+      expect.anything(),
+      expect.anything(),
+    );
+  });
 });
 
 function makeEmailDto(
@@ -652,6 +672,16 @@ describe('EstimationsService.emailEstimate', () => {
       'email_capture',
       null,
       expect.objectContaining({ work_type_code: 'wall_painting', sent: true }),
+    );
+  });
+
+  it('never tracks public_calculation_completed — email capture is a distinct surface (BACKLOG_V1)', async () => {
+    await service.emailEstimate(makeEmailDto());
+
+    expect(analyticsServiceMock.track).not.toHaveBeenCalledWith(
+      AnalyticsEventName.PUBLIC_CALCULATION_COMPLETED,
+      expect.anything(),
+      expect.anything(),
     );
   });
 });

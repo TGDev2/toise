@@ -323,6 +323,48 @@ describe('AuthService', () => {
 
       expect(analyticsServiceMock.track).not.toHaveBeenCalled();
     });
+
+    it('should track guest_session_started for a brand-new anonymous account (BACKLOG_V1 revenue funnel)', async () => {
+      usersService.upsertFromFirebase.mockResolvedValue({
+        user: mockUser,
+        isNewAccount: false,
+        isNewGuestSession: true,
+      });
+
+      const decodedToken = createDecodedToken({
+        uid: 'anon-uid',
+        email: undefined,
+        email_verified: false,
+        firebase: { sign_in_provider: 'anonymous' },
+      });
+
+      await service.syncUser(decodedToken);
+
+      expect(analyticsServiceMock.track).toHaveBeenCalledWith(
+        AnalyticsEventName.GUEST_SESSION_STARTED,
+        mockUser.id,
+        { auth_provider: mockUser.auth_provider },
+      );
+    });
+
+    it('should not track guest_session_started when an anonymous session merely resumes', async () => {
+      usersService.upsertFromFirebase.mockResolvedValue({
+        user: mockUser,
+        isNewAccount: false,
+        isNewGuestSession: false,
+      });
+
+      const decodedToken = createDecodedToken({
+        uid: 'anon-uid',
+        email: undefined,
+        email_verified: false,
+        firebase: { sign_in_provider: 'anonymous' },
+      });
+
+      await service.syncUser(decodedToken);
+
+      expect(analyticsServiceMock.track).not.toHaveBeenCalled();
+    });
   });
 
   describe('forgotPassword', () => {
