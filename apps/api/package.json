@@ -25,6 +25,7 @@
     "migration:generate": "pnpm typeorm migration:generate",
     "migration:run": "ts-node -r tsconfig-paths/register src/scripts/migrate.ts",
     "verify:stripe": "ts-node -r tsconfig-paths/register src/scripts/verify-stripe-cycle.ts",
+    "validate:affiliate-feed": "ts-node -r tsconfig-paths/register src/scripts/validate-affiliate-feed.ts",
     "migration:revert": "pnpm typeorm migration:revert"
   },
   "dependencies": {
