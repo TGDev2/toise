@@ -3,6 +3,7 @@ import { ShoppingListMaterials } from '../ShoppingListMaterials';
 import type { ShoppingListMaterialItem } from '@/lib/shopping-list-types';
 import type { BuyLinkItem } from '@/lib/price-comparison-types';
 import type { EcoRowData } from '@/lib/eco-materials-types';
+import type { KnownPrice } from '@/lib/known-prices';
 
 function makeItem(
   overrides: Partial<ShoppingListMaterialItem> = {},
@@ -253,6 +254,86 @@ describe('ShoppingListMaterials', () => {
 
       expect(screen.getByText('Peinture acrylique mate')).toBeInTheDocument();
       expect(screen.queryByText('Enduit de lissage')).not.toBeInTheDocument();
+    });
+  });
+
+  // E4-4 : le rappel du dernier prix se montre avant de s'appliquer. Un prix
+  // posé sans que personne ne le regarde deviendrait indiscernable d'un relevé.
+  describe('rappel du dernier prix (E4-4)', () => {
+    const known = new Map<string, KnownPrice>([
+      [
+        'mat-paint',
+        {
+          item_id: 'mat-paint',
+          real_unit_price: 45.9,
+          store_name: 'Leroy Merlin',
+          recorded_on: '2026-06-12',
+          project_name: 'Chantier Dupont',
+        },
+      ],
+    ]);
+
+    it('annonce le dernier prix relevé sur une ligne encore vide', () => {
+      render(
+        <ShoppingListMaterials items={[makeItem()]} knownPrices={known} />,
+      );
+      expect(
+        screen.getByText(/Dernier prix : 45,90 € — Leroy Merlin, 12 juin 2026/),
+      ).toBeInTheDocument();
+    });
+
+    it('se tait dès que la ligne porte un prix de ce chantier', () => {
+      render(
+        <ShoppingListMaterials
+          items={[makeItem({ real_unit_price: 12 })]}
+          knownPrices={known}
+        />,
+      );
+      expect(screen.queryByText(/Dernier prix/)).not.toBeInTheDocument();
+    });
+
+    it('se tait sur une liste en lecture seule (rien à y saisir)', () => {
+      render(
+        <ShoppingListMaterials
+          items={[makeItem()]}
+          knownPrices={known}
+          readOnly
+        />,
+      );
+      expect(screen.queryByText(/Dernier prix/)).not.toBeInTheDocument();
+    });
+
+    /*
+      Le rappel écrit le prix dans la liste sans passer par le champ. Un état
+      local figé à l'initialisation affichait la coche verte et un champ vide :
+      l'artisan qui ouvrait la ligne pour vérifier croyait que rien n'avait été
+      posé.
+    */
+    it('montre dans le champ le prix posé par le rappel', () => {
+      const { rerender } = render(
+        <ShoppingListMaterials items={[makeItem()]} knownPrices={known} />,
+      );
+
+      rerender(
+        <ShoppingListMaterials
+          items={[makeItem({ real_unit_price: 45.9, store_name: 'Leroy Merlin' })]}
+          knownPrices={known}
+        />,
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Saisir le prix reel' }));
+
+      expect(screen.getByLabelText(/Prix unitaire pour/)).toHaveValue('45.9');
+      expect(screen.getByLabelText(/Magasin pour/)).toHaveValue('Leroy Merlin');
+    });
+
+    it('ne dit rien des matériaux jamais achetés', () => {
+      render(
+        <ShoppingListMaterials
+          items={[makeItem({ material_id: 'mat-inconnu' })]}
+          knownPrices={known}
+        />,
+      );
+      expect(screen.queryByText(/Dernier prix/)).not.toBeInTheDocument();
     });
   });
 });

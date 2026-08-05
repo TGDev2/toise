@@ -19,6 +19,7 @@ import { ShoppingListsService } from './shopping-lists.service';
 import { ShoppingListResponseDto } from './dto/shopping-list-response.dto';
 import { BudgetSummaryResponseDto } from './dto/budget-summary-response.dto';
 import { EcoSuggestionsResponseDto } from './dto/eco-suggestions-response.dto';
+import { KnownPricesResponseDto } from './dto/known-prices-response.dto';
 import { UpdateShoppingListDto } from './dto/update-shopping-list.dto';
 import { CloseoutRequestDto, CloseoutResponseDto } from './dto/closeout.dto';
 import { RequireFeature } from '../feature-gates/decorators/require-feature.decorator';
@@ -107,6 +108,27 @@ export class ShoppingListsController {
         scope.organizationId,
       );
     return BudgetSummaryResponseDto.fromSummary(summary, isFinalized);
+  }
+
+  /**
+   * E4-4 — dernier prix relevé par l'organisation pour chaque article.
+   *
+   * Même gate que la saisie qu'elle alimente (`budget_tracking`) : proposer un
+   * rappel de prix à qui ne peut pas saisir de prix n'aurait pas de sens.
+   */
+  @Get(':id/shopping-list/known-prices')
+  @UseGuards(FeatureGateGuard)
+  @RequireFeature('budget_tracking')
+  async getKnownPrices(
+    @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
+    @Param('id', ParseUUIDPipe) projectId: string,
+  ): Promise<KnownPricesResponseDto> {
+    const scope = await this.resolveScope(firebaseUser);
+    const result = await this.shoppingListsService.findKnownPrices(
+      projectId,
+      scope.organizationId,
+    );
+    return KnownPricesResponseDto.fromResult(result);
   }
 
   @Get(':id/shopping-list/eco-suggestions')

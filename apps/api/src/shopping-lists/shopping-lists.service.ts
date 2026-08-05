@@ -17,6 +17,7 @@ import {
   EcoItemDto,
   EcoSuggestionDto,
 } from './dto/eco-suggestions-response.dto';
+import { KnownPriceDto } from './dto/known-prices-response.dto';
 import { EstimationsService } from '../estimations/estimations.service';
 import { ProjectsService } from '../projects/projects.service';
 import { AnalyticsService } from '../analytics/analytics.service';
@@ -90,6 +91,19 @@ function carryOverFieldRecords(
       item.purchased_quantity = before.purchased_quantity;
     }
   }
+}
+
+/**
+ * Ligne brute de `queryKnownPrices`. `real_unit_price` est déclaré large : le
+ * pilote pg rend `float8` en nombre et `numeric` en chaîne, et rien n'oblige la
+ * projection à ne jamais changer de type.
+ */
+interface KnownPriceRow {
+  item_id: string;
+  real_unit_price: number | string;
+  store_name: string | null;
+  recorded_on: string;
+  project_name: string;
 }
 
 @Injectable()
@@ -417,6 +431,95 @@ export class ShoppingListsService {
 
     shoppingList.items_json = data;
     return manager.save(shoppingList);
+  }
+
+  /**
+   * E4-4 — dernier prix relevé par l'organisation pour chaque article, hors
+   * chantier courant.
+   *
+   * L'étape « Prix » pèse 57 % du temps d'écran d'un chantier à trois corps
+   * d'état (`docs/AUDIT_PARCOURS_10MIN.md`), et l'artisan y ressaisit des
+   * tarifs qu'il a déjà donnés au produit sur le chantier d'avant : les prix
+   * sont reportés d'une régénération à l'autre au sein d'un projet
+   * (`carryOverFieldRecords`), jamais entre projets.
+   *
+   * **Lecture pure.** Rien n'est écrit ici, et l'appelant ne pose ces prix
+   * qu'après un geste explicite de l'artisan (leçon 18) : `real_unit_price`
+   * alimente le budget et le benchmark DATA-4 ; un prix posé sans que personne
+   * ne le regarde deviendrait indiscernable d'un relevé de terrain.
+   */
+  async findKnownPrices(
+    projectId: string,
+    organizationId: string,
+  ): Promise<{ materials: KnownPriceDto[]; complements: KnownPriceDto[] }> {
+    await this.projectsService.findOneForOrg(projectId, organizationId);
+
+    const [materials, complements] = await Promise.all([
+      this.queryKnownPrices(
+        'material_items',
+        'material_id',
+        projectId,
+        organizationId,
+      ),
+      this.queryKnownPrices(
+        'complementary_items',
+        'complementary_material_id',
+        projectId,
+        organizationId,
+      ),
+    ]);
+    return { materials, complements };
+  }
+
+  /**
+   * `DISTINCT ON` + `ORDER BY … updated_at DESC` : un seul prix par article, le
+   * plus récemment enregistré. Le `CASE` protège des listes dont le bloc
+   * attendu ne serait pas un tableau — `jsonb_array_elements` lève sinon, et
+   * une seule ligne malformée priverait toute l'organisation du rappel.
+   *
+   * `collection` et `idKey` ne viennent jamais de l'utilisateur : ce sont les
+   * deux littéraux passés par `findKnownPrices`.
+   */
+  private async queryKnownPrices(
+    collection: 'material_items' | 'complementary_items',
+    idKey: 'material_id' | 'complementary_material_id',
+    projectId: string,
+    organizationId: string,
+  ): Promise<KnownPriceDto[]> {
+    const rows = await this.shoppingListRepo.query<KnownPriceRow[]>(
+      `
+      SELECT DISTINCT ON (item->>'${idKey}')
+             item->>'${idKey}'                    AS item_id,
+             (item->>'real_unit_price')::float8   AS real_unit_price,
+             item->>'store_name'                  AS store_name,
+             to_char(sl.updated_at, 'YYYY-MM-DD') AS recorded_on,
+             p.name                               AS project_name
+      FROM shopping_lists sl
+      JOIN projects p ON p.id = sl.project_id
+      CROSS JOIN LATERAL jsonb_array_elements(
+        CASE
+          WHEN jsonb_typeof(sl.items_json->'${collection}') = 'array'
+          THEN sl.items_json->'${collection}'
+          ELSE '[]'::jsonb
+        END
+      ) AS item
+      WHERE p.organization_id = $1
+        AND p.deleted_at IS NULL
+        AND sl.project_id <> $2
+        AND item->>'real_unit_price' IS NOT NULL
+        AND (item->>'real_unit_price')::float8 > 0
+      ORDER BY item->>'${idKey}', sl.updated_at DESC
+      `,
+      [organizationId, projectId],
+    );
+
+    return rows.map((row) => ({
+      item_id: row.item_id,
+      real_unit_price: Number(row.real_unit_price),
+      store_name: row.store_name || null,
+      recorded_on: row.recorded_on,
+      project_name: row.project_name,
+    }));
   }
 
   async regenerate(

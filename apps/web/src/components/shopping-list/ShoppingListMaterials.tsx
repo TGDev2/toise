@@ -6,6 +6,8 @@ import { costedUnits } from '@/lib/shopping-list-types';
 import type { BuyLinkItem } from '@/lib/price-comparison-types';
 import type { EcoRowData } from '@/lib/eco-materials-types';
 import { isMixedPackaging } from '@/lib/packaging';
+import type { KnownPrice } from '@/lib/known-prices';
+import { formatKnownPrice } from '@/lib/known-prices';
 import { DecimalInput } from '@/components/ui';
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -25,6 +27,8 @@ interface ShoppingListMaterialsProps {
   // PLAT-3 : badge/suggestion éco par matériau, tier Pro.
   ecoAllowed?: boolean;
   ecoData?: Map<string, EcoRowData>;
+  // E4-4 : dernier prix relevé par l'entreprise, indexé par material_id.
+  knownPrices?: Map<string, KnownPrice>;
   onUpdateQuantity?: (materialId: string, units: number) => void;
   onResetQuantity?: (materialId: string) => void;
   onUpdatePrice?: (
@@ -42,6 +46,7 @@ function MaterialRow({
   budgetAllowed,
   buyLink,
   eco,
+  knownPrice,
   onUpdateQuantity,
   onResetQuantity,
   onUpdatePrice,
@@ -52,6 +57,7 @@ function MaterialRow({
   budgetAllowed?: boolean;
   buyLink?: BuyLinkItem;
   eco?: EcoRowData;
+  knownPrice?: KnownPrice;
   onUpdateQuantity?: (units: number) => void;
   onResetQuantity?: () => void;
   onUpdatePrice?: (price: number, storeName: string) => void;
@@ -59,10 +65,22 @@ function MaterialRow({
 }) {
   const [localQty, setLocalQty] = useState(item.units_needed);
   const [showPriceFields, setShowPriceFields] = useState(false);
-  const [localPrice, setLocalPrice] = useState<string>(
-    item.real_unit_price != null ? String(item.real_unit_price) : '',
-  );
-  const [localStore, setLocalStore] = useState(item.store_name ?? '');
+
+  /*
+    Prix et magasin sont **dérivés de la ligne**, avec un brouillon local le
+    temps de la frappe seulement.
+
+    E4-4 : « Reprendre mes derniers prix » écrit dans la liste sans passer par
+    ces champs. Un état local figé à l'initialisation affichait alors la coche
+    verte et un champ vide — l'artisan qui ouvrait la ligne pour vérifier
+    croyait que rien n'avait été posé.
+  */
+  const [draftPrice, setDraftPrice] = useState<string | null>(null);
+  const [draftStore, setDraftStore] = useState<string | null>(null);
+  const localPrice =
+    draftPrice ??
+    (item.real_unit_price != null ? String(item.real_unit_price) : '');
+  const localStore = draftStore ?? item.store_name ?? '';
 
   const handleBlur = () => {
     const val = Math.max(0, Math.round(localQty));
@@ -83,18 +101,23 @@ function MaterialRow({
     onResetQuantity?.();
   };
 
-  const handlePriceBlur = () => {
+  // Le brouillon est relâché au `blur` : l'affichage repasse sur la valeur de
+  // la ligne, seule source de vérité.
+  const commitPrice = () => {
     const price = parseFloat(localPrice);
     if (!isNaN(price) && price >= 0 && onUpdatePrice) {
       onUpdatePrice(price, localStore);
     }
   };
 
+  const handlePriceBlur = () => {
+    commitPrice();
+    setDraftPrice(null);
+  };
+
   const handleStoreBlur = () => {
-    const price = parseFloat(localPrice);
-    if (!isNaN(price) && price >= 0 && onUpdatePrice) {
-      onUpdatePrice(price, localStore);
-    }
+    commitPrice();
+    setDraftStore(null);
   };
 
   const handlePriceToggle = () => {
@@ -174,6 +197,16 @@ function MaterialRow({
             <p className="mt-1 text-xs text-emerald-700">
               Alternative durable disponible : {eco.suggestion.eco_material_name}
               {eco.suggestion.eco_label_fr ? ` — ${eco.suggestion.eco_label_fr}` : ''}
+            </p>
+          )}
+          {/*
+            E4-4 : ce que « Reprendre mes derniers prix » poserait sur cette
+            ligne, montré avant de le poser. Un rappel appliqué en silence
+            deviendrait indiscernable d'un relevé de terrain.
+          */}
+          {!hasPriceSet && knownPrice && !readOnly && (
+            <p className="mt-1 text-xs text-stone-500">
+              {formatKnownPrice(knownPrice)}
             </p>
           )}
           {buyLink && (
@@ -270,7 +303,7 @@ function MaterialRow({
                 <DecimalInput
                   id={`price-${item.material_id}`}
                   value={localPrice}
-                  onValueChange={setLocalPrice}
+                  onValueChange={setDraftPrice}
                   onBlur={handlePriceBlur}
                   onKeyDown={handleKeyDown}
                   enterKeyHint="next"
@@ -291,7 +324,7 @@ function MaterialRow({
                 id={`store-${item.material_id}`}
                 type="text"
                 value={localStore}
-                onChange={(e) => setLocalStore(e.target.value)}
+                onChange={(e) => setDraftStore(e.target.value)}
                 onBlur={handleStoreBlur}
                 onKeyDown={handleKeyDown}
                 placeholder="Ex: Leroy Merlin"
@@ -319,6 +352,7 @@ export function ShoppingListMaterials({
   buyLinks,
   ecoAllowed,
   ecoData,
+  knownPrices,
   onUpdateQuantity,
   onResetQuantity,
   onUpdatePrice,
@@ -458,6 +492,7 @@ export function ShoppingListMaterials({
                     budgetAllowed={budgetAllowed}
                     buyLink={buyLinks?.get(item.material_id)}
                     eco={ecoData?.get(item.material_id)}
+                    knownPrice={knownPrices?.get(item.material_id)}
                     onUpdateQuantity={onUpdateQuantity ? (units) =>
                       onUpdateQuantity(item.material_id, units)
                     : undefined}

@@ -11,6 +11,8 @@ import type {
   BuyLinksResponse,
 } from '@/lib/price-comparison-types';
 import type { EcoSuggestionsResponse, EcoRowData } from '@/lib/eco-materials-types';
+import type { KnownPrice, KnownPricesResponse } from '@/lib/known-prices';
+import { indexKnownPrices } from '@/lib/known-prices';
 import { ShoppingListMaterials } from '@/components/shopping-list/ShoppingListMaterials';
 import { ShoppingListComplements } from '@/components/shopping-list/ShoppingListComplements';
 import { ShareLinkPanel } from '@/components/shopping-list/ShareLinkPanel';
@@ -51,6 +53,7 @@ export default function ShoppingListPage() {
   >(null);
   const [budgetSummary, setBudgetSummary] = useState<BudgetSummary | null>(null);
   const [ecoData, setEcoData] = useState<EcoSuggestionsResponse | null>(null);
+  const [knownPrices, setKnownPrices] = useState<KnownPricesResponse | null>(null);
   const [comparing, setComparing] = useState(false);
   const [comparisonData, setComparisonData] = useState<PriceComparisonResponse | null>(null);
   const [buyLinks, setBuyLinks] = useState<Map<string, BuyLinkItem>>(new Map());
@@ -81,6 +84,18 @@ export default function ShoppingListPage() {
       setBudgetSummary(summary);
     } catch {
       // Budget summary may not exist yet if no prices entered
+    }
+  }, [budgetAllowed, projectId]);
+
+  const loadKnownPrices = useCallback(async () => {
+    if (!budgetAllowed) return;
+    try {
+      const result = await apiGet<KnownPricesResponse>(
+        `/projects/${projectId}/shopping-list/known-prices`,
+      );
+      setKnownPrices(result);
+    } catch {
+      // Rappel de prix optionnel : un échec laisse la saisie manuelle intacte.
     }
   }, [budgetAllowed, projectId]);
 
@@ -127,6 +142,25 @@ export default function ShoppingListPage() {
       clearTimeout(saveTimeoutRef.current);
     }
     saveTimeoutRef.current = setTimeout(flushUpdates, 300);
+  }, [flushUpdates]);
+
+  /**
+   * Vide les saisies en attente **avant** de quitter l'étape (E4-4, § 8.1 de
+   * `docs/AUDIT_PARCOURS_10MIN.md`).
+   *
+   * Le débounce de 300 ms est réarmé à chaque saisie : sur mobile, le tap sur
+   * « Générer le devis » est aussi ce qui fait perdre le focus au champ de prix,
+   * donc la programmation du `PATCH` et la navigation sont le même geste. Et
+   * `QuotesService.create` ne retient que les lignes portant un prix réel : le
+   * matériau disparaissait du devis sans un mot. Reproduit deux fois par le
+   * chronométrage avant correction.
+   */
+  const flushNow = useCallback(async () => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+    await flushUpdates();
   }, [flushUpdates]);
 
   useEffect(() => {
@@ -177,6 +211,13 @@ export default function ShoppingListPage() {
     }
   }, [data, ecoAllowed, loadEcoSuggestions]);
 
+  // Derniers prix relevés par l'entreprise (E4-4)
+  useEffect(() => {
+    if (data && budgetAllowed) {
+      loadKnownPrices();
+    }
+  }, [data, budgetAllowed, loadKnownPrices]);
+
   const ecoByMaterialId = useMemo(() => {
     const map = new Map<string, EcoRowData>();
     if (!ecoData) return map;
@@ -196,6 +237,45 @@ export default function ShoppingListPage() {
     }
     return map;
   }, [ecoData]);
+
+  const knownMaterialPrices = useMemo(
+    () => indexKnownPrices(knownPrices?.materials ?? []),
+    [knownPrices],
+  );
+  const knownComplementPrices = useMemo(
+    () => indexKnownPrices(knownPrices?.complements ?? []),
+    [knownPrices],
+  );
+
+  /**
+   * Articles encore sans prix pour lesquels l'entreprise en connaît un. Ne
+   * propose jamais d'écraser une saisie de ce chantier : le rappel comble des
+   * trous, il ne corrige pas ce que l'artisan vient de relever.
+   */
+  const recallable = useMemo(() => {
+    if (!data) return { materials: [], complements: [] };
+    const materials = data.material_items
+      .map((item) => ({ item, known: knownMaterialPrices.get(item.material_id) }))
+      .filter(
+        (row): row is { item: typeof row.item; known: KnownPrice } =>
+          row.known != null && row.item.real_unit_price == null,
+      );
+    const complements = data.complementary_items
+      .map((item) => ({
+        item,
+        known: knownComplementPrices.get(item.complementary_material_id),
+      }))
+      .filter(
+        (row): row is { item: typeof row.item; known: KnownPrice } =>
+          row.known != null &&
+          !row.item.is_removed &&
+          row.item.real_unit_price == null,
+      );
+    return { materials, complements };
+  }, [data, knownMaterialPrices, knownComplementPrices]);
+
+  const recallableCount =
+    recallable.materials.length + recallable.complements.length;
 
   const handleUpdateMaterialQty = useCallback(
     (materialId: string, units: number) => {
@@ -402,7 +482,31 @@ export default function ShoppingListPage() {
     [scheduleSave],
   );
 
+  /**
+   * Applique les derniers prix connus aux articles encore vides — **un seul
+   * geste, déclenché par l'artisan** (leçon 18). Réutilise les mêmes
+   * gestionnaires que la saisie manuelle : même `PATCH`, même rafraîchissement
+   * du budget, aucun chemin d'écriture parallèle.
+   */
+  const handleRecallPrices = useCallback(() => {
+    for (const { item, known } of recallable.materials) {
+      handleUpdateMaterialPrice(
+        item.material_id,
+        known.real_unit_price,
+        known.store_name ?? '',
+      );
+    }
+    for (const { item, known } of recallable.complements) {
+      handleUpdateComplementPrice(
+        item.complementary_material_id,
+        known.real_unit_price,
+        known.store_name ?? '',
+      );
+    }
+  }, [recallable, handleUpdateMaterialPrice, handleUpdateComplementPrice]);
+
   const downloadPdf = useCallback(async () => {
+    await flushNow();
     setDownloading(true);
     setError('');
     try {
@@ -416,7 +520,7 @@ export default function ShoppingListPage() {
     } finally {
       setDownloading(false);
     }
-  }, [projectId, projectName]);
+  }, [projectId, projectName, flushNow]);
 
   /*
    * Emporter la liste chez soi ou la publier demande un compte : ce sont les
@@ -532,6 +636,21 @@ export default function ShoppingListPage() {
     showPaywall('eco_materials');
   }, [showPaywall]);
 
+  /*
+    Les deux sorties de l'étape lisent la liste **côté serveur** — le devis via
+    `GET /shopping-list`, la clôture via son propre écran. Elles attendent donc
+    que les saisies en attente soient parties (cf. `flushNow`).
+  */
+  const handleGoToQuote = useCallback(async () => {
+    await flushNow();
+    router.push(`/projects/${projectId}/quote/new`);
+  }, [flushNow, projectId, router]);
+
+  const handleGoToCloseout = useCallback(async () => {
+    await flushNow();
+    router.push(`/projects/${projectId}/shopping-list/closeout`);
+  }, [flushNow, projectId, router]);
+
   if (isLoading || loading) {
     return (
       <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
@@ -608,9 +727,7 @@ export default function ShoppingListPage() {
           {closeoutAllowed && (
             <button
               type="button"
-              onClick={() =>
-                router.push(`/projects/${projectId}/shopping-list/closeout`)
-              }
+              onClick={handleGoToCloseout}
               className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-stone-900 bg-stone-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-stone-800"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
@@ -668,6 +785,30 @@ export default function ShoppingListPage() {
         </div>
       )}
 
+      {/*
+        E4-4 — le geste qui remplace la ressaisie de tous les prix. Il n'apparaît
+        que s'il a quelque chose à faire, et il ne touche que les articles encore
+        vides : le rappel comble des trous, il n'écrase pas un relevé du jour.
+      */}
+      {data && recallableCount > 0 && (
+        <div className="mb-6 flex flex-col gap-3 rounded-3xl border border-[var(--accent)]/30 bg-[var(--accent)]/5 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-stone-700">
+            Vous avez déjà relevé un prix pour{' '}
+            <span className="font-semibold text-stone-900">
+              {recallableCount} article{recallableCount > 1 ? 's' : ''}
+            </span>{' '}
+            de cette liste sur un chantier précédent.
+          </p>
+          <button
+            type="button"
+            onClick={handleRecallPrices}
+            className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--accent-strong)]"
+          >
+            Reprendre mes derniers prix
+          </button>
+        </div>
+      )}
+
       {data && (
         <>
           <BudgetDashboard
@@ -693,6 +834,7 @@ export default function ShoppingListPage() {
               buyLinks={buyLinks}
               ecoAllowed={ecoAllowed}
               ecoData={ecoByMaterialId}
+              knownPrices={knownMaterialPrices}
               onUpdateQuantity={handleUpdateMaterialQty}
               onResetQuantity={handleResetMaterialQty}
               onUpdatePrice={handleUpdateMaterialPrice}
@@ -706,6 +848,7 @@ export default function ShoppingListPage() {
               <ShoppingListComplements
                 items={data.complementary_items}
                 budgetAllowed={budgetAllowed}
+                knownPrices={knownComplementPrices}
                 onUpdateQuantity={handleUpdateComplementQty}
                 onRemove={handleRemoveComplement}
                 onRestore={handleRestoreComplement}
@@ -744,7 +887,7 @@ export default function ShoppingListPage() {
           <button
             type="button"
             disabled={pricedCount === 0}
-            onClick={() => router.push(`/projects/${projectId}/quote/new`)}
+            onClick={handleGoToQuote}
             className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             Générer le devis

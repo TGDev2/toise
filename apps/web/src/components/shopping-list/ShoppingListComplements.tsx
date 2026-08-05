@@ -3,11 +3,16 @@
 import { useState } from 'react';
 import type { ShoppingListComplementaryItem } from '@/lib/shopping-list-types';
 import { costedQuantity } from '@/lib/shopping-list-types';
+import type { KnownPrice } from '@/lib/known-prices';
+import { formatKnownPrice } from '@/lib/known-prices';
+import { DecimalInput } from '@/components/ui';
 
 interface ShoppingListComplementsProps {
   items: ShoppingListComplementaryItem[];
   readOnly?: boolean;
   budgetAllowed?: boolean;
+  // E4-4 : dernier prix relevé par l'entreprise, indexé par complementary_material_id.
+  knownPrices?: Map<string, KnownPrice>;
   onUpdateQuantity?: (complementaryMaterialId: string, quantity: number) => void;
   onRemove?: (complementaryMaterialId: string) => void;
   onRestore?: (complementaryMaterialId: string) => void;
@@ -19,6 +24,7 @@ function ComplementRow({
   item,
   readOnly,
   budgetAllowed,
+  knownPrice,
   onUpdateQuantity,
   onRemove,
   onUpdatePrice,
@@ -27,6 +33,7 @@ function ComplementRow({
   item: ShoppingListComplementaryItem;
   readOnly?: boolean;
   budgetAllowed?: boolean;
+  knownPrice?: KnownPrice;
   onUpdateQuantity?: (qty: number) => void;
   onRemove?: () => void;
   onUpdatePrice?: (price: number, storeName: string) => void;
@@ -34,10 +41,16 @@ function ComplementRow({
 }) {
   const [localQty, setLocalQty] = useState(item.quantity);
   const [showPriceFields, setShowPriceFields] = useState(false);
-  const [localPrice, setLocalPrice] = useState<string>(
-    item.real_unit_price != null ? String(item.real_unit_price) : '',
-  );
-  const [localStore, setLocalStore] = useState(item.store_name ?? '');
+
+  // E4-4 : cf. `ShoppingListMaterials` — prix et magasin dérivés de la ligne,
+  // brouillon local le temps de la frappe seulement, pour que le rappel des
+  // prix soit visible dans le champ.
+  const [draftPrice, setDraftPrice] = useState<string | null>(null);
+  const [draftStore, setDraftStore] = useState<string | null>(null);
+  const localPrice =
+    draftPrice ??
+    (item.real_unit_price != null ? String(item.real_unit_price) : '');
+  const localStore = draftStore ?? item.store_name ?? '';
 
   const handleBlur = () => {
     const val = Math.max(0, Math.round(localQty));
@@ -53,18 +66,21 @@ function ComplementRow({
     }
   };
 
-  const handlePriceBlur = () => {
+  const commitPrice = () => {
     const price = parseFloat(localPrice);
     if (!isNaN(price) && price >= 0 && onUpdatePrice) {
       onUpdatePrice(price, localStore);
     }
   };
 
+  const handlePriceBlur = () => {
+    commitPrice();
+    setDraftPrice(null);
+  };
+
   const handleStoreBlur = () => {
-    const price = parseFloat(localPrice);
-    if (!isNaN(price) && price >= 0 && onUpdatePrice) {
-      onUpdatePrice(price, localStore);
-    }
+    commitPrice();
+    setDraftStore(null);
   };
 
   const handlePriceToggle = () => {
@@ -98,6 +114,12 @@ function ComplementRow({
           </p>
           {item.description_fr && (
             <p className="mt-0.5 text-sm text-stone-500">{item.description_fr}</p>
+          )}
+          {/* E4-4 : cf. `ShoppingListMaterials` — le rappel se montre avant de s'appliquer. */}
+          {!hasPriceSet && knownPrice && !readOnly && (
+            <p className="mt-1 text-xs text-stone-500">
+              {formatKnownPrice(knownPrice)}
+            </p>
           )}
         </div>
 
@@ -175,17 +197,18 @@ function ComplementRow({
                 Prix unitaire
               </label>
               <div className="relative">
-                <input
+                {/* Même champ que les matériaux (PRO-5) : `type="number"`
+                    rejetait la virgule du clavier français, et « 3,5 » se
+                    transformait en chaîne vide sans le moindre signal. */}
+                <DecimalInput
                   id={`cprice-${item.complementary_material_id}`}
-                  type="number"
-                  min={0}
-                  step={0.01}
                   value={localPrice}
-                  onChange={(e) => setLocalPrice(e.target.value)}
+                  onValueChange={setDraftPrice}
                   onBlur={handlePriceBlur}
                   onKeyDown={handleKeyDown}
-                  placeholder="0.00"
-                  className="w-24 rounded-lg border border-stone-200 bg-stone-50 px-2 py-1.5 pr-7 text-right text-sm text-stone-900 focus:border-stone-400 focus:bg-white focus:outline-none"
+                  enterKeyHint="next"
+                  placeholder="0,00"
+                  className="min-h-11 w-24 rounded-lg border border-stone-200 bg-stone-50 px-2 py-1.5 pr-7 text-right text-base text-stone-900 focus:border-stone-400 focus:bg-white focus:outline-none sm:text-sm"
                   aria-label={`Prix unitaire pour ${item.name}`}
                 />
                 <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-stone-400">
@@ -201,7 +224,7 @@ function ComplementRow({
                 id={`cstore-${item.complementary_material_id}`}
                 type="text"
                 value={localStore}
-                onChange={(e) => setLocalStore(e.target.value)}
+                onChange={(e) => setDraftStore(e.target.value)}
                 onBlur={handleStoreBlur}
                 onKeyDown={handleKeyDown}
                 placeholder="Ex: Leroy Merlin"
@@ -226,6 +249,7 @@ export function ShoppingListComplements({
   items,
   readOnly,
   budgetAllowed,
+  knownPrices,
   onUpdateQuantity,
   onRemove,
   onRestore,
@@ -259,6 +283,7 @@ export function ShoppingListComplements({
               item={item}
               readOnly={readOnly}
               budgetAllowed={budgetAllowed}
+              knownPrice={knownPrices?.get(item.complementary_material_id)}
               onUpdateQuantity={onUpdateQuantity ? (qty) =>
                 onUpdateQuantity(item.complementary_material_id, qty)
               : undefined}
