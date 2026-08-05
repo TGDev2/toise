@@ -1,9 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
-import { mkdir, rename, unlink, writeFile } from 'fs/promises';
-import { join, dirname } from 'path';
-import { StorageProvider } from './storage.interface';
+import {
+  mkdir,
+  readdir,
+  rename,
+  rm,
+  stat,
+  unlink,
+  writeFile,
+} from 'fs/promises';
+import { isAbsolute, join, dirname, relative } from 'path';
+import { StoredFile, StorageProvider } from './storage.interface';
 
 @Injectable()
 export class LocalStorageService implements StorageProvider {
@@ -63,7 +71,81 @@ export class LocalStorageService implements StorageProvider {
     }
   }
 
+  async listPrefix(prefix: string): Promise<StoredFile[]> {
+    return this.inventory(this.resolveWithinBase(prefix), prefix);
+  }
+
+  /**
+   * Recense d'abord, efface ensuite : le journal de purge doit dire ce qui est
+   * parti, or `rm -r` ne rend rien. L'inventaire est fait sur l'arborescence
+   * réelle, pas sur les chemins connus en base — c'est précisément ce que cette
+   * méthode apporte.
+   */
+  async deletePrefix(prefix: string): Promise<StoredFile[]> {
+    const root = this.resolveWithinBase(prefix);
+
+    const deleted = await this.inventory(root, prefix);
+    await rm(root, { recursive: true, force: true });
+    return deleted;
+  }
+
   getAbsolutePath(storedPath: string): string {
     return join(this.basePath, storedPath);
+  }
+
+  /**
+   * `rm -r` sur un chemin composé à partir d'une entrée extérieure est la seule
+   * opération de ce service qui puisse détruire autre chose que ce qu'on vise.
+   * Le préfixe est un identifiant de projet, donc jamais vide, jamais absolu et
+   * sans remontée — on l'exige plutôt que de l'espérer.
+   */
+  private resolveWithinBase(prefix: string): string {
+    if (!prefix || isAbsolute(prefix)) {
+      throw new Error(`Préfixe de stockage invalide : "${prefix}"`);
+    }
+
+    const target = join(this.basePath, prefix);
+    const inside = relative(this.basePath, target);
+    if (inside === '' || inside.startsWith('..') || isAbsolute(inside)) {
+      throw new Error(`Préfixe de stockage invalide : "${prefix}"`);
+    }
+
+    return target;
+  }
+
+  /** Fichiers sous `absolute`, chemins rendus relatifs à la base comme `storage_url`. */
+  private async inventory(
+    absolute: string,
+    storedPrefix: string,
+  ): Promise<StoredFile[]> {
+    let entries;
+    try {
+      entries = await readdir(absolute, { withFileTypes: true });
+    } catch (err: unknown) {
+      const code = (err as NodeJS.ErrnoException).code;
+      // Absent : rien à recenser, et la purge reste rejouable.
+      if (code === 'ENOENT') return [];
+      // Le préfixe désigne un fichier et non un répertoire : cas non produit par
+      // le service, mais `rm` l'effacerait — le journal doit le dire.
+      if (code === 'ENOTDIR') {
+        const { size } = await stat(absolute);
+        return [{ path: storedPrefix, bytes: size }];
+      }
+      throw err;
+    }
+
+    const files: StoredFile[] = [];
+    for (const entry of entries) {
+      const storedPath = `${storedPrefix}/${entry.name}`;
+      if (entry.isDirectory()) {
+        files.push(
+          ...(await this.inventory(join(absolute, entry.name), storedPath)),
+        );
+        continue;
+      }
+      const { size } = await stat(join(absolute, entry.name));
+      files.push({ path: storedPath, bytes: size });
+    }
+    return files;
   }
 }

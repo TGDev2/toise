@@ -11,6 +11,7 @@ import { WorkType } from './entities/work-type.entity';
 import { ProjectWorkItem } from './entities/project-work-item.entity';
 import { CvCorrectionLog } from '../analysis/entities/cv-correction-log.entity';
 import { AnalysisJob } from '../analysis/entities/analysis-job.entity';
+import { CommunityProject } from '../community/entities/community-project.entity';
 import { ProjectsService } from './projects.service';
 import { ProjectsController } from './projects.controller';
 import { CvCorrectionService } from '../analysis/cv-correction.service';
@@ -26,6 +27,10 @@ import { CvCorrectionService } from '../analysis/cv-correction.service';
       ProjectWorkItem,
       CvCorrectionLog,
       AnalysisJob,
+      // Supprimer un projet retire sa publication communautaire dans la même
+      // transaction (`softDeleteProject`). L'entité est déclarée ici pour que
+      // cette écriture ne dépende pas de l'ordre de chargement de `CommunityModule`.
+      CommunityProject,
     ]),
     OrgContextModule,
     FeatureGatesModule,

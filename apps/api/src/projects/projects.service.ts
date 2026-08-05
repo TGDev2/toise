@@ -23,6 +23,7 @@ import {
 import { Opening, OpeningSource } from './entities/opening.entity';
 import { WorkType } from './entities/work-type.entity';
 import { ProjectWorkItem } from './entities/project-work-item.entity';
+import { CommunityProject } from '../community/entities/community-project.entity';
 import { SubscriptionTier } from '../users/entities/user.entity';
 import { FeatureGatesService } from '../feature-gates/feature-gates.service';
 import { AnalyticsService } from '../analytics/analytics.service';
@@ -806,12 +807,36 @@ export class ProjectsService {
     });
   }
 
+  /**
+   * Supprime le projet **et retire sa publication communautaire**, en un seul
+   * fait.
+   *
+   * Le retrait manquait, et la galerie ne s'en apercevait pas :
+   * `CommunityService.findPhotoForCommunityProject` ne filtre que sur
+   * `moderation_status = approved`, et `listApproved` ne regarde que
+   * `community_projects.deleted_at`. Un projet supprimé continuait donc de servir
+   * publiquement les photos d'un intérieur de client, indéfiniment — la
+   * suppression n'atteignant que la ligne `projects`, qu'aucune de ces deux
+   * lectures ne consulte.
+   *
+   * Le geste est ici, côté écriture, plutôt qu'en quatrième filtre ajouté aux
+   * lectures communautaires : c'est la sémantique juste (supprimer le projet
+   * retire le consentement qui avait permis la publication, cf. `gdpr_consent`),
+   * et c'est le seul endroit où l'oubli est impossible.
+   *
+   * Les fichiers, eux, restent jusqu'à l'expiration de la rétention
+   * (`DataRetentionService`, `docs/RETENTION_DONNEES.md`).
+   */
   async softDeleteProject(
     projectId: string,
     organizationId: string,
   ): Promise<void> {
     await this.findOneForOrg(projectId, organizationId);
-    await this.projectsRepo.softDelete(projectId);
+
+    await this.dataSource.transaction(async (manager) => {
+      await manager.softDelete(CommunityProject, { project_id: projectId });
+      await manager.softDelete(Project, projectId);
+    });
   }
 
   /**

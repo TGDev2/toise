@@ -8,6 +8,7 @@ import { OrgContextModule } from '../organizations/org-context.module';
 import { CompanyProfilesModule } from '../company-profiles/company-profiles.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
+import { DataRetentionModule } from '../data-retention/data-retention.module';
 import { User } from '../users/entities/user.entity';
 import { OrganizationMembership } from '../organizations/entities/organization-membership.entity';
 import { FirebaseAuthGuard } from './guards/firebase-auth.guard';
@@ -26,6 +27,10 @@ import { AdminGuard } from './guards/admin.guard';
     // reste à sens unique : `SubscriptionsModule` n'importe pas `AuthModule`
     // (global) et se contente de ses guards.
     SubscriptionsModule,
+    // Les fichiers du volume `uploads` doivent partir avant les lignes qui les
+    // désignent — cf. `AuthService.deleteAccount`. Le graphe reste à sens
+    // unique : `DataRetentionModule` ne connaît que le stockage et deux entités.
+    DataRetentionModule,
     TypeOrmModule.forFeature([User, OrganizationMembership]),
   ],
   controllers: [AuthController],

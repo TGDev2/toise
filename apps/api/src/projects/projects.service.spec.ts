@@ -22,6 +22,7 @@ import {
   ProjectWorkItem,
   SkillLevel,
 } from './entities/project-work-item.entity';
+import { CommunityProject } from '../community/entities/community-project.entity';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 
@@ -1075,9 +1076,43 @@ describe('ProjectsService', () => {
   });
 
   describe('softDeleteProject', () => {
+    const managerMock = { softDelete: jest.fn() };
+
+    beforeEach(() => {
+      managerMock.softDelete.mockReset().mockResolvedValue({ affected: 1 });
+      dataSourceMock.transaction.mockImplementation(
+        (work: (manager: typeof managerMock) => Promise<unknown>) =>
+          work(managerMock),
+      );
+    });
+
     it('soft-deletes the project after ownership check', async () => {
       await service.softDeleteProject('project-uuid', 'org-uuid');
-      expect(projectsRepoMock.softDelete).toHaveBeenCalledWith('project-uuid');
+
+      expect(managerMock.softDelete).toHaveBeenCalledWith(
+        Project,
+        'project-uuid',
+      );
+    });
+
+    /**
+     * Sans ce retrait, la galerie continuait de servir publiquement les photos
+     * d'un projet supprimé : ni `listApproved` ni `findPhotoForCommunityProject`
+     * ne regardent `projects.deleted_at`.
+     */
+    it("withdraws the project's community publication in the same transaction", async () => {
+      await service.softDeleteProject('project-uuid', 'org-uuid');
+
+      expect(managerMock.softDelete).toHaveBeenNthCalledWith(
+        1,
+        CommunityProject,
+        { project_id: 'project-uuid' },
+      );
+      expect(managerMock.softDelete).toHaveBeenNthCalledWith(
+        2,
+        Project,
+        'project-uuid',
+      );
     });
 
     it('throws ForbiddenException for wrong user', async () => {

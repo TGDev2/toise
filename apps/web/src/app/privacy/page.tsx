@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalLayout title="Politique de confidentialité" updated="juillet 2026">
+    <LegalLayout title="Politique de confidentialité" updated="août 2026">
       <Section title="1. Données collectées">
         <P>
           Chiffréo collecte uniquement les données nécessaires au fonctionnement
@@ -35,7 +35,7 @@ export default function PrivacyPage() {
           estimation et, si vous y avez consenti, pour vous adresser
           occasionnellement des actualités Chiffréo. Vous pouvez à tout moment
           demander le retrait de votre adresse en nous contactant (voir section
-          6).
+          7).
         </P>
       </Section>
 
@@ -47,16 +47,48 @@ export default function PrivacyPage() {
         </P>
       </Section>
 
-      <Section title="4. Vos droits">
+      <Section title="4. Conservation et suppression">
         <P>
-          Conformément au RGPD, vous disposez d’un droit d’accès, de
-          rectification et de suppression de vos données personnelles. Vous
-          pouvez supprimer votre compte à tout moment depuis les paramètres de
-          votre profil.
+          <strong>Un projet que vous supprimez</strong> disparaît immédiatement
+          de votre compte et, s’il était partagé dans la galerie communautaire,
+          de cette galerie. Ses données et ses photos sont conservées{' '}
+          <strong>30 jours</strong>, puis effacées définitivement de nos serveurs
+          — en base comme sur le disque — par une tâche automatique quotidienne.
+          Ce délai existe pour qu’une suppression accidentelle reste
+          rattrapable ; passé ce terme, plus rien n’est récupérable.
+        </P>
+        <P>
+          <strong>Si vous supprimez votre compte</strong>, l’effacement est
+          immédiat : votre abonnement est résilié, vos photos sont supprimées du
+          disque, puis vos données et votre identifiant de connexion sont
+          effacés. Aucun délai de grâce ne s’applique.
+        </P>
+        <P>
+          Nos sauvegardes chiffrées sont conservées 14 jours par rotation. Une
+          donnée effacée en disparaît donc au plus tard 14 jours après son
+          effacement, soit 44 jours au pire cas après la suppression d’un projet.
+        </P>
+        <P>
+          Deux exceptions, imposées par la loi ou par la nature des données. Les{' '}
+          <strong>factures</strong> émises depuis Chiffréo sont conservées au
+          titre des obligations comptables et fiscales (10 ans, code de commerce
+          art. L123-22) ; elles ne contiennent ni photo ni donnée de chantier.
+          Les projets appartenant à une <strong>organisation</strong> dont vous
+          n’êtes pas le propriétaire lui restent acquis lorsque vous la quittez :
+          votre nom en est détaché, les données restent celles de l’entreprise.
         </P>
       </Section>
 
-      <Section title="5. Cookies">
+      <Section title="5. Vos droits">
+        <P>
+          Conformément au RGPD, vous disposez d’un droit d’accès, de
+          rectification et de suppression de vos données personnelles. Vous
+          pouvez supprimer un projet ou votre compte à tout moment depuis
+          l’application, avec les effets décrits à la section 4.
+        </P>
+      </Section>
+
+      <Section title="6. Cookies">
         <P>
           Chiffréo utilise uniquement des cookies essentiels au fonctionnement
           de l’authentification. Aucun cookie de suivi publicitaire n’est
@@ -64,7 +96,7 @@ export default function PrivacyPage() {
         </P>
       </Section>
 
-      <Section title="6. Contact">
+      <Section title="7. Contact">
         <P>
           Pour toute question relative à vos données personnelles, contactez-nous
           à privacy@chiffreo.fr. Pour les informations légales relatives à

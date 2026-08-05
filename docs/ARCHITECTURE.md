@@ -83,6 +83,9 @@ AppModule
 ├── ClientsModule           # Gestion clients (tier Contractor)
 ├── QuotesModule            # Génération de devis + export PDF
 ├── CommunityModule         # Galerie communautaire, commentaires, likes
+├── DataRetentionModule     # Effacement des fichiers et purge des suppressions logiques (E6-1)
+│                           #   Cron 3 h + `pnpm purge:retention` (simulation par défaut)
+│                           #   Politique et durée : docs/RETENTION_DONNEES.md
 ├── OrganizationsModule     # Organisations, membres, rôles, invitations (PLAT-4)
 │   └── OrgContextModule    # Résolution de la portée (organisation active + auteur), sans dépendance applicative
 ├── ApiKeysModule           # API publique `/partner`, clés portées par l'organisation, quotas (PLAT-5)

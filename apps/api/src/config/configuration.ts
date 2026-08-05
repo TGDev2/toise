@@ -112,4 +112,20 @@ export default () => ({
     maxPhotoBrightness: 235,
     minPhotoSharpness: 0.15,
   },
+  dataRetention: {
+    // Délai de grâce entre la suppression logique d'un projet et l'effacement
+    // définitif de ses lignes et de ses fichiers (E6-1). Le plancher n'est pas
+    // un choix de confort : `docs/deploy/backup.sh` conserve 14 jours
+    // d'archives, et une rétention plus courte ferait ressusciter, à la
+    // première restauration, une donnée déjà effacée. 30 jours laissent la
+    // marge, couvrent un cycle de chantier mensuel pour la suppression
+    // accidentelle, et restent un délai nommable au sens de l'art. 17 du RGPD.
+    // Argumenté dans docs/RETENTION_DONNEES.md — à ne pas raccourcir sans
+    // relire l'inégalité rétention > sauvegarde.
+    days: parseInt(process.env.DATA_RETENTION_DAYS ?? '30', 10),
+    // Met la tâche planifiée en observation : elle recense et journalise sans
+    // rien effacer. Prévu pour laisser passer un cycle en production avant
+    // d'autoriser la destruction.
+    dryRun: process.env.DATA_RETENTION_DRY_RUN === 'true',
+  },
 });

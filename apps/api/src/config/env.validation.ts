@@ -30,6 +30,10 @@ const INTEGER_VARS = [
   // Absente de PRODUCTION_REQUIRED_VARS à dessein : elle a un défaut (14) et
   // l'exiger ferait refuser de démarrer une production qui va très bien.
   'STRIPE_PAST_DUE_GRACE_DAYS',
+  // Même raison (défaut : 30). Une valeur non entière tomberait sur `NaN`, donc
+  // sur une date de coupure invalide dans une passe destructive : le contrôle
+  // au démarrage vaut mieux que le refus à 3 h du matin.
+  'DATA_RETENTION_DAYS',
 ] as const;
 
 export function validate(

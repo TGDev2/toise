@@ -96,4 +96,71 @@ describe('LocalStorageService', () => {
 
     await expect(service.delete('salon.jpg')).resolves.toBeUndefined();
   });
+
+  /**
+   * E6-1 — effacement par préfixe. Ce que cette méthode apporte sur une boucle
+   * de `delete(storage_url)` : elle emporte aussi ce qu'aucune ligne de la base
+   * ne référence.
+   */
+  describe('deletePrefix', () => {
+    const projectId = '11111111-1111-4111-8111-111111111111';
+
+    beforeEach(async () => {
+      await service.save(
+        Buffer.from('avant'),
+        `${projectId}/a.jpg`,
+        'image/jpeg',
+      );
+      await service.save(
+        Buffer.from('vignette'),
+        `${projectId}/thumb_a.jpg`,
+        'image/jpeg',
+      );
+      // Résidu d'un crash entre `writeFile` et `rename` : aucune ligne ne le
+      // désigne, et c'est précisément pour lui que l'effacement est fait par
+      // préfixe plutôt que par chemins connus.
+      await reelles.writeFile(
+        join(basePath, projectId, 'b.jpg.abc.part'),
+        'orphelin',
+      );
+    });
+
+    it('efface tout le répertoire du projet, orphelins compris', async () => {
+      const deleted = await service.deletePrefix(projectId);
+
+      expect(deleted.map((f) => f.path).sort()).toEqual([
+        `${projectId}/a.jpg`,
+        `${projectId}/b.jpg.abc.part`,
+        `${projectId}/thumb_a.jpg`,
+      ]);
+      expect(deleted.reduce((n, f) => n + f.bytes, 0)).toBe(
+        'avant'.length + 'vignette'.length + 'orphelin'.length,
+      );
+      expect(existsSync(join(basePath, projectId))).toBe(false);
+      expect(readdirSync(basePath)).toEqual([]);
+    });
+
+    it('est rejouable : un préfixe absent rend une liste vide', async () => {
+      await service.deletePrefix(projectId);
+
+      await expect(service.deletePrefix(projectId)).resolves.toEqual([]);
+    });
+
+    it('recense sans rien effacer — le mode simulation de la purge', async () => {
+      const listed = await service.listPrefix(projectId);
+
+      expect(listed).toHaveLength(3);
+      expect(existsSync(join(basePath, projectId, 'a.jpg'))).toBe(true);
+    });
+
+    it.each(['', '..', '../autre', '/etc'])(
+      'refuse le préfixe %p au lieu de composer un chemin hors du volume',
+      async (prefix) => {
+        await expect(service.deletePrefix(prefix)).rejects.toThrow(
+          /Préfixe de stockage invalide/,
+        );
+        expect(existsSync(join(basePath, projectId, 'a.jpg'))).toBe(true);
+      },
+    );
+  });
 });

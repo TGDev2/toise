@@ -8,6 +8,7 @@ import { CompanyProfilesService } from '../company-profiles/company-profiles.ser
 import { AnalyticsService } from '../analytics/analytics.service';
 import { OrgContextService } from '../organizations/org-context.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { DataRetentionService } from '../data-retention/data-retention.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 import {
   AuthProvider,
@@ -57,6 +58,10 @@ describe('AuthService', () => {
 
   const subscriptionsMock = {
     cancelForAccountDeletion: jest.fn(),
+  };
+
+  const dataRetentionMock = {
+    eraseOrganizationFiles: jest.fn().mockResolvedValue(undefined),
   };
 
   let usersService: typeof usersServiceMock;
@@ -136,6 +141,10 @@ describe('AuthService', () => {
         {
           provide: SubscriptionsService,
           useValue: subscriptionsMock,
+        },
+        {
+          provide: DataRetentionService,
+          useValue: dataRetentionMock,
         },
       ],
     }).compile();
@@ -421,12 +430,17 @@ describe('AuthService', () => {
         'perso-org-uuid',
       ]);
       subscriptionsMock.cancelForAccountDeletion.mockResolvedValue(undefined);
+      dataRetentionMock.eraseOrganizationFiles.mockResolvedValue(undefined);
     });
 
     it("résilie l'abonnement Stripe avant d'effacer quoi que ce soit", async () => {
       const order: string[] = [];
       subscriptionsMock.cancelForAccountDeletion.mockImplementation(() => {
         order.push('stripe');
+        return Promise.resolve();
+      });
+      dataRetentionMock.eraseOrganizationFiles.mockImplementation(() => {
+        order.push('files');
         return Promise.resolve();
       });
       usersService.deleteAccountData.mockImplementation(() => {
@@ -443,9 +457,37 @@ describe('AuthService', () => {
       expect(subscriptionsMock.cancelForAccountDeletion).toHaveBeenCalledWith(
         mockUser.id,
       );
+      // Les fichiers avant les lignes : `deleteAccountData` efface
+      // `project_photos` en cascade, donc les `storage_url` qui sont le seul
+      // moyen de retrouver les photos sur le volume. Dans l'autre ordre, un
+      // échec les rend introuvables pour toujours.
+      //
       // L'identité part en dernier : une panne en cours de route doit laisser un
       // principal capable de se réauthentifier pour reprendre l'opération.
-      expect(order).toEqual(['stripe', 'db', 'firebase']);
+      expect(order).toEqual(['stripe', 'files', 'db', 'firebase']);
+    });
+
+    it('efface les fichiers des seules organisations réellement supprimées', async () => {
+      await service.deleteAccount('firebase-uid-123');
+
+      expect(dataRetentionMock.eraseOrganizationFiles).toHaveBeenCalledWith([
+        'perso-org-uuid',
+      ]);
+    });
+
+    it("n'efface aucune ligne si l'effacement des fichiers échoue", async () => {
+      dataRetentionMock.eraseOrganizationFiles.mockRejectedValue(
+        new Error('volume indisponible'),
+      );
+
+      await expect(service.deleteAccount('firebase-uid-123')).rejects.toThrow(
+        'volume indisponible',
+      );
+
+      // Les lignes survivent, donc la reprise reste possible : annoncer un
+      // effacement qui n'a pas eu lieu est le seul résultat inacceptable.
+      expect(usersService.deleteAccountData).not.toHaveBeenCalled();
+      expect(mockFirebaseAuth.deleteUser).not.toHaveBeenCalled();
     });
 
     it("n'efface rien si la résiliation Stripe échoue", async () => {
@@ -546,6 +588,12 @@ describe('AuthService', () => {
         'anon-db-id',
         ['anon-org-uuid'],
       );
+      // `transferProjects` ne déplace que les projets vivants : ceux que
+      // l'invité avait supprimés restent dans son organisation et partent avec
+      // elle. Leurs fichiers doivent partir avant, comme pour un compte normal.
+      expect(dataRetentionMock.eraseOrganizationFiles).toHaveBeenCalledWith([
+        'anon-org-uuid',
+      ]);
     });
 
     it('should throw NotFoundException if target user not found', async () => {

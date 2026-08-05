@@ -26,6 +26,7 @@
     "migration:run": "ts-node -r tsconfig-paths/register src/scripts/migrate.ts",
     "verify:stripe": "ts-node -r tsconfig-paths/register src/scripts/verify-stripe-cycle.ts",
     "validate:affiliate-feed": "ts-node -r tsconfig-paths/register src/scripts/validate-affiliate-feed.ts",
+    "purge:retention": "ts-node -r tsconfig-paths/register src/scripts/purge-retention.ts",
     "migration:revert": "pnpm typeorm migration:revert"
   },
   "dependencies": {

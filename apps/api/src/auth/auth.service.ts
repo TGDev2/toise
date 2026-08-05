@@ -14,6 +14,7 @@ import { RegisterDto } from './dto/register.dto';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { DataRetentionService } from '../data-retention/data-retention.service';
 
 @Injectable()
 export class AuthService {
@@ -26,6 +27,7 @@ export class AuthService {
     private readonly analyticsService: AnalyticsService,
     private readonly orgContext: OrgContextService,
     private readonly subscriptions: SubscriptionsService,
+    private readonly dataRetention: DataRetentionService,
   ) {}
 
   async register(dto: RegisterDto): Promise<{ user: User; message: string }> {
@@ -157,6 +159,14 @@ export class AuthService {
    *   Firebase, le pire cas est un principal survivant à des données déjà
    *   effacées — la reconnexion recrée un compte vide et la reprise reste
    *   ouverte, ce qui est strictement moins grave que l'inverse.
+   *
+   * Quatrième conséquence, corrigée par E6-1 : **les fichiers avant les
+   * lignes.** `deleteAccountData` efface `project_photos` en cascade, donc les
+   * `storage_url` qui étaient le seul moyen de retrouver les photos sur le
+   * volume. Les fichiers survivaient à toute suppression de compte, sans
+   * qu'aucune passe future ne puisse même les nommer. Un échec d'effacement
+   * interrompt désormais l'opération : les lignes restent, la reprise est
+   * possible, et rien n'est annoncé qui n'ait été fait.
    */
   async deleteAccount(firebaseUid: string): Promise<void> {
     const user = await this.usersService.findByFirebaseUid(firebaseUid);
@@ -168,6 +178,8 @@ export class AuthService {
       await this.orgContext.collectOrganizationsRemovableWithOwner(user.id);
 
     await this.subscriptions.cancelForAccountDeletion(user.id);
+
+    await this.dataRetention.eraseOrganizationFiles(ownedOrganizationIds);
 
     await this.usersService.deleteAccountData(user.id, ownedOrganizationIds);
 
@@ -227,6 +239,12 @@ export class AuthService {
       await this.orgContext.collectOrganizationsRemovableWithOwner(
         anonymousUser.id,
       );
+    // « Vide de projets » n'est vrai que des projets vivants : `transferProjects`
+    // filtre sur `deleted_at IS NULL`, donc un projet que l'invité avait supprimé
+    // reste dans son organisation et part avec elle. Sans cet appel, ses photos
+    // survivraient au volume sans plus aucune ligne pour les désigner — le même
+    // défaut que `deleteAccount`, par un chemin plus discret.
+    await this.dataRetention.eraseOrganizationFiles(ownedOrganizationIds);
     await this.usersService.deleteAccountData(
       anonymousUser.id,
       ownedOrganizationIds,
