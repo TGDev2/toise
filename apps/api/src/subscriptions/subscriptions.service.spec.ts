@@ -9,6 +9,7 @@ import {
 } from './entities/subscription.entity';
 import { StripeEvent } from './entities/stripe-event.entity';
 import { UsersService } from '../users/users.service';
+import { SubscriptionTier } from '../users/entities/user.entity';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 import { ReferralsService } from '../referrals/referrals.service';
@@ -45,7 +46,31 @@ const subscriptionsRepoMock = {
   findOne: jest.fn(),
   save: jest.fn(),
   delete: jest.fn(),
+  upsert: jest.fn(),
+  createQueryBuilder: jest.fn(),
 };
+
+/**
+ * Chaîne minimale de l'`UpdateQueryBuilder` employée par `applyEventState`, avec
+ * le nombre de lignes que l'UPDATE conditionnel dit avoir touchées.
+ *
+ * Ce que ce mock **ne** prouve **pas** : que la condition SQL écarte bien un
+ * événement périmé — elle vit dans un `WHERE`, seul PostgreSQL peut en juger.
+ * C'est l'objet de `test/integration/persistence.int-spec.ts`. Ici on vérifie
+ * la conséquence côté service : `affected = 0` ne doit synchroniser aucun
+ * palier ni émettre aucun événement analytique.
+ */
+function mockUpdateAffecting(affected: number) {
+  const builder = {
+    update: jest.fn().mockReturnThis(),
+    set: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
+    execute: jest.fn().mockResolvedValue({ affected }),
+  };
+  subscriptionsRepoMock.createQueryBuilder.mockReturnValue(builder);
+  return builder;
+}
 
 const stripeEventsRepoMock = {};
 
@@ -158,6 +183,42 @@ describe('SubscriptionsService.createCheckoutSession', () => {
     );
   });
 
+  /**
+   * L'essai se lit dans `PLANS` et nulle part ailleurs. Il était auparavant
+   * déduit de « ce prix est-il un prix contractor ? », si bien que le palier
+   * artisan déclarait `trial_days` sans que le checkout ne le regarde jamais.
+   */
+  it('accorde au palier artisan les 7 jours d’essai déclarés dans PLANS', async () => {
+    subscriptionsRepoMock.findOne.mockResolvedValue(null);
+    mockStripeInstance.customers.create.mockResolvedValue({ id: 'cus_new' });
+    mockStripeInstance.checkout.sessions.create.mockResolvedValue({
+      url: 'https://checkout.stripe.com/session',
+    });
+
+    await service.createCheckoutSession(testUser, 'price_contractor_essentiel');
+
+    expect(mockStripeInstance.checkout.sessions.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        line_items: [{ price: 'price_contractor_essentiel', quantity: 1 }],
+        subscription_data: { trial_period_days: 7 },
+      }),
+    );
+  });
+
+  it('n’attache aucun essai à un palier dont PLANS déclare trial_days: 0', async () => {
+    subscriptionsRepoMock.findOne.mockResolvedValue(null);
+    mockStripeInstance.customers.create.mockResolvedValue({ id: 'cus_new' });
+    mockStripeInstance.checkout.sessions.create.mockResolvedValue({
+      url: 'https://checkout.stripe.com/session',
+    });
+
+    await service.createCheckoutSession(testUser, 'price_contractor_standard');
+
+    const [payload] = mockStripeInstance.checkout.sessions.create.mock
+      .calls[0] as [Record<string, unknown>];
+    expect(payload.subscription_data).toBeUndefined();
+  });
+
   it('applies pending referral credits when a new Stripe customer is created (BACKLOG COM-3)', async () => {
     subscriptionsRepoMock.findOne.mockResolvedValue(null);
     mockStripeInstance.customers.create.mockResolvedValue({ id: 'cus_new' });
@@ -235,6 +296,7 @@ describe('SubscriptionsService.handleWebhookEvent (invoice.paid)', () => {
   function buildInvoicePaidEvent(stripeSubscriptionId: string) {
     return {
       type: 'invoice.paid',
+      created: 1_700_000_000,
       data: {
         object: {
           parent: {
@@ -246,7 +308,9 @@ describe('SubscriptionsService.handleWebhookEvent (invoice.paid)', () => {
   }
 
   it('triggers referral conversion handling for the now-paying user (BACKLOG COM-3)', async () => {
+    mockUpdateAffecting(1);
     subscriptionsRepoMock.findOne.mockResolvedValue({
+      id: 'row-1',
       user_id: 'user-1',
       stripe_subscription_id: 'sub_123',
     });
@@ -280,6 +344,139 @@ describe('SubscriptionsService.handleWebhookEvent (invoice.paid)', () => {
     expect(
       referralsServiceMock.handleReferredUserConverted,
     ).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Ordre de livraison des webhooks Stripe.
+ *
+ * Stripe garantit la livraison, jamais l'ordre. Les handlers appliquaient le
+ * dernier événement **arrivé** : un `customer.subscription.updated` émis avant
+ * une résiliation mais livré après elle rendait à l'abonné un palier qu'il ne
+ * payait plus. `applyEventState` écarte désormais l'écriture périmée — et donc
+ * la synchronisation de palier qui la suivait.
+ */
+describe('SubscriptionsService.handleWebhookEvent — ordre de livraison', () => {
+  let service: SubscriptionsService;
+
+  /** Émission chez Stripe : T1 précède T2 d'une minute. */
+  const T1 = 1_700_000_000;
+  const T2 = T1 + 60;
+
+  const localRow = {
+    id: 'row-1',
+    user_id: 'user-1',
+    stripe_subscription_id: 'sub_1',
+    stripe_price_id: 'price_contractor_essentiel',
+  };
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        SubscriptionsService,
+        {
+          provide: getRepositoryToken(Subscription),
+          useValue: subscriptionsRepoMock,
+        },
+        {
+          provide: getRepositoryToken(StripeEvent),
+          useValue: stripeEventsRepoMock,
+        },
+        { provide: UsersService, useValue: usersServiceMock },
+        { provide: AnalyticsService, useValue: analyticsServiceMock },
+        { provide: ReferralsService, useValue: referralsServiceMock },
+        { provide: ConfigService, useValue: configServiceMock },
+      ],
+    }).compile();
+
+    service = module.get(SubscriptionsService);
+    subscriptionsRepoMock.findOne.mockResolvedValue(localRow);
+  });
+
+  /** `customer.subscription.updated` portant un abonnement actif au prix donné. */
+  function subscriptionUpdatedEvent(created: number, priceId: string) {
+    return {
+      type: 'customer.subscription.updated',
+      created,
+      data: {
+        object: {
+          id: 'sub_1',
+          status: 'active',
+          cancel_at_period_end: false,
+          trial_end: null,
+          items: {
+            data: [
+              {
+                price: { id: priceId },
+                current_period_start: created,
+                current_period_end: created + 2_592_000,
+              },
+            ],
+          },
+        },
+      },
+    } as unknown as Parameters<SubscriptionsService['handleWebhookEvent']>[0];
+  }
+
+  function subscriptionDeletedEvent(created: number) {
+    return {
+      type: 'customer.subscription.deleted',
+      created,
+      data: { object: { id: 'sub_1', status: 'canceled' } },
+    } as unknown as Parameters<SubscriptionsService['handleWebhookEvent']>[0];
+  }
+
+  it('date la garde sur l’émission de l’événement, pas sur sa réception', async () => {
+    const builder = mockUpdateAffecting(1);
+
+    await service.handleWebhookEvent(
+      subscriptionUpdatedEvent(T1, 'price_contractor_essentiel'),
+    );
+
+    expect(builder.set).toHaveBeenCalledWith(
+      expect.objectContaining({ last_stripe_event_at: new Date(T1 * 1000) }),
+    );
+  });
+
+  it('ne restaure aucun palier depuis un customer.subscription.updated périmé', async () => {
+    // La résiliation (T2) a déjà été appliquée : l'UPDATE conditionnel de
+    // l'événement retardé (T1) ne touche aucune ligne.
+    mockUpdateAffecting(0);
+
+    await service.handleWebhookEvent(
+      subscriptionUpdatedEvent(T1, 'price_contractor_essentiel'),
+    );
+
+    // Le symptôme exact du défaut : un palier payant rendu à un compte résilié.
+    expect(usersServiceMock.updateSubscriptionTier).not.toHaveBeenCalled();
+  });
+
+  it('applique ce même événement quand il est le plus récent (témoin)', async () => {
+    mockUpdateAffecting(1);
+
+    await service.handleWebhookEvent(
+      subscriptionUpdatedEvent(T2, 'price_contractor_essentiel'),
+    );
+
+    // La garde écarte le périmé, pas tout : sans ce témoin, un handler cassé
+    // passerait le test précédent.
+    expect(usersServiceMock.updateSubscriptionTier).toHaveBeenCalledWith(
+      'user-1',
+      SubscriptionTier.CONTRACTOR_ESSENTIEL,
+    );
+  });
+
+  it('n’annule pas un abonnement depuis un customer.subscription.deleted périmé', async () => {
+    mockUpdateAffecting(0);
+
+    await service.handleWebhookEvent(subscriptionDeletedEvent(T1));
+
+    expect(usersServiceMock.updateSubscriptionTier).not.toHaveBeenCalled();
+    // Pas d'écriture, pas d'événement analytique : une résiliation périmée
+    // comptée dans le funnel ferait voir un départ qui n'a pas eu lieu.
+    expect(analyticsServiceMock.track).not.toHaveBeenCalled();
   });
 });
 

@@ -32,7 +32,11 @@ export const PLANS: PlanDefinition[] = [
     price: 19,
     currency: 'EUR',
     interval: 'month',
-    trial_days: 0,
+    // Palier artisan unique de la V1 (ADR 0001 §D4) : il porte désormais le
+    // même essai de 7 jours que Pro. Les paliers contractor n'en avaient aucun
+    // quand ils étaient trois à 50/100/200 € — un essai n'a de sens que sur
+    // l'offre qu'on demande vraiment à un artisan d'essayer sur un chantier.
+    trial_days: 7,
     priceIdConfigKey: 'stripe.contractorEssentielPriceId',
   },
   {

@@ -50,6 +50,19 @@ export class Subscription {
   @Column({ type: 'boolean', default: false })
   cancel_at_period_end!: boolean;
 
+  /**
+   * Date d'**émission** (`event.created`) du dernier événement Stripe appliqué
+   * à cette ligne — pas la date de la dernière écriture locale, qui est
+   * `updated_at`.
+   *
+   * Stripe ne garantit pas l'ordre de livraison de ses webhooks. Sans ce
+   * filigrane, un événement retardé écrasait un état plus récent et restaurait
+   * un palier périmé. `null` = aucun événement appliqué depuis la migration
+   * 1711468800076 : le prochain passe sans condition. Cf. `applyEventState`.
+   */
+  @Column({ type: 'timestamptz', nullable: true })
+  last_stripe_event_at!: Date | null;
+
   @OneToOne(() => User)
   @JoinColumn({ name: 'user_id' })
   user!: User;

@@ -9,12 +9,12 @@ import { serializeJsonLd } from '@/lib/json-ld';
 export const metadata: Metadata = {
   title: 'Tarifs',
   description:
-    'Comparez les offres Chiffréo : Gratuit, Pro à 9,99 €/mois avec 7 jours d’essai, Contractor à 19 €/mois pour les métiers de finition.',
+    'Comparez les offres Chiffréo : Gratuit, Pro à 9,99 €/mois et Artisan à 19 €/mois pour les métiers de finition, tous deux avec 7 jours d’essai.',
   alternates: { canonical: '/pricing' },
   openGraph: {
     title: 'Tarifs Chiffréo',
     description:
-      'Gratuit, Pro à 9,99 €/mois avec essai de 7 jours, Contractor à 19 €/mois.',
+      'Gratuit, Pro à 9,99 €/mois, Artisan à 19 €/mois — essai de 7 jours sur les deux offres payantes.',
     url: '/pricing',
   },
 };
@@ -56,9 +56,9 @@ const JSON_LD = {
 
 const FAQ_ITEMS = [
   {
-    question: 'L’essai Pro est-il vraiment gratuit ?',
+    question: 'L’essai est-il vraiment gratuit ?',
     answer:
-      'Oui. Vous profitez de toutes les fonctionnalités Pro pendant 7 jours. Si vous annulez avant la fin de l’essai, rien ne vous est facturé.',
+      'Oui, sur Pro comme sur Artisan. Vous profitez de toutes les fonctionnalités de l’offre choisie pendant 7 jours. Si vous annulez avant la fin de l’essai, rien ne vous est facturé.',
   },
   {
     question: 'Puis-je annuler à tout moment ?',

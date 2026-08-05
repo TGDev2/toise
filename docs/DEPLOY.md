@@ -22,8 +22,8 @@ avec Docker Compose et Caddy comme reverse proxy (TLS automatique).
   ```
 - Un projet **Firebase** avec Authentication activée (Email/Password, Google,
   Apple, Anonyme) et un service account (clé privée JSON).
-- Un compte **Stripe** avec les produits/prix créés (plan Pro obligatoire,
-  plans Contractor optionnels) et un endpoint webhook configuré.
+- Un compte **Stripe** avec les produits/prix créés et un endpoint webhook
+  configuré — procédure complète au §4.
 
 ## 1. Préparer l'environnement
 
@@ -42,7 +42,7 @@ critiques sont validées au démarrage de l'API (démarrage refusé si absentes)
 | `CORS_ORIGIN` | `https://chiffreo.fr` |
 | `PUBLIC_URL` | `https://chiffreo.fr` |
 | `FIREBASE_PROJECT_ID` / `FIREBASE_CLIENT_EMAIL` / `FIREBASE_PRIVATE_KEY` | depuis la clé de service account |
-| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_PRO_PRICE_ID` | depuis le dashboard Stripe |
+| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_PRO_PRICE_ID` | depuis le dashboard Stripe — **§4.2**, la variable à ne pas confondre |
 | `NEXT_PUBLIC_API_URL` | `https://api.chiffreo.fr/api/v1` |
 | `NEXT_PUBLIC_SITE_URL` | `https://chiffreo.fr` |
 | `NEXT_PUBLIC_FIREBASE_*` | config web Firebase |
@@ -82,18 +82,153 @@ sudo systemctl reload caddy
 
 Caddy obtient et renouvelle automatiquement les certificats TLS.
 
-## 4. Webhook Stripe
+## 4. Stripe : produits, prix et webhook
 
-Dans le dashboard Stripe → Developers → Webhooks, créer un endpoint :
+La V1 ne vend qu'un palier payant, **Artisan à 19 €/mois avec 7 jours
+d'essai** (ADR 0001 §D4). Le palier Pro à 9,99 €/mois reste vendu au
+particulier — et reste **obligatoire au démarrage**, voir §4.2.
 
-- URL : `https://api.chiffreo.fr/api/v1/subscriptions/webhook`
-- Événements : `checkout.session.completed`, `invoice.paid`,
-  `invoice.payment_failed`, `customer.subscription.updated`,
-  `customer.subscription.deleted`
-- Copier le signing secret dans `STRIPE_WEBHOOK_SECRET` puis redémarrer l'API.
+### 4.1 Créer le produit et le prix (mode live)
 
-Les événements sont dédupliqués par `event.id` (table `stripe_events`) : les
-retries Stripe ne provoquent pas de double traitement.
+Basculer le dashboard en **mode Live** (l'interrupteur *Test mode*, en haut à
+droite) — un prix créé en mode test est invisible d'une clé live, et l'API
+refusera le checkout avec « Offre invalide ».
+
+1. *Products* → *Add product*
+   - **Nom** : `Chiffréo Artisan` (il apparaît sur la facture Stripe du client)
+   - **Pricing** : `Recurring`, `19,00`, `EUR`, `Monthly`
+2. Copier l'identifiant du **prix** : `price_…`, pas `prod_…`. C'est le prix,
+   jamais le produit, que l'API transmet à Stripe.
+3. Répéter pour `Chiffréo Pro` : `9,99`, `EUR`, `Monthly`.
+
+> **L'essai de 7 jours ne se règle pas ici.** Il n'est pas un attribut du prix
+> Stripe : `createCheckoutSession` l'envoie dans
+> `subscription_data.trial_period_days`, lu dans `trial_days` de
+> [`plans.constants.ts`](../apps/api/src/subscriptions/plans.constants.ts), et
+> cette valeur prime sur tout réglage du dashboard. Chercher l'essai dans
+> l'interface Stripe est une perte de temps ; le changer se fait dans ce
+> fichier, et se répercute sur la vitrine via `apps/web/src/lib/pricing.ts`.
+
+### 4.2 Renseigner les variables
+
+| Variable | Valeur | Obligatoire |
+|---|---|---|
+| `STRIPE_SECRET_KEY` | `sk_live_…` | oui, validée au démarrage |
+| `STRIPE_WEBHOOK_SECRET` | `whsec_…` (§4.4) | oui, validée au démarrage |
+| `STRIPE_PRO_PRICE_ID` | prix **Pro** 9,99 € | oui, validée au démarrage |
+| `STRIPE_CONTRACTOR_ESSENTIEL_PRICE_ID` | prix **Artisan** 19 € | de fait (voir ci-dessous) |
+| `STRIPE_CONTRACTOR_STANDARD_PRICE_ID` | laisser vide | non |
+| `STRIPE_CONTRACTOR_PREMIUM_PRICE_ID` | laisser vide | non |
+
+Trois pièges, dans l'ordre où ils coûtent cher :
+
+- **`CONTRACTOR_ESSENTIEL` *est* le palier artisan à 19 €.** Le nom est hérité
+  des trois paliers Contractor d'avant leur fusion (E3-4). Mettre le prix à
+  19 € dans `STRIPE_PRO_PRICE_ID` ferait vendre l'offre artisan **au palier
+  `pro`** : le client paierait 19 € et n'aurait ni devis PDF, ni fichier
+  clients, ni facturation — les gates de ces capacités exigent
+  `contractor_essentiel`.
+- **`STRIPE_PRO_PRICE_ID` est requise au démarrage** en production
+  ([`env.validation.ts`](../apps/api/src/config/env.validation.ts)) : sans elle
+  l'API refuse de démarrer avec « Configuration invalide », même si l'on ne
+  compte vendre que le palier artisan. Le prix Pro doit donc exister.
+- **`CONTRACTOR_ESSENTIEL` n'est pas validée au démarrage, mais rien ne se
+  vend sans elle.** Vide, le prix artisan n'entre pas dans les prix autorisés :
+  `GET /subscriptions/plans` renvoie `price_id: null`, le bouton de la page
+  tarifs n'a rien à envoyer, et un appel direct est rejeté par « Offre
+  invalide ». L'API démarre, la caisse est fermée.
+
+Les deux variables laissées vides correspondent aux paliers retirés en E3-4 :
+elles ne doivent pas être renseignées, sans quoi des paliers que plus aucune
+surface ne vend redeviendraient souscriptibles par appel direct.
+
+### 4.3 Activer le portail de facturation
+
+*Settings → Billing → Customer portal* → enregistrer la configuration **une
+fois** en mode live.
+
+`createPortalSession` appelle `billingPortal.sessions.create` sans passer de
+configuration : Stripe refuse tant qu'aucune configuration par défaut n'existe.
+Symptôme si on l'oublie : tout fonctionne — inscription, paiement, webhooks —
+sauf le bouton « Gérer mon abonnement », qui échoue en 500. C'est le seul
+chemin offert au client pour changer de carte ou résilier lui-même.
+
+### 4.4 Créer l'endpoint webhook
+
+*Developers → Webhooks → Add endpoint*, URL :
+`https://api.chiffreo.fr/api/v1/subscriptions/webhook`
+
+Les événements à souscrire sont **exactement** ceux que le `switch` de
+[`handleWebhookEvent`](../apps/api/src/subscriptions/subscriptions.service.ts)
+traite, ni plus ni moins :
+
+| Événement | Ce que l'API en fait |
+|---|---|
+| `checkout.session.completed` | crée ou actualise la ligne `subscriptions`, pose le palier de l'utilisateur, émet `subscription_started` |
+| `invoice.paid` | passe l'abonnement en `active`, avance la période, déclenche le crédit de parrainage du filleul converti |
+| `invoice.payment_failed` | passe en `past_due` et émet `payment_failed` |
+| `customer.subscription.updated` | recopie statut, prix, période et fin d'essai, puis resynchronise le palier — c'est lui qui porte les changements d'offre |
+| `customer.subscription.deleted` | passe en `canceled`, ramène l'utilisateur au palier `free`, émet `subscription_canceled` |
+
+**Ne rien souscrire d'autre**, et surtout pas « *Select all events* » : chaque
+livraison est réservée puis stockée dans la table `stripe_events`, y compris
+lorsqu'aucun handler ne la traite. Souscrire large fait donc grossir cette
+table et le journal (`Unhandled event type: …`) sans produire le moindre effet
+métier.
+
+Copier ensuite le **signing secret** (`whsec_…`) dans `STRIPE_WEBHOOK_SECRET`
+et redémarrer l'API. Ce secret est propre à l'endpoint **et au mode** : celui
+du mode test ne valide aucune signature en live.
+
+Deux garanties déjà en place, à ne pas défaire :
+
+- **Déduplication** par `event.id` (table `stripe_events`) : les retries Stripe
+  ne rejouent pas l'effet métier, et une réservation abandonnée par un
+  processus mort redevient reprenable au bout de 15 minutes.
+- **Ordonnancement** : Stripe garantit la livraison, jamais l'ordre. Chaque
+  ligne d'abonnement porte la date d'émission du dernier événement appliqué
+  (`last_stripe_event_at`) ; un événement plus ancien livré après coup est
+  écarté, avec un `warn` dans le journal, plutôt que de restaurer un palier
+  périmé.
+
+La vérification de signature travaille sur le **corps brut** de la requête :
+tout proxy qui ré-encoderait le JSON la casserait. Caddy, tel que configuré au
+§3, transmet la requête telle quelle.
+
+### 4.5 Répéter en mode test avant d'ouvrir la caisse
+
+Un script déroule le cycle complet contre un vrai Stripe en mode test —
+checkout, essai, abonnement actif, changement de palier, annulation — et
+vérifie après chaque étape l'état en base **et** le palier effectif rendu par
+les feature gates :
+
+```bash
+cd apps/api
+# STRIPE_SECRET_KEY=sk_test_… dans le .env, base de données joignable
+pnpm verify:stripe
+```
+
+Le script refuse de démarrer sur autre chose qu'une clé `sk_test_`, crée ses
+propres prix si ceux du `.env` ne sont pas lisibles avec cette clé, et nettoie
+derrière lui (abonnement résilié, client supprimé, utilisateur de test effacé).
+Sa dernière étape rejoue volontairement un événement périmé après l'annulation
+pour vérifier qu'il ne rend aucun palier.
+
+Ce qu'il ne couvre pas : la page de paiement hébergée elle-même, qui ne peut
+pas être validée sans navigateur. C'est le seul geste à faire à la main.
+
+### 4.6 Le premier euro, en live
+
+1. Souscrire une fois depuis la page tarifs, avec une vraie carte.
+2. Vérifier la ligne créée :
+   `docker compose -f docker-compose.prod.yml exec db psql -U chiffreo -d chiffreo -c "SELECT status, stripe_price_id, trial_end FROM subscriptions ORDER BY created_at DESC LIMIT 1"`
+   — le statut doit être `trialing` et `trial_end` à J+7.
+3. Dans *Developers → Webhooks*, l'endpoint doit afficher **200** sur chaque
+   livraison. Un 400 signale un `STRIPE_WEBHOOK_SECRET` erroné ; un 500, un
+   traitement en échec (également remonté dans Sentry, tag
+   `component: stripe-webhook`).
+4. Résilier et rembourser depuis le dashboard, puis vérifier que la ligne est
+   passée en `canceled` et l'utilisateur au palier `free`.
 
 ## 5. Sauvegardes
 
@@ -301,6 +436,10 @@ panne, webhook Stripe qui échoue) ne se voit qu'en allant lire les logs.
 |---|---|
 | L'API refuse de démarrer avec « Configuration invalide » | une variable requise manque dans `.env` (le message liste lesquelles) |
 | Checkout Stripe → 503 | `STRIPE_SECRET_KEY` absente (l'API tourne mais les paiements sont désactivés) |
+| Checkout Stripe → 400 « Offre invalide » | le `price_id` demandé n'est dans aucune variable `STRIPE_*_PRICE_ID`, ou il a été créé dans l'autre mode (test/live) que la clé secrète — §4.2 |
+| Un abonné à 19 € n'a ni devis PDF ni facturation | le prix artisan a été mis dans `STRIPE_PRO_PRICE_ID` au lieu de `STRIPE_CONTRACTOR_ESSENTIEL_PRICE_ID` — §4.2 |
+| « Gérer mon abonnement » → 500 | portail de facturation Stripe jamais configuré en mode live — §4.3 |
+| Webhook Stripe → 400 dans le dashboard | `STRIPE_WEBHOOK_SECRET` erroné, ou secret du mode test utilisé en live — §4.4 |
 | Analyse photo refusée avec un message d'indisponibilité | comportement attendu : `CV_ENABLED=false` par défaut (débranché, ADR 0001 §D2), l'API refuse proprement toute demande d'analyse — la saisie manuelle des dimensions est le seul chemin en production |
 | Images de la galerie cassées | `NEXT_PUBLIC_API_URL` au build web ne correspond pas à l'URL publique de l'API |
 | Rien n'apparaît dans Sentry | `SENTRY_DSN`/`NEXT_PUBLIC_SENTRY_DSN` absente (voir le warn au boot de l'API) ou DSN erroné — le SDK avale silencieusement les échecs d'envoi, jamais d'erreur bruyante |

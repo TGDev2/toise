@@ -21,5 +21,22 @@
     "noImplicitAny": true,
     "strictBindCallApply": true,
     "noFallthroughCasesInSwitch": true
+  },
+  "ts-node": {
+    "//": [
+      "Réservé aux scripts lancés par ts-node (migrations, vérification Stripe).",
+      "`nest build` et ts-jest ne lisent pas cette clé.",
+      "1. `module: NodeNext` fait charger ts-node en ESM sous Node 22, où",
+      "   `__dirname` n'existe pas : chaque script échouait avant sa première",
+      "   ligne utile. Repassé en CommonJS ici, et là seulement.",
+      "2. `files` charge les déclarations ambiantes (src/types/express.d.ts) que",
+      "   le graphe d'imports n'atteint pas — sans quoi `request.firebaseUser`",
+      "   ne compile pas."
+    ],
+    "files": true,
+    "compilerOptions": {
+      "module": "commonjs",
+      "moduleResolution": "node"
+    }
   }
 }

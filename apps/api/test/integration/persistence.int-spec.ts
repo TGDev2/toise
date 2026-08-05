@@ -26,7 +26,10 @@ import { MaterialCatalog } from '../../src/materials/entities/material-catalog.e
 import { MaterialEcoEquivalence } from '../../src/materials/entities/material-eco-equivalence.entity';
 import { ShoppingListsService } from '../../src/shopping-lists/shopping-lists.service';
 import { SubscriptionsService } from '../../src/subscriptions/subscriptions.service';
-import { Subscription } from '../../src/subscriptions/entities/subscription.entity';
+import {
+  Subscription,
+  SubscriptionStatus,
+} from '../../src/subscriptions/entities/subscription.entity';
 import { StripeEvent } from '../../src/subscriptions/entities/stripe-event.entity';
 import type { EstimationsService } from '../../src/estimations/estimations.service';
 import type { ProjectsService } from '../../src/projects/projects.service';
@@ -361,6 +364,184 @@ describe('Persistance (intégration, PostgreSQL réel)', () => {
       );
 
       expect(await service.claimWebhookEvent(event('evt_done'))).toBe(false);
+    });
+  });
+
+  /**
+   * Ordre de livraison des webhooks Stripe.
+   *
+   * Stripe garantit la livraison, jamais l'ordre. Les handlers appliquaient le
+   * dernier événement **arrivé** : une résiliation doublée par un
+   * `customer.subscription.updated` émis avant elle mais livré après rendait à
+   * l'abonné un palier qu'il ne payait plus, définitivement — aucun événement
+   * ultérieur ne venant corriger l'état.
+   *
+   * La garde vit dans le `WHERE` d'un UPDATE conditionnel : mockée, elle
+   * renvoie ce qu'on lui fait renvoyer. Seul PostgreSQL peut dire si elle
+   * écarte réellement l'écriture périmée, et si elle laisse passer le reste.
+   */
+  describe('Ordre de livraison des webhooks Stripe', () => {
+    const PRICE_ARTISAN = 'price_artisan_19';
+    const PRICE_PRO = 'price_pro_999';
+
+    /** Émission chez Stripe : T1 précède T2 d'une minute. */
+    const T1 = 1_700_000_000;
+    const T2 = T1 + 60;
+
+    const CONFIG: Record<string, string> = {
+      'stripe.proPriceId': PRICE_PRO,
+      'stripe.contractorEssentielPriceId': PRICE_ARTISAN,
+    };
+
+    /** Paliers successivement écrits sur l'utilisateur, dans l'ordre. */
+    let tiersWritten: string[];
+
+    function buildService(): SubscriptionsService {
+      tiersWritten = [];
+      return new SubscriptionsService(
+        dataSource.getRepository(Subscription),
+        dataSource.getRepository(StripeEvent),
+        {
+          updateSubscriptionTier: (_userId: string, tier: string) => {
+            tiersWritten.push(tier);
+            return Promise.resolve();
+          },
+        } as unknown as UsersService,
+        { track: () => undefined } as unknown as AnalyticsService,
+        {} as ReferralsService,
+        {
+          get: (key: string) => CONFIG[key],
+        } as unknown as ConfigService,
+      );
+    }
+
+    async function seedSubscription(suffix: string): Promise<Subscription> {
+      const user = await dataSource.getRepository(User).save({
+        email: `sub-${suffix}@chiffreo.test`,
+        firebase_uid: `firebase-sub-${suffix}`,
+      });
+      return dataSource.getRepository(Subscription).save({
+        user_id: user.id,
+        stripe_customer_id: `cus_${suffix}`,
+        stripe_subscription_id: `sub_${suffix}`,
+        stripe_price_id: PRICE_ARTISAN,
+        status: SubscriptionStatus.ACTIVE,
+        cancel_at_period_end: false,
+      });
+    }
+
+    function updatedEvent(
+      stripeSubscriptionId: string,
+      created: number,
+      priceId: string,
+    ) {
+      return {
+        id: `evt_upd_${created}`,
+        type: 'customer.subscription.updated',
+        created,
+        data: {
+          object: {
+            id: stripeSubscriptionId,
+            status: 'active',
+            cancel_at_period_end: false,
+            trial_end: null,
+            items: {
+              data: [
+                {
+                  price: { id: priceId },
+                  current_period_start: created,
+                  current_period_end: created + 2_592_000,
+                },
+              ],
+            },
+          },
+        },
+      } as unknown as Stripe.Event;
+    }
+
+    function deletedEvent(stripeSubscriptionId: string, created: number) {
+      return {
+        id: `evt_del_${created}`,
+        type: 'customer.subscription.deleted',
+        created,
+        data: { object: { id: stripeSubscriptionId, status: 'canceled' } },
+      } as unknown as Stripe.Event;
+    }
+
+    async function reload(id: string): Promise<Subscription> {
+      return dataSource
+        .getRepository(Subscription)
+        .findOneOrFail({ where: { id } });
+    }
+
+    it("n'accepte pas un événement émis avant le dernier déjà appliqué", async () => {
+      const service = buildService();
+      const row = await seedSubscription('stale');
+
+      // Résiliation (T2), puis l'événement retardé (T1) arrive après elle.
+      await service.handleWebhookEvent(deletedEvent('sub_stale', T2));
+      await service.handleWebhookEvent(
+        updatedEvent('sub_stale', T1, PRICE_ARTISAN),
+      );
+
+      const persisted = await reload(row.id);
+      expect(persisted.status).toBe(SubscriptionStatus.CANCELED);
+      // Le symptôme exact du défaut : un palier payant rendu à un compte
+      // résilié. `free` doit être le dernier mot.
+      expect(tiersWritten).toEqual(['free']);
+    });
+
+    it('accepte les deux mêmes événements livrés dans l’ordre (témoin)', async () => {
+      const service = buildService();
+      const row = await seedSubscription('ordered');
+
+      await service.handleWebhookEvent(
+        updatedEvent('sub_ordered', T1, PRICE_ARTISAN),
+      );
+      await service.handleWebhookEvent(deletedEvent('sub_ordered', T2));
+
+      // Sans ce témoin, une garde qui refuserait tout passerait le test
+      // précédent : ici les deux écritures doivent avoir eu lieu.
+      const persisted = await reload(row.id);
+      expect(persisted.status).toBe(SubscriptionStatus.CANCELED);
+      expect(tiersWritten).toEqual(['contractor_essentiel', 'free']);
+    });
+
+    it('ne laisse pas un surclassement périmé écraser un déclassement récent', async () => {
+      const service = buildService();
+      const row = await seedSubscription('downgrade');
+
+      // Le passage artisan → Pro (T2) est doublé par un événement artisan plus
+      // ancien (T1) : sans garde, le prix et le palier remontaient.
+      await service.handleWebhookEvent(
+        updatedEvent('sub_downgrade', T2, PRICE_PRO),
+      );
+      await service.handleWebhookEvent(
+        updatedEvent('sub_downgrade', T1, PRICE_ARTISAN),
+      );
+
+      const persisted = await reload(row.id);
+      expect(persisted.stripe_price_id).toBe(PRICE_PRO);
+      expect(persisted.last_stripe_event_at).toEqual(new Date(T2 * 1000));
+      expect(tiersWritten).toEqual(['pro']);
+    });
+
+    it('applique le premier événement d’une ligne sans filigrane', async () => {
+      const service = buildService();
+      const row = await seedSubscription('virgin');
+
+      // Les lignes antérieures à la migration 1711468800076 ont
+      // `last_stripe_event_at` à NULL : la garde ne doit rien y écarter.
+      expect((await reload(row.id)).last_stripe_event_at).toBeNull();
+
+      await service.handleWebhookEvent(
+        updatedEvent('sub_virgin', T1, PRICE_ARTISAN),
+      );
+
+      expect((await reload(row.id)).last_stripe_event_at).toEqual(
+        new Date(T1 * 1000),
+      );
+      expect(tiersWritten).toEqual(['contractor_essentiel']);
     });
   });
 

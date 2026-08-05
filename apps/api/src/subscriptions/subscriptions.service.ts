@@ -18,6 +18,7 @@ import { SubscriptionTier } from '../users/entities/user.entity';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 import { ReferralsService } from '../referrals/referrals.service';
+import { PLANS } from './plans.constants';
 
 /**
  * Au-delà de ce délai, une réservation d'event Stripe sans traitement abouti est
@@ -36,6 +37,7 @@ export class SubscriptionsService {
   private readonly webhookSecret: string;
   private readonly proPriceId: string;
   private readonly priceIdToTier: Map<string, SubscriptionTier>;
+  private readonly priceIdToTrialDays: Map<string, number>;
   private readonly contractorPriceIds: Set<string>;
   private readonly allowedPriceIds: Set<string>;
   private readonly publicUrl: string;
@@ -98,6 +100,17 @@ export class SubscriptionsService {
       this.proPriceId,
       ...this.contractorPriceIds,
     ]);
+
+    // La durée d'essai vient de `PLANS` et de nulle part ailleurs. Elle était
+    // auparavant déduite de « ce prix est-il un prix contractor ? », ce qui
+    // faisait de `trial_days` une donnée décorative : le palier artisan la
+    // déclarait, le checkout l'ignorait. Deux sources pour un même fait, dont
+    // une seule appliquée — celle qu'on ne lit pas en relisant la grille.
+    this.priceIdToTrialDays = new Map<string, number>();
+    for (const plan of PLANS) {
+      const priceId = this.config.get<string>(plan.priceIdConfigKey);
+      if (priceId) this.priceIdToTrialDays.set(priceId, plan.trial_days);
+    }
   }
 
   private get stripe(): Stripe {
@@ -121,7 +134,7 @@ export class SubscriptionsService {
     if (!this.allowedPriceIds.has(selectedPriceId)) {
       throw new BadRequestException('Offre invalide.');
     }
-    const isContractor = this.contractorPriceIds.has(selectedPriceId);
+    const trialDays = this.priceIdToTrialDays.get(selectedPriceId) ?? 0;
     let customerId: string;
 
     const existing = await this.subscriptionsRepo.findOne({
@@ -162,7 +175,9 @@ export class SubscriptionsService {
       customer: customerId,
       mode: 'subscription',
       line_items: [{ price: selectedPriceId, quantity: 1 }],
-      ...(isContractor ? {} : { subscription_data: { trial_period_days: 7 } }),
+      ...(trialDays > 0
+        ? { subscription_data: { trial_period_days: trialDays } }
+        : {}),
       success_url: `${this.publicUrl}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${this.publicUrl}/subscription/cancel`,
       metadata: { user_id: user.id },
@@ -330,25 +345,81 @@ export class SubscriptionsService {
   }
 
   async handleWebhookEvent(event: Stripe.Event): Promise<void> {
+    // Date d'**émission** chez Stripe, pas de réception ici : c'est elle qui
+    // ordonne les événements entre eux (cf. `applyEventState`).
+    const occurredAt = new Date(event.created * 1000);
+
     switch (event.type) {
       case 'checkout.session.completed':
-        await this.handleCheckoutCompleted(event.data.object);
+        await this.handleCheckoutCompleted(event.data.object, occurredAt);
         break;
       case 'invoice.paid':
-        await this.handleInvoicePaid(event.data.object);
+        await this.handleInvoicePaid(event.data.object, occurredAt);
         break;
       case 'invoice.payment_failed':
-        await this.handleInvoicePaymentFailed(event.data.object);
+        await this.handleInvoicePaymentFailed(event.data.object, occurredAt);
         break;
       case 'customer.subscription.updated':
-        await this.handleSubscriptionUpdated(event.data.object);
+        await this.handleSubscriptionUpdated(event.data.object, occurredAt);
         break;
       case 'customer.subscription.deleted':
-        await this.handleSubscriptionDeleted(event.data.object);
+        await this.handleSubscriptionDeleted(event.data.object, occurredAt);
         break;
       default:
         this.logger.log(`Unhandled event type: ${event.type}`);
     }
+  }
+
+  /**
+   * Écrit un état d'abonnement issu d'un événement Stripe, **sauf** si un
+   * événement plus récent a déjà été appliqué à cette ligne.
+   *
+   * Stripe garantit la livraison, jamais l'ordre. Sans cette garde, deux
+   * événements qui se doublent produisaient le dernier **arrivé** et non le
+   * dernier **émis** : une résiliation suivie d'un `customer.subscription.updated`
+   * retardé (émis avant elle, livré après) remettait `status = active` et
+   * rappelait `syncSubscriptionTier` — l'abonné retrouvait un palier qu'il ne
+   * payait plus, sans qu'aucun événement ultérieur ne vienne le corriger.
+   *
+   * La comparaison et l'écriture sont **une seule instruction SQL**, donc sous
+   * le verrou de ligne de PostgreSQL : deux livraisons concurrentes ne peuvent
+   * pas lire le même filigrane puis s'écrire l'une sur l'autre. Même raison
+   * qu'au `INSERT … ON CONFLICT` de `claimWebhookEvent` — un `SELECT` suivi
+   * d'un `UPDATE` aurait rouvert la course qu'il prétend fermer.
+   *
+   * Résidu assumé : `event.created` est à la seconde. Deux événements émis dans
+   * la même seconde restent départagés par leur ordre d'arrivée (`<=`, le
+   * dernier écrit gagne). La fenêtre de désordre passe d'illimitée à une
+   * seconde ; l'objet `Subscription` de l'API Stripe n'expose aucun numéro de
+   * version qui permettrait de descendre plus bas.
+   *
+   * @returns `true` si l'état a été écrit, `false` s'il a été écarté comme
+   * périmé — l'appelant doit alors s'abstenir de synchroniser le palier.
+   */
+  private async applyEventState(
+    subscriptionRowId: string,
+    occurredAt: Date,
+    patch: Partial<Subscription>,
+  ): Promise<boolean> {
+    const result = await this.subscriptionsRepo
+      .createQueryBuilder()
+      .update(Subscription)
+      .set({ ...patch, last_stripe_event_at: occurredAt })
+      .where('id = :id', { id: subscriptionRowId })
+      .andWhere(
+        '("last_stripe_event_at" IS NULL OR "last_stripe_event_at" <= :occurredAt)',
+        { occurredAt },
+      )
+      .execute();
+
+    const applied = (result.affected ?? 0) > 0;
+    if (!applied) {
+      this.logger.warn(
+        `Événement Stripe périmé ignoré pour l'abonnement ${subscriptionRowId} ` +
+          `(émis le ${occurredAt.toISOString()}, antérieur au dernier appliqué).`,
+      );
+    }
+    return applied;
   }
 
   private extractPriceId(stripeSub: Stripe.Subscription): string | null {
@@ -384,9 +455,28 @@ export class SubscriptionsService {
 
   private async handleCheckoutCompleted(
     session: Stripe.Checkout.Session,
+    occurredAt: Date,
   ): Promise<void> {
     const userId = session.metadata?.user_id;
     if (!userId || !session.subscription || !session.customer) return;
+
+    // Chemin de création : l'`upsert` ci-dessous n'a pas de ligne sur laquelle
+    // poser une condition, la garde se fait donc par lecture préalable. La
+    // course lecture-puis-écriture qu'elle laisse ouverte n'existe que si un
+    // autre événement du même abonnement est traité pendant celui-ci — pas au
+    // premier passage, où la ligne n'existe encore pour personne.
+    const existing = await this.subscriptionsRepo.findOne({
+      where: { user_id: userId },
+    });
+    if (
+      existing?.last_stripe_event_at &&
+      existing.last_stripe_event_at > occurredAt
+    ) {
+      this.logger.warn(
+        `checkout.session.completed périmé ignoré pour l'utilisateur ${userId}.`,
+      );
+      return;
+    }
 
     const stripeSubscriptionId =
       typeof session.subscription === 'string'
@@ -421,6 +511,7 @@ export class SubscriptionsService {
           ? new Date(stripeSub.trial_end * 1000)
           : null,
         cancel_at_period_end: stripeSub.cancel_at_period_end,
+        last_stripe_event_at: occurredAt,
       },
       ['user_id'],
     );
@@ -438,7 +529,10 @@ export class SubscriptionsService {
     );
   }
 
-  private async handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
+  private async handleInvoicePaid(
+    invoice: Stripe.Invoice,
+    occurredAt: Date,
+  ): Promise<void> {
     const stripeSubscriptionId = this.extractSubscriptionIdFromInvoice(invoice);
     if (!stripeSubscriptionId) return;
 
@@ -457,18 +551,31 @@ export class SubscriptionsService {
     const period = this.extractPeriodFromSubscription(stripeSub);
     const priceId = this.extractPriceId(stripeSub);
 
-    subscription.status = SubscriptionStatus.ACTIVE;
-    subscription.current_period_start = period.start;
-    subscription.current_period_end = period.end;
-    subscription.stripe_price_id = priceId;
-    await this.subscriptionsRepo.save(subscription);
+    // `status` est forcé à `active` et non recopié de `stripeSub` : une facture
+    // payée *dit* que l'abonnement l'était au moment de son émission. C'est
+    // précisément pourquoi l'écriture passe par la garde — une facture payée
+    // livrée après une résiliation ne doit pas ressusciter l'abonnement.
+    const applied = await this.applyEventState(subscription.id, occurredAt, {
+      status: SubscriptionStatus.ACTIVE,
+      current_period_start: period.start,
+      current_period_end: period.end,
+      stripe_price_id: priceId,
+    });
 
-    await this.syncSubscriptionTier(subscription.user_id, 'active', priceId);
+    if (applied) {
+      await this.syncSubscriptionTier(subscription.user_id, 'active', priceId);
+    }
 
     // COM-3 : premier paiement réel (pas un simple essai) — déclencheur du
     // crédit de parrainage. Volontairement non catché : la méthode est
     // idempotente au retry Stripe, une erreur ici doit continuer à déclencher
     // releaseWebhookEvent + retry plutôt que d'être avalée silencieusement.
+    //
+    // Volontairement **hors** de la garde d'ordonnancement : son déclencheur est
+    // « un paiement réel a eu lieu », pas « ceci est l'état le plus récent ».
+    // La soumettre au filigrane ferait perdre un crédit de parrainage chaque
+    // fois qu'un autre événement double la facture — un défaut neuf en
+    // réparation d'un ancien.
     await this.referralsService.handleReferredUserConverted(
       subscription.user_id,
     );
@@ -476,6 +583,7 @@ export class SubscriptionsService {
 
   private async handleInvoicePaymentFailed(
     invoice: Stripe.Invoice,
+    occurredAt: Date,
   ): Promise<void> {
     const stripeSubscriptionId = this.extractSubscriptionIdFromInvoice(invoice);
     if (!stripeSubscriptionId) return;
@@ -485,8 +593,13 @@ export class SubscriptionsService {
     });
     if (!subscription) return;
 
-    subscription.status = SubscriptionStatus.PAST_DUE;
-    await this.subscriptionsRepo.save(subscription);
+    const applied = await this.applyEventState(subscription.id, occurredAt, {
+      status: SubscriptionStatus.PAST_DUE,
+    });
+    // Pas d'écriture, pas d'événement analytique : un `payment_failed` périmé
+    // compté dans le funnel ferait voir un incident de paiement là où l'état
+    // réel a déjà tourné.
+    if (!applied) return;
 
     const planName = this.resolvePlanName(subscription.stripe_price_id);
     this.analyticsService.track(
@@ -500,6 +613,7 @@ export class SubscriptionsService {
 
   private async handleSubscriptionUpdated(
     stripeSub: Stripe.Subscription,
+    occurredAt: Date,
   ): Promise<void> {
     const subscription = await this.subscriptionsRepo.findOne({
       where: { stripe_subscription_id: stripeSub.id },
@@ -509,16 +623,21 @@ export class SubscriptionsService {
     const period = this.extractPeriodFromSubscription(stripeSub);
     const priceId = this.extractPriceId(stripeSub);
 
-    subscription.status = stripeSub.status as SubscriptionStatus;
-    subscription.cancel_at_period_end = stripeSub.cancel_at_period_end;
-    subscription.current_period_start = period.start;
-    subscription.current_period_end = period.end;
-    subscription.stripe_price_id = priceId;
-    subscription.trial_end = stripeSub.trial_end
-      ? new Date(stripeSub.trial_end * 1000)
-      : null;
+    // Le chemin par lequel un palier périmé revenait : cet événement porte un
+    // instantané complet de l'abonnement, y compris son prix. Livré en retard,
+    // il réécrivait le tout — prix compris — puis re-synchronisait le palier.
+    const applied = await this.applyEventState(subscription.id, occurredAt, {
+      status: stripeSub.status as SubscriptionStatus,
+      cancel_at_period_end: stripeSub.cancel_at_period_end,
+      current_period_start: period.start,
+      current_period_end: period.end,
+      stripe_price_id: priceId,
+      trial_end: stripeSub.trial_end
+        ? new Date(stripeSub.trial_end * 1000)
+        : null,
+    });
+    if (!applied) return;
 
-    await this.subscriptionsRepo.save(subscription);
     await this.syncSubscriptionTier(
       subscription.user_id,
       stripeSub.status,
@@ -528,14 +647,17 @@ export class SubscriptionsService {
 
   private async handleSubscriptionDeleted(
     stripeSub: Stripe.Subscription,
+    occurredAt: Date,
   ): Promise<void> {
     const subscription = await this.subscriptionsRepo.findOne({
       where: { stripe_subscription_id: stripeSub.id },
     });
     if (!subscription) return;
 
-    subscription.status = SubscriptionStatus.CANCELED;
-    await this.subscriptionsRepo.save(subscription);
+    const applied = await this.applyEventState(subscription.id, occurredAt, {
+      status: SubscriptionStatus.CANCELED,
+    });
+    if (!applied) return;
 
     await this.syncSubscriptionTier(subscription.user_id, 'canceled');
 

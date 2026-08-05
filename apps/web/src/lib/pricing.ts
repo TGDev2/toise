@@ -216,7 +216,11 @@ export const OFFER_PLANS: OfferPlan[] = [
         gateKey: 'invoicing',
       },
     ],
-    ctaLabel: 'Choisir Essentiel',
+    // Aligné sur `trial_days` de `plans.constants.ts` côté API, seule source de
+    // ce que le checkout accorde réellement. Un essai qu'on accorde sans
+    // l'annoncer est un coût sans conversion.
+    trialDays: 7,
+    ctaLabel: 'Essayer 7 jours gratuits',
   },
 ];
 

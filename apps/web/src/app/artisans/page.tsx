@@ -9,7 +9,7 @@ import { COVERED_TRADES, TRADES_NOT_COVERED } from '@/lib/work-types';
 export const metadata: Metadata = {
   title: 'Chiffréo pour les métiers de finition',
   description:
-    'Peintre, carreleur, plaquiste, solier : mesures prises chez le client, quantités calculées, devis PDF conforme envoyé sur place. Contractor dès 19 €/mois.',
+    'Peintre, carreleur, plaquiste, solier : mesures prises chez le client, quantités calculées, devis PDF conforme envoyé sur place. 19 €/mois, 7 jours d’essai.',
   alternates: { canonical: '/artisans' },
   openGraph: {
     title: 'Chiffréo pour les métiers de finition',
@@ -240,7 +240,16 @@ export default function ArtisansPage() {
           </p>
           <div className="mt-8 max-w-sm">
             {CONTRACTOR_PLANS.map((plan) => (
-              <PlanCard key={plan.key} plan={plan} tone="highlighted" />
+              <PlanCard
+                key={plan.key}
+                plan={plan}
+                tone="highlighted"
+                badge={
+                  plan.trialDays
+                    ? `Essai gratuit ${plan.trialDays} jours`
+                    : undefined
+                }
+              />
             ))}
           </div>
           <p className="mt-4 text-center text-xs text-stone-500">
