@@ -32,13 +32,25 @@ git clone <repository-url> && cd Chiffreo
 cp .env.example .env
 ```
 
-Renseigner **toutes** les variables de `.env`. En production les variables
-critiques sont validées au démarrage de l'API (démarrage refusé si absentes) :
+`.env.example` livre chaque variable sensible avec la valeur `CHANGEME` : il
+n'y a **aucune valeur par défaut utilisable telle quelle** en production.
+Renseigner **toutes** les variables de `.env` avec de vraies valeurs. En
+production, `env.validation.ts` refuse le démarrage de l'API si l'une de ces
+règles n'est pas respectée — le message d'erreur nomme la variable fautive :
+
+- une variable requise est absente ou vide ;
+- une variable a gardé le marqueur `CHANGEME` ;
+- une variable a gardé la valeur exacte de `.env.example` (ex. un `.env`
+  recopié d'une ancienne version du dépôt sans être modifié) ;
+- `CORS_ORIGIN`, `PUBLIC_URL`, `NEXT_PUBLIC_API_URL` ou `NEXT_PUBLIC_SITE_URL`
+  pointe sur `localhost`/`127.0.0.1` — ces URL doivent être publiques et en
+  HTTPS ;
+- `DB_PASSWORD` fait moins de 16 caractères.
 
 | Variable | Exemple |
 |---|---|
 | `NODE_ENV` | `production` |
-| `DB_PASSWORD` | mot de passe fort généré |
+| `DB_PASSWORD` | mot de passe fort généré, 16 caractères minimum |
 | `CORS_ORIGIN` | `https://chiffreo.fr` |
 | `PUBLIC_URL` | `https://chiffreo.fr` |
 | `FIREBASE_PROJECT_ID` / `FIREBASE_CLIENT_EMAIL` / `FIREBASE_PRIVATE_KEY` | depuis la clé de service account |
@@ -450,7 +462,7 @@ panne, webhook Stripe qui échoue) ne se voit qu'en allant lire les logs.
 
 | Symptôme | Piste |
 |---|---|
-| L'API refuse de démarrer avec « Configuration invalide » | une variable requise manque dans `.env` (le message liste lesquelles) |
+| L'API refuse de démarrer avec « Configuration invalide » | une variable requise manque, garde `CHANGEME`/sa valeur d'exemple, pointe sur localhost, ou `DB_PASSWORD` fait moins de 16 caractères — le message nomme la variable, §1 |
 | Checkout Stripe → 503 | `STRIPE_SECRET_KEY` absente (l'API tourne mais les paiements sont désactivés) |
 | Checkout Stripe → 400 « Offre invalide » | le `price_id` demandé n'est dans aucune variable `STRIPE_*_PRICE_ID`, ou il a été créé dans l'autre mode (test/live) que la clé secrète — §4.2 |
 | Un abonné à 19 € n'a ni devis PDF ni facturation | le prix artisan a été mis dans `STRIPE_PRO_PRICE_ID` au lieu de `STRIPE_CONTRACTOR_ESSENTIEL_PRICE_ID` — §4.2 |

@@ -20,6 +20,46 @@ const PRODUCTION_REQUIRED_VARS = [
   'CV_SERVICE_TOKEN',
 ] as const;
 
+// Variables portant une URL censée être joignable depuis l'extérieur en
+// production (reverse proxy, redirections Stripe, build web) : un hôte
+// localhost/127.0.0.1 y est toujours une erreur de configuration.
+const PRODUCTION_URL_VARS = [
+  'CORS_ORIGIN',
+  'PUBLIC_URL',
+  'NEXT_PUBLIC_API_URL',
+  'NEXT_PUBLIC_SITE_URL',
+] as const;
+
+// Marqueur laissé dans .env.example à la place de toute valeur sensible.
+// Le retrouver tel quel au démarrage en production signifie que .env n'a
+// pas été renseigné.
+const CHANGEME_MARKER = 'CHANGEME';
+
+// Valeurs non vides que portait .env.example avant d'être remplacées par
+// CHANGEME_MARKER (cf. historique git du fichier). Un .env recopié depuis
+// une version antérieure du dépôt sans être modifié doit être refusé au
+// même titre qu'un marqueur non renseigné.
+const KNOWN_EXAMPLE_VALUES: Partial<Record<string, string>> = {
+  DB_PASSWORD: 'chiffreo_dev',
+  CORS_ORIGIN: 'http://localhost:3000',
+  PUBLIC_URL: 'http://localhost:3000',
+  NEXT_PUBLIC_API_URL: 'http://localhost:3001/api/v1',
+  NEXT_PUBLIC_SITE_URL: 'http://localhost:3000',
+};
+
+const MIN_DB_PASSWORD_LENGTH = 16;
+
+function isLocalhostUrl(value: string): boolean {
+  try {
+    const { hostname } = new URL(value);
+    return (
+      hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1'
+    );
+  } catch {
+    return false;
+  }
+}
+
 const INTEGER_VARS = [
   'PORT',
   'DB_PORT',
@@ -50,6 +90,53 @@ export function validate(
       if (value === undefined || value === '') {
         errors.push(`${key} est requise en production`);
       }
+    }
+
+    const changemeCandidates: readonly string[] = [
+      ...PRODUCTION_REQUIRED_VARS,
+      ...PRODUCTION_URL_VARS,
+    ];
+    for (const key of changemeCandidates) {
+      const value = config[key];
+      if (typeof value !== 'string' || value === '') {
+        continue;
+      }
+      if (value === CHANGEME_MARKER) {
+        errors.push(
+          `${key} n'a pas été renseignée (marqueur ${CHANGEME_MARKER} laissé tel quel)`,
+        );
+        continue;
+      }
+      const exampleValue = KNOWN_EXAMPLE_VALUES[key];
+      if (exampleValue !== undefined && value === exampleValue) {
+        errors.push(`${key} a conservé la valeur d'exemple du dépôt`);
+      }
+    }
+
+    for (const key of PRODUCTION_URL_VARS) {
+      const value = config[key];
+      if (typeof value !== 'string' || value === '') {
+        continue;
+      }
+      const origins =
+        key === 'CORS_ORIGIN'
+          ? value.split(',').map((origin) => origin.trim())
+          : [value];
+      if (origins.some(isLocalhostUrl)) {
+        errors.push(
+          `${key} pointe sur localhost/127.0.0.1, injoignable en production`,
+        );
+      }
+    }
+
+    if (
+      typeof config.DB_PASSWORD === 'string' &&
+      config.DB_PASSWORD !== '' &&
+      config.DB_PASSWORD.length < MIN_DB_PASSWORD_LENGTH
+    ) {
+      errors.push(
+        `DB_PASSWORD doit compter au moins ${MIN_DB_PASSWORD_LENGTH} caractères en production`,
+      );
     }
   }
 
