@@ -276,7 +276,11 @@ export function ContractorDashboard() {
             {quickStarting ? 'Démarrage...' : 'Devis-minute'}
           </span>
           <span className="block text-sm text-white/80">
-            Photo de la pièce → devis PDF envoyé au client
+            {/* E4-4 : la promesse annonçait « Photo de la pièce » alors que
+                l'analyse photo est débranchée de la production et que l'étape a
+                quitté le tunnel (ADR 0001 D2). Premier écran de l'artisan,
+                première promesse fausse. */}
+            Mesures de la pièce → devis PDF envoyé au client
           </span>
         </span>
       </button>
