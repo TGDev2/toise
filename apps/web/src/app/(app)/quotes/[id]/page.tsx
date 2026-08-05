@@ -153,6 +153,26 @@ export default function QuoteDetailPage() {
       );
       if (outcome === 'shared') {
         toast.success('Devis envoyé.');
+        /*
+          E4-4 — le parcours « jusqu'au devis envoyé » n'atteignait jamais
+          l'état « envoyé » : le PDF partait, le devis restait en brouillon, et
+          `sent_at` — qui arme les relances J+7 et J+14 vers le client — restait
+          nul. Bascule sur `'shared'` seulement : l'artisan a choisi une
+          application destinataire (une feuille de partage fermée renvoie
+          `'cancelled'`), alors qu'un téléchargement n'est pas un envoi. Le
+          statut reste réversible d'un tap juste au-dessus.
+        */
+        if (quote.status === 'draft') {
+          try {
+            const updated = await apiPatch<Quote>(`/quotes/${quoteId}/status`, {
+              status: 'sent',
+            });
+            setQuote(updated);
+          } catch {
+            // Le PDF est parti : un échec de mise à jour du statut ne doit pas
+            // se lire comme un échec d'envoi.
+          }
+        }
       } else if (outcome === 'downloaded') {
         toast.info('PDF téléchargé.');
       }
