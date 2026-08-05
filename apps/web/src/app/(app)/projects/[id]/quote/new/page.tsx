@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeatureGates } from '@/contexts/FeatureGateContext';
-import { apiGet, apiPost } from '@/lib/api';
+import { apiGet, apiPost, apiPut } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { ClientSelect } from '@/components/quotes/ClientSelect';
 import { LaborLinesEditor } from '@/components/quotes/LaborLinesEditor';
@@ -144,6 +144,46 @@ export default function NewQuotePage() {
   // Une ligne à 0 EUR est incomplète, pas gratuite : forcer sa saisie avant
   // l'envoi plutôt que produire un devis qui offre la MO sans le vouloir.
   const laborRateMissing = laborLines.some((line) => line.unit_price_ht <= 0);
+
+  /*
+    E4-4 — le taux horaire pré-remplit déjà chaque ligne depuis le profil
+    entreprise (`quotes.service.ts`), mais `default_labor_hourly_rate` est
+    nullable et jamais seedé. Un artisan qui n'est jamais allé dans ses
+    réglages voyait donc toutes ses lignes à zéro, « Créer le devis »
+    désactivé, et aucun écran ne lui disait où régler ça : 5,2 s par ligne à
+    ressaisir, à chaque devis, indéfiniment.
+
+    Une saisie, un tap, et le problème est fermé pour tous les devis suivants.
+    Seules les lignes horaires sont concernées : sur un forfait,
+    `unit_price_ht` est un montant, pas un taux.
+  */
+  const hourlyRateMissing = laborLines.some(
+    (line) => line.kind === 'hourly' && line.unit_price_ht <= 0,
+  );
+  const [bulkRate, setBulkRate] = useState('');
+  const [rememberRate, setRememberRate] = useState(true);
+  const bulkRateValue = parseFloat(bulkRate);
+  const bulkRateUsable = Number.isFinite(bulkRateValue) && bulkRateValue > 0;
+
+  const applyBulkRate = async () => {
+    if (!bulkRateUsable) return;
+    setLaborLines((prev) =>
+      prev.map((line) =>
+        line.kind === 'hourly'
+          ? { ...line, unit_price_ht: bulkRateValue }
+          : line,
+      ),
+    );
+    if (!rememberRate) return;
+    try {
+      await apiPut('/company-profiles/me', {
+        default_labor_hourly_rate: bulkRateValue,
+      });
+    } catch {
+      // Le devis courant est déjà servi : un échec d'enregistrement du profil
+      // ne doit pas se lire comme un échec du taux qui vient d'être appliqué.
+    }
+  };
 
   const addLaborLine = () =>
     setLaborLines((prev) => [
@@ -316,6 +356,50 @@ export default function NewQuotePage() {
             Une ligne par ouvrage, proposée à partir des surfaces du projet —
             ajustez librement les heures et le taux.
           </p>
+
+          {hourlyRateMissing && (
+            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <p className="text-sm font-medium text-amber-900">
+                Votre taux horaire n&apos;est pas renseigné
+              </p>
+              <p className="mt-1 text-xs text-amber-800">
+                Saisissez-le une fois : il s&apos;applique à toutes les lignes
+                de ce devis, et pré-remplira les suivants.
+              </p>
+              <div className="mt-3 flex flex-wrap items-end gap-3">
+                <label className="space-y-1">
+                  <span className="block text-xs font-medium text-amber-900">
+                    Taux horaire (EUR/h)
+                  </span>
+                  <DecimalInput
+                    value={bulkRate}
+                    onValueChange={setBulkRate}
+                    placeholder="ex. 45"
+                    aria-label="Taux horaire de l'entreprise"
+                    className="min-h-11 w-28 rounded-xl border border-amber-300 bg-white px-3 py-2 text-base text-stone-900 focus:border-amber-500 focus:outline-none sm:text-sm"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={applyBulkRate}
+                  disabled={!bulkRateUsable}
+                  className="inline-flex min-h-11 items-center justify-center rounded-full bg-amber-600 px-5 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Appliquer à toutes les lignes
+                </button>
+              </div>
+              <label className="mt-3 flex items-center gap-2 text-xs text-amber-900">
+                <input
+                  type="checkbox"
+                  checked={rememberRate}
+                  onChange={(e) => setRememberRate(e.target.checked)}
+                  className="accent-amber-600"
+                />
+                Enregistrer comme taux par défaut de mon entreprise
+              </label>
+            </div>
+          )}
+
           <div className="mt-4">
             <LaborLinesEditor
               lines={laborLines}
