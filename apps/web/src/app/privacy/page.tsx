@@ -82,9 +82,19 @@ export default function PrivacyPage() {
       <Section title="5. Vos droits">
         <P>
           Conformément au RGPD, vous disposez d’un droit d’accès, de
-          rectification et de suppression de vos données personnelles. Vous
-          pouvez supprimer un projet ou votre compte à tout moment depuis
-          l’application, avec les effets décrits à la section 4.
+          rectification, de suppression et de portabilité de vos données
+          personnelles. Vous pouvez supprimer un projet ou votre compte à tout
+          moment depuis l’application, avec les effets décrits à la section 4.
+        </P>
+        <P>
+          Depuis votre tableau de bord, le bouton « Télécharger mes données »
+          génère une archive contenant tout ce que porte votre compte : profil,
+          organisations, projets (pièces, dimensions, ouvertures, exclusions et
+          ouvrages), estimations, listes d’achat, clients, devis et factures
+          (avec leurs PDF), abonnement et historique de facturation, sous la
+          forme d’un fichier structuré et documenté. La génération peut prendre
+          quelques instants ; l’archive reste disponible au téléchargement
+          48 heures, puis elle est effacée du serveur.
         </P>
       </Section>
 

@@ -28,6 +28,7 @@ jest.mock('@/lib/api', () => ({
   apiGet: jest.fn(),
   apiPost: jest.fn(),
   apiDelete: jest.fn(),
+  apiDownload: jest.fn(),
 }));
 
 const mockToast = { success: jest.fn(), error: jest.fn(), info: jest.fn() };

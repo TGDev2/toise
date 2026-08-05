@@ -2,6 +2,7 @@
 
 import { GuestPromptModal } from '@/components/auth/GuestPromptModal';
 import { ContractorDashboard } from '@/components/dashboard/ContractorDashboard';
+import { ExportDataButton } from '@/components/dashboard/ExportDataButton';
 import { ProjectCard } from '@/components/dashboard/ProjectCard';
 import { Alert, Button, ConfirmDialog, Input, Skeleton, useToast } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
@@ -238,6 +239,7 @@ export default function DashboardPage() {
           <Button variant="secondary" onClick={handleLogout}>
             {isGuest ? 'Quitter le mode invité' : 'Déconnexion'}
           </Button>
+          {appUser && <ExportDataButton />}
           {appUser && (
             <button
               type="button"

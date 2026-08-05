@@ -9,6 +9,7 @@ import { apiDelete, apiGet, apiPost } from '@/lib/api';
 import type { Quote, Client } from '@/lib/quote-types';
 import { getErrorMessage } from '@/lib/errors';
 import type { PaginatedProjects, ProjectSummary } from '@/lib/project-types';
+import { ExportDataButton } from './ExportDataButton';
 import { ProjectCard } from './ProjectCard';
 import {
   Alert,
@@ -235,6 +236,7 @@ export function ContractorDashboard() {
           <Button variant="secondary" onClick={handleLogout}>
             Déconnexion
           </Button>
+          <ExportDataButton />
           <button
             type="button"
             onClick={() => setShowAccountConfirm(true)}
