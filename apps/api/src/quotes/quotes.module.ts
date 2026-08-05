@@ -6,6 +6,7 @@ import { ShoppingListsModule } from '../shopping-lists/shopping-lists.module';
 import { CompanyProfilesModule } from '../company-profiles/company-profiles.module';
 import { ClientsModule } from '../clients/clients.module';
 import { ProjectsModule } from '../projects/projects.module';
+import { AnalyticsModule } from '../analytics/analytics.module';
 import { Quote } from './entities/quote.entity';
 import { EstimationResult } from '../estimations/entities/estimation-result.entity';
 import { QuotesService } from './quotes.service';
@@ -21,6 +22,9 @@ import { QuotePdfService } from './quote-pdf.service';
     CompanyProfilesModule,
     ClientsModule,
     ProjectsModule,
+    // Même omission que `ProjectsModule` : `QuotesService` injecte
+    // `AnalyticsService` sans que ce module ne le fournisse.
+    AnalyticsModule,
   ],
   controllers: [QuotesController],
   providers: [QuotesService, QuotePdfService],
