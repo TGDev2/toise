@@ -8,6 +8,15 @@ import { ShoppingListsService } from '../shopping-lists/shopping-lists.service';
 import type { SupplierAdapter } from './adapters/supplier-adapter.interface';
 import type { ShoppingListMaterialItem } from '../shopping-lists/entities/shopping-list.entity';
 
+// Ce fichier exerce la logique de sélection de lien de `getBuyLinks`
+// elle-même (le "meilleur fournisseur" par ligne) ; le garde-fou E5-4 qui
+// bloque tout par défaut est prouvé séparément dans
+// `price-comparison.service.engine-guard.spec.ts`, sur la vraie valeur
+// (`false`) de la constante.
+jest.mock('./shopping-list-engine-status', () => ({
+  SHOPPING_LIST_ENGINE_CORRECTED: true,
+}));
+
 // Post-ENG-2, une liste d'achat générée depuis `aggregated_json` ne renseigne
 // jamais `work_item_id` (cf. shopping-lists.service.ts `generate`).
 const mutualizedItem: ShoppingListMaterialItem = {

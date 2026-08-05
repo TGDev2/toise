@@ -1044,10 +1044,12 @@ constitution du dataset). Le chemin résolu vient toujours de la ligne
 
 ## Price Comparison
 
-> **Fournisseurs.** Le seul adaptateur réel est **ManoMano** (`manomano`), alimenté par le
-> flux produits du programme d'affiliation (BACKLOG BUY-1). Il n'est enregistré que si
-> `MANOMANO_ENABLED=true` et `MANOMANO_FEED_URL` est renseigné ; sinon la comparaison ne
-> renvoie aucun prix. Les adaptateurs mock (prix fabriqués en CAD) ont été supprimés.
+> **Fournisseurs.** Deux adaptateurs existent, **ManoMano** (`manomano`, BACKLOG BUY-1)
+> et **Leroy Merlin** (`leroymerlin`, BACKLOG BUY-4), chacun alimenté par son propre flux
+> produits d'affiliation. Chacun n'est enregistré que si sa variable `*_ENABLED=true` et
+> son `*_FEED_URL` sont renseignés (`MANOMANO_ENABLED`/`MANOMANO_FEED_URL`,
+> `LEROY_MERLIN_ENABLED`/`LEROY_MERLIN_FEED_URL`) ; sinon la comparaison ne renvoie aucun
+> prix pour lui. Les adaptateurs mock (prix fabriqués en CAD) ont été supprimés.
 > La feature gate `price_comparison` est réactivée depuis BUY-2 (migration 036).
 >
 > Les prix sont en **EUR**. `unit_price` est le prix d'**un conditionnement du devis** :
@@ -1059,6 +1061,14 @@ constitution du dataset). Le chemin résolu vient toujours de la ligne
 > **BUY-3.** `GET .../buy-links` expose ce même lien affilié, un par ligne de la liste
 > d'achats, **sans feature gate** (tier Free inclus) — contrairement aux deux endpoints
 > `compare-prices*` ci-dessous qui restent Pro+.
+>
+> **E5-4 — garde-fou moteur.** `GET .../buy-links` est en plus gardé par la constante
+> `SHOPPING_LIST_ENGINE_CORRECTED` (`apps/api/src/price-comparison/shopping-list-engine-status.ts`),
+> indépendante des deux adaptateurs et de la feature gate ci-dessus : tant qu'elle vaut
+> `false` (état actuel), l'endpoint renvoie toujours `{ "links": [] }`, quel que soit
+> l'état des flux marchands. Elle protège contre l'envoi d'un client vers un lien
+> commissionné sur une quantité que le moteur d'estimation calcule encore mal
+> (BACKLOG_V1 épopée E1) ; voir `docs/AFFILIATION_PARTENAIRES.md`.
 
 ### `GET /projects/:id/shopping-list/buy-links`
 
@@ -1067,7 +1077,8 @@ matériau : le fournisseur disponible le moins cher (même critère que `best_su
 de `compare-prices`), généré depuis le même adaptateur/cache que BUY-1/BUY-2.
 
 **Auth :** Requise (propriétaire uniquement) | **Feature gate :** aucune (disponible à
-tous les tiers, y compris Free)
+tous les tiers, y compris Free) | **Garde-fou E5-4 :** actif — l'endpoint renvoie
+`{ "links": [] }` tant que `SHOPPING_LIST_ENGINE_CORRECTED` vaut `false`.
 
 **Réponses :** `200 OK`
 ```json

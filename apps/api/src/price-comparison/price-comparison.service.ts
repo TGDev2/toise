@@ -18,6 +18,7 @@ import type { ItemSupplierSelectionDto } from './dto/apply-selections-request.dt
 import type { BuyLinkItem } from './dto/buy-links-response.dto';
 import { ShoppingListsService } from '../shopping-lists/shopping-lists.service';
 import type { ShoppingListMaterialItem } from '../shopping-lists/entities/shopping-list.entity';
+import { SHOPPING_LIST_ENGINE_CORRECTED } from './shopping-list-engine-status';
 
 @Injectable()
 export class PriceComparisonService {
@@ -194,12 +195,21 @@ export class PriceComparisonService {
    * Un seul lien par ligne, celui du fournisseur disponible le moins cher —
    * même critère que `best_supplier_key` ci-dessus. Une ligne `not_found`
    * (aucun rapprochement marchand exploitable) n'apparaît simplement pas.
+   *
+   * E5-4 : gardé par `SHOPPING_LIST_ENGINE_CORRECTED` — voir
+   * `shopping-list-engine-status.ts`. Tant qu'il vaut `false`, cette
+   * méthode ne rend jamais aucun lien, quel que soit l'état des flux
+   * marchands.
    */
   async getBuyLinks(
     projectId: string,
     organizationId: string,
     userId: string,
   ): Promise<BuyLinkItem[]> {
+    if (!SHOPPING_LIST_ENGINE_CORRECTED) {
+      return [];
+    }
+
     const { shoppingList } = await this.shoppingListsService.getOrGenerate(
       projectId,
       organizationId,
