@@ -108,6 +108,11 @@ class Chrono {
     this.screen.decisions += count;
   }
 
+  /** Tap réellement nécessaire à l'artisan, dont le script fait l'économie. */
+  countTap(): void {
+    this.screen.taps += 1;
+  }
+
   /**
    * Geste qui fait basculer d'écran : mesure le temps machine jusqu'à ce que
    * l'écran suivant soit utilisable, puis ouvre le compteur du nouvel écran.
@@ -220,17 +225,46 @@ async function measureRoom(
   );
 }
 
+/** Les sept ouvrages du catalogue, dans l'ordre d'affichage des tuiles. */
+const ALL_WORK_TYPES = [
+  'Peinture murale',
+  'Peinture plafond',
+  'Carrelage sol',
+  'Carrelage mural',
+  'Parquet ou stratifie',
+  'Cloison seche',
+  'Revetement mural',
+];
+
+/**
+ * Amène l'écran à **exactement** la sélection demandée, et ne compte que les
+ * gestes qui restaient à faire. C'est ce qui fait de ce script une mesure du
+ * minimum de gestes plutôt que le rejeu d'un parcours figé : quand la reprise
+ * du dernier chantier pré-coche les bons ouvrages, le compteur descend seul.
+ *
+ * Les décochages comptent autant que les cochages : une reprise qui propose un
+ * ouvrage dont on ne veut pas coûte un geste, et le chiffre du rapport doit le
+ * porter. Sans cela, le scénario 1 héritait des ouvrages du scénario précédent
+ * et chiffrait un chantier qu'on ne lui avait pas demandé.
+ */
 async function selectWork(
   chrono: Chrono,
   page: Page,
   workTypes: string[],
 ): Promise<void> {
-  for (const label of workTypes) {
-    await chrono.tap(page.getByRole('button', { name: label }), {
-      decision: true,
-    });
+  const wanted = new Set(workTypes);
+  for (const label of ALL_WORK_TYPES) {
+    const tile = page.getByRole('button', { name: label });
+    await ensureVisible(tile);
+    const pressed = (await tile.getAttribute('aria-pressed')) === 'true';
+    if (pressed === wanted.has(label)) continue;
+    await chrono.tap(tile, { decision: true });
   }
-  await chrono.tap(page.getByLabel('Confirme'), { decision: true });
+  const expertLevel = page.getByLabel('Confirme');
+  await ensureVisible(expertLevel);
+  if (!(await expertLevel.isChecked())) {
+    await chrono.tap(expertLevel, { decision: true });
+  }
 }
 
 /** Question contextuelle obligatoire (carrelage sol : format, type de pose). */
@@ -264,9 +298,36 @@ async function priceEveryMaterial(chrono: Chrono, page: Page): Promise<number> {
 
   const priceButtons = page.getByRole('button', { name: 'Saisir le prix reel' });
   const count = await priceButtons.count();
+
+  /*
+    E4-4 — un tap reprend les prix déjà relevés par l'entreprise. Le bouton
+    n'existe que s'il a quelque chose à faire ; ce qu'il ne couvre pas se saisit
+    ensuite, ligne par ligne, comme avant.
+  */
+  const recall = page.getByRole('button', {
+    name: 'Reprendre mes derniers prix',
+  });
+  // Les prix connus arrivent après la liste : sans cette attente, le script
+  // conclurait « pas de rappel » sur une simple course de réseau — et la mesure
+  // dépendrait de la chaleur du serveur de développement.
+  await recall.waitFor({ state: 'visible', timeout: 5_000 }).catch(() => {});
+  if (await recall.isVisible().catch(() => false)) {
+    await chrono.tap(recall, { decision: true });
+  }
+
   for (let i = 0; i < count; i += 1) {
-    await chrono.tap(priceButtons.nth(i));
+    const button = priceButtons.nth(i);
+    await ensureVisible(button);
+    /*
+      Ouverture **non comptée** : elle ne sert qu'au script, pour lire l'état de
+      la ligne. Le tap n'est compté que si la ligne réclame vraiment une saisie
+      — un artisan dont les prix viennent d'être repris n'ouvre pas ses lignes
+      une par une.
+    */
+    await button.click();
     const input = page.getByLabel('Prix unitaire').nth(i);
+    if ((await input.inputValue()) !== '') continue;
+    chrono.countTap();
     await chrono.fillNumber(input, String(12 + i));
     chrono.decide(); // retrouver le prix : étiquette, appli fournisseur, mémoire
     await input.blur();

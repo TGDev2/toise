@@ -326,4 +326,69 @@ cliquer sur un bouton « Passer cette étape » disparu — corrigé à part.)*
 
 ## 9. Après correction
 
-Rempli après implémentation, avec les chiffres du même script.
+Mêmes scénarios, même script, même compte, même viewport.
+
+| Scénario | Taps avant → après | Humain avant → après | Gain |
+|---|---|---|---|
+| 1 — une pièce, un ouvrage (3 art.) | 13 → **10** | 63,6 s → **36,0 s** | **− 27,6 s (− 43 %)** |
+| 3 — une pièce, trois ouvrages (8 art.) | 22 → **13** | 122,9 s → **48,6 s** | **− 74,3 s (− 60 %)** |
+| 2 — trois pièces, deux ouvrages (4 art.) | 33 → **22** | 142,6 s → **74,4 s** | **− 68,2 s (− 48 %)** |
+
+Écran par écran, là où les corrections portent :
+
+| Écran | Sc. 1 | Sc. 3 | Sc. 2 |
+|---|---|---|---|
+| **Prix** | 27,3 → 5,4 s (**− 21,9**) | 69,8 → 5,4 s (**− 64,4**) | 35,5 → 5,4 s (**− 30,1**) |
+| **Ouvrages** (cumul toutes pièces) | 11,1 → 5,4 s (− 5,7) | 27,9 → 18,0 s (− 9,9) | 45,9 → 7,8 s (**− 38,1**) |
+| **Scrolls du parcours** | 2 → **0** | 3 → **0** | 4 → **0** |
+
+Ce que les chiffres disent, et ce qu'ils ne disent pas :
+
+- **Le rappel des prix (A) tient exactement ce qu'il annonçait** : 64,4 s sur le
+  chantier à trois corps d'état, contre 62,9 s prévus. L'étape « Prix » ne
+  dépend plus du nombre d'articles — un tap, quelle qu'en soit la longueur.
+- **La reprise des ouvrages (B) dépasse les 30 s là où elle avait été
+  arbitrée** : 38,1 s sur le chantier de trois pièces, où l'écran est traversé
+  une fois par pièce. Ailleurs elle rapporte moins (9,9 s au scénario 3, 5,7 s
+  au scénario 1) — **parce qu'elle ne rapporte que dans la mesure où le
+  chantier suivant ressemble au précédent**. Quand il en diffère, l'artisan
+  décoche : c'est un geste, et il est compté dans les chiffres ci-dessus. Le
+  script fait foi ici, pas l'intention : il amène l'écran à la sélection
+  demandée et compte les décochages comme les cochages.
+- **Les scrolls ont disparu.** Les deux qui restaient (le niveau de compétence
+  sous les sept tuiles, la traversée de la liste de prix) tombent avec les
+  saisies qui les provoquaient. Sur les trois scénarios, aucun geste du
+  parcours ne demande plus de faire défiler l'écran à 390 px.
+- **Le taux horaire (C) ne se voit dans aucun de ces chiffres**, et c'est
+  normal : le compte mesuré porte un taux dans son profil entreprise. Le gain
+  (26,0 s par devis à six lignes, plus les ~35 s du voyage vers les réglages)
+  ne concerne que l'artisan qui n'y est jamais allé.
+- **Ces mesures dépendent de l'historique du compte**, par construction : le
+  rappel ne peut rendre que des prix déjà relevés, la reprise que des ouvrages
+  déjà choisis. Sur un compte neuf, le premier chantier coûte le prix d'avant ;
+  c'est le deuxième qui encaisse le gain.
+
+Le parcours passait déjà sous les dix minutes ; il y passe désormais en
+**moins d'une minute et demie de temps d'écran**, y compris sur le chantier de
+trois pièces. Ce qui a été retiré n'est pas de l'attente, c'est de la
+ressaisie : **23 taps et 11 champs en moins** sur les trois scénarios.
+
+### Les deux défauts du § 8
+
+- **8.1 — prix perdu à la sortie de l'étape** : corrigé. Les saisies en attente
+  sont vidées avant de quitter vers le devis, la clôture ou le PDF. Le
+  chronométrage, qui échouait deux fois sur trois sur « Créer le devis » resté
+  désactivé, passe désormais sans attente artificielle.
+- **8.2 — la promesse « Photo de la pièce »** : corrigée sur le tableau de
+  bord, qui décrit maintenant le parcours réel.
+
+### Ce que le lot a aussi corrigé, trouvé en chemin
+
+- **Une pièce déjà chiffrée revenait vide.** `WorkSelectionForm` fige son état
+  dans ses initialiseurs et ne se remonte qu'au changement de pièce ; la
+  sélection enregistrée lui était fournie par un effet, donc *après* son premier
+  rendu. Revenir sur une pièce pour corriger un ouvrage montrait un écran vierge.
+  La sélection est désormais dérivée des pièces chargées, pas posée après coup.
+- **Le champ de prix des accessoires refusait la virgule** (`type="number"`),
+  seul champ de prix du parcours à ne pas être passé en `DecimalInput` lors de
+  PRO-5. « 3,5 » y devenait une chaîne vide sans un signal.
