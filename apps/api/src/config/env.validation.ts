@@ -34,6 +34,9 @@ const INTEGER_VARS = [
   // sur une date de coupure invalide dans une passe destructive : le contrôle
   // au démarrage vaut mieux que le refus à 3 h du matin.
   'DATA_RETENTION_DAYS',
+  // Même raison (défaut : 48). Une valeur non entière ferait expirer une
+  // archive contenant IBAN/PII immédiatement (`NaN` comparé à toute date).
+  'EXPORT_RETENTION_HOURS',
 ] as const;
 
 export function validate(

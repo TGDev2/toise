@@ -86,6 +86,9 @@ AppModule
 ├── DataRetentionModule     # Effacement des fichiers et purge des suppressions logiques (E6-1)
 │                           #   Cron 3 h + `pnpm purge:retention` (simulation par défaut)
 │                           #   Politique et durée : docs/RETENTION_DONNEES.md
+├── DataExportModule        # Export RGPD des données personnelles, art. 20 (E6-2)
+│                           #   Toujours asynchrone, archive écrite en flux (`archiver`)
+│                           #   Contenu et exclusions : docs/EXPORT_DONNEES.md
 ├── OrganizationsModule     # Organisations, membres, rôles, invitations (PLAT-4)
 │   └── OrgContextModule    # Résolution de la portée (organisation active + auteur), sans dépendance applicative
 ├── ApiKeysModule           # API publique `/partner`, clés portées par l'organisation, quotas (PLAT-5)

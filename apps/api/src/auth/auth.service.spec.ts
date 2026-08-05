@@ -9,6 +9,7 @@ import { AnalyticsService } from '../analytics/analytics.service';
 import { OrgContextService } from '../organizations/org-context.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { DataRetentionService } from '../data-retention/data-retention.service';
+import { STORAGE_PROVIDER } from '../photos/storage/storage.interface';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 import {
   AuthProvider,
@@ -62,6 +63,10 @@ describe('AuthService', () => {
 
   const dataRetentionMock = {
     eraseOrganizationFiles: jest.fn().mockResolvedValue(undefined),
+  };
+
+  const storageMock = {
+    deletePrefix: jest.fn().mockResolvedValue([]),
   };
 
   let usersService: typeof usersServiceMock;
@@ -145,6 +150,10 @@ describe('AuthService', () => {
         {
           provide: DataRetentionService,
           useValue: dataRetentionMock,
+        },
+        {
+          provide: STORAGE_PROVIDER,
+          useValue: storageMock,
         },
       ],
     }).compile();
@@ -443,6 +452,10 @@ describe('AuthService', () => {
         order.push('files');
         return Promise.resolve();
       });
+      storageMock.deletePrefix.mockImplementation(() => {
+        order.push('exports');
+        return Promise.resolve([]);
+      });
       usersService.deleteAccountData.mockImplementation(() => {
         order.push('db');
         return Promise.resolve();
@@ -460,11 +473,15 @@ describe('AuthService', () => {
       // Les fichiers avant les lignes : `deleteAccountData` efface
       // `project_photos` en cascade, donc les `storage_url` qui sont le seul
       // moyen de retrouver les photos sur le volume. Dans l'autre ordre, un
-      // échec les rend introuvables pour toujours.
+      // échec les rend introuvables pour toujours. Le préfixe d'export (E6-2)
+      // suit la même règle, pour la même raison.
       //
       // L'identité part en dernier : une panne en cours de route doit laisser un
       // principal capable de se réauthentifier pour reprendre l'opération.
-      expect(order).toEqual(['stripe', 'files', 'db', 'firebase']);
+      expect(order).toEqual(['stripe', 'files', 'exports', 'db', 'firebase']);
+      expect(storageMock.deletePrefix).toHaveBeenCalledWith(
+        `exports/${mockUser.id}`,
+      );
     });
 
     it('efface les fichiers des seules organisations réellement supprimées', async () => {
@@ -594,6 +611,11 @@ describe('AuthService', () => {
       expect(dataRetentionMock.eraseOrganizationFiles).toHaveBeenCalledWith([
         'anon-org-uuid',
       ]);
+      // Même geste que `deleteAccount` (E6-2) : purge du préfixe d'export de
+      // l'invité, pas de celui du compte cible.
+      expect(storageMock.deletePrefix).toHaveBeenCalledWith(
+        'exports/anon-db-id',
+      );
     });
 
     it('should throw NotFoundException if target user not found', async () => {

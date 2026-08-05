@@ -33,6 +33,7 @@ import { OrganizationsModule } from './organizations/organizations.module';
 import { WasteLearningModule } from './waste-learning/waste-learning.module';
 import { CostBenchmarkModule } from './cost-benchmark/cost-benchmark.module';
 import { DataRetentionModule } from './data-retention/data-retention.module';
+import { DataExportModule } from './data-export/data-export.module';
 import configuration from './config/configuration';
 import { validate } from './config/env.validation';
 import { THROTTLER_CONFIG } from './config/throttler.config';
@@ -87,6 +88,7 @@ import { THROTTLER_CONFIG } from './config/throttler.config';
     WasteLearningModule,
     CostBenchmarkModule,
     DataRetentionModule,
+    DataExportModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

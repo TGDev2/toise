@@ -1,4 +1,5 @@
 import {
+  Inject,
   Injectable,
   ConflictException,
   NotFoundException,
@@ -15,6 +16,8 @@ import { AnalyticsService } from '../analytics/analytics.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { DataRetentionService } from '../data-retention/data-retention.service';
+import type { StorageProvider } from '../photos/storage/storage.interface';
+import { STORAGE_PROVIDER } from '../photos/storage/storage.interface';
 
 @Injectable()
 export class AuthService {
@@ -28,6 +31,8 @@ export class AuthService {
     private readonly orgContext: OrgContextService,
     private readonly subscriptions: SubscriptionsService,
     private readonly dataRetention: DataRetentionService,
+    @Inject(STORAGE_PROVIDER)
+    private readonly storage: StorageProvider,
   ) {}
 
   async register(dto: RegisterDto): Promise<{ user: User; message: string }> {
@@ -167,6 +172,12 @@ export class AuthService {
    * qu'aucune passe future ne puisse même les nommer. Un échec d'effacement
    * interrompt désormais l'opération : les lignes restent, la reprise est
    * possible, et rien n'est annoncé qui n'ait été fait.
+   *
+   * Cinquième, ajoutée par E6-2 : **le volume d'export**. Une archive RGPD
+   * générée pour ce compte vit sous `exports/<user_id>/`, un préfixe distinct
+   * de celui des projets — la même mécanique de fuite que `mergeGuestAccount`
+   * découverte pendant E6-1 se rejouerait ici si ce préfixe n'était pas purgé
+   * lui aussi avant l'effacement des lignes.
    */
   async deleteAccount(firebaseUid: string): Promise<void> {
     const user = await this.usersService.findByFirebaseUid(firebaseUid);
@@ -180,6 +191,7 @@ export class AuthService {
     await this.subscriptions.cancelForAccountDeletion(user.id);
 
     await this.dataRetention.eraseOrganizationFiles(ownedOrganizationIds);
+    await this.storage.deletePrefix(`exports/${user.id}`);
 
     await this.usersService.deleteAccountData(user.id, ownedOrganizationIds);
 
@@ -245,6 +257,9 @@ export class AuthService {
     // survivraient au volume sans plus aucune ligne pour les désigner — le même
     // défaut que `deleteAccount`, par un chemin plus discret.
     await this.dataRetention.eraseOrganizationFiles(ownedOrganizationIds);
+    // Même geste que `deleteAccount` (E6-2) : un invité authentifié peut avoir
+    // demandé son propre export avant la fusion.
+    await this.storage.deletePrefix(`exports/${anonymousUser.id}`);
     await this.usersService.deleteAccountData(
       anonymousUser.id,
       ownedOrganizationIds,

@@ -128,4 +128,11 @@ export default () => ({
     // d'autoriser la destruction.
     dryRun: process.env.DATA_RETENTION_DRY_RUN === 'true',
   },
+  dataExport: {
+    // Fenêtre de téléchargement d'un export RGPD (E6-2). Courte à dessein :
+    // l'archive porte IBAN/BIC (`company_profiles`) et des coordonnées
+    // clients, elle ne doit pas traîner sur le volume au-delà du temps
+    // raisonnable pour la télécharger une fois prête.
+    retentionHours: parseInt(process.env.EXPORT_RETENTION_HOURS ?? '48', 10),
+  },
 });

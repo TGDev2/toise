@@ -9,6 +9,7 @@ import { CompanyProfilesModule } from '../company-profiles/company-profiles.modu
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { DataRetentionModule } from '../data-retention/data-retention.module';
+import { StorageModule } from '../photos/storage/storage.module';
 import { User } from '../users/entities/user.entity';
 import { OrganizationMembership } from '../organizations/entities/organization-membership.entity';
 import { FirebaseAuthGuard } from './guards/firebase-auth.guard';
@@ -31,6 +32,10 @@ import { AdminGuard } from './guards/admin.guard';
     // désignent — cf. `AuthService.deleteAccount`. Le graphe reste à sens
     // unique : `DataRetentionModule` ne connaît que le stockage et deux entités.
     DataRetentionModule,
+    // E6-2 : la suppression de compte doit aussi purger `exports/<user_id>/`,
+    // le préfixe où vivent les archives RGPD générées pour ce compte — même
+    // volume que les photos, deuxième porte à fermer par le même geste.
+    StorageModule,
     TypeOrmModule.forFeature([User, OrganizationMembership]),
   ],
   controllers: [AuthController],

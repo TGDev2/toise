@@ -188,6 +188,7 @@ describe('Rétention et effacement (intégration, PostgreSQL et volume réels)',
         cancelForAccountDeletion: jest.fn().mockResolvedValue(undefined),
       } as unknown as SubscriptionsService,
       retention,
+      storage,
     );
 
     projects = new ProjectsService(
