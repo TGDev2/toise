@@ -11,7 +11,8 @@ et de restauration, testée sur une base jetable. Référencée depuis
 - **Où** : `/var/backups/chiffreo` sur le VPS (configurable), fichiers
   `chiffreo-db-<horodatage>.dump.gpg` et `chiffreo-uploads-<horodatage>.tar.gz.gpg`,
   plus une copie hors-site si `BACKUP_REMOTE` est configuré (§5).
-- **Fréquence** : quotidienne, via cron (§4).
+- **Fréquence** : quotidienne, via cron (§4), **plus un point de restauration
+  avant chaque déploiement** (§4.1).
 - **Rétention** : 14 jours par défaut, configurable (`RETENTION_DAYS`) — les
   fichiers plus anciens sont supprimés à chaque run (rotation simple par âge,
   pas de schéma journalier/hebdomadaire différencié pour l'instant).
@@ -122,6 +123,38 @@ sudo crontab -e
 `backup.sh` échoue bruyamment (`set -euo pipefail`, code de sortie non nul),
 mais un VPS standard n'a pas de MTA local : sans configuration supplémentaire,
 un échec cron ne produit aucun signal sortant.
+
+### 4.1 Deuxième déclencheur : avant chaque déploiement
+
+Le cron couvre la perte du VPS. Il ne couvre pas le déploiement : entre 3h15 et
+la mise en production d'une version, il peut s'être écoulé vingt heures de
+saisies. La CD prend donc son propre point de restauration, juste avant de
+changer quoi que ce soit :
+
+```bash
+bash docs/deploy/backup.sh --pre-deploy v1.2.0
+# → chiffreo-db-20260806T101500Z-predeploy-v1.2.0.dump.gpg
+```
+
+Ce mode diffère du run nocturne sur trois points, portés par ce **seul**
+drapeau plutôt que par trois options à combiner :
+
+1. l'artefact porte le tag dans son nom, pour que la procédure de retour
+   arrière puisse le désigner sans ambiguïté ;
+2. **base seule** : une migration ne touche pas le volume `uploads`, et les
+   fichiers restent alors un sur-ensemble de ce que le dump référence — le sens
+   bénin décrit au §1. Faire attendre chaque déploiement derrière une archive de
+   photos coûterait des minutes pour rien ;
+3. **aucun ping de supervision** : `BACKUP_MONITOR_URL` surveille le *cron*, et
+   un ping émis par un déploiement masquerait un run nocturne manquant. Un échec
+   est de toute façon signalé bruyamment — la CD s'arrête là (`DEPLOY.md` §6).
+
+Il n'y a **pas** de rotation dans ce mode : supprimer est le seul geste
+irréversible du script, et un déploiement n'a rien à effacer.
+
+Conséquence à ne pas manquer : la mise en place du §3 (clé GPG et
+`/etc/chiffreo/backup.env`) devient un **prérequis du déploiement continu**.
+Sans elle, chaque déploiement échoue à cette étape — délibérément.
 
 ### Alerte sur échec — et sur absence de run
 
@@ -237,6 +270,7 @@ Consigner chaque drill dans le tableau §8.
 | Date | Opérateur | Mode | Résultat | Notes |
 |---|---|---|---|---|
 | 2026-07-18 | Dry-run local (agent) | verify, cibles jetables `postgres:16-alpine` | PASS | Voir `tasks/todo.md` OPS-3 pour la transcription complète (empreinte contenu DB + manifeste fichiers uploads identiques avant/après) |
+| 2026-08-06 | Pilote de retour arrière (E6-5) | **prod**, base réelle du pilote, dump `--pre-deploy` | PASS | Restauration en **3 s** (45 tables) sur une base qu'une migration contractante venait d'amputer. Schéma et données rétablis, écriture postérieure au point de restauration perdue — conformément à `DEPLOY.md` § Retour arrière. Premier exercice du mode `--mode prod`. |
 
 À compléter à chaque drill réel sur le VPS une fois OPS-1 fait.
 
