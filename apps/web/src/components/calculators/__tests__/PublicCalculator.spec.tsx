@@ -219,6 +219,10 @@ describe('PublicCalculator', () => {
     expect(
       await screen.findByText(/peinture acrylique mate/i),
     ).toBeInTheDocument();
+    // E4-5 : le nombre mis en avant est le conditionnement à acheter, pas
+    // seulement une quantité en litres — c'est le terrain où une calculette
+    // d'enseigne ne suit pas.
+    expect(screen.getAllByText(/1 × pot 10 l/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/sauvegarder mon projet/i)).toBeInTheDocument();
   });
 
@@ -293,5 +297,48 @@ describe('PublicCalculator', () => {
       openings: [],
     });
     expect(drafts[0].updated_at).toBeTruthy();
+  });
+
+  /**
+   * E4-5 : la migration du brouillon invité (`AuthContext.guest-migration.spec.tsx`)
+   * prouve déjà, champ par champ, que `segments`/`exclusions` sont **rejoués**
+   * vers l'API à l'inscription — mais rien ne prouvait jusqu'ici que
+   * `PublicCalculator` les **écrit** dans le brouillon en premier lieu. La
+   * régression GTM-9 (exclusions saisies puis jetées avant l'appel) était côté
+   * écriture, pas côté lecture.
+   */
+  it('carries segments and exclusions declared on the public page into the guest draft', async () => {
+    mockApiPost.mockResolvedValue(estimateResponse);
+    mockAuth.startGuestSession.mockResolvedValue(undefined);
+    render(<PublicCalculator config={config} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /\+ crédence/i }));
+    fireEvent.click(
+      screen.getByRole('button', { name: /oui, ajouter un décroché/i }),
+    );
+    await fillAndCompute();
+
+    const saveButton = await screen.findByText(/sauvegarder mon projet/i);
+    await act(async () => {
+      fireEvent.click(saveButton);
+    });
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/dashboard');
+    });
+
+    const drafts = JSON.parse(
+      localStorage.getItem('chiffreo_local_projects') ?? '[]',
+    );
+    expect(drafts).toHaveLength(1);
+    expect(drafts[0].exclusions).toEqual([
+      { surface_target: 'wall', type: 'credence', area_m2: 2 },
+    ]);
+    // `DimensionsForm` résout le décroché saisi en rectangles avant de le
+    // remonter : la pièce (4 × 3 m) et l'ajout du décroché (1 × 1 m).
+    expect(drafts[0].segments).toEqual([
+      { x_cm: 0, y_cm: 0, length_cm: 400, width_cm: 300 },
+      { x_cm: 400, y_cm: 0, length_cm: 100, width_cm: 100 },
+    ]);
   });
 });

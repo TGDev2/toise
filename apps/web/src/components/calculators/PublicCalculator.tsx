@@ -331,7 +331,7 @@ export function PublicCalculator({ config }: PublicCalculatorProps) {
               Votre estimation
             </h2>
             <p className="text-xs text-stone-500">
-              Quantités de matériaux estimées — hors prix.
+              Ce qu’il faut acheter, en pots, sacs ou paquets — hors prix.
             </p>
           </div>
 

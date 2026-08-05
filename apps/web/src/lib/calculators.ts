@@ -66,9 +66,9 @@ export const CALCULATOR_DIFFERENTIATORS: Record<
     key: 'packaging',
     title: 'Des pots et des paquets, pas des litres',
     description:
-      'Le résultat est converti dans les conditionnements réellement vendus, en retenant le format qui laisse le moins de reste sur les bras. C’est ce que vous mettez dans le caddie.',
+      'Le résultat est converti dans les conditionnements réellement vendus, en panachant les formats du catalogue quand ça revient moins cher — un pot de 5 L et un de 2,5 L plutôt que quatorze pots de 0,5 L. C’est ce que vous mettez dans le caddie.',
     proof:
-      'EstimationEngine.selectBestPackaging — retient le format du catalogue qui minimise le surplus (un seul format, jamais une combinaison).',
+      'EstimationEngine.selectBestPackaging — solvePackagingMix compose les formats du catalogue pour minimiser le coût, pas le seul surplus ; packaging_breakdown porte le panachage quand il y en a un (E1-5).',
   },
 };
 
