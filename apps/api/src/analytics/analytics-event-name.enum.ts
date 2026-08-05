@@ -19,6 +19,11 @@ export enum AnalyticsEventName {
   EMAIL_CAPTURE = 'email_capture',
   SUBSCRIPTION_STARTED = 'subscription_started',
   PAYMENT_FAILED = 'payment_failed',
+  // E5-2 : le délai de grâce s'est écoulé sans régularisation, le palier est
+  // retombé sur gratuit. Distinct de `payment_failed`, qui n'est que le premier
+  // incident : c'est l'écart entre les deux qui donne le taux de récupération
+  // des impayés, donc la seule mesure qui dira si 14 jours est le bon délai.
+  SUBSCRIPTION_GRACE_EXPIRED = 'subscription_grace_expired',
   SUBSCRIPTION_CANCELED = 'subscription_canceled',
   BUDGET_TRACKED = 'budget_tracked',
   // DATA-5 : clôture par les quantités réellement achetées. Distinct de

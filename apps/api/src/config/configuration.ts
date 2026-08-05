@@ -56,6 +56,18 @@ export default () => ({
       process.env.STRIPE_CONTRACTOR_ESSENTIEL_PRICE_ID,
     contractorStandardPriceId: process.env.STRIPE_CONTRACTOR_STANDARD_PRICE_ID,
     contractorPremiumPriceId: process.env.STRIPE_CONTRACTOR_PREMIUM_PRICE_ID,
+    // Délai laissé à un abonné en impayé avant que son palier retombe sur
+    // gratuit (E5-2). Une carte expirée n'est pas un défaut de paiement : les
+    // relances Stripe s'étalent sur ~3 semaines, et 14 jours couvrent les trois
+    // premières — la fenêtre dans laquelle le problème se règle tout seul (mail
+    // Stripe, carte mise à jour, relance suivante encaissée). Plus court
+    // couperait un artisan parti en congés ; plus long redonnerait le mois
+    // gratuit que ce délai existe pour supprimer. Reste sous un cycle de
+    // facturation : deux mois impayés ne peuvent jamais s'accumuler.
+    pastDueGraceDays: parseInt(
+      process.env.STRIPE_PAST_DUE_GRACE_DAYS ?? '14',
+      10,
+    ),
   },
   brevo: {
     apiKey: process.env.BREVO_API_KEY,

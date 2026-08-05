@@ -545,6 +545,235 @@ describe('Persistance (intégration, PostgreSQL réel)', () => {
     });
   });
 
+  /**
+   * Délai de grâce sur impayé (E5-2).
+   *
+   * L'horodatage de départ du délai est posé par un `COALESCE` à l'intérieur du
+   * `SET` de l'UPDATE conditionnel. Mocké, il rend ce qu'on lui fait rendre :
+   * seul PostgreSQL peut dire si la date de la **première** entrée en
+   * `past_due` survit aux relances suivantes — le point sur lequel tout le
+   * dispositif repose, puisque Stripe rejoue `invoice.payment_failed` une bonne
+   * dizaine de fois sur trois semaines.
+   */
+  describe('Délai de grâce sur impayé', () => {
+    const PRICE_ARTISAN = 'price_artisan_19';
+
+    /** Trois relances Stripe : T0, puis J+3, puis J+7. */
+    const T0 = 1_700_000_000;
+    const T0_PLUS_3D = T0 + 3 * 86_400;
+    const T0_PLUS_7D = T0 + 7 * 86_400;
+
+    const CONFIG: Record<string, string | number> = {
+      'stripe.contractorEssentielPriceId': PRICE_ARTISAN,
+      'stripe.pastDueGraceDays': 14,
+    };
+
+    let tiersWritten: string[];
+    let downgraded: string[];
+
+    function buildService(): SubscriptionsService {
+      tiersWritten = [];
+      downgraded = [];
+      return new SubscriptionsService(
+        dataSource.getRepository(Subscription),
+        dataSource.getRepository(StripeEvent),
+        {
+          updateSubscriptionTier: (_userId: string, tier: string) => {
+            tiersWritten.push(tier);
+            return Promise.resolve();
+          },
+          downgradeToFreeIfNeeded: (userId: string) => {
+            downgraded.push(userId);
+            return Promise.resolve(true);
+          },
+        } as unknown as UsersService,
+        { track: () => undefined } as unknown as AnalyticsService,
+        {} as ReferralsService,
+        {
+          get: (key: string) => CONFIG[key],
+        } as unknown as ConfigService,
+      );
+    }
+
+    async function seed(
+      suffix: string,
+      overrides: Partial<Subscription> = {},
+    ): Promise<Subscription> {
+      const user = await dataSource.getRepository(User).save({
+        email: `grace-${suffix}@chiffreo.test`,
+        firebase_uid: `firebase-grace-${suffix}`,
+      });
+      return dataSource.getRepository(Subscription).save({
+        user_id: user.id,
+        stripe_customer_id: `cus_grace_${suffix}`,
+        stripe_subscription_id: `sub_grace_${suffix}`,
+        stripe_price_id: PRICE_ARTISAN,
+        status: SubscriptionStatus.ACTIVE,
+        cancel_at_period_end: false,
+        ...overrides,
+      });
+    }
+
+    function paymentFailedEvent(stripeSubscriptionId: string, created: number) {
+      return {
+        id: `evt_fail_${stripeSubscriptionId}_${created}`,
+        type: 'invoice.payment_failed',
+        created,
+        data: {
+          object: {
+            parent: {
+              subscription_details: { subscription: stripeSubscriptionId },
+            },
+          },
+        },
+      } as unknown as Stripe.Event;
+    }
+
+    /**
+     * `customer.subscription.updated` portant `active` — le chemin de reprise
+     * qui n'a pas besoin d'appeler Stripe (le service est construit ici sans
+     * clé secrète, `invoice.paid` irait chercher l'abonnement à distance).
+     */
+    function reactivatedEvent(stripeSubscriptionId: string, created: number) {
+      return {
+        id: `evt_ok_${stripeSubscriptionId}_${created}`,
+        type: 'customer.subscription.updated',
+        created,
+        data: {
+          object: {
+            id: stripeSubscriptionId,
+            status: 'active',
+            cancel_at_period_end: false,
+            trial_end: null,
+            items: {
+              data: [
+                {
+                  price: { id: PRICE_ARTISAN },
+                  current_period_start: created,
+                  current_period_end: created + 2_592_000,
+                },
+              ],
+            },
+          },
+        },
+      } as unknown as Stripe.Event;
+    }
+
+    async function reload(id: string): Promise<Subscription> {
+      return dataSource
+        .getRepository(Subscription)
+        .findOneOrFail({ where: { id } });
+    }
+
+    it('ne redémarre pas le compte à rebours à chaque relance', async () => {
+      const service = buildService();
+      const row = await seed('retries');
+
+      await service.handleWebhookEvent(
+        paymentFailedEvent('sub_grace_retries', T0),
+      );
+      await service.handleWebhookEvent(
+        paymentFailedEvent('sub_grace_retries', T0_PLUS_3D),
+      );
+      await service.handleWebhookEvent(
+        paymentFailedEvent('sub_grace_retries', T0_PLUS_7D),
+      );
+
+      const persisted = await reload(row.id);
+      expect(persisted.status).toBe(SubscriptionStatus.PAST_DUE);
+      // Le défaut que le COALESCE existe pour empêcher : sans lui,
+      // `past_due_since` vaudrait T0+7j et l'échéance aurait reculé d'une
+      // semaine — indéfiniment, relance après relance.
+      expect(persisted.past_due_since).toEqual(new Date(T0 * 1000));
+      // Le filigrane, lui, suit bien le dernier événement émis.
+      expect(persisted.last_stripe_event_at).toEqual(
+        new Date(T0_PLUS_7D * 1000),
+      );
+    });
+
+    it("n'horodate pas la grâce depuis un événement périmé", async () => {
+      const service = buildService();
+      const row = await seed('stale-grace');
+
+      // Impayé (T0), régularisation (T0+7j), puis un événement émis à T0+3j
+      // arrive en retard : il porte encore `past_due`.
+      await service.handleWebhookEvent(
+        paymentFailedEvent('sub_grace_stale-grace', T0),
+      );
+      await service.handleWebhookEvent(
+        reactivatedEvent('sub_grace_stale-grace', T0_PLUS_7D),
+      );
+      await service.handleWebhookEvent(
+        paymentFailedEvent('sub_grace_stale-grace', T0_PLUS_3D),
+      );
+
+      const persisted = await reload(row.id);
+      expect(persisted.status).toBe(SubscriptionStatus.ACTIVE);
+      // Le horodater ici ne casserait rien tout de suite — le balayage ne
+      // regarde que les lignes `past_due`. Le dégât surviendrait des semaines
+      // plus tard : le prochain impayé démarrerait avec un délai déjà consommé
+      // et déclasserait l'abonné sur-le-champ.
+      expect(persisted.past_due_since).toBeNull();
+    });
+
+    it("repose l'horodatage au prochain impayé après une régularisation", async () => {
+      const service = buildService();
+      const row = await seed('episode');
+
+      await service.handleWebhookEvent(
+        paymentFailedEvent('sub_grace_episode', T0),
+      );
+      await service.handleWebhookEvent(
+        reactivatedEvent('sub_grace_episode', T0_PLUS_3D),
+      );
+      await service.handleWebhookEvent(
+        paymentFailedEvent('sub_grace_episode', T0_PLUS_7D),
+      );
+
+      // Le compte à rebours est par épisode, pas par vie de l'abonnement :
+      // un client qui a régularisé en mars a droit à un délai plein en juin.
+      expect((await reload(row.id)).past_due_since).toEqual(
+        new Date(T0_PLUS_7D * 1000),
+      );
+    });
+
+    it('déclasse au balayage sans altérer la ligne d’abonnement', async () => {
+      const service = buildService();
+      const pastDueSince = new Date(Date.now() - 20 * 86_400_000);
+      const row = await seed('sweep', {
+        status: SubscriptionStatus.PAST_DUE,
+        past_due_since: pastDueSince,
+        last_stripe_event_at: new Date(T0 * 1000),
+      });
+
+      await service.sweepExpiredGracePeriods();
+
+      expect(downgraded).toEqual([row.user_id]);
+
+      // L'invariant qui rend la reprise gratuite : la ligne reste telle
+      // quelle, donc un paiement ultérieur la remet en `active` et resynchronise
+      // le palier par le chemin normal, sans code de réactivation dédié.
+      const persisted = await reload(row.id);
+      expect(persisted.status).toBe(SubscriptionStatus.PAST_DUE);
+      expect(persisted.past_due_since).toEqual(pastDueSince);
+      expect(persisted.last_stripe_event_at).toEqual(new Date(T0 * 1000));
+    });
+
+    it('épargne un impayé encore dans les temps (témoin)', async () => {
+      const service = buildService();
+      await seed('sweep-fresh', {
+        status: SubscriptionStatus.PAST_DUE,
+        past_due_since: new Date(Date.now() - 2 * 86_400_000),
+      });
+
+      await service.sweepExpiredGracePeriods();
+
+      // Sans ce témoin, un balayage qui déclasserait tous les `past_due`
+      // passerait le test précédent.
+      expect(downgraded).toEqual([]);
+    });
+  });
+
   describe('Écritures concurrentes sur un blob JSONB', () => {
     function buildService(
       fixture: Fixture,

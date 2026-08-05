@@ -119,6 +119,7 @@ refusera le checkout avec « Offre invalide ».
 | `STRIPE_CONTRACTOR_ESSENTIEL_PRICE_ID` | prix **Artisan** 19 € | de fait (voir ci-dessous) |
 | `STRIPE_CONTRACTOR_STANDARD_PRICE_ID` | laisser vide | non |
 | `STRIPE_CONTRACTOR_PREMIUM_PRICE_ID` | laisser vide | non |
+| `STRIPE_PAST_DUE_GRACE_DAYS` | `14` (défaut si absente) | non |
 
 Trois pièges, dans l'ordre où ils coûtent cher :
 
@@ -137,6 +138,21 @@ Trois pièges, dans l'ordre où ils coûtent cher :
   `GET /subscriptions/plans` renvoie `price_id: null`, le bouton de la page
   tarifs n'a rien à envoyer, et un appel direct est rejeté par « Offre
   invalide ». L'API démarre, la caisse est fermée.
+
+**`STRIPE_PAST_DUE_GRACE_DAYS` décide quand un impayé perd l'accès.** Un
+abonnement passé en `past_due` conserve son palier pendant ce nombre de jours,
+puis retombe sur `free` — un balayage horaire s'en charge
+([`sweepExpiredGracePeriods`](../apps/api/src/subscriptions/subscriptions.service.ts)).
+Le défaut de 14 jours couvre les trois premières relances Stripe, donc le cas
+de loin le plus fréquent : une carte expirée que le client remplace en quelques
+jours. La baisser resserre la trésorerie mais coupe l'accès à des clients de
+bonne foi ; la monter au-delà de la durée du dunning Stripe revient à offrir le
+mois. `0` déclasse au premier échec de prélèvement.
+
+Ce qui reste accessible après le déclassement, et qu'il ne faut pas regatter
+par erreur : la **lecture** des devis et factures déjà émis, leur export PDF, et
+le marquage d'une facture comme payée. Seule leur création ou leur modification
+exige de nouveau un abonnement.
 
 Les deux variables laissées vides correspondent aux paliers retirés en E3-4 :
 elles ne doivent pas être renseignées, sans quoi des paliers que plus aucune

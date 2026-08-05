@@ -73,6 +73,13 @@ export class SubscriptionsController {
         current_period_end: subscription.current_period_end,
         trial_end: subscription.trial_end,
         cancel_at_period_end: subscription.cancel_at_period_end,
+        // Échéance du délai de grâce sur impayé, calculée ici et non dans le
+        // navigateur : rendre `past_due_since` brut obligerait le front à
+        // connaître `STRIPE_PAST_DUE_GRACE_DAYS`, donc à en détenir une copie
+        // que rien ne garderait alignée sur celle qui est réellement appliquée.
+        // `null` hors impayé.
+        past_due_grace_ends_at:
+          this.subscriptionsService.gracePeriodEndsAt(subscription),
       },
     };
   }

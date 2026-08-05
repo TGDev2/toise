@@ -80,6 +80,34 @@ export class UsersService {
   }
 
   /**
+   * Retombe sur le palier gratuit, mais seulement s'il ne l'est pas déjà.
+   *
+   * Le test et l'écriture sont **une seule instruction SQL**, donc sous le
+   * verrou de ligne de PostgreSQL. C'est ce qui rend le balayage horaire du
+   * délai de grâce (`sweepExpiredGracePeriods`) idempotent : il repasse sur les
+   * mêmes lignes `past_due` toutes les heures, et seul le premier passage
+   * touche quelque chose. Un `SELECT` suivi d'un `UPDATE` donnerait le même
+   * résultat en séquentiel et compterait deux fois sous deux instances.
+   *
+   * @returns `true` si le palier a effectivement changé — l'appelant n'émet son
+   * événement analytique que dans ce cas, sans quoi le funnel verrait une
+   * expiration par heure et par abonné.
+   */
+  async downgradeToFreeIfNeeded(userId: string): Promise<boolean> {
+    const result = await this.usersRepo
+      .createQueryBuilder()
+      .update(User)
+      .set({ subscription_tier: SubscriptionTier.FREE })
+      .where('id = :id', { id: userId })
+      .andWhere('subscription_tier <> :free', {
+        free: SubscriptionTier.FREE,
+      })
+      .execute();
+
+    return (result.affected ?? 0) > 0;
+  }
+
+  /**
    * Efface un compte et les seules organisations qui ne concernaient que lui,
    * en une transaction.
    *

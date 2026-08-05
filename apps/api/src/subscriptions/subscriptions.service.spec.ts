@@ -28,7 +28,7 @@ jest.mock('stripe', () =>
   jest.fn().mockImplementation(() => mockStripeInstance),
 );
 
-const CONFIG_VALUES: Record<string, string> = {
+const CONFIG_VALUES: Record<string, string | number> = {
   'stripe.secretKey': 'sk_test_123',
   'stripe.webhookSecret': 'whsec_test',
   'stripe.proPriceId': 'price_pro',
@@ -44,6 +44,7 @@ const configServiceMock = {
 
 const subscriptionsRepoMock = {
   findOne: jest.fn(),
+  find: jest.fn(),
   save: jest.fn(),
   delete: jest.fn(),
   upsert: jest.fn(),
@@ -59,23 +60,38 @@ const subscriptionsRepoMock = {
  * C'est l'objet de `test/integration/persistence.int-spec.ts`. Ici on vérifie
  * la conséquence côté service : `affected = 0` ne doit synchroniser aucun
  * palier ni émettre aucun événement analytique.
+ *
+ * `pastDueSince` est ce que le `RETURNING` de l'UPDATE rapporte : l'état de
+ * l'horodatage de grâce **après** écriture, donc après le `COALESCE`. C'est
+ * cette valeur, et non la ligne relue avant l'UPDATE, qui décide du palier.
  */
-function mockUpdateAffecting(affected: number) {
+function mockUpdateAffecting(
+  affected: number,
+  pastDueSince: Date | null = null,
+) {
   const builder = {
     update: jest.fn().mockReturnThis(),
     set: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
-    execute: jest.fn().mockResolvedValue({ affected }),
+    setParameter: jest.fn().mockReturnThis(),
+    returning: jest.fn().mockReturnThis(),
+    execute: jest.fn().mockResolvedValue({
+      affected,
+      raw: affected > 0 ? [{ past_due_since: pastDueSince }] : [],
+    }),
   };
   subscriptionsRepoMock.createQueryBuilder.mockReturnValue(builder);
   return builder;
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 const stripeEventsRepoMock = {};
 
 const usersServiceMock = {
   updateSubscriptionTier: jest.fn(),
+  downgradeToFreeIfNeeded: jest.fn(),
 };
 
 const analyticsServiceMock = {
@@ -600,5 +616,322 @@ describe('SubscriptionsService.cancelForAccountDeletion', () => {
 
     expect(mockStripeInstance.subscriptions.cancel).not.toHaveBeenCalled();
     expect(subscriptionsRepoMock.delete).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Délai de grâce sur impayé (E5-2).
+ *
+ * `past_due` comptait comme un statut actif sans réserve : un abonné dont le
+ * paiement échouait gardait toutes ses capacités jusqu'à la résiliation par
+ * Stripe, c'est-à-dire pendant toute la durée des relances — plusieurs semaines
+ * de service gratuit par incident. Il reste actif, mais pour un délai borné.
+ *
+ * Ce que ces tests **ne** prouvent **pas** : que le `COALESCE` retient bien la
+ * date de la première entrée en `past_due` malgré les relances. Il vit dans un
+ * `SET` et seul PostgreSQL peut en juger — c'est l'objet de
+ * `test/integration/persistence.int-spec.ts`. Ici on vérifie les conséquences
+ * côté service : quel palier est écrit, et pour quelle échéance.
+ */
+describe('SubscriptionsService — délai de grâce past_due', () => {
+  let service: SubscriptionsService;
+
+  const NOW = 1_800_000_000_000;
+  const localRow = {
+    id: 'row-1',
+    user_id: 'user-1',
+    stripe_subscription_id: 'sub_1',
+    stripe_price_id: 'price_contractor_essentiel',
+  };
+
+  async function buildService(graceDays?: number) {
+    if (graceDays === undefined) {
+      delete CONFIG_VALUES['stripe.pastDueGraceDays'];
+    } else {
+      CONFIG_VALUES['stripe.pastDueGraceDays'] = graceDays;
+    }
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        SubscriptionsService,
+        {
+          provide: getRepositoryToken(Subscription),
+          useValue: subscriptionsRepoMock,
+        },
+        {
+          provide: getRepositoryToken(StripeEvent),
+          useValue: stripeEventsRepoMock,
+        },
+        { provide: UsersService, useValue: usersServiceMock },
+        { provide: AnalyticsService, useValue: analyticsServiceMock },
+        { provide: ReferralsService, useValue: referralsServiceMock },
+        { provide: ConfigService, useValue: configServiceMock },
+      ],
+    }).compile();
+
+    return module.get<SubscriptionsService>(SubscriptionsService);
+  }
+
+  /** `customer.subscription.updated` portant le statut donné. */
+  function subscriptionUpdatedEvent(status: string) {
+    return {
+      type: 'customer.subscription.updated',
+      created: Math.floor(NOW / 1000),
+      data: {
+        object: {
+          id: 'sub_1',
+          status,
+          cancel_at_period_end: false,
+          trial_end: null,
+          items: {
+            data: [
+              {
+                price: { id: 'price_contractor_essentiel' },
+                current_period_start: Math.floor(NOW / 1000),
+                current_period_end: Math.floor(NOW / 1000) + 2_592_000,
+              },
+            ],
+          },
+        },
+      },
+    } as unknown as Parameters<SubscriptionsService['handleWebhookEvent']>[0];
+  }
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    jest.useFakeTimers().setSystemTime(NOW);
+    subscriptionsRepoMock.findOne.mockResolvedValue(localRow);
+    subscriptionsRepoMock.find.mockResolvedValue([]);
+    service = await buildService();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    delete CONFIG_VALUES['stripe.pastDueGraceDays'];
+  });
+
+  describe('entrée en past_due', () => {
+    it("horodate l'entrée sans jamais écraser un horodatage existant", async () => {
+      const builder = mockUpdateAffecting(1, new Date(NOW));
+
+      await service.handleWebhookEvent({
+        type: 'invoice.payment_failed',
+        created: Math.floor(NOW / 1000),
+        data: {
+          object: {
+            parent: { subscription_details: { subscription: 'sub_1' } },
+          },
+        },
+      } as unknown as Parameters<
+        SubscriptionsService['handleWebhookEvent']
+      >[0]);
+
+      // Le `COALESCE` est ce qui empêche les relances Stripe — une bonne
+      // dizaine sur trois semaines — de repousser l'échéance à chaque passage.
+      const written = (
+        builder.set.mock.calls as unknown as [
+          { past_due_since: () => string },
+        ][]
+      )[0][0];
+      expect(typeof written.past_due_since).toBe('function');
+      expect(written.past_due_since()).toContain('COALESCE');
+    });
+
+    it('conserve le palier payant pendant le délai de grâce', async () => {
+      mockUpdateAffecting(1, new Date(NOW - 1 * DAY_MS));
+
+      await service.handleWebhookEvent(subscriptionUpdatedEvent('past_due'));
+
+      expect(usersServiceMock.updateSubscriptionTier).toHaveBeenCalledWith(
+        'user-1',
+        SubscriptionTier.CONTRACTOR_ESSENTIEL,
+      );
+    });
+
+    it("conserve encore le palier la veille de l'échéance (témoin)", async () => {
+      mockUpdateAffecting(1, new Date(NOW - 13 * DAY_MS));
+
+      await service.handleWebhookEvent(subscriptionUpdatedEvent('past_due'));
+
+      // Sans ce témoin, une implémentation qui déclasserait tout `past_due`
+      // passerait le test d'expiration ci-dessous.
+      expect(usersServiceMock.updateSubscriptionTier).toHaveBeenCalledWith(
+        'user-1',
+        SubscriptionTier.CONTRACTOR_ESSENTIEL,
+      );
+    });
+  });
+
+  describe('sortie par un paiement réussi', () => {
+    it("efface l'horodatage de grâce et rend le palier payant", async () => {
+      const builder = mockUpdateAffecting(1, null);
+      mockStripeInstance.subscriptions.retrieve.mockResolvedValue({
+        id: 'sub_1',
+        status: 'active',
+        items: {
+          data: [
+            {
+              price: { id: 'price_contractor_essentiel' },
+              current_period_start: Math.floor(NOW / 1000),
+              current_period_end: Math.floor(NOW / 1000) + 2_592_000,
+            },
+          ],
+        },
+      });
+
+      await service.handleWebhookEvent({
+        type: 'invoice.paid',
+        created: Math.floor(NOW / 1000),
+        data: {
+          object: {
+            parent: { subscription_details: { subscription: 'sub_1' } },
+          },
+        },
+      } as unknown as Parameters<
+        SubscriptionsService['handleWebhookEvent']
+      >[0]);
+
+      // `null` littéral, pas une fonction : l'épisode d'impayé est clos, pas
+      // prolongé.
+      expect(builder.set).toHaveBeenCalledWith(
+        expect.objectContaining({ past_due_since: null }),
+      );
+      expect(usersServiceMock.updateSubscriptionTier).toHaveBeenCalledWith(
+        'user-1',
+        SubscriptionTier.CONTRACTOR_ESSENTIEL,
+      );
+    });
+
+    it('rend le palier même après expiration du délai (rattrapage)', async () => {
+      mockUpdateAffecting(1, null);
+
+      await service.handleWebhookEvent(subscriptionUpdatedEvent('active'));
+
+      // Aucun code de « réactivation » n'est nécessaire : le statut redevenu
+      // actif efface l'horodatage, et la synchronisation normale fait le reste.
+      expect(usersServiceMock.updateSubscriptionTier).toHaveBeenCalledWith(
+        'user-1',
+        SubscriptionTier.CONTRACTOR_ESSENTIEL,
+      );
+    });
+  });
+
+  describe('expiration du délai', () => {
+    it('déclasse en gratuit une fois le délai écoulé', async () => {
+      mockUpdateAffecting(1, new Date(NOW - 15 * DAY_MS));
+
+      await service.handleWebhookEvent(subscriptionUpdatedEvent('past_due'));
+
+      // C'est le test qui échoue sur le code d'avant E5-2 : `past_due` y était
+      // rangé parmi les statuts actifs sans réserve.
+      expect(usersServiceMock.updateSubscriptionTier).toHaveBeenCalledWith(
+        'user-1',
+        SubscriptionTier.FREE,
+      );
+    });
+
+    it('respecte STRIPE_PAST_DUE_GRACE_DAYS', async () => {
+      service = await buildService(30);
+      mockUpdateAffecting(1, new Date(NOW - 20 * DAY_MS));
+
+      await service.handleWebhookEvent(subscriptionUpdatedEvent('past_due'));
+
+      // 20 jours d'impayé, délai réglé à 30 : encore dans les temps.
+      expect(usersServiceMock.updateSubscriptionTier).toHaveBeenCalledWith(
+        'user-1',
+        SubscriptionTier.CONTRACTOR_ESSENTIEL,
+      );
+    });
+  });
+
+  describe('balayage horaire', () => {
+    const expiredRow = {
+      ...localRow,
+      status: SubscriptionStatus.PAST_DUE,
+      past_due_since: new Date(NOW - 20 * DAY_MS),
+    };
+
+    it('déclasse les abonnés dont le délai est écoulé', async () => {
+      subscriptionsRepoMock.find.mockResolvedValue([expiredRow]);
+      usersServiceMock.downgradeToFreeIfNeeded.mockResolvedValue(true);
+
+      await service.sweepExpiredGracePeriods();
+
+      expect(usersServiceMock.downgradeToFreeIfNeeded).toHaveBeenCalledWith(
+        'user-1',
+      );
+      expect(analyticsServiceMock.track).toHaveBeenCalledWith(
+        AnalyticsEventName.SUBSCRIPTION_GRACE_EXPIRED,
+        'user-1',
+        expect.objectContaining({
+          plan: SubscriptionTier.CONTRACTOR_ESSENTIEL,
+        }),
+      );
+    });
+
+    it("n'émet aucun événement analytique au passage suivant", async () => {
+      subscriptionsRepoMock.find.mockResolvedValue([expiredRow]);
+      usersServiceMock.downgradeToFreeIfNeeded.mockResolvedValue(false);
+
+      await service.sweepExpiredGracePeriods();
+
+      // Le balayage repasse toutes les heures sur les mêmes lignes tant que
+      // l'impayé dure : sans cette garde, le funnel compterait une expiration
+      // par heure et par abonné.
+      expect(analyticsServiceMock.track).not.toHaveBeenCalled();
+    });
+
+    it("ne touche jamais au statut de l'abonnement", async () => {
+      subscriptionsRepoMock.find.mockResolvedValue([expiredRow]);
+      usersServiceMock.downgradeToFreeIfNeeded.mockResolvedValue(true);
+
+      await service.sweepExpiredGracePeriods();
+
+      // C'est cet invariant qui rend la reprise gratuite : la ligne reste
+      // `past_due` avec son filigrane intact, et un `invoice.paid` la remet en
+      // `active` par le chemin normal.
+      expect(subscriptionsRepoMock.createQueryBuilder).not.toHaveBeenCalled();
+      expect(subscriptionsRepoMock.save).not.toHaveBeenCalled();
+      expect(subscriptionsRepoMock.upsert).not.toHaveBeenCalled();
+    });
+
+    it('poursuit le balayage quand un abonné échoue', async () => {
+      subscriptionsRepoMock.find.mockResolvedValue([
+        { ...expiredRow, id: 'row-1', user_id: 'user-1' },
+        { ...expiredRow, id: 'row-2', user_id: 'user-2' },
+      ]);
+      usersServiceMock.downgradeToFreeIfNeeded
+        .mockRejectedValueOnce(new Error('deadlock'))
+        .mockResolvedValueOnce(true);
+
+      await service.sweepExpiredGracePeriods();
+
+      expect(usersServiceMock.downgradeToFreeIfNeeded).toHaveBeenCalledWith(
+        'user-2',
+      );
+    });
+  });
+
+  describe('checkout pendant un impayé', () => {
+    it('refuse un nouveau checkout et renvoie vers le portail', async () => {
+      subscriptionsRepoMock.findOne.mockResolvedValue({
+        status: SubscriptionStatus.PAST_DUE,
+        stripe_customer_id: 'cus_existing',
+      });
+
+      await expect(
+        service.createCheckoutSession(
+          { id: 'user-1', email: 'client@example.fr' },
+          'price_contractor_essentiel',
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      // Le laisser passer créait une **seconde** souscription Stripe : la
+      // première restait vivante et facturée, hors d'atteinte de la
+      // suppression de compte, et l'essai gratuit était re-servi au passage.
+      expect(
+        mockStripeInstance.checkout.sessions.create,
+      ).not.toHaveBeenCalled();
+    });
   });
 });

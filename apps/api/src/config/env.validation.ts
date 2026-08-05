@@ -27,6 +27,9 @@ const INTEGER_VARS = [
   'PRICE_CACHE_TTL_HOURS',
   'MANOMANO_TIMEOUT_MS',
   'MANOMANO_FEED_TTL_HOURS',
+  // Absente de PRODUCTION_REQUIRED_VARS à dessein : elle a un défaut (14) et
+  // l'exiger ferait refuser de démarrer une production qui va très bien.
+  'STRIPE_PAST_DUE_GRACE_DAYS',
 ] as const;
 
 export function validate(

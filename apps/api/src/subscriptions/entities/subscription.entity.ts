@@ -63,6 +63,23 @@ export class Subscription {
   @Column({ type: 'timestamptz', nullable: true })
   last_stripe_event_at!: Date | null;
 
+  /**
+   * Date de la **première** entrée en `past_due` de l'épisode d'impayé en
+   * cours ; `null` dès que l'abonnement en sort. C'est le point de départ du
+   * délai de grâce (`STRIPE_PAST_DUE_GRACE_DAYS`).
+   *
+   * « Première » est la propriété qui compte : Stripe rejoue
+   * `invoice.payment_failed` à chaque relance, sur environ trois semaines. Un
+   * horodatage réécrit à chaque passage repousserait l'échéance à chaque
+   * relance et le délai n'expirerait jamais. L'invariant est tenu par le
+   * `COALESCE` d'`applyEventState`, dans la même instruction que la garde
+   * d'ordonnancement — l'écrire ailleurs permettrait à un événement périmé
+   * d'estampiller une ligne redevenue `active`, et le prochain impayé
+   * démarrerait avec un délai déjà consommé.
+   */
+  @Column({ type: 'timestamptz', nullable: true })
+  past_due_since!: Date | null;
+
   @OneToOne(() => User)
   @JoinColumn({ name: 'user_id' })
   user!: User;

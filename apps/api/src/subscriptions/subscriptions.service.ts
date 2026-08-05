@@ -5,8 +5,9 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { LessThanOrEqual, Repository } from 'typeorm';
 import Stripe from 'stripe';
 import {
   Subscription,
@@ -31,6 +32,11 @@ import { PLANS } from './plans.constants';
  */
 const STALE_CLAIM_INTERVAL = '15 minutes';
 
+/** Repli si `STRIPE_PAST_DUE_GRACE_DAYS` est absente de la configuration. */
+const DEFAULT_PAST_DUE_GRACE_DAYS = 14;
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
 @Injectable()
 export class SubscriptionsService {
   private readonly stripeClient: Stripe | null;
@@ -41,6 +47,7 @@ export class SubscriptionsService {
   private readonly contractorPriceIds: Set<string>;
   private readonly allowedPriceIds: Set<string>;
   private readonly publicUrl: string;
+  private readonly pastDueGraceMs: number;
   private readonly logger = new Logger(SubscriptionsService.name);
 
   constructor(
@@ -67,6 +74,14 @@ export class SubscriptionsService {
     this.webhookSecret = this.config.get<string>('stripe.webhookSecret')!;
     this.proPriceId = this.config.get<string>('stripe.proPriceId')!;
     this.publicUrl = this.config.get<string>('publicUrl')!;
+
+    // Lu avec un repli, et non avec `!` : cette valeur a un défaut légitime et
+    // le service est aussi construit à la main dans les tests d'intégration,
+    // avec une configuration réduite au strict nécessaire.
+    const graceDays =
+      this.config.get<number>('stripe.pastDueGraceDays') ??
+      DEFAULT_PAST_DUE_GRACE_DAYS;
+    this.pastDueGraceMs = Number(graceDays) * MS_PER_DAY;
 
     this.priceIdToTier = new Map<string, SubscriptionTier>();
     const essentielPriceId = this.config.get<string>(
@@ -147,6 +162,22 @@ export class SubscriptionsService {
         existing.status === SubscriptionStatus.TRIALING
       ) {
         throw new BadRequestException('Vous avez deja un abonnement actif.');
+      }
+      // `past_due` est refusé séparément, avec un message qui indique la sortie.
+      //
+      // Il tombait jusqu'ici dans le cas général et repartait vers un nouveau
+      // checkout, ce qui crée une **seconde** souscription Stripe : l'`upsert`
+      // de `handleCheckoutCompleted` écrase `stripe_subscription_id`, la
+      // première reste vivante et facturée, et `cancelForAccountDeletion` ne
+      // sait plus qu'elle existe — double prélèvement sans trace locale. Le
+      // même chemin re-servait aussi l'essai gratuit à chaque tentative. Le
+      // portail est la seule reprise correcte d'un impayé ; c'est là que le
+      // bandeau de relance envoie.
+      if (existing.status === SubscriptionStatus.PAST_DUE) {
+        throw new BadRequestException(
+          'Un paiement de votre abonnement a échoué. Mettez à jour votre moyen ' +
+            'de paiement depuis votre espace de facturation.',
+        );
       }
       customerId = existing.stripe_customer_id;
     } else {
@@ -393,23 +424,59 @@ export class SubscriptionsService {
    * seconde ; l'objet `Subscription` de l'API Stripe n'expose aucun numéro de
    * version qui permettrait de descendre plus bas.
    *
-   * @returns `true` si l'état a été écrit, `false` s'il a été écarté comme
-   * périmé — l'appelant doit alors s'abstenir de synchroniser le palier.
+   * L'horodatage du délai de grâce (`past_due_since`) est écrit **ici**, dans
+   * la même instruction, et nulle part ailleurs :
+   *
+   * - entrée en `past_due` → `COALESCE(past_due_since, occurredAt)`. Le
+   *   `COALESCE` est ce qui fait tenir le délai : Stripe rejoue
+   *   `invoice.payment_failed` à chaque relance pendant environ trois semaines,
+   *   et réécrire la date à chaque passage repousserait l'échéance à l'infini ;
+   * - tout autre statut → `NULL`, l'épisode d'impayé est clos ;
+   * - statut absent du patch → colonne inchangée, pour qu'un futur appel qui
+   *   ne toucherait pas au statut n'efface pas le compte à rebours par accident.
+   *
+   * Le placer hors de cette instruction rouvrirait le trou que la garde ferme :
+   * un `customer.subscription.updated` périmé portant `past_due` estampillerait
+   * une ligne redevenue `active`, et l'impayé suivant démarrerait avec un délai
+   * déjà consommé — un déclassement immédiat, des semaines plus tard, sans
+   * qu'aucun test ne puisse le rattacher à sa cause.
+   *
+   * @returns `applied` : `false` si l'événement a été écarté comme périmé —
+   * l'appelant doit alors s'abstenir de synchroniser le palier. `pastDueSince` :
+   * la valeur effectivement en base après l'écriture (`RETURNING`), et non une
+   * relecture — le `findOne` des handlers a lu la ligne *avant* cet UPDATE, et
+   * recalculer le `COALESCE` en JavaScript ferait vivre la même règle à deux
+   * endroits.
    */
   private async applyEventState(
     subscriptionRowId: string,
     occurredAt: Date,
     patch: Partial<Subscription>,
-  ): Promise<boolean> {
+  ): Promise<{ applied: boolean; pastDueSince: Date | null }> {
     const result = await this.subscriptionsRepo
       .createQueryBuilder()
       .update(Subscription)
-      .set({ ...patch, last_stripe_event_at: occurredAt })
+      .set({
+        ...patch,
+        last_stripe_event_at: occurredAt,
+        ...(patch.status === undefined
+          ? {}
+          : patch.status === SubscriptionStatus.PAST_DUE
+            ? {
+                past_due_since: () => 'COALESCE("past_due_since", :occurredAt)',
+              }
+            : { past_due_since: null }),
+      })
       .where('id = :id', { id: subscriptionRowId })
       .andWhere(
         '("last_stripe_event_at" IS NULL OR "last_stripe_event_at" <= :occurredAt)',
         { occurredAt },
       )
+      // Le fragment du SET référence `:occurredAt` : on le lie explicitement
+      // plutôt que de dépendre du `andWhere` ci-dessus, qui pourrait être
+      // réécrit sans que personne ne voie le lien.
+      .setParameter('occurredAt', occurredAt)
+      .returning(['past_due_since'])
       .execute();
 
     const applied = (result.affected ?? 0) > 0;
@@ -418,8 +485,116 @@ export class SubscriptionsService {
         `Événement Stripe périmé ignoré pour l'abonnement ${subscriptionRowId} ` +
           `(émis le ${occurredAt.toISOString()}, antérieur au dernier appliqué).`,
       );
+      return { applied: false, pastDueSince: null };
     }
-    return applied;
+
+    const returned = result.raw as
+      | Array<{ past_due_since: Date | string | null }>
+      | undefined;
+    const rawPastDueSince = returned?.[0]?.past_due_since ?? null;
+
+    return {
+      applied: true,
+      pastDueSince: rawPastDueSince ? new Date(rawPastDueSince) : null,
+    };
+  }
+
+  /**
+   * Le délai de grâce d'un impayé est-il écoulé ?
+   *
+   * `null` — aucun horodatage — vaut « non ». C'est le repli permissif : on ne
+   * sait pas depuis quand l'impayé dure, et couper l'accès sur une inconnue est
+   * le seul des deux défauts qui se voie chez un client. Après la migration
+   * 1711468800077 et le `COALESCE` ci-dessus, une ligne `past_due` sans
+   * horodatage ne peut plus exister ; le repli couvre la période de bascule.
+   *
+   * Comparaison en `>=` pour que `STRIPE_PAST_DUE_GRACE_DAYS=0` signifie bien
+   * « déclassement immédiat » et non « jamais ».
+   */
+  private isGraceExpired(
+    pastDueSince: Date | null,
+    at: Date = new Date(),
+  ): boolean {
+    if (!pastDueSince) return false;
+    return at.getTime() - pastDueSince.getTime() >= this.pastDueGraceMs;
+  }
+
+  /**
+   * Date à laquelle l'accès tombera, ou `null` si l'abonnement n'est pas en
+   * impayé. Calculée côté serveur et rendue telle quelle par
+   * `GET /subscriptions/current` : le navigateur n'a pas à connaître
+   * `STRIPE_PAST_DUE_GRACE_DAYS` pour afficher son bandeau, et une deuxième
+   * copie du délai finirait par diverger de celle qui est appliquée.
+   */
+  gracePeriodEndsAt(subscription: Subscription): Date | null {
+    if (subscription.status !== SubscriptionStatus.PAST_DUE) return null;
+    if (!subscription.past_due_since) return null;
+    return new Date(
+      subscription.past_due_since.getTime() + this.pastDueGraceMs,
+    );
+  }
+
+  /**
+   * Déclasse les abonnés dont le délai de grâce est écoulé.
+   *
+   * Un balayage est indispensable : à l'instant où l'échéance tombe, il
+   * n'arrive rien de Stripe: aucun événement ne vient déclencher le
+   * déclassement. Sans lui, l'accès resterait ouvert jusqu'à la résiliation
+   * — c'est-à-dire exactement le défaut corrigé ici.
+   *
+   * **Horaire**, et non quotidien comme les autres balayages du dépôt, parce
+   * que le bandeau annonce l'échéance à la minute près. À 8 h fixes, un abonné
+   * dont le délai expire à 9 h lirait « accès suspendu » pendant vingt-trois
+   * heures alors que toutes ses capacités fonctionnent encore. La requête est
+   * servie par un index partiel et ne rend qu'une poignée de lignes.
+   *
+   * Ce balayage **n'écrit jamais `subscriptions.status`** : il ne touche qu'au
+   * palier. C'est ce qui rend la reprise gratuite — un `invoice.paid` remet la
+   * ligne en `active`, efface `past_due_since` et resynchronise le palier par
+   * le chemin normal, sans qu'aucun code de « ré-activation » soit nécessaire.
+   * Écrire le statut ici obligerait en plus à toucher au filigrane
+   * `last_stripe_event_at`, donc à mentir sur ce que Stripe a émis.
+   */
+  @Cron(CronExpression.EVERY_HOUR)
+  async sweepExpiredGracePeriods(): Promise<void> {
+    const expiredBefore = new Date(Date.now() - this.pastDueGraceMs);
+
+    const expired = await this.subscriptionsRepo.find({
+      where: {
+        status: SubscriptionStatus.PAST_DUE,
+        past_due_since: LessThanOrEqual(expiredBefore),
+      },
+    });
+
+    for (const subscription of expired) {
+      try {
+        const downgraded = await this.usersService.downgradeToFreeIfNeeded(
+          subscription.user_id,
+        );
+        // Le balayage repasse toutes les heures sur les mêmes lignes tant que
+        // l'impayé dure : sans ce test, le funnel verrait une expiration par
+        // heure et par abonné. `downgradeToFreeIfNeeded` tranche en base.
+        if (!downgraded) continue;
+
+        this.logger.warn(
+          `Délai de grâce écoulé pour l'abonnement ${subscription.id} ` +
+            `(impayé depuis le ${subscription.past_due_since?.toISOString()}) — ` +
+            `palier ramené à gratuit.`,
+        );
+        this.analyticsService.track(
+          AnalyticsEventName.SUBSCRIPTION_GRACE_EXPIRED,
+          subscription.user_id,
+          { plan: this.resolvePlanName(subscription.stripe_price_id) },
+        );
+      } catch (error) {
+        // Un abonné qui échoue ne doit pas empêcher les suivants d'être
+        // traités : même parti pris que les autres balayages du dépôt.
+        this.logger.error(
+          `Échec du déclassement de l'abonnement ${subscription.id}: ` +
+            `${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
   }
 
   private extractPriceId(stripeSub: Stripe.Subscription): string | null {
@@ -498,6 +673,12 @@ export class SubscriptionsService {
     const period = this.extractPeriodFromSubscription(stripeSub);
     const priceId = this.extractPriceId(stripeSub);
 
+    // Comparé au littéral et non à l'enum : `stripeSub.status` est l'union de
+    // chaînes du SDK Stripe, que TypeScript refuse de rapprocher de notre
+    // `SubscriptionStatus` — les deux vocabulaires coïncident par convention,
+    // pas par typage.
+    const enteredPastDue = stripeSub.status === 'past_due' ? occurredAt : null;
+
     await this.subscriptionsRepo.upsert(
       {
         user_id: userId,
@@ -512,11 +693,21 @@ export class SubscriptionsService {
           : null,
         cancel_at_period_end: stripeSub.cancel_at_period_end,
         last_stripe_event_at: occurredAt,
+        // Toujours présente, y compris à `null`. TypeORM ne met dans le
+        // `DO UPDATE SET` de l'`upsert` que les colonnes présentes dans ce
+        // littéral : l'omettre laisserait un ancien horodatage d'impayé sous
+        // un statut redevenu actif.
+        past_due_since: enteredPastDue,
       },
       ['user_id'],
     );
 
-    await this.syncSubscriptionTier(userId, stripeSub.status, priceId);
+    await this.syncSubscriptionTier(
+      userId,
+      stripeSub.status,
+      priceId,
+      enteredPastDue,
+    );
 
     const planName = this.resolvePlanName(priceId);
     this.analyticsService.track(
@@ -555,12 +746,19 @@ export class SubscriptionsService {
     // payée *dit* que l'abonnement l'était au moment de son émission. C'est
     // précisément pourquoi l'écriture passe par la garde — une facture payée
     // livrée après une résiliation ne doit pas ressusciter l'abonnement.
-    const applied = await this.applyEventState(subscription.id, occurredAt, {
-      status: SubscriptionStatus.ACTIVE,
-      current_period_start: period.start,
-      current_period_end: period.end,
-      stripe_price_id: priceId,
-    });
+    // Le statut `active` efface au passage `past_due_since` : un paiement qui
+    // aboutit clôt l'épisode d'impayé, y compris quand le délai de grâce était
+    // déjà écoulé — le palier payant est alors rendu par le même appel.
+    const { applied } = await this.applyEventState(
+      subscription.id,
+      occurredAt,
+      {
+        status: SubscriptionStatus.ACTIVE,
+        current_period_start: period.start,
+        current_period_end: period.end,
+        stripe_price_id: priceId,
+      },
+    );
 
     if (applied) {
       await this.syncSubscriptionTier(subscription.user_id, 'active', priceId);
@@ -593,9 +791,11 @@ export class SubscriptionsService {
     });
     if (!subscription) return;
 
-    const applied = await this.applyEventState(subscription.id, occurredAt, {
-      status: SubscriptionStatus.PAST_DUE,
-    });
+    const { applied } = await this.applyEventState(
+      subscription.id,
+      occurredAt,
+      { status: SubscriptionStatus.PAST_DUE },
+    );
     // Pas d'écriture, pas d'événement analytique : un `payment_failed` périmé
     // compté dans le funnel ferait voir un incident de paiement là où l'état
     // réel a déjà tourné.
@@ -626,22 +826,27 @@ export class SubscriptionsService {
     // Le chemin par lequel un palier périmé revenait : cet événement porte un
     // instantané complet de l'abonnement, y compris son prix. Livré en retard,
     // il réécrivait le tout — prix compris — puis re-synchronisait le palier.
-    const applied = await this.applyEventState(subscription.id, occurredAt, {
-      status: stripeSub.status as SubscriptionStatus,
-      cancel_at_period_end: stripeSub.cancel_at_period_end,
-      current_period_start: period.start,
-      current_period_end: period.end,
-      stripe_price_id: priceId,
-      trial_end: stripeSub.trial_end
-        ? new Date(stripeSub.trial_end * 1000)
-        : null,
-    });
+    const { applied, pastDueSince } = await this.applyEventState(
+      subscription.id,
+      occurredAt,
+      {
+        status: stripeSub.status as SubscriptionStatus,
+        cancel_at_period_end: stripeSub.cancel_at_period_end,
+        current_period_start: period.start,
+        current_period_end: period.end,
+        stripe_price_id: priceId,
+        trial_end: stripeSub.trial_end
+          ? new Date(stripeSub.trial_end * 1000)
+          : null,
+      },
+    );
     if (!applied) return;
 
     await this.syncSubscriptionTier(
       subscription.user_id,
       stripeSub.status,
       priceId,
+      pastDueSince,
     );
   }
 
@@ -654,9 +859,11 @@ export class SubscriptionsService {
     });
     if (!subscription) return;
 
-    const applied = await this.applyEventState(subscription.id, occurredAt, {
-      status: SubscriptionStatus.CANCELED,
-    });
+    const { applied } = await this.applyEventState(
+      subscription.id,
+      occurredAt,
+      { status: SubscriptionStatus.CANCELED },
+    );
     if (!applied) return;
 
     await this.syncSubscriptionTier(subscription.user_id, 'canceled');
@@ -671,13 +878,35 @@ export class SubscriptionsService {
     );
   }
 
+  /**
+   * Traduit un statut Stripe en palier effectif.
+   *
+   * `past_due` est compté comme actif **le temps du délai de grâce seulement**.
+   * Il y figure parce qu'un échec de paiement n'est pas un défaut de paiement :
+   * dans l'immense majorité des cas c'est une carte expirée, que le client
+   * remplace en quelques jours sans jamais s'apercevoir qu'il a failli perdre
+   * l'accès. Couper immédiatement ferait payer à un abonné de bonne foi le
+   * calendrier d'expiration de sa banque. Il en sort au-delà du délai, faute de
+   * quoi les relances de Stripe — trois semaines — vaudraient abonnement
+   * gratuit à chaque incident.
+   *
+   * Cette borne fait doublon avec `sweepExpiredGracePeriods`, et ce doublon est
+   * nécessaire : le balayage déclasse, mais les événements de relance
+   * continuent d'arriver ensuite avec `status = past_due`. Sans la borne ici,
+   * chacun re-rendrait le palier payant jusqu'au balayage suivant — un
+   * oscillateur, pas un correctif.
+   */
   private async syncSubscriptionTier(
     userId: string,
     stripeStatus: string,
     stripePriceId?: string | null,
+    pastDueSince: Date | null = null,
   ): Promise<void> {
     const activeStatuses = ['trialing', 'active', 'past_due'];
-    if (!activeStatuses.includes(stripeStatus)) {
+    const graceExhausted =
+      stripeStatus === 'past_due' && this.isGraceExpired(pastDueSince);
+
+    if (!activeStatuses.includes(stripeStatus) || graceExhausted) {
       await this.usersService.updateSubscriptionTier(
         userId,
         SubscriptionTier.FREE,
