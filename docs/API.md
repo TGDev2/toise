@@ -125,16 +125,24 @@ Envoyer un email de réinitialisation de mot de passe.
 
 Fusionner un compte invité (anonymous) avec le compte authentifié courant.
 
-**Auth :** Requise
+**Auth :** Requise — et **deux** jetons : celui du compte cible dans
+`Authorization`, celui du compte invité dans le corps.
+
+Le corps porte le **jeton d'identité** de l'invité, pas son UID : un UID est
+public, et le fournir suffisait à absorber les projets d'un invité tiers puis à
+supprimer son compte. Le serveur vérifie le jeton et en dérive l'UID.
 
 **Body :**
 ```json
 {
-  "anonymous_firebase_uid": "firebase-uid-of-guest"
+  "anonymous_id_token": "eyJhbGciOiJSUzI1NiIs..."
 }
 ```
 
-**Réponses :** `201 Created`
+**Réponses :** `201 Created` · `400 Bad Request` (champ absent ou inconnu —
+dont l'ancien `anonymous_firebase_uid`) · `401 Unauthorized` (jeton invité
+invalide ou expiré) · `409 Conflict` (jeton non anonyme, compte cible anonyme,
+ou fusion d'un compte dans lui-même)
 
 ---
 

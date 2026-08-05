@@ -4,6 +4,7 @@ import {
   ConflictException,
   NotFoundException,
   Logger,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { DecodedIdToken } from 'firebase-admin/auth';
 import { FirebaseConfig } from '../config/firebase.config';
@@ -12,6 +13,7 @@ import { CompanyProfilesService } from '../company-profiles/company-profiles.ser
 import { OrgContextService } from '../organizations/org-context.service';
 import { AuthProvider, User } from '../users/entities/user.entity';
 import { RegisterDto } from './dto/register.dto';
+import { isGuestToken } from './guest-token';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
@@ -210,10 +212,47 @@ export class AuthService {
     this.logger.log(`Account deleted for user ${user.id}`);
   }
 
+  /**
+   * Absorption d'une session invité dans le compte authentifié appelant.
+   *
+   * **L'UID de l'invité vient de son jeton, jamais du corps de la requête**
+   * (E6-3). L'implémentation précédente prenait un `anonymous_firebase_uid`
+   * fourni par le client et ne vérifiait que le *type* des deux comptes : un
+   * UID étant un identifiant public, n'importe quel compte authentifié qui
+   * connaissait celui d'un invité tiers récupérait ses projets, effaçait ses
+   * fichiers et **supprimait son compte** — rien de tout cela n'étant
+   * réversible. Exiger le jeton restaure la propriété manquante : il ne
+   * s'obtient qu'en ayant réellement ouvert cette session invité.
+   *
+   * La requête porte donc deux jetons — celui du compte cible dans
+   * `Authorization` (vérifié par `FirebaseAuthGuard`), celui de l'invité dans
+   * le corps, vérifié ici. Aucun des deux ne prouve quoi que ce soit sur
+   * l'autre : c'est leur présence conjointe qui autorise la fusion.
+   *
+   * Le prédicat `isGuestToken` est réutilisé plutôt que réécrit — il porte
+   * déjà la règle exacte (`sign_in_provider === 'anonymous'` *et* pas
+   * d'e-mail, donc pas un jeton périmé d'après-lien) et la raison pour
+   * laquelle le claim fait autorité sur `users.auth_provider`.
+   */
   async mergeGuestAccount(
     targetFirebaseUid: string,
-    anonymousFirebaseUid: string,
+    anonymousIdToken: string,
   ): Promise<User> {
+    let anonymousToken: DecodedIdToken;
+    try {
+      anonymousToken = await this.firebase
+        .getAuth()
+        .verifyIdToken(anonymousIdToken);
+    } catch {
+      throw new UnauthorizedException('Invalid or expired guest token');
+    }
+
+    if (!isGuestToken(anonymousToken)) {
+      throw new ConflictException('Only anonymous accounts can be merged');
+    }
+
+    const anonymousFirebaseUid = anonymousToken.uid;
+
     const targetUser =
       await this.usersService.findByFirebaseUid(targetFirebaseUid);
     const anonymousUser =

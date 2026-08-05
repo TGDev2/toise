@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { AuthService } from './auth.service';
 import { FirebaseConfig } from '../config/firebase.config';
@@ -566,6 +570,16 @@ describe('AuthService', () => {
     });
   });
 
+  /**
+   * La fusion de compte invité, et la preuve de possession qui lui manquait.
+   *
+   * L'argument n'est plus un UID mais le **jeton** du compte invité (E6-3) : un
+   * UID est public, donc le fournir revenait à désigner l'invité de son choix,
+   * dont les projets partaient vers l'appelant et dont le compte était ensuite
+   * supprimé. Ces tests vérifient donc deux choses distinctes — que le refus a
+   * bien lieu, et surtout qu'**aucun effet de bord destructeur** ne le précède :
+   * un 401 rendu après la suppression ne vaudrait rien.
+   */
   describe('mergeGuestAccount', () => {
     const anonymousUser: User = {
       ...mockUser,
@@ -574,6 +588,84 @@ describe('AuthService', () => {
       auth_provider: AuthProvider.ANONYMOUS,
       email: null,
     };
+
+    /** Le jeton que l'API rendra pour `GUEST_ID_TOKEN` : un vrai invité. */
+    const anonymousToken = createDecodedToken({
+      uid: 'anon-firebase-uid',
+      firebase: { sign_in_provider: 'anonymous' },
+    });
+
+    const GUEST_ID_TOKEN = 'guest-id-token';
+
+    /** Rien n'a été transféré, effacé ni supprimé. */
+    const expectNothingDestroyed = () => {
+      expect(usersService.transferProjects).not.toHaveBeenCalled();
+      expect(usersService.deleteAccountData).not.toHaveBeenCalled();
+      expect(dataRetentionMock.eraseOrganizationFiles).not.toHaveBeenCalled();
+      expect(storageMock.deletePrefix).not.toHaveBeenCalled();
+      expect(mockFirebaseAuth.deleteUser).not.toHaveBeenCalled();
+    };
+
+    beforeEach(() => {
+      // `clearAllMocks` vide les appels, pas la file des `…Once`. Les tests de
+      // refus en empilent qui ne sont jamais consommés — c'est le propre d'un
+      // refus précoce — et elles décaleraient les tests suivants d'un cran.
+      usersService.findByFirebaseUid.mockReset();
+      mockFirebaseAuth.verifyIdToken.mockResolvedValue(anonymousToken);
+    });
+
+    /**
+     * **Le scénario d'attaque lui-même.** L'appelant est un compte inscrit
+     * légitime ; il désigne la session invité d'un tiers, qui existe bel et
+     * bien en base et passe donc toutes les gardes de *type* — c'est
+     * exactement la situation où l'ancienne implémentation transférait les
+     * projets de la victime puis supprimait son compte. Ne lui manque que le
+     * jeton : un UID est public, un jeton ne s'obtient qu'en ayant ouvert la
+     * session.
+     */
+    it('refuses a guest account the caller does not control', async () => {
+      // La victime existe : rien d'autre que le jeton ne s'oppose à la fusion.
+      usersService.findByFirebaseUid
+        .mockResolvedValueOnce(mockUser)
+        .mockResolvedValueOnce(anonymousUser);
+      mockFirebaseAuth.verifyIdToken.mockRejectedValue(
+        new Error('Firebase ID token has invalid signature'),
+      );
+
+      await expect(
+        service.mergeGuestAccount('firebase-uid-123', 'anon-firebase-uid'),
+      ).rejects.toThrow(UnauthorizedException);
+
+      // Le refus précède toute lecture : la cible n'est même pas cherchée.
+      expect(usersService.findByFirebaseUid).not.toHaveBeenCalled();
+      expectNothingDestroyed();
+    });
+
+    /**
+     * Variante de la même attaque, jeton valide cette fois : celui du compte
+     * inscrit de l'appelant. La ligne en base est truquée en `ANONYMOUS` pour
+     * neutraliser la garde de type — le claim reste alors la seule barrière, et
+     * c'est bien elle qu'on teste.
+     */
+    it('refuses a valid token that is not a guest token', async () => {
+      usersService.findByFirebaseUid
+        .mockResolvedValueOnce(mockUser)
+        .mockResolvedValueOnce(anonymousUser);
+      mockFirebaseAuth.verifyIdToken.mockResolvedValue(
+        createDecodedToken({
+          uid: 'anon-firebase-uid',
+          email: 'victime@example.com',
+          firebase: { sign_in_provider: 'password' },
+        }),
+      );
+
+      await expect(
+        service.mergeGuestAccount('firebase-uid-123', 'registered-id-token'),
+      ).rejects.toThrow(ConflictException);
+
+      expect(usersService.findByFirebaseUid).not.toHaveBeenCalled();
+      expectNothingDestroyed();
+    });
 
     it('should transfer projects and delete anonymous user', async () => {
       usersService.findByFirebaseUid
@@ -588,10 +680,21 @@ describe('AuthService', () => {
 
       const result = await service.mergeGuestAccount(
         'firebase-uid-123',
-        'anon-firebase-uid',
+        GUEST_ID_TOKEN,
       );
 
       expect(result).toEqual(mockUser);
+      // L'UID de l'invité sort du jeton vérifié, jamais d'un champ du corps.
+      expect(mockFirebaseAuth.verifyIdToken).toHaveBeenCalledWith(
+        GUEST_ID_TOKEN,
+      );
+      expect(usersService.findByFirebaseUid).toHaveBeenNthCalledWith(
+        2,
+        'anon-firebase-uid',
+      );
+      expect(mockFirebaseAuth.deleteUser).toHaveBeenCalledWith(
+        'anon-firebase-uid',
+      );
       // La propriété est portée par l'organisation (PLAT-4) : le transfert
       // repointe aussi l'org, sans quoi le projet fusionné resterait invisible.
       expect(usersService.transferProjects).toHaveBeenCalledWith(
@@ -624,7 +727,7 @@ describe('AuthService', () => {
         .mockResolvedValueOnce(anonymousUser);
 
       await expect(
-        service.mergeGuestAccount('unknown-uid', 'anon-firebase-uid'),
+        service.mergeGuestAccount('unknown-uid', GUEST_ID_TOKEN),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -634,17 +737,22 @@ describe('AuthService', () => {
         .mockResolvedValueOnce(anonymousUser);
 
       await expect(
-        service.mergeGuestAccount('anon-firebase-uid', 'anon-firebase-uid'),
+        service.mergeGuestAccount('anon-firebase-uid', GUEST_ID_TOKEN),
       ).rejects.toThrow(ConflictException);
     });
 
+    /**
+     * Le claim dit « anonyme », la ligne en base dit autre chose. La garde en
+     * base n'est plus la seule barrière depuis E6-3, mais elle reste la seconde
+     * lecture d'une même question, et c'est cette divergence qu'elle couvre.
+     */
     it('should reject merges when the source account is not anonymous', async () => {
       usersService.findByFirebaseUid
         .mockResolvedValueOnce(mockUser)
         .mockResolvedValueOnce(mockUser);
 
       await expect(
-        service.mergeGuestAccount('firebase-uid-123', 'firebase-uid-456'),
+        service.mergeGuestAccount('firebase-uid-123', GUEST_ID_TOKEN),
       ).rejects.toThrow(ConflictException);
     });
   });

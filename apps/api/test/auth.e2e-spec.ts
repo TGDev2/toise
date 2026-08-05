@@ -211,7 +211,7 @@ describe('AuthController (e2e)', () => {
     await request(app.getHttpServer())
       .post('/auth/merge-guest')
       .send({
-        anonymous_firebase_uid: 'anon-firebase-uid',
+        anonymous_id_token: 'guest-id-token',
       })
       .expect(201)
       .expect({
@@ -223,7 +223,31 @@ describe('AuthController (e2e)', () => {
 
     expect(authServiceMock.mergeGuestAccount).toHaveBeenCalledWith(
       mockUser.firebase_uid,
-      'anon-firebase-uid',
+      'guest-id-token',
     );
+  });
+
+  /**
+   * L'ancien format est exactement la forme de l'attaque : un UID choisi par
+   * l'appelant. `forbidNonWhitelisted` le rejette au lieu de l'ignorer — un
+   * client resté sur l'ancien contrat échoue bruyamment plutôt que d'appeler
+   * le service avec un jeton vide.
+   */
+  it('rejects the former uid-based body without reaching the service', async () => {
+    await request(app.getHttpServer())
+      .post('/auth/merge-guest')
+      .send({ anonymous_firebase_uid: 'someone-elses-uid' })
+      .expect(400);
+
+    expect(authServiceMock.mergeGuestAccount).not.toHaveBeenCalled();
+  });
+
+  it('rejects an empty guest token', async () => {
+    await request(app.getHttpServer())
+      .post('/auth/merge-guest')
+      .send({ anonymous_id_token: '' })
+      .expect(400);
+
+    expect(authServiceMock.mergeGuestAccount).not.toHaveBeenCalled();
   });
 });

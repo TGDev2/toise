@@ -102,7 +102,7 @@ export class AuthController {
   ) {
     const user = await this.authService.mergeGuestAccount(
       firebaseUser.uid,
-      dto.anonymous_firebase_uid,
+      dto.anonymous_id_token,
     );
     return {
       id: user.id,

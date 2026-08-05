@@ -165,6 +165,27 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+/**
+ * « L'identifiant saisi appartient déjà à un compte » — le signal qui fait
+ * basculer une conversion invité vers le repli par fusion.
+ *
+ * **Firebase émet deux codes pour cette même situation**, et n'en retenir qu'un
+ * suffisait à condamner tout un chemin. `linkWithCredential` avec une
+ * `EmailAuthProvider.credential` répond `auth/email-already-in-use` lorsque
+ * l'e-mail est déjà pris ; `auth/credential-already-in-use` est le code des
+ * fournisseurs OAuth, quand c'est l'identité tierce elle-même qui est déjà
+ * rattachée. Le code ne testait que le second : l'invité qui s'inscrivait avec
+ * un e-mail déjà connu ne déclenchait aucun repli et recevait l'erreur Firebase
+ * brute (« Firebase: Error (auth/email-already-in-use) ») au lieu de récupérer
+ * ses projets. Constaté en navigateur pendant la vérification d'E6-3.
+ */
+function isIdentifierAlreadyTaken(error: unknown): boolean {
+  return (
+    errorHasCode(error, 'auth/credential-already-in-use') ||
+    errorHasCode(error, 'auth/email-already-in-use')
+  );
+}
+
 const googleProvider = new GoogleAuthProvider();
 const appleProvider = new OAuthProvider('apple.com');
 const EMAIL_VERIFICATION_REQUIRED_MESSAGE =
@@ -371,6 +392,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  /**
+   * Repli de conversion : l'identifiant saisi appartient déjà à un compte, donc
+   * `linkWithCredential`/`linkWithPopup` est impossible (voir
+   * `isIdentifierAlreadyTaken`). On se reconnecte sur ce compte, puis on
+   * demande à l'API d'y absorber la session invité.
+   *
+   * **Le jeton de l'invité est émis avant la reconnexion, et l'ordre est le
+   * correctif E6-3.** C'est ce jeton qui prouve à l'API que l'appelant
+   * contrôlait bien cette session — auparavant on n'envoyait que l'UID, un
+   * identifiant public qui permettait de désigner l'invité de n'importe qui.
+   * `signInWith*` remplace `currentUser` : après lui, ce jeton n'est plus
+   * émettable, d'où la capture en premier geste.
+   *
+   * Un seul exemplaire de ce bloc, appelé par les trois voies de conversion :
+   * trois copies dérivent, et celle qui dérive est celle qui perd la preuve.
+   */
+  const absorbGuestInto = useCallback(
+    async (guest: FirebaseUser, reauthenticate: () => Promise<unknown>) => {
+      const anonymousIdToken = await guest.getIdToken();
+      await reauthenticate();
+      await apiPost('/auth/merge-guest', {
+        anonymous_id_token: anonymousIdToken,
+      });
+      await syncWithBackend();
+      await migrateLocalProjects();
+    },
+    [syncWithBackend, migrateLocalProjects],
+  );
+
   const convertGuestAccount = useCallback(
     async (email: string, password: string) => {
       const currentUser = getFirebaseAuth().currentUser;
@@ -383,20 +433,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await syncWithBackend();
         await migrateLocalProjects();
       } catch (error: unknown) {
-        if (errorHasCode(error, 'auth/credential-already-in-use')) {
-          const anonymousUid = currentUser.uid;
-          await signInWithEmailAndPassword(getFirebaseAuth(), email, password);
-          await apiPost('/auth/merge-guest', {
-            anonymous_firebase_uid: anonymousUid,
-          });
-          await syncWithBackend();
-          await migrateLocalProjects();
+        if (isIdentifierAlreadyTaken(error)) {
+          await absorbGuestInto(currentUser, () =>
+            signInWithEmailAndPassword(getFirebaseAuth(), email, password),
+          );
         } else {
           throw error;
         }
       }
     },
-    [syncWithBackend, migrateLocalProjects],
+    [syncWithBackend, migrateLocalProjects, absorbGuestInto],
   );
 
   const convertGuestWithGoogle = useCallback(async () => {
@@ -408,19 +454,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await syncWithBackend();
       await migrateLocalProjects();
     } catch (error: unknown) {
-      if (errorHasCode(error, 'auth/credential-already-in-use')) {
-        const anonymousUid = currentUser.uid;
-        await signInWithPopup(getFirebaseAuth(), googleProvider);
-        await apiPost('/auth/merge-guest', {
-          anonymous_firebase_uid: anonymousUid,
-        });
-        await syncWithBackend();
-        await migrateLocalProjects();
+      if (isIdentifierAlreadyTaken(error)) {
+        await absorbGuestInto(currentUser, () =>
+          signInWithPopup(getFirebaseAuth(), googleProvider),
+        );
       } else {
         throw error;
       }
     }
-  }, [syncWithBackend, migrateLocalProjects]);
+  }, [syncWithBackend, migrateLocalProjects, absorbGuestInto]);
 
   const convertGuestWithApple = useCallback(async () => {
     const currentUser = getFirebaseAuth().currentUser;
@@ -431,19 +473,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await syncWithBackend();
       await migrateLocalProjects();
     } catch (error: unknown) {
-      if (errorHasCode(error, 'auth/credential-already-in-use')) {
-        const anonymousUid = currentUser.uid;
-        await signInWithPopup(getFirebaseAuth(), appleProvider);
-        await apiPost('/auth/merge-guest', {
-          anonymous_firebase_uid: anonymousUid,
-        });
-        await syncWithBackend();
-        await migrateLocalProjects();
+      if (isIdentifierAlreadyTaken(error)) {
+        await absorbGuestInto(currentUser, () =>
+          signInWithPopup(getFirebaseAuth(), appleProvider),
+        );
       } else {
         throw error;
       }
     }
-  }, [syncWithBackend, migrateLocalProjects]);
+  }, [syncWithBackend, migrateLocalProjects, absorbGuestInto]);
 
   const logout = useCallback(async () => {
     await Promise.all([signOut(getFirebaseAuth()), clearOfflineCaches()]);
