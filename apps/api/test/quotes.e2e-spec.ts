@@ -307,4 +307,49 @@ describe('QuotesController (e2e)', () => {
       );
     });
   });
+
+  /**
+   * E5-2 : la gate `export_devis` porte sur la **production** d'un devis, pas
+   * sur sa consultation.
+   *
+   * Un abonné dont le palier retombe sur gratuit — impayé au-delà du délai de
+   * grâce, ou résiliation — ne doit jamais perdre l'accès aux devis qu'il a
+   * déjà émis : ce sont des documents commerciaux engageants, et le bandeau de
+   * relance lui promet explicitement qu'ils restent consultables.
+   */
+  describe('feature gate export_devis', () => {
+    beforeEach(() => {
+      featureGatesServiceMock.isFeatureAllowed.mockResolvedValue(false);
+      companyProfilesServiceMock.findByOrganizationId.mockResolvedValue({
+        id: 'company-1',
+      });
+      quotePdfServiceMock.generatePdf.mockResolvedValue(
+        Buffer.from('%PDF-1.3 fake'),
+      );
+    });
+
+    it.each([
+      ['la liste', `/quotes`],
+      ['le détail', `/quotes/${mockQuoteId}`],
+      ['l’export PDF', `/quotes/${mockQuoteId}/export/pdf`],
+    ])('laisse passer %s malgré une gate qui refuse', async (_label, path) => {
+      await request(app.getHttpServer()).get(path).expect(200);
+    });
+
+    it.each([
+      ['la création', 'post' as const, '/quotes'],
+      ['la modification', 'patch' as const, `/quotes/${mockQuoteId}`],
+    ])('refuse %s', async (_label, method, path) => {
+      // Le témoin de l'assertion précédente : la gate n'a pas disparu, elle a
+      // changé de périmètre. Sans lui, un contrôleur entièrement dégaté
+      // passerait les trois tests ci-dessus.
+      await request(app.getHttpServer())
+        [method](path)
+        .send({})
+        .expect(403)
+        .expect((res: request.Response) => {
+          expect((res.body as { error: string }).error).toBe('FEATURE_GATED');
+        });
+    });
+  });
 });

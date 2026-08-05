@@ -403,7 +403,8 @@ describe('InvoicesController (e2e)', () => {
       featureGatesServiceMock.isFeatureAllowed.mockResolvedValue(false);
 
       await request(app.getHttpServer())
-        .get('/invoices')
+        .post('/invoices')
+        .send({ quote_id: mockQuoteId })
         .expect(403)
         .expect((res: request.Response) => {
           const body = res.body as {
@@ -416,7 +417,33 @@ describe('InvoicesController (e2e)', () => {
           expect(body.required_tier).toBe('contractor_essentiel');
         });
 
-      expect(invoicesServiceMock.findAllForOrg).not.toHaveBeenCalled();
+      expect(invoicesServiceMock.createFromQuote).not.toHaveBeenCalled();
+    });
+
+    // E5-2 : la gate porte sur l'émission d'une facture, pas sur la
+    // consultation de celles qui existent. Un abonné déclassé — impayé non
+    // régularisé, résiliation — garderait sinon une comptabilité qu'il ne peut
+    // plus ni relire ni justifier, et le bandeau de relance qui lui promet le
+    // contraire deviendrait un mensonge.
+    it.each([
+      ['la liste', `/invoices`],
+      ['le détail', `/invoices/${mockInvoiceId}`],
+      ['l’export PDF', `/invoices/${mockInvoiceId}/export/pdf`],
+    ])('laisse passer %s malgré une gate qui refuse', async (_label, path) => {
+      featureGatesServiceMock.isFeatureAllowed.mockResolvedValue(false);
+
+      await request(app.getHttpServer()).get(path).expect(200);
+    });
+
+    it('laisse marquer une facture payée malgré une gate qui refuse', async () => {
+      featureGatesServiceMock.isFeatureAllowed.mockResolvedValue(false);
+
+      // La gater laisserait une facture encaissée marquée « impayée » pour
+      // toujours : le même préjudice sous un autre nom.
+      await request(app.getHttpServer())
+        .patch(`/invoices/${mockInvoiceId}/status`)
+        .send({ status: InvoiceStatus.PAID })
+        .expect(200);
     });
 
     it('gates the conversion route too', async () => {

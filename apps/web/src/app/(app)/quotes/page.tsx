@@ -49,10 +49,20 @@ export default function QuotesListPage() {
       router.push('/login');
       return;
     }
+  }, [appUser, isLoading, router]);
+
+  // Le paywall ne s'ouvre plus au montage, mais seulement sur une liste vide
+  // (E5-2). Un abonné déclassé — impayé, résiliation — garde l'accès en lecture
+  // à ses devis déjà émis ; lui plaquer une modale commerciale par-dessus sa
+  // propre liste, à chaque visite, transformerait une relance en obstruction.
+  // Un utilisateur jamais abonné a toujours zéro devis : l'accroche vers
+  // l'offre reste intacte pour lui, qui est le seul qu'elle vise.
+  useEffect(() => {
+    if (loading || !appUser || quotes.length > 0) return;
     if (!isFeatureAllowed('export_devis')) {
       showPaywall('export_devis');
     }
-  }, [appUser, isLoading, isFeatureAllowed, showPaywall, router]);
+  }, [loading, appUser, quotes.length, isFeatureAllowed, showPaywall]);
 
   const fetchQuotes = useCallback(async () => {
     setLoading(true);

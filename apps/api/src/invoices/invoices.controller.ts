@@ -27,6 +27,13 @@ import { InvoiceStatus } from './entities/invoice.entity';
 /**
  * Une facture émise est immuable : ni `PATCH` de contenu ni `DELETE` ne sont
  * exposés. Seul l'état de règlement évolue, via `PATCH /:id/status`.
+ *
+ * La gate `invoicing` porte sur l'**émission** d'une facture. Consultation,
+ * export PDF et mise à jour du règlement restent ouverts (E5-2) : un abonné
+ * déclassé ne doit jamais perdre l'accès à sa facturation déjà émise. Le
+ * `PATCH /:id/status` est délibérément dans le lot — le gater laisserait une
+ * facture encaissée marquée « impayée » pour toujours, donc une comptabilité
+ * fausse, ce qui est le même préjudice sous un autre nom.
  */
 @Controller('invoices')
 @UseGuards(FirebaseAuthGuard, FeatureGateGuard)
@@ -56,7 +63,6 @@ export class InvoicesController {
   }
 
   @Get()
-  @RequireFeature('invoicing')
   async findAll(
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Query('status') status?: InvoiceStatus,
@@ -70,7 +76,6 @@ export class InvoicesController {
   }
 
   @Get(':id')
-  @RequireFeature('invoicing')
   async findOne(
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) id: string,
@@ -80,7 +85,6 @@ export class InvoicesController {
   }
 
   @Get(':id/export/pdf')
-  @RequireFeature('invoicing')
   async exportPdf(
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) id: string,
@@ -106,7 +110,6 @@ export class InvoicesController {
   }
 
   @Patch(':id/status')
-  @RequireFeature('invoicing')
   async updateStatus(
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) id: string,

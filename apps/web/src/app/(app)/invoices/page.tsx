@@ -44,10 +44,17 @@ export default function InvoicesListPage() {
       router.push('/login');
       return;
     }
+  }, [appUser, isLoading, router]);
+
+  // Même règle que la liste des devis (E5-2) : paywall sur une liste vide
+  // seulement. Une facture émise engage une comptabilité — la masquer derrière
+  // une modale parce qu'un prélèvement a échoué serait une confiscation.
+  useEffect(() => {
+    if (loading || !appUser || invoices.length > 0) return;
     if (!isFeatureAllowed('invoicing')) {
       showPaywall('invoicing');
     }
-  }, [appUser, isLoading, isFeatureAllowed, showPaywall, router]);
+  }, [loading, appUser, invoices.length, isFeatureAllowed, showPaywall]);
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true);

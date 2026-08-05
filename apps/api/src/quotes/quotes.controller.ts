@@ -31,6 +31,19 @@ import { UpdateQuoteDto } from './dto/update-quote.dto';
 import { UpdateQuoteStatusDto } from './dto/update-quote-status.dto';
 import { QuoteStatus } from './entities/quote.entity';
 
+/**
+ * La gate `export_devis` porte sur la **production** d'un devis, pas sur sa
+ * consultation. Lire la liste, ouvrir un devis et le réexporter en PDF restent
+ * donc ouverts (E5-2) : un abonné déclassé — impayé non régularisé, ou
+ * résiliation — ne doit jamais perdre l'accès aux devis qu'il a déjà émis. Ce
+ * sont des documents commerciaux engageants, parfois opposables ; les rendre
+ * inatteignables pour cause de facturation serait une confiscation, et le
+ * bandeau de relance qui promet le contraire deviendrait un mensonge.
+ *
+ * Le périmètre reste scopé par `FirebaseAuthGuard` et `scope.organizationId` :
+ * ouvrir la lecture n'ouvre rien à qui n'a rien produit — un utilisateur jamais
+ * abonné a une liste vide.
+ */
 @Controller('quotes')
 @UseGuards(FirebaseAuthGuard, FeatureGateGuard)
 export class QuotesController {
@@ -74,7 +87,6 @@ export class QuotesController {
   }
 
   @Get()
-  @RequireFeature('export_devis')
   async findAll(
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Query('status') status?: QuoteStatus,
@@ -84,7 +96,6 @@ export class QuotesController {
   }
 
   @Get(':id')
-  @RequireFeature('export_devis')
   async findOne(
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) id: string,
@@ -119,8 +130,9 @@ export class QuotesController {
     );
   }
 
+  // Non gaté : le devis existe déjà, le PDF n'en est qu'une vue. Le refuser
+  // reviendrait à retenir en otage un document dont le client final a besoin.
   @Get(':id/export/pdf')
-  @RequireFeature('export_devis')
   async exportPdf(
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) id: string,
