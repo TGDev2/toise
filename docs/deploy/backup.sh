@@ -2,8 +2,51 @@
 # Sauvegarde chiffrée de Chiffréo (base Postgres + volume uploads) — OPS-3.
 # Destiné à être lancé depuis cron sur le VPS, en root.
 # Voir docs/deploy/BACKUP.md pour la mise en place (clé GPG, config, cron).
+#
+# Deux usages :
+#   (défaut)            sauvegarde complète nocturne (base + uploads).
+#   --pre-deploy <tag>  point de restauration pris juste avant un déploiement,
+#                       par la CD (E6-5). Voir POINT DE RESTAURATION ci-dessous.
 set -euo pipefail
 umask 077
+
+# ─── Point de restauration pré-déploiement ────────────────────────────
+#
+# Un seul drapeau porte les trois différences avec le run nocturne, plutôt que
+# trois drapeaux qu'il faudrait penser à combiner à chaque appel :
+#
+#   1. l'artefact est nommé `…-predeploy-<tag>`, pour que la procédure de retour
+#      arrière puisse le désigner sans ambiguïté (docs/DEPLOY.md) ;
+#   2. **base seule** : une migration ne touche pas le volume `uploads`, et les
+#      fichiers restent alors un sur-ensemble de ce que le dump référence — le
+#      sens bénin décrit au §1 de BACKUP.md. Faire attendre chaque déploiement
+#      derrière une archive de photos coûterait des minutes pour rien ;
+#   3. **aucun ping de supervision** : `BACKUP_MONITOR_URL` surveille le *cron*.
+#      Un ping émis par un déploiement masquerait un run nocturne manquant,
+#      c'est-à-dire précisément ce que ce moniteur existe pour voir. L'échec,
+#      lui, est déjà signalé — bruyamment — par la CD qui rougit.
+PRE_DEPLOY_TAG=""
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --pre-deploy)
+      [ $# -ge 2 ] || { echo "ERREUR: --pre-deploy attend un tag" >&2; exit 1; }
+      # Le tag finit dans un nom de fichier : tout ce qui n'est pas sûr y
+      # devient `_`.
+      PRE_DEPLOY_TAG="$(printf '%s' "$2" | tr -c 'A-Za-z0-9._-' '_')"
+      [ -n "$PRE_DEPLOY_TAG" ] || { echo "ERREUR: --pre-deploy attend un tag non vide" >&2; exit 1; }
+      shift 2
+      ;;
+    -h|--help)
+      echo "Usage: backup.sh [--pre-deploy <tag>]"
+      exit 0
+      ;;
+    *)
+      echo "Option inconnue: $1" >&2
+      exit 1
+      ;;
+  esac
+done
 
 # ─── Configuration ────────────────────────────────────────────────
 BACKUP_ENV_FILE="${BACKUP_ENV_FILE:-/etc/chiffreo/backup.env}"
@@ -64,6 +107,12 @@ TS="$(date -u +%Y%m%dT%H%M%SZ)"
 START_TIME=$(date +%s)
 UPLOADS_TAR="$BACKUP_DIR/.tmp/uploads-${TS}.tar"
 
+# Marque le point de restauration dans le nom du fichier. La rotation
+# (`chiffreo-*.gpg`) continue de le voir, donc il vieillit comme les autres.
+NAME_SUFFIX=""
+[ -z "$PRE_DEPLOY_TAG" ] || NAME_SUFFIX="-predeploy-${PRE_DEPLOY_TAG}"
+DB_BACKUP_NAME="chiffreo-db-${TS}${NAME_SUFFIX}.dump.gpg"
+
 # Repère de la passe de rattrapage (cf. « Instantané cohérent » plus bas). Une
 # seconde de marge : `find -newermt` compare des mtimes à la seconde, et un
 # fichier écrit pendant la seconde du repère serait sinon manqué par les deux
@@ -73,6 +122,8 @@ MARK_EPOCH=$(( START_TIME - 1 ))
 log() { echo "[$(date -u +%H:%M:%S)] $*"; }
 
 ping_monitor() {
+  # Muet en pré-déploiement : voir l'en-tête, point 3.
+  [ -z "$PRE_DEPLOY_TAG" ] || return 0
   [ -n "$BACKUP_MONITOR_URL" ] || return 0
   curl -fsS -m 10 --retry 3 -o /dev/null "${BACKUP_MONITOR_URL}${1:-}" \
     || echo "AVERTISSEMENT: ping de supervision impossible (${BACKUP_MONITOR_URL}${1:-})" >&2
@@ -173,9 +224,9 @@ backup_database() {
   tmp_dump="$(mktemp "$BACKUP_DIR/.tmp/db.XXXXXX")"
   docker exec -e PGPASSWORD="$DB_PASSWORD" "$DB_CONTAINER" \
     pg_dump -U "$DB_USERNAME" -Fc "$DB_NAME" > "$tmp_dump"
-  encrypt_to "$tmp_dump" "chiffreo-db-${TS}.dump.gpg"
+  encrypt_to "$tmp_dump" "$DB_BACKUP_NAME"
   rm -f "$tmp_dump"
-  log "OK: chiffreo-db-${TS}.dump.gpg"
+  log "OK: $DB_BACKUP_NAME"
 }
 
 # ─── Copie hors-site ──────────────────────────────────────────────
@@ -202,6 +253,20 @@ rotate_old_backups() {
 }
 
 main() {
+  if [ -n "$PRE_DEPLOY_TAG" ]; then
+    log "Point de restauration pré-déploiement ($PRE_DEPLOY_TAG) — base seule."
+    backup_database
+    push_offsite
+    # Pas de rotation ici : supprimer est le seul geste irréversible de ce
+    # script, et un déploiement n'a rien à effacer. Le cron nocturne s'en charge.
+    local duration=$(( $(date +%s) - START_TIME ))
+    log "Terminé en ${duration}s."
+    # Dernière ligne, format stable : la CD la capture pour nommer le point de
+    # restauration dans son résumé d'échec (docs/DEPLOY.md, retour arrière).
+    echo "BACKUP_FILE=$BACKUP_DIR/$DB_BACKUP_NAME"
+    return 0
+  fi
+
   snapshot_uploads      # t0 — avant le dump
   backup_database       # t1
   append_uploads_delta  # t2 — après le dump

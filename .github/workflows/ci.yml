@@ -41,6 +41,33 @@ jobs:
       - name: Tests de contrat HTTP (services mockés)
         run: pnpm --filter @chiffreo/api test:e2e
 
+  migrations:
+    name: Migrations (compatibilité ascendante)
+    runs-on: ubuntu-latest
+    # Un retour arrière de production se contente de repasser les images —
+    # à condition que les migrations de la version soient additives. Ce job
+    # refuse qu'une migration destructive parte sans que quiconque ait décidé
+    # d'en faire un point de non-retour. Doctrine : docs/deploy/MIGRATIONS.md.
+    steps:
+      # fetch-depth: 0 : le contrôle porte sur les migrations *ajoutées* par
+      # rapport à main, pas sur les 79 déjà en place.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Migrations ajoutées depuis main
+        run: |
+          set -euo pipefail
+          # Appelé par la CD sur un tag, `origin/main` peut être absent du
+          # checkout : on retombe sur HEAD, le delta est alors vide, et c'est la
+          # CD qui compare ce qui compte pour une release —
+          # <tag précédent>..<tag>.
+          BASE=origin/main
+          git rev-parse --verify --quiet "$BASE" >/dev/null || BASE=HEAD
+          node docs/deploy/check-migration-compat.mjs --base "$BASE"
+
   api-integration:
     name: API (intégration, PostgreSQL réel)
     runs-on: ubuntu-latest
