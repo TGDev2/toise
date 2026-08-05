@@ -84,7 +84,8 @@ services:
     ports:
       - '127.0.0.1:3001:3001'
     healthcheck:
-      test: ['CMD-SHELL', 'wget -qO- http://localhost:3001/api/v1/health || exit 1']
+      # `127.0.0.1` et non `localhost` : voir le healthcheck de `web`.
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3001/api/v1/health || exit 1']
       interval: 15s
       timeout: 5s
       retries: 5
@@ -113,7 +114,18 @@ services:
     ports:
       - '127.0.0.1:3000:3000'
     healthcheck:
-      test: ['CMD-SHELL', 'wget -qO- http://localhost:3000 || exit 1']
+      # `/api/health` (route Next, pas l'API) plutôt que la page d'accueil : le
+      # rendu de l'accueil est coûteux, et surtout « sain » doit vouloir dire
+      # « testable » — c'est l'endpoint exact qu'interroge ensuite le test de
+      # fumée du déploiement (docs/deploy/smoke-test.sh).
+      #
+      # `127.0.0.1` et non `localhost`, sans quoi ce conteneur est **toujours**
+      # en échec : le `/etc/hosts` de Docker fait résoudre `localhost` en `::1`
+      # d'abord, et le serveur Next n'écoute qu'en IPv4 (`HOSTNAME=0.0.0.0`).
+      # BusyBox wget s'arrête au premier refus de connexion. Le défaut existait
+      # avant ce healthcheck-ci et restait invisible : rien ne consommait l'état
+      # de santé de `web` tant que le déploiement ne l'attendait pas.
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3000/api/health || exit 1']
       interval: 15s
       timeout: 5s
       retries: 5

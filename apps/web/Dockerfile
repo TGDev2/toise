@@ -44,6 +44,15 @@ COPY --from=builder --chown=estimate:estimate /repo/apps/web/public ./apps/web/p
 
 USER estimate
 EXPOSE 3000
+
+# Version publiée par `GET /api/health` (route Next, pas l'API). Même raison
+# qu'au Dockerfile de l'API : figée dans l'image, déclarée après les COPY pour
+# qu'un changement de version ne réinvalide qu'une couche. Volontairement hors
+# de l'étage `builder` : la route la lit à l'exécution, la figer dans le bundle
+# `.next` ferait mentir l'image reconstruite à partir du cache.
+ARG APP_VERSION=dev
+ENV APP_VERSION=$APP_VERSION
+
 ENV PORT=3000 HOSTNAME=0.0.0.0
 
 CMD ["node", "apps/web/server.js"]

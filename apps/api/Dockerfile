@@ -25,6 +25,16 @@ COPY --from=builder --chown=estimate:estimate /repo/apps/api/dist ./dist
 RUN mkdir -p /app/uploads && chown estimate:estimate /app/uploads
 USER estimate
 
+# Version publiée par `GET /api/v1/health`, et comparée au tag attendu par le
+# test de fumée de la CD. Elle est figée **dans l'image** : la déduire d'une
+# variable passée au lancement reviendrait à faire attester au conteneur ce que
+# `docker compose` croit avoir déployé, jamais ce qu'il exécute.
+#
+# Déclarée ici, après les COPY, et non en tête : changer de version n'invalide
+# alors que cette couche-ci, et republier un tag ne reconstruit rien.
+ARG APP_VERSION=dev
+ENV APP_VERSION=$APP_VERSION
+
 EXPOSE 3001
 
 # Exécute les migrations puis démarre l'API. Le passage par `dist/scripts/migrate.js`
