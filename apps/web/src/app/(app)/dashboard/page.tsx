@@ -251,30 +251,20 @@ export default function DashboardPage() {
       </div>
 
       {/* Subscription Card */}
-      {appUser && (
+      {/*
+        Masquée pendant un impayé : `PaymentIssueBanner`, monté par le layout de
+        l'espace authentifié, tient déjà ce discours sur toutes les pages et sait
+        distinguer le délai de grâce de son expiration — ce que cette carte ne
+        faisait pas. La laisser afficherait en plus, une fois le palier retombé,
+        un « Passer à Pro » qui mènerait à un checkout que l'API refuse
+        désormais : la sortie d'un impayé passe par le portail, pas par une
+        nouvelle souscription.
+      */}
+      {appUser && subscription?.status !== 'past_due' && (
         <div className="mt-6 rounded-[2rem] border border-stone-200 bg-white/85 px-6 py-4 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
           {(() => {
             const tier = appUser.subscription_tier;
             const status = subscription?.status;
-
-            if (status === 'past_due') {
-              return (
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-red-700">
-                      Problème de paiement
-                    </p>
-                    <p className="mt-1 text-xs text-red-600">
-                      Mettez à jour votre moyen de paiement pour conserver vos
-                      fonctionnalités Pro.
-                    </p>
-                  </div>
-                  <Button variant="danger" onClick={openPortal} className="shrink-0">
-                    Mettre à jour
-                  </Button>
-                </div>
-              );
-            }
 
             if (status === 'trialing') {
               const trialEnd = subscription?.trial_end

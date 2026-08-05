@@ -10,6 +10,13 @@ interface SubscriptionData {
   current_period_end: string | null;
   trial_end: string | null;
   cancel_at_period_end: boolean;
+  /**
+   * Fin du délai de grâce sur impayé, calculée par l'API ; `null` hors
+   * `past_due`. Le délai lui-même (`STRIPE_PAST_DUE_GRACE_DAYS`) reste une
+   * affaire de serveur : en dupliquer la valeur ici donnerait deux réponses à
+   * la même question, dont une seule décide réellement de l'accès.
+   */
+  past_due_grace_ends_at: string | null;
 }
 
 interface SubscriptionResponse {
