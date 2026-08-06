@@ -1,0 +1,73 @@
+name: Drill de restauration
+
+# Une sauvegarde qu'on n'a jamais restaurée n'est pas une sauvegarde, c'est un
+# fichier. Ce job déroule chaque semaine le cycle complet — peupler,
+# sauvegarder, DÉTRUIRE, restaurer, vérifier, démarrer l'application — sur un
+# jeu de données minimal mais complet en nature.
+#
+# Hebdomadaire et non à chaque PR : il construit l'image API et monte une pile
+# Docker, soit plusieurs minutes. Ce qu'il surveille dérive lentement (les
+# scripts d'exploitation, le schéma, l'image de base Postgres), mais dérive
+# quand même — et personne ne s'en apercevrait avant d'en avoir besoin.
+#
+# Il tourne aussi sur toute PR qui touche la chaîne elle-même : c'est
+# exactement là qu'une régression peut entrer.
+on:
+  schedule:
+    # Lundi 4 h 30 UTC — après le cron de sauvegarde du VPS (3 h 15), pour que
+    # l'échec du drill et celui de la sauvegarde ne se confondent jamais.
+    - cron: '30 4 * * 1'
+  pull_request:
+    paths:
+      - 'docs/deploy/backup.sh'
+      - 'docs/deploy/restore.sh'
+      - 'docs/deploy/restore-drill.sh'
+      - 'docs/deploy/restore-drill-seed.sql'
+      - 'apps/api/src/migrations/**'
+      - '.github/workflows/backup-drill.yml'
+  workflow_dispatch:
+
+jobs:
+  drill:
+    name: Cycle sauvegarde → destruction → restauration
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # L'image de production, pas un raccourci : c'est elle qui applique les
+      # migrations pour créer le schéma, puis qui doit démarrer sur la base
+      # restaurée à la fin du drill. Un schéma reconstruit autrement ne
+      # prouverait rien de ce qui tourne en production.
+      - name: Construit l'image API de production
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          tags: chiffreo-api:drill
+          build-args: APP_VERSION=drill
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # `gnupg` est présent sur ubuntu-latest ; l'exiger explicitement évite un
+      # échec obscur au milieu du cycle si l'image du runner change.
+      - name: Vérifie les prérequis
+        run: |
+          set -euo pipefail
+          for cmd in docker gpg openssl; do
+            command -v "$cmd" >/dev/null || { echo "::error::$cmd introuvable sur le runner"; exit 1; }
+          done
+          docker image inspect chiffreo-api:drill >/dev/null
+
+      - name: Drill complet
+        run: bash docs/deploy/restore-drill.sh
+
+      # Le drill nettoie derrière lui, y compris en échec. Ce filet ne sert
+      # qu'au cas où il aurait été tué avant son trap (timeout du job).
+      - name: Nettoyage
+        if: always()
+        run: |
+          docker rm -f chiffreo-drill-api chiffreo-drill-db 2>/dev/null || true
+          docker volume rm chiffreo-drill-pgdata chiffreo-drill-uploads 2>/dev/null || true
+          docker network rm chiffreo-drill-net 2>/dev/null || true
