@@ -19,7 +19,11 @@ et de restauration, testée sur une base jetable. Référencée depuis
 - **Signalement** : ping de supervision au succès, `/fail` à l'échec, si
   `BACKUP_MONITOR_URL` est configuré (§4).
 - **Scripts** : [`backup.sh`](backup.sh) (cron) et [`restore.sh`](restore.sh)
-  (drill de vérification et reprise sur sinistre — même script, deux modes).
+  (drill de vérification et reprise sur sinistre — même script, deux modes),
+  plus [`restore-drill.sh`](restore-drill.sh), qui déroule le cycle entier.
+- **Restauration** : la procédure exacte, le temps constaté, ce qui est perdu
+  au pire cas et les pièges découverts en la déroulant réellement sont dans
+  [`RESTAURATION.md`](RESTAURATION.md). **À lire avant de restaurer.**
 
 ### Cohérence entre la base et les fichiers
 
@@ -188,6 +192,14 @@ prévisible, suffisant pour un premier niveau de sauvegarde. Un schéma
 différencié (ex. 7 quotidiennes + 4 hebdomadaires) est une amélioration
 possible plus tard, pas construite ici.
 
+**Dimensionner `/var/backups` à ~15 × le volume `uploads`.** Chaque nuit
+produit une archive de la taille du volume — des JPEG sont déjà compressés,
+`gzip` ne gagne rien dessus (mesuré : 501 Mo → 501 Mo) — et 14 jours sont
+conservés. 5 Go de photos demandent donc ~70 Go, plus ~2 × le volume en pic
+transitoire dans `/var/backups/.tmp` pendant le run. Un disque plein à 3 h 15
+est une panne silencieuse tant que `BACKUP_MONITOR_URL` n'est pas renseignée.
+Détail et débits mesurés : [`RESTAURATION.md`](RESTAURATION.md) §4.
+
 ### Copie hors-site
 
 Des sauvegardes qui vivent sur le disque qu'elles protègent ne protègent de
@@ -241,10 +253,22 @@ Consigner chaque drill dans le tableau §8.
 
 ## 7. Restauration — reprise sur sinistre (VPS perdu)
 
+> Procédure détaillée, temps constaté et pièges : [`RESTAURATION.md`](RESTAURATION.md).
+>
+> Deux propriétés du mode `--mode prod` à connaître avant de lancer la commande,
+> toutes deux acquises en éprouvant le cycle (RESTAURATION.md §6) :
+>
+> - **la base cible est détruite et recréée**, pour que rien de postérieur à la
+>   sauvegarde ne survive à la restauration ;
+> - **le script refuse de démarrer si l'application est encore branchée** sur la
+>   base. Arrêter `api` et `web` d'abord, comme le demandait déjà `DEPLOY.md`.
+
 1. Provisionner un nouveau VPS : suivre [`DEPLOY.md`](../DEPLOY.md)
    (`provision.sh`, DNS, `.env`).
 2. Démarrer uniquement Postgres, base vide :
    `docker compose -f docker-compose.prod.yml up -d postgres`
+   (aucune attente à intercaler : `restore.sh` attend lui-même que l'instance
+   définitive accepte les connexions TCP.)
 3. Récupérer la dernière sauvegarde. Si `BACKUP_REMOTE` était configuré (§5),
    c'est la source à utiliser — le disque du VPS mort n'est plus accessible :
    ```bash
@@ -271,8 +295,13 @@ Consigner chaque drill dans le tableau §8.
 |---|---|---|---|---|
 | 2026-07-18 | Dry-run local (agent) | verify, cibles jetables `postgres:16-alpine` | PASS | Voir `tasks/todo.md` OPS-3 pour la transcription complète (empreinte contenu DB + manifeste fichiers uploads identiques avant/après) |
 | 2026-08-06 | Pilote de retour arrière (E6-5) | **prod**, base réelle du pilote, dump `--pre-deploy` | PASS | Restauration en **3 s** (45 tables) sur une base qu'une migration contractante venait d'amputer. Schéma et données rétablis, écriture postérieure au point de restauration perdue — conformément à `DEPLOY.md` § Retour arrière. Premier exercice du mode `--mode prod`. |
+| 2026-08-06 | Cycle complet (OPS-4), `restore-drill.sh` | **prod**, base **et volume `uploads`** détruits puis restaurés | PASS | Premier cycle de bout en bout : jeu de données représentatif (compte, organisation, projets, photos sur disque, estimation, liste, devis et facture numérotés) → sauvegarde → destruction du conteneur **et des deux volumes** → restauration → **démarrage de l'API de production sur la base restaurée**. Sauvegarde 2 s, restauration 6 s, cycle complet 35 s. Trois défauts trouvés et corrigés, voir [`RESTAURATION.md`](RESTAURATION.md) §6. Rejoué chaque lundi par la CI. |
 
-À compléter à chaque drill réel sur le VPS une fois OPS-1 fait.
+À compléter à chaque drill réel sur le VPS une fois OPS-1 fait. Le cycle
+automatisé, lui, tourne chaque semaine
+(`.github/workflows/backup-drill.yml`) — mais sur des cibles jetables : il ne
+remplace pas un drill sur les artefacts réellement produits par le VPS, qui
+seuls exercent la clé GPG de production et la copie hors-site.
 
 ## 9. Non-goals / limites connues
 

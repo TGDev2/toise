@@ -409,8 +409,12 @@ en avant (*roll forward*) est presque toujours préférable ; ce chemin est pour
 le cas où la version fautive corrompt activement les données.
 
 ```bash
-# 1. Arrêter les applications — pg_restore --clean ne peut pas travailler
-#    sous les connexions ouvertes de l'API.
+# 1. Arrêter les applications. restore.sh le VÉRIFIE désormais et refuse de
+#    commencer s'il reste des connexions ouvertes sur la base cible.
+#    (Il ne s'agit pas d'une impossibilité technique : mesuré, une API au
+#    repos ne tient aucune connexion et la restauration passait sans un mot,
+#    pendant que l'application servait un schéma remplacé sous ses pieds.
+#    Voir deploy/RESTAURATION.md §6.3.)
 docker compose -f docker-compose.prod.yml stop api web
 
 # 2. Restaurer la base au point de restauration nommé dans le résumé du job.
@@ -426,6 +430,14 @@ IMAGE_TAG=v1.0.0 docker compose -f docker-compose.prod.yml pull api web
 IMAGE_TAG=v1.0.0 docker compose -f docker-compose.prod.yml up -d --wait --wait-timeout 180 api web
 bash /opt/chiffreo/docs/deploy/smoke-test.sh --expect-version v1.0.0
 ```
+
+La base cible est **détruite et recréée** par `restore.sh` avant la
+restauration. C'est ce qui rend ce chemin sûr : `pg_restore --clean` seul ne
+supprimait que les objets présents dans le dump, si bien que la table créée par
+la migration fautive restait en place pendant que `migrations` revenait en
+arrière — et le redémarrage suivant rejouait la migration sur une table déjà
+existante, API en boucle de redémarrage. Mesuré, corrigé, et rejoué chaque
+semaine par le drill (`deploy/RESTAURATION.md` §6.2).
 
 Le volume `uploads` n'est **pas** restauré, délibérément : une migration ne le
 touche pas, et les fichiers apparus depuis le point de restauration deviennent
