@@ -5,3 +5,18 @@
 # (`core.autocrlf=true`), un instantané récupéré en CRLF fait donc échouer tous
 # les instantanés multi-lignes — sur une différence invisible à l'écran.
 *.snap text eol=lf
+
+# Scripts shell — même mécanique, conséquence plus grave.
+#
+# Un `#!/usr/bin/env bash` suivi d'un CR fait chercher un interpréteur nommé
+# « bash\r » ; `set -euo pipefail` devient « pipefail\r », option inconnue. Le
+# script meurt à sa première ligne utile, avec un message qui ne nomme pas la
+# cause (le CR est invisible à l'écran).
+#
+# Le VPS n'est pas concerné — il clone sur Linux. Ce qui l'est, c'est le poste
+# de l'opérateur : `restore.sh` est **fait pour** tourner depuis une machine de
+# confiance qui détient la clé privée (BACKUP.md §2), jamais depuis le VPS. Si
+# ce poste est un Windows avec `core.autocrlf=true`, la restauration échoue au
+# pire moment. Constaté : `backup.sh` était déjà en CRLF dans cette copie de
+# travail alors que son objet git est en LF.
+*.sh text eol=lf
