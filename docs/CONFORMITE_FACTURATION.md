@@ -222,7 +222,128 @@ produit encaisse pour le compte de l'artisan, l'analyse est à refaire.
 3. **Factur-X** — embarquer ce XML dans un PDF/A-3. Suppose d'abandonner PDFKit pour
    la sortie facture, ou d'écrire à la main les métadonnées XMP et l'OutputIntent ICC.
 4. **Raccordement à une PA** — statut d'opérateur de dématérialisation, cycles de vie
-   de facture, et e-reporting pour les opérations B2C.
+   de facture, et e-reporting pour les opérations B2C. Coût : cf. §8.
 
 Les étapes 1 et 2 sont réalisables sans décision commerciale. Les étapes 3 et 4
 supposent un partenaire PA choisi.
+
+---
+
+## 8. Coût d'une Plateforme Agréée
+
+> Recherche du 07/08/2026 — état du marché à cette date. Convention de lecture :
+> **[sourcé]** = URL vérifiée le 07/08/2026 ; **[estimé]** = déduction dont le
+> raisonnement est écrit. Ne rien décider sur un [estimé] seul.
+
+### 8.1 État du marché **[sourcé]**
+
+- La [liste officielle des plateformes agréées](https://www.impots.gouv.fr/liste-des-plateformes-agreees-immatriculees-sous-reserve)
+  (DGFiP, mise à jour du 06/08/2026) compte **146 plateformes** ayant passé les
+  tests d'interopérabilité (immatriculées sous réserve du rapport d'audit) et
+  **20** en attente de ces tests. Les fichiers officiels donnent la date de
+  délivrance mais **pas le numéro d'immatriculation** — les numéros qui
+  circulent viennent de tiers non officiels.
+- **52 plateformes se déclarent prêtes pour l'émission dès le 01/09/2026, dont
+  15 « infrastructurelles »** (offre en marque blanche pour éditeurs) —
+  [compta-online](https://www.compta-online.com/plateformes-agreees-facturation-electronique-ao6026).
+- Pistes écartées après vérification : **Libeo n'est pas une PA** (c'est
+  lui-même un OD adossé à la PA Docaposte Sérès —
+  [libeo.io](https://libeo.io/blog/facture-electronique-libeo-obtient-accreditation-pdp)) ;
+  **Cegid, Esker, Generix, Yooz, Qonto, Tiime** : aucun programme partenaire
+  éditeur/OD public trouvé — positionnement grands comptes (Esker, Generix) ou
+  PA captive de leur propre logiciel. **Sage** est immatriculée (22/12/2025) et
+  évoque des « API alignées AFNOR pour logiciels tiers », mais sans programme
+  partenaire public, et sa PA sert un écosystème dont Batigest vise les mêmes
+  artisans que Chiffréo **[déduit]** : à ne solliciter qu'en dernier recours.
+
+### 8.2 Cinq partenariats éditeur documentés **[sourcé]**
+
+Toutes immatriculées en liste 1 (tests d'interopérabilité validés).
+
+| PA | Immatriculée le | Programme éditeur | Tarif partenariat | Formats | Délai annoncé |
+|---|---|---|---|---|---|
+| [Iopole](https://www.iopole.com/nos-partenaires) | 11/12/2025 | Pure player API ; modèles « Distributeur » et apporteur, marque blanche (plan Enterprise), sandbox gratuite | **NON PUBLIC** — 3 plans sans prix (set-up + volume) ; contact@iopole.com ou formulaire partenaires | Factur-X, UBL, CII, **JSON converti**, Peppol, EDIFACT | Non publié |
+| [Pennylane](https://www.pennylane.com/fr/partenaires) | 11/12/2025 | Catégorie dédiée « Partenaires Plateforme Agréée : éditeurs qui proposent Pennylane comme PA à leurs clients » ; raccordement via [API Entreprise V2](https://help.pennylane.com/fr/articles/18770-utiliser-les-api-publiques-pennylane) (import d'un Factur-X généré par l'éditeur) | **NON PUBLIC** — mais PA annoncée **gratuite** (févr. 2024, rappelé par compta-online) ; formulaire « Devenir partenaire » | Factur-X, UBL, CII ; API REST JSON | Non publié ; précédent raccordé en mai 2026 (cf. ci-dessous) |
+| [Serensia by Quadient](https://serensia.com/avis-d039expert/pourquoi-choisir-une-pdp-en-marque-blanche/) | 11/12/2025 | « PA en marque blanche » pour éditeurs : l'utilisateur reste dans le logiciel de l'éditeur | **NON PUBLIC** — formulaire de démo API sur la même page | UBL, CII, Factur-X ; API REST + webhooks, Peppol | Non publié |
+| [Seqino](https://seqino.com/articles-blog/seqino-lance-une-pdp-en-marque-blanche-et-en-marque-grise/) (Crédit Mutuel Arkéa) | 15/01/2026 | Marque blanche (instance dédiée, l'éditeur au registre) **et « marque grise »** (API sur l'immatriculation de Seqino — le schéma OD exact de Chiffréo) | **NON PUBLIC** — contact via seqino.com | API RESTful ; SecNumCloud, ISO 27001, NF203 | Non publié |
+| [B2BRouter](https://www.b2brouter.net/fr/api-facturation-electronique/) | 12/12/2025 | API pour éditeurs, marque blanche et grise, sandbox et [docs développeur](https://developer.b2brouter.net) publiques | API **NON PUBLIC** ; tarifs applicatifs publics : 0 € (24 transactions/an), 110 €/an HT illimité, 300 €/an HT ([tarifs](https://www.b2brouter.net/fr/tarifs/)) | Factur-X, UBL, CII, EDIFACT, XRechnung, Peppol, Chorus Pro | Non publié |
+
+**Le précédent qui compte** : [ArtisanSmart](https://artisansmart.fr/blog/pennylane/),
+SaaS de facturation pour artisans — le schéma exact visé par Chiffréo (OD
+raccordé à la PA Pennylane) — a été raccordé et validé en **mai 2026**, flux
+émission et réception opérationnels, coût du raccordement **absorbé dans son
+abonnement à 29 € HT/mois sans surcoût** facturé par Pennylane. La faisabilité
+technique et économique du schéma est donc démontrée sur notre marché.
+Contrepartie à peser : Pennylane vend aussi un logiciel de facturation —
+c'est un fournisseur potentiellement concurrent.
+
+Piste secondaire : [Qweeby](https://www.qweeby.fr/plateforme-agreee)
+(immatriculée 22/12/2025, modèle « prix tout compris par e-facture » sur devis,
+hello_pdp@qweeby.com) — orientée PME/ETI, mais son modèle par facture vaut
+d'être chiffré en comparaison.
+
+### 8.3 Points de prix publics **[sourcé]**
+
+Aucune PA ne publie son tarif de partenariat éditeur. Les prix publics
+disponibles encadrent néanmoins le marché :
+
+| Signal | Valeur | Source |
+|---|---|---|
+| Tarification au volume, marché PA | **0,10 à 0,50 € par facture** | [comparateur-efacturation.fr](https://comparateur-efacturation.fr/guide/prix-plateforme-agreee-facturation-electronique) |
+| Abonnement PA pour une TPE (client final) | 15 à 60 €/mois ; nombreuses PA gratuites (Indy, Tiime, VosFactures, Abby…) ; Qonto 9 €/mois, Pennylane 14 €/util./mois, Sage 25 €/mois | même guide + [comparepdp.com](https://comparepdp.com/articles/prix-plateforme-agreee) |
+| B2BRouter, plans applicatifs | 0 € (24 transactions/an) ; 110 €/an HT illimité ; 300 €/an HT | [b2brouter.net](https://www.b2brouter.net/fr/tarifs/) |
+| A-Cube, API e-invoicing (offre italienne, proxy de leur pricing) | 19,90 €/mois pour 50 docs (+0,45 €/doc) à 39,90 €/mois pour 200 docs (+0,25 €/doc) | [blog.acubeapi.com](https://blog.acubeapi.com/en/revolutionize-your-stripe-experience-the-one-click-e-invoicing-app-by-a-cube-is-here/) |
+| FactPulse, middleware Factur-X en marque blanche pour éditeurs (**pas une PA** : se raccorde aux PA) | à partir de 29 €/mois, sandbox gratuite | [factpulse.fr](https://factpulse.fr/) |
+| PA gratuites côté éditeurs-PA | Pennylane (annonce févr. 2024), AGIRIS eFacture (juil. 2025) | [compta-online](https://www.compta-online.com/plateformes-agreees-facturation-electronique-ao6026) |
+| Précédent OD artisan tout compris | Raccordement PA Pennylane inclus dans 29 € HT/mois | [artisansmart.fr](https://artisansmart.fr/blog/pennylane/) |
+
+### 8.4 Fourchette raisonnée, en € par client et par mois **[estimé]**
+
+Hypothèses posées avant calcul : un artisan TPE émet **3 à 10 factures/mois**
+(B2B électroniques + transactions B2C partant en e-reporting) ; base V1 de
+l'ordre de **50 clients payants** pour amortir un éventuel forfait socle.
+
+| Scénario | Raisonnement | Coût par client/mois |
+|---|---|---|
+| **Bas** — PA Pennylane gratuite | Le précédent ArtisanSmart le démontre à l'échelle d'un SaaS artisan : coût marginal nul, le coût réel est le développement du connecteur (sérialiseur Factur-X + API, §7) | **≈ 0 €** |
+| **Central** — PA API-first au volume | 3–10 factures × 0,10–0,30 €/facture, plus un forfait socle estimé 20–30 €/mois amorti sur 50 clients (+0,40–0,60 €) | **≈ 0,70 à 3,60 €** |
+| **Haut** — marque blanche dédiée | Instance dédiée type Iopole Enterprise/Seqino marque blanche, avec set-up : injustifiable à l'échelle V1 | > 5 € — écarté |
+
+**Fourchette retenue : 0 à ~3,50 € par client et par mois, centre de gravité
+autour de 1 €** — soit 0 à 18 % du palier Artisan à 19 €/mois
+([ADR 0001 §D4](adr/0001-cible-et-perimetre-v1.md)), ~5 % au centre. Ce qui est
+sourcé dans cette fourchette : les prix unitaires 0,10–0,50 €/facture, les
+plans B2BRouter/A-Cube, la gratuité annoncée de la PA Pennylane et le précédent
+ArtisanSmart. Ce qui est estimé : le nombre de factures par artisan, la taille
+du forfait socle, son amortissement — et l'hypothèse que l'e-reporting B2C est
+inclus dans ces prix, ce qu'aucune source ne confirme : **c'est le premier
+point à faire chiffrer** (le B2C domine le volume d'un artisan).
+
+Conclusion d'orientation **[estimé]** : au coût central (~1 €/client/mois), le
+raccordement PA n'est pas un sujet de viabilité mais un sujet de marge (~5 % du
+MRR) ; la facturation reste dans l'offre. Seul le scénario haut, ou un
+e-reporting B2C facturé à la transaction, rouvrirait la question du repli
+(export Factur-X déposé par l'artisan dans sa propre PA).
+
+### 8.5 Trois actions pour obtenir le chiffre ferme
+
+Seuil d'acceptabilité fixé **avant** de recevoir les devis : **≤ 2 € par client
+et par mois tout compris** (≈ 10 % du palier à 19 €). Au-delà, le repli
+« export Factur-X » redevient l'option de référence.
+
+1. **Candidater au programme partenaire Pennylane** via le formulaire
+   [pennylane.com/fr/partenaires](https://www.pennylane.com/fr/partenaires)
+   (catégorie « Partenaires Plateforme Agréée »), en citant le précédent
+   ArtisanSmart. Questions à poser par écrit : gratuité effective pour un
+   éditeur OD (par facture ? par SIREN ?), e-reporting B2C inclus, conditions
+   contractuelles du statut d'OD, engagement de réversibilité.
+2. **Demander deux devis comparables à des PA infrastructurelles** — Iopole
+   (contact@iopole.com ou formulaire partenaires) et Seqino en « marque grise »
+   (via seqino.com) — sur un profil chiffré identique : 50 artisans, 5 factures
+   B2B/mois chacun, e-reporting B2C, émission Factur-X générée par Chiffréo.
+   Exiger la décomposition : set-up, minimum mensuel, prix unitaire, archivage.
+3. **Comparer sur une grille unique des coûts complets** : set-up, minimum de
+   facturation, prix par facture, prix ou forfait de l'e-reporting B2C,
+   archivage à valeur probante 10 ans, gestion de l'annuaire et des cycles de
+   vie, frais de sortie. C'est cette grille — pas le prix unitaire affiché —
+   qui donne le vrai € par client et par mois, à confronter au seuil ci-dessus.
