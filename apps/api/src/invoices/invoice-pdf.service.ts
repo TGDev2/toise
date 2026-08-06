@@ -17,8 +17,8 @@ const OPERATION_LABELS: Record<string, string> = {
 const RECOVERY_INDEMNITY_EUR = 40;
 
 const COLUMNS: PdfColumn[] = [
-  { label: 'Designation', offset: 0, width: 195 },
-  { label: 'Qte', offset: 200, width: 40, align: 'center' },
+  { label: 'Désignation', offset: 0, width: 195 },
+  { label: 'Qté', offset: 200, width: 40, align: 'center' },
   { label: 'PU HT', offset: 245, width: 70, align: 'right' },
   { label: 'TVA', offset: 320, width: 40, align: 'right' },
   { label: 'Total HT', offset: 365, width: 80, align: 'right' },
@@ -70,7 +70,7 @@ export class InvoicePdfService {
     if (seller.address_line1) lines.push(seller.address_line1);
     if (seller.address_line2) lines.push(seller.address_line2);
     lines.push(`${seller.postal_code ?? ''} ${seller.city ?? ''}`.trim());
-    if (seller.phone) lines.push(`Tel : ${seller.phone}`);
+    if (seller.phone) lines.push(`Tél : ${seller.phone}`);
     if (seller.email) lines.push(seller.email);
     lines.push(`SIRET : ${seller.siret ?? '-'}`);
 
@@ -95,7 +95,7 @@ export class InvoicePdfService {
         ? ` — contrat ${seller.insurance_policy}`
         : '';
       doc.text(
-        `Assurance decennale : ${seller.insurance_name}${policy} — couverture : ${seller.insurance_coverage ?? '-'}`,
+        `Assurance décennale : ${seller.insurance_name}${policy} — couverture : ${seller.insurance_coverage ?? '-'}`,
         pdf.left,
         doc.y,
         { width: 280 },
@@ -111,7 +111,7 @@ export class InvoicePdfService {
       return `RCS ${seller.rcs_city} ${seller.siren ?? ''}`.trim();
     }
     if (seller.rm_department) {
-      return `Repertoire des metiers : ${seller.siren ?? ''} RM ${seller.rm_department}`.trim();
+      return `Répertoire des métiers : ${seller.siren ?? ''} RM ${seller.rm_department}`.trim();
     }
     return null;
   }
@@ -132,7 +132,7 @@ export class InvoicePdfService {
     let y = 50;
 
     doc.fontSize(9).font('Helvetica-Bold').fillColor('#000000');
-    doc.text('Facture a', x, y);
+    doc.text('Facture à', x, y);
     y += 14;
     doc.fontSize(10).text(buyer.name, x, y, { width: 195 });
     y += 14;
@@ -161,7 +161,7 @@ export class InvoicePdfService {
 
     doc.moveDown(0.4);
     doc.fontSize(9).font('Helvetica').fillColor('#555555');
-    pdf.text(`Date d'emission : ${PdfBuilder.formatDate(invoice.issued_on)}`, {
+    pdf.text(`Date d’émission : ${PdfBuilder.formatDate(invoice.issued_on)}`, {
       align: 'center',
     });
     if (invoice.supply_date) {
@@ -171,23 +171,23 @@ export class InvoicePdfService {
       );
     }
     pdf.text(
-      `Echeance de paiement : ${PdfBuilder.formatDate(invoice.due_on)}`,
+      `Échéance de paiement : ${PdfBuilder.formatDate(invoice.due_on)}`,
       {
         align: 'center',
       },
     );
     pdf.text(
-      `Nature de l'operation : ${OPERATION_LABELS[invoice.operation_category] ?? invoice.operation_category}`,
+      `Nature de l’opération : ${OPERATION_LABELS[invoice.operation_category] ?? invoice.operation_category}`,
       { align: 'center' },
     );
     if (invoice.source_quote_number) {
-      pdf.text(`Reference devis : ${invoice.source_quote_number}`, {
+      pdf.text(`Référence devis : ${invoice.source_quote_number}`, {
         align: 'center',
       });
     }
     if (invoice.status === InvoiceStatus.PAID) {
       doc.fillColor('#1d6b57').font('Helvetica-Bold');
-      pdf.text('FACTURE ACQUITTEE', { align: 'center' });
+      pdf.text('FACTURE ACQUITTÉE', { align: 'center' });
     }
     if (invoice.delivery_address) {
       doc.fillColor('#555555').font('Helvetica');
@@ -197,7 +197,7 @@ export class InvoicePdfService {
     }
     if (invoice.vat_on_debits) {
       doc.fillColor('#555555').font('Helvetica');
-      pdf.text("Option pour le paiement de la taxe d'apres les debits", {
+      pdf.text('Option pour le paiement de la taxe d’après les débits', {
         align: 'center',
       });
     }
@@ -208,7 +208,7 @@ export class InvoicePdfService {
   private drawLines(pdf: PdfBuilder, items: InvoiceLineItem[]): void {
     const doc = pdf.doc;
     doc.moveDown(1);
-    pdf.sectionTitle('Detail des prestations');
+    pdf.sectionTitle('Détail des prestations');
     doc.moveDown(0.3);
     pdf.tableHeader(COLUMNS);
 
@@ -227,7 +227,7 @@ export class InvoicePdfService {
   private drawVatBreakdown(pdf: PdfBuilder, invoice: Invoice): void {
     const doc = pdf.doc;
     doc.moveDown(0.8);
-    pdf.sectionTitle('Recapitulatif de TVA');
+    pdf.sectionTitle('Récapitulatif de TVA');
     doc.moveDown(0.3);
 
     doc.fontSize(9).font('Helvetica').fillColor('#000000');
@@ -256,7 +256,7 @@ export class InvoicePdfService {
     );
     doc.moveDown(0.3);
     pdf.totalsRow(
-      'Net a payer TTC',
+      'Net à payer TTC',
       `${PdfBuilder.formatPrice(Number(invoice.total_ttc))} EUR`,
       { bold: true, size: 13 },
     );
@@ -267,7 +267,7 @@ export class InvoicePdfService {
     const seller = invoice.seller_snapshot;
 
     doc.moveDown(1.5);
-    pdf.sectionTitle('Reglement');
+    pdf.sectionTitle('Règlement');
     doc.moveDown(0.3);
     doc.fontSize(9).font('Helvetica').fillColor('#000000');
 
@@ -293,18 +293,18 @@ export class InvoicePdfService {
 
     pdf.text(
       penaltyRate == null
-        ? "En cas de retard de paiement, penalites de retard au taux d'interet legal majore de 10 points, exigibles sans rappel."
-        : `En cas de retard de paiement, penalites de retard au taux de ${Number(penaltyRate)} % l'an, exigibles sans rappel.`,
+        ? 'En cas de retard de paiement, pénalités de retard au taux d’intérêt légal majoré de 10 points, exigibles sans rappel.'
+        : `En cas de retard de paiement, pénalités de retard au taux de ${Number(penaltyRate)} % l’an, exigibles sans rappel.`,
     );
     pdf.text(
-      `Indemnite forfaitaire pour frais de recouvrement : ${RECOVERY_INDEMNITY_EUR} EUR (art. L441-10 du code de commerce).`,
+      `Indemnité forfaitaire pour frais de recouvrement : ${RECOVERY_INDEMNITY_EUR} EUR (art. L441-10 du code de commerce).`,
     );
-    pdf.text('Escompte pour paiement anticipe : neant.');
+    pdf.text('Escompte pour paiement anticipé : néant.');
 
     doc.moveDown(0.5);
     doc.fillColor('#999999');
     pdf.text(
-      `Facture ${invoice.invoice_number} — generee par Chiffréo le ${PdfBuilder.formatDate(invoice.issued_on)}`,
+      `Facture ${invoice.invoice_number} — générée par Chiffréo le ${PdfBuilder.formatDate(invoice.issued_on)}`,
       { align: 'center' },
     );
   }

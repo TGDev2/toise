@@ -18,8 +18,8 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const COLUMNS: PdfColumn[] = [
-  { label: 'Designation', offset: 0, width: 200 },
-  { label: 'Qte', offset: 210, width: 40, align: 'center' },
+  { label: 'Désignation', offset: 0, width: 200 },
+  { label: 'Qté', offset: 210, width: 40, align: 'center' },
   { label: 'PU HT', offset: 260, width: 80, align: 'right' },
   { label: 'Total HT', offset: 360, width: 85, align: 'right' },
 ];
@@ -28,7 +28,7 @@ const COLUMNS: PdfColumn[] = [
 // lisent comme un seul document.
 const LABOR_COLUMNS: PdfColumn[] = [
   { label: 'Ouvrage', offset: 0, width: 200 },
-  { label: 'Qte', offset: 210, width: 40, align: 'center' },
+  { label: 'Qté', offset: 210, width: 40, align: 'center' },
   { label: 'PU HT', offset: 260, width: 80, align: 'right' },
   { label: 'Total HT', offset: 360, width: 85, align: 'right' },
 ];
@@ -60,7 +60,7 @@ export class QuotePdfService {
       doc.y,
     );
     if (companyProfile.phone) {
-      doc.text(`Tel : ${companyProfile.phone}`, pdf.left, doc.y);
+      doc.text(`Tél : ${companyProfile.phone}`, pdf.left, doc.y);
     }
     doc.text(`SIRET : ${companyProfile.siret}`, pdf.left, doc.y);
 
@@ -100,7 +100,7 @@ export class QuotePdfService {
         clientY += 12;
       }
       if (client.phone) {
-        doc.text(`Tel : ${client.phone}`, clientX, clientY);
+        doc.text(`Tél : ${client.phone}`, clientX, clientY);
       }
     }
 
@@ -120,7 +120,7 @@ export class QuotePdfService {
 
     const validityDate = new Date(quote.created_at);
     validityDate.setDate(validityDate.getDate() + quote.validity_days);
-    pdf.text(`Valable jusqu'au : ${PdfBuilder.formatDate(validityDate)}`, {
+    pdf.text(`Valable jusqu’au : ${PdfBuilder.formatDate(validityDate)}`, {
       align: 'center',
     });
     pdf.text(`Statut : ${STATUS_LABELS[quote.status] ?? quote.status}`, {
@@ -131,7 +131,7 @@ export class QuotePdfService {
 
     // ── Materials table ──
     doc.moveDown(1);
-    pdf.sectionTitle('Detail des materiaux');
+    pdf.sectionTitle('Détail des matériaux');
     doc.moveDown(0.3);
     pdf.tableHeader(COLUMNS);
 
@@ -144,12 +144,12 @@ export class QuotePdfService {
     doc.moveDown(0.8);
     // Titre + hr + en-tête + 1 ligne : jamais orphelins en bas de page.
     pdf.checkPageBreak(70);
-    pdf.sectionTitle("Main d'oeuvre");
+    pdf.sectionTitle('Main-d’œuvre');
     doc.moveDown(0.3);
 
     if (quote.labor_items_json.length === 0) {
       doc.fontSize(9).font('Helvetica').fillColor('#666666');
-      pdf.text("Aucune main-d'oeuvre chiffree.");
+      pdf.text('Aucune main-d’œuvre chiffrée.');
       doc.fillColor('#000000');
     } else {
       pdf.tableHeader(LABOR_COLUMNS);
@@ -170,11 +170,11 @@ export class QuotePdfService {
     doc.moveDown(0.5);
 
     pdf.totalsRow(
-      'Sous-total materiaux HT',
+      'Sous-total matériaux HT',
       `${PdfBuilder.formatPrice(Number(quote.subtotal_materials_ht))} EUR`,
     );
     pdf.totalsRow(
-      "Sous-total main d'oeuvre HT",
+      'Sous-total main-d’œuvre HT',
       `${PdfBuilder.formatPrice(Number(quote.subtotal_labor_ht))} EUR`,
     );
 
@@ -212,7 +212,7 @@ export class QuotePdfService {
     // ── Payment terms ──
     if (quote.payment_terms) {
       doc.moveDown(1.5);
-      pdf.sectionTitle('Conditions de reglement');
+      pdf.sectionTitle('Conditions de règlement');
       doc.moveDown(0.3);
       doc.fontSize(10).font('Helvetica');
       pdf.text(quote.payment_terms);
@@ -231,7 +231,7 @@ export class QuotePdfService {
     doc.moveDown(2);
     doc.fontSize(8).fillColor('#999999');
     pdf.text(
-      `SIRET : ${companyProfile.siret} — Genere par Chiffréo — ${dateStr}`,
+      `SIRET : ${companyProfile.siret} — Généré par Chiffréo — ${dateStr}`,
       { align: 'center' },
     );
 

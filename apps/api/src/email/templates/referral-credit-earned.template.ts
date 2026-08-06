@@ -22,7 +22,7 @@ export function buildReferralCreditEarnedEmail(
   const html = `<!DOCTYPE html>
 <html lang="fr"><body style="font-family:Arial,sans-serif;background:#f7f5f2;padding:24px;color:#292524;margin:0;">
   <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:16px;padding:32px;">
-    <h1 style="font-size:20px;margin:0 0 8px;">Un filleul vient de s'abonner 🎉</h1>
+    <h1 style="font-size:20px;margin:0 0 8px;">Un filleul vient de s’abonner 🎉</h1>
     <p style="font-size:14px;color:#57534e;">
       Un utilisateur que vous avez parrainé vient de souscrire un abonnement Chiffréo.
       En remerciement, <strong>${amountLabel}</strong> ont été crédités sur votre compte
@@ -38,7 +38,7 @@ export function buildReferralCreditEarnedEmail(
 </body></html>`;
 
   const text = [
-    `Un filleul vient de s'abonner`,
+    `Un filleul vient de s’abonner`,
     '',
     `Un utilisateur que vous avez parrainé vient de souscrire un abonnement Chiffréo. En remerciement, ${amountLabel} ont été crédités sur votre compte et seront automatiquement déduits de votre prochaine facture.`,
     '',
