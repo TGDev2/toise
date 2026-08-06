@@ -67,17 +67,77 @@ decrypt_file() {
 }
 
 wait_for_postgres() {
-  # Un conteneur postgres neuf démarre une instance temporaire (init des
-  # scripts), l'arrête, puis relance l'instance définitive : pg_isready peut
-  # répondre "ready" pendant la fenêtre transitoire, juste avant l'arrêt.
-  # On attend donc la 2ᵉ occurrence du message de démarrage dans les logs,
-  # seul signal fiable que l'instance définitive est bien celle qui tourne.
-  local container="$1" tries=60
-  until [ "$(docker logs "$container" 2>&1 | grep -c 'database system is ready to accept connections')" -ge 2 ]; do
+  # Un conteneur postgres neuf démarre une instance temporaire (exécution des
+  # scripts d'init), l'arrête, puis lance l'instance définitive. Pendant cette
+  # fenêtre, `pg_isready` **sur le socket unix** répond déjà « accepting
+  # connections » — et la connexion suivante tombe sur
+  # `FATAL: the database system is shutting down`, en plein `pg_restore`.
+  #
+  # Le signal fiable est TCP : l'instance temporaire est démarrée par
+  # `docker_temp_server_start()` avec, dans les mots de l'entrypoint de
+  # l'image, « does not listen on external TCP/IP ». Une sonde sur 127.0.0.1
+  # ne peut donc réussir que contre l'instance définitive.
+  #
+  # Comptait auparavant les occurrences du message de démarrage dans
+  # `docker logs`. Ce repère ne vaut que pour un conteneur qui vient de
+  # naître : sur une base de production démarrée depuis des semaines, le
+  # journal en contient une seule (ou plus aucune, après rotation), et la
+  # boucle n'aurait jamais rendu la main.
+  local container="$1" user="$2" db="$3" tries=60
+  until docker exec "$container" pg_isready -h 127.0.0.1 -U "$user" -d "$db" >/dev/null 2>&1; do
     tries=$((tries - 1))
     [ "$tries" -gt 0 ] || { echo "ERREUR: postgres ($container) jamais prêt" >&2; return 1; }
     sleep 1
   done
+}
+
+# Refuse de restaurer par-dessus une application encore branchée.
+#
+# `docs/DEPLOY.md` demande `stop api web` avant toute restauration, et
+# `BACKUP.md` §7 le suppose. Le script, lui, ne vérifiait rien : lancé sur une
+# base vivante il rendait `RESTAURATION: PASS` pendant que l'API continuait de
+# servir un schéma qu'on était en train de remplacer sous ses pieds. Une
+# consigne que rien ne fait respecter n'est pas une consigne.
+assert_no_active_clients() {
+  local container="$1" db_user="$2" db_password="$3" db_name="$4" clients
+  clients="$(docker exec -e PGPASSWORD="$db_password" "$container" \
+    psql -U "$db_user" -d postgres -tAqc \
+    "select count(*) from pg_stat_activity where datname = '$db_name' and pid <> pg_backend_pid();" \
+    | tr -d '[:space:]')"
+  [ "${clients:-0}" -eq 0 ] && return 0
+  cat >&2 <<EOF
+ERREUR: $clients connexion(s) encore ouverte(s) sur « $db_name ».
+        Arrêter l'application avant de restaurer :
+          docker compose -f docker-compose.prod.yml stop api web
+EOF
+  return 1
+}
+
+# Restaure dans une base RECRÉÉE, jamais par-dessus l'existante.
+#
+# `pg_restore --clean` ne supprime que ce que le dump connaît. Tout ce qui est
+# né après la sauvegarde survit donc à la « restauration » — et la table
+# `migrations`, elle, revient en arrière puisqu'elle *est* dans le dump. Le
+# schéma et son registre se retrouvent en désaccord.
+#
+# Mesuré, pas supposé : restaurer un dump antérieur à la migration 078 sur une
+# base où elle avait tourné laisse `data_export_requests` en place et sa ligne
+# absente de `migrations`. Au redémarrage suivant, le runner rejoue la 078,
+# `CREATE TABLE` tombe sur `heap_create_with_catalog: relation already exists`,
+# `migrate.js` sort en 3 et le conteneur API boucle en `Restarting`. C'est
+# exactement le chemin de recours documenté d'un retour arrière (DEPLOY.md), et
+# l'ancienne version rendait `RESTAURATION: PASS` dessus.
+#
+# Contrepartie assumée : la base cible est détruite avant que la restauration
+# n'ait fait ses preuves. Ce n'est pas une régression — `--clean` la démolissait
+# déjà objet par objet — et le dump reste la source de vérité en main.
+recreate_database() {
+  local container="$1" db_user="$2" db_password="$3" db_name="$4"
+  log "Recréation de la base « $db_name » (ce que le dump ignore ne doit pas survivre)…"
+  docker exec -e PGPASSWORD="$db_password" "$container" \
+    psql -U "$db_user" -d postgres -q -v ON_ERROR_STOP=1 \
+    -c "DROP DATABASE IF EXISTS \"$db_name\";" \
+    -c "CREATE DATABASE \"$db_name\" OWNER \"$db_user\";"
 }
 
 restore_db() {
@@ -144,7 +204,6 @@ main() {
       -e POSTGRES_USER="$db_user" -e POSTGRES_PASSWORD="$db_password" \
       -e POSTGRES_DB="$db_name" \
       postgres:16-alpine >/dev/null
-    wait_for_postgres "$db_container"
 
     if [ "$KEEP" -ne 1 ]; then
       # Détruit la cible jetable (conteneur + volume anonyme + volume uploads)
@@ -165,6 +224,22 @@ main() {
     confirm_protected_target "$db_container"
     [ -z "$uploads_volume" ] || confirm_protected_target "$uploads_volume"
     trap "rm -rf '$WORKDIR'" EXIT
+  fi
+
+  # Attente commune aux deux modes, et c'est le mode `prod` qui en avait le
+  # plus besoin : la reprise sur sinistre (BACKUP.md §7) enchaîne
+  # `up -d postgres` sur un VPS neuf et cette restauration. La cible y est
+  # donc, elle aussi, un conteneur qui vient de naître — celui qui traverse la
+  # fenêtre où le serveur s'arrête. L'attente n'était faite que pour la cible
+  # jetable du mode `verify`, celle qui risquait le moins.
+  wait_for_postgres "$db_container" "$db_user" "$db_name"
+
+  # En mode `verify`, la cible vient d'être créée par ce script : elle est vide
+  # par construction, rien ne peut y survivre et personne n'y est branché. Les
+  # deux garde-fous ci-dessous n'ont de sens que sur une base réelle.
+  if [ "$MODE" = "prod" ]; then
+    assert_no_active_clients "$db_container" "$db_user" "$db_password" "$db_name"
+    recreate_database "$db_container" "$db_user" "$db_password" "$db_name"
   fi
 
   local plain_dump="$WORKDIR/db.dump"
