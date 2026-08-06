@@ -32,7 +32,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   tiling: 'Carrelage',
   flooring: 'Parquet',
   partition: 'Cloison',
-  wall_covering: 'Revetement mural',
+  wall_covering: 'Revêtement mural',
 };
 
 export default function MaterialsListPage() {
@@ -102,7 +102,7 @@ export default function MaterialsListPage() {
               onChange={(e) => setShowAll(e.target.checked)}
               className="rounded"
             />
-            Afficher les desactives
+            Afficher les désactivés
           </label>
         </div>
       </div>
@@ -125,7 +125,7 @@ export default function MaterialsListPage() {
         <div className="rounded-2xl bg-[var(--surface)] p-8 text-center">
           <p className="text-[var(--foreground)]/60">
             {category
-              ? `Aucun matériau disponible pour la categorie "${CATEGORY_LABELS[category] ?? category}".`
+              ? `Aucun matériau disponible pour la catégorie "${CATEGORY_LABELS[category] ?? category}".`
               : 'Aucun matériau dans le catalogue.'}
           </p>
         </div>
@@ -138,7 +138,7 @@ export default function MaterialsListPage() {
                   Nom
                 </th>
                 <th className="px-4 py-3 font-semibold text-[var(--foreground)]">
-                  Categorie
+                  Catégorie
                 </th>
                 <th className="px-4 py-3 font-semibold text-[var(--foreground)]">
                   Unité

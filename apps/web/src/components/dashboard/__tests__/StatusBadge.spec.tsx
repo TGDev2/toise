@@ -14,7 +14,7 @@ describe('StatusBadge', () => {
 
   it('renders the correct label for estimated', () => {
     render(<StatusBadge status="estimated" />);
-    expect(screen.getByText('Estime')).toBeInTheDocument();
+    expect(screen.getByText('Estimé')).toBeInTheDocument();
   });
 
   it('renders the correct label for completed', () => {

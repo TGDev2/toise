@@ -70,7 +70,7 @@ export function OpeningsSection({
           role="alert"
           className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800"
         >
-          Les dimensions semblent incoherentes : la surface totale des
+          Les dimensions semblent incohérentes : la surface totale des
           ouvertures dépasse la surface brute des murs.
         </div>
       )}
@@ -157,7 +157,7 @@ function OpeningRow({ opening, index, onUpdate, onRemove }: OpeningRowProps) {
 
       <div className="min-w-0">
         <label htmlFor={`${prefix}-count`} className="text-xs text-stone-500">
-          Qte
+          Qté
         </label>
         <input
           id={`${prefix}-count`}

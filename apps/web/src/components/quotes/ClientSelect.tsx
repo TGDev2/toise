@@ -135,7 +135,7 @@ export function ClientSelect({
             </label>
             <label className="space-y-1">
               <span className="text-xs font-medium text-stone-600">
-                Telephone
+                Téléphone
               </span>
               <input
                 value={form.phone}
@@ -228,7 +228,7 @@ export function ClientSelect({
             disabled={creating}
             className="rounded-full bg-stone-950 px-4 py-2 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-stone-800 disabled:opacity-60"
           >
-            {creating ? 'Creation...' : 'Créer le client'}
+            {creating ? 'Création...' : 'Créer le client'}
           </button>
         </form>
       )}

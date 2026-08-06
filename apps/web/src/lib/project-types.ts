@@ -34,7 +34,7 @@ export const STATUS_CONFIG: Record<
 > = {
   draft: { label: 'Brouillon', bg: 'bg-stone-100', text: 'text-stone-600' },
   active: { label: 'En cours', bg: 'bg-amber-100', text: 'text-amber-700' },
-  estimated: { label: 'Estime', bg: 'bg-blue-100', text: 'text-blue-700' },
+  estimated: { label: 'Estimé', bg: 'bg-blue-100', text: 'text-blue-700' },
   completed: { label: 'Terminé', bg: 'bg-emerald-100', text: 'text-emerald-700' },
 };
 

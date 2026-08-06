@@ -53,7 +53,7 @@ export function ShareLinkPanel({ projectId, onClose }: ShareLinkPanelProps) {
       setShareUrl(null);
       setExpiresAt(null);
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Impossible de revoquer le lien'));
+      setError(getErrorMessage(err, 'Impossible de révoquer le lien'));
     } finally {
       setLoading(false);
     }
@@ -86,7 +86,7 @@ export function ShareLinkPanel({ projectId, onClose }: ShareLinkPanelProps) {
           disabled={loading}
           className="w-full rounded-xl bg-stone-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-stone-800 disabled:opacity-50"
         >
-          {loading ? 'Generation...' : 'Générer un lien de partage'}
+          {loading ? 'Génération...' : 'Générer un lien de partage'}
         </button>
       ) : (
         <div className="space-y-3">
@@ -102,7 +102,7 @@ export function ShareLinkPanel({ projectId, onClose }: ShareLinkPanelProps) {
               onClick={handleCopy}
               className="shrink-0 rounded-xl bg-stone-900 px-4 py-2 text-sm font-medium text-white hover:bg-stone-800"
             >
-              {copied ? 'Copie !' : 'Copier'}
+              {copied ? 'Copié !' : 'Copier'}
             </button>
           </div>
           <button
@@ -111,7 +111,7 @@ export function ShareLinkPanel({ projectId, onClose }: ShareLinkPanelProps) {
             disabled={loading}
             className="text-sm text-red-600 hover:text-red-700 disabled:opacity-50"
           >
-            {loading ? 'Revocation...' : 'Revoquer le lien'}
+            {loading ? 'Révocation...' : 'Révoquer le lien'}
           </button>
         </div>
       )}

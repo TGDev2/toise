@@ -54,15 +54,15 @@ export default function SubscriptionSuccessPage() {
           Bienvenue dans Chiffréo Pro !
         </h1>
         <p className="mt-3 text-sm text-stone-600">
-          Votre essai gratuit de 7 jours a commence. Toutes les fonctionnalités
-          Pro sont maintenant deverrouillees.
+          Votre essai gratuit de 7 jours a commencé. Toutes les fonctionnalités
+          Pro sont maintenant déverrouillées.
         </p>
 
         <button
           onClick={() => router.push('/dashboard')}
           className="mt-6 w-full rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white hover:-translate-y-0.5 hover:bg-[var(--accent-strong)]"
         >
-          Acceder a mes projets
+          Accéder à mes projets
         </button>
 
         <p className="mt-3 text-xs text-stone-400">

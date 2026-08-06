@@ -38,7 +38,7 @@ export function PhotoUploadPanel({
           Photos de la pièce
         </h2>
         <p className="mt-1 text-sm text-stone-600">
-          Ajoutez 1 a {maxPhotos} photos pour faciliter l&apos;analyse des dimensions.
+          Ajoutez 1 à {maxPhotos} photos pour faciliter l&apos;analyse des dimensions.
           Photographiez les coins opposés et les murs entiers.
         </p>
       </div>

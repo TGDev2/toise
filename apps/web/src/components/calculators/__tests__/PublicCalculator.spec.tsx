@@ -195,7 +195,7 @@ describe('PublicCalculator', () => {
     expect(screen.getByRole('radio', { name: /murs/i })).toBeChecked();
     expect(screen.getByRole('radio', { name: /plafond/i })).not.toBeChecked();
     expect(screen.getByLabelText(/nombre de couches/i)).toBeInTheDocument();
-    expect(screen.getByText(/intermediaire/i)).toBeInTheDocument();
+    expect(screen.getByText(/intermédiaire/i)).toBeInTheDocument();
   });
 
   it('submits dimensions to the public endpoint and shows results', async () => {

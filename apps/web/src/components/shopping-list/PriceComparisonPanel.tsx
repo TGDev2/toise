@@ -134,7 +134,7 @@ export function PriceComparisonPanel({
       );
       onApplied();
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Impossible d\'appliquer la selection'));
+      setError(getErrorMessage(err, 'Impossible d\'appliquer la sélection'));
     } finally {
       setApplying(false);
     }
@@ -189,7 +189,7 @@ export function PriceComparisonPanel({
           disabled={applying || selections.size === 0}
           className="rounded-full bg-emerald-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
         >
-          {applying ? 'Application...' : 'Appliquer la selection'}
+          {applying ? 'Application...' : 'Appliquer la sélection'}
         </button>
       </div>
     </section>

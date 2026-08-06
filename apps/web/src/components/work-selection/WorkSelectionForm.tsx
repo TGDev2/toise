@@ -197,7 +197,7 @@ export function WorkSelectionForm({
       {/* Skill level */}
       <div>
         <h2 className="mb-4 text-lg font-semibold text-stone-900">
-          Niveau de competence
+          Niveau de compétence
         </h2>
 
         <div className="flex flex-col gap-3 sm:flex-row">
@@ -236,7 +236,7 @@ export function WorkSelectionForm({
 
         {touched && skillLevel === '' && (
           <p className="mt-3 text-sm text-red-600">
-            Veuillez sélectionner votre niveau de competence.
+            Veuillez sélectionner votre niveau de compétence.
           </p>
         )}
       </div>

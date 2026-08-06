@@ -59,7 +59,7 @@ const mockWorkTypes: WorkTypeRef[] = [
   {
     id: 'wt-5',
     code: 'parquet_flooring',
-    label_fr: 'Parquet ou stratifie',
+    label_fr: 'Parquet ou stratifié',
     category: 'flooring',
     surface_target: 'floor',
     contextual_questions: [],
@@ -67,7 +67,7 @@ const mockWorkTypes: WorkTypeRef[] = [
   {
     id: 'wt-6',
     code: 'drywall',
-    label_fr: 'Cloison seche',
+    label_fr: 'Cloison sèche',
     category: 'partition',
     surface_target: 'wall',
     contextual_questions: [],
@@ -75,7 +75,7 @@ const mockWorkTypes: WorkTypeRef[] = [
   {
     id: 'wt-7',
     code: 'wall_covering',
-    label_fr: 'Revetement mural',
+    label_fr: 'Revêtement mural',
     category: 'wall_covering',
     surface_target: 'wall',
     contextual_questions: [],
@@ -96,17 +96,17 @@ describe('WorkSelectionForm', () => {
     expect(screen.getByText('Peinture plafond')).toBeInTheDocument();
     expect(screen.getByText('Carrelage sol')).toBeInTheDocument();
     expect(screen.getByText('Carrelage mural')).toBeInTheDocument();
-    expect(screen.getByText('Parquet ou stratifie')).toBeInTheDocument();
-    expect(screen.getByText('Cloison seche')).toBeInTheDocument();
-    expect(screen.getByText('Revetement mural')).toBeInTheDocument();
+    expect(screen.getByText('Parquet ou stratifié')).toBeInTheDocument();
+    expect(screen.getByText('Cloison sèche')).toBeInTheDocument();
+    expect(screen.getByText('Revêtement mural')).toBeInTheDocument();
   });
 
   it('renders all 3 skill levels', () => {
     render(<WorkSelectionForm workTypes={mockWorkTypes} onSave={mockSave} isSaving={false} />);
 
-    expect(screen.getByText('Debutant')).toBeInTheDocument();
-    expect(screen.getByText('Intermediaire')).toBeInTheDocument();
-    expect(screen.getByText('Confirme')).toBeInTheDocument();
+    expect(screen.getByText('Débutant')).toBeInTheDocument();
+    expect(screen.getByText('Intermédiaire')).toBeInTheDocument();
+    expect(screen.getByText('Confirmé')).toBeInTheDocument();
   });
 
   it('toggles work type selection', () => {
@@ -132,7 +132,7 @@ describe('WorkSelectionForm', () => {
         screen.getByText(/veuillez sélectionner au moins un type de travaux/i),
       ).toBeInTheDocument();
       expect(
-        screen.getByText(/veuillez sélectionner votre niveau de competence/i),
+        screen.getByText(/veuillez sélectionner votre niveau de compétence/i),
       ).toBeInTheDocument();
     });
 
@@ -142,7 +142,7 @@ describe('WorkSelectionForm', () => {
   it('shows beginner description when selected', () => {
     render(<WorkSelectionForm workTypes={mockWorkTypes} onSave={mockSave} isSaving={false} />);
 
-    fireEvent.click(screen.getByLabelText(/debutant/i));
+    fireEvent.click(screen.getByLabelText(/débutant/i));
 
     expect(
       screen.getByText(/facteur de perte sera augmenté/i),
@@ -172,7 +172,7 @@ describe('WorkSelectionForm', () => {
     render(<WorkSelectionForm workTypes={mockWorkTypes} onSave={mockSave} isSaving={false} />);
 
     fireEvent.click(screen.getByRole('button', { name: /peinture murale/i }));
-    fireEvent.click(screen.getByLabelText(/intermediaire/i));
+    fireEvent.click(screen.getByLabelText(/intermédiaire/i));
     fireEvent.click(screen.getByText('Calculer'));
 
     await waitFor(() => {
@@ -190,7 +190,7 @@ describe('WorkSelectionForm', () => {
     render(<WorkSelectionForm workTypes={mockWorkTypes} onSave={mockSave} isSaving={false} />);
 
     fireEvent.click(screen.getByRole('button', { name: /carrelage sol/i }));
-    fireEvent.click(screen.getByLabelText(/confirme/i));
+    fireEvent.click(screen.getByLabelText(/confirmé/i));
 
     // Fill contextual questions
     fireEvent.change(screen.getByLabelText(/format du carreau/i), {
@@ -217,7 +217,7 @@ describe('WorkSelectionForm', () => {
     render(<WorkSelectionForm workTypes={mockWorkTypes} onSave={mockSave} isSaving={false} />);
 
     fireEvent.click(screen.getByRole('button', { name: /carrelage sol/i }));
-    fireEvent.click(screen.getByLabelText(/confirme/i));
+    fireEvent.click(screen.getByLabelText(/confirmé/i));
 
     // Don't fill contextual questions
     fireEvent.click(screen.getByText('Calculer'));
@@ -256,7 +256,7 @@ describe('WorkSelectionForm', () => {
       expect(
         screen.getByRole('button', { name: /peinture plafond/i }),
       ).toHaveAttribute('aria-pressed', 'true');
-      expect(screen.getByLabelText(/confirme/i)).toBeChecked();
+      expect(screen.getByLabelText(/confirmé/i)).toBeChecked();
       expect(screen.getByText(/votre dernier chantier/i)).toBeInTheDocument();
     });
 
@@ -362,7 +362,7 @@ describe('WorkSelectionForm', () => {
       expect(
         screen.getByRole('button', { name: /peinture murale/i }),
       ).toHaveAttribute('aria-pressed', 'false');
-      expect(screen.getByLabelText(/debutant/i)).toBeChecked();
+      expect(screen.getByLabelText(/débutant/i)).toBeChecked();
       expect(screen.queryByText(/Repris de/i)).not.toBeInTheDocument();
     });
   });
@@ -372,7 +372,7 @@ describe('WorkSelectionForm', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /peinture murale/i }));
     fireEvent.click(screen.getByRole('button', { name: /peinture plafond/i }));
-    fireEvent.click(screen.getByLabelText(/debutant/i));
+    fireEvent.click(screen.getByLabelText(/débutant/i));
 
     fireEvent.click(screen.getByText('Calculer'));
 

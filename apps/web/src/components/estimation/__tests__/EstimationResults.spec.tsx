@@ -5,7 +5,7 @@ import { makeLineItem, makeFloorTilingItem, makeMultiWorkTypeItems } from './fix
 describe('EstimationResults', () => {
   it('should show empty message when no items', () => {
     render(<EstimationResults items={[]} />);
-    expect(screen.getByText('Aucun matériau a estimer.')).toBeInTheDocument();
+    expect(screen.getByText('Aucun matériau à estimer.')).toBeInTheDocument();
   });
 
   it('should render one section for a single work type', () => {

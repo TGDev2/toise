@@ -14,7 +14,7 @@ describe('EstimationSummary', () => {
 
   it('should render when 2+ work types are present', () => {
     render(<EstimationSummary items={makeMultiWorkTypeItems()} />);
-    expect(screen.getByText('Recapitulatif global')).toBeInTheDocument();
+    expect(screen.getByText('Récapitulatif global')).toBeInTheDocument();
   });
 
   it('should consolidate same material from different work types', () => {

@@ -80,8 +80,8 @@ export function BudgetDashboard({
               Suivi budgétaire
             </h2>
             <p className="mt-1 text-sm text-stone-500">
-              Saisissez vos prix reels et decouvrez combien vous economisez grace
-              a Chiffréo.
+              Saisissez vos prix réels et découvrez combien vous économisez grâce
+              à Chiffréo.
             </p>
           </div>
           <button
@@ -104,8 +104,8 @@ export function BudgetDashboard({
           Suivi budgétaire
         </h2>
         <p className="mt-2 text-sm text-stone-500">
-          Cliquez sur l&apos;icone prix de chaque article pour saisir le prix
-          reel paye. Le tableau de bord s&apos;affichera automatiquement.
+          Cliquez sur l&apos;icône prix de chaque article pour saisir le prix
+          réel payé. Le tableau de bord s&apos;affichera automatiquement.
         </p>
       </section>
     );
@@ -122,7 +122,7 @@ export function BudgetDashboard({
           Suivi budgétaire
         </h2>
         <span className="rounded-full bg-stone-100 px-3 py-1 text-xs text-stone-600">
-          {summary.items_priced}/{summary.items_total} articles renseignes
+          {summary.items_priced}/{summary.items_total} articles renseignés
         </span>
       </div>
 

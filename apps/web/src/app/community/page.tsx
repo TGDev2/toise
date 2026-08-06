@@ -69,7 +69,7 @@ export default async function CommunityGalleryPage({
             Galerie des projets terminés
           </h1>
           <p className="mt-3 text-sm text-stone-500">
-            Decouvrez les realisations de la communauté et inspirez-vous pour
+            Découvrez les réalisations de la communauté et inspirez-vous pour
             vos prochains travaux.
           </p>
         </div>

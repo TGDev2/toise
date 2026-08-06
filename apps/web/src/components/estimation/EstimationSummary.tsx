@@ -53,7 +53,7 @@ export function EstimationSummary({ items }: EstimationSummaryProps) {
     <section className="rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-stone-900">
-          Recapitulatif global
+          Récapitulatif global
         </h2>
         <span className="rounded-full bg-stone-100 px-3 py-1 text-sm text-stone-600">
           {consolidated.length} matériau{consolidated.length > 1 ? 'x' : ''}

@@ -211,7 +211,7 @@ export default function WorkSelectionPage() {
       />
 
       <h1 className="mb-6 text-2xl font-semibold text-stone-950 sm:text-3xl">
-        Selection des travaux
+        Sélection des travaux
       </h1>
 
       {/* Sélecteur de pièces (sélection seule ; ajout/suppression à l'étape dimensions) */}

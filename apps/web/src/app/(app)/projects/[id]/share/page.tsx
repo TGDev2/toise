@@ -147,8 +147,8 @@ export default function ShareProjectPage() {
             Publication envoyée !
           </h2>
           <p className="mt-3 text-sm text-emerald-700">
-            Votre projet a été soumis a notre equipe de modération. Il sera
-            visible dans la galerie après validation, generalement sous 24 a 48
+            Votre projet a été soumis à notre équipe de modération. Il sera
+            visible dans la galerie après validation, généralement sous 24 à 48
             heures.
           </p>
           <div className="mt-6 flex justify-center gap-3">

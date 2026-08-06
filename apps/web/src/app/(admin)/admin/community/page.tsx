@@ -78,10 +78,10 @@ export default function AdminCommunityPage() {
     setError('');
     try {
       await apiPut(`/community/admin/${id}/moderate`, { action: 'approve' });
-      setFeedback('Projet approuve.');
+      setFeedback('Projet approuvé.');
       setProjects((prev) => prev.filter((p) => p.id !== id));
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Impossible de moderer le projet'));
+      setError(getErrorMessage(err, 'Impossible de modérer le projet'));
     } finally {
       setActionLoading(null);
     }
@@ -95,12 +95,12 @@ export default function AdminCommunityPage() {
         action: 'reject',
         rejection_reason: rejectionReason.trim() || undefined,
       });
-      setFeedback('Projet rejete.');
+      setFeedback('Projet rejeté.');
       setProjects((prev) => prev.filter((p) => p.id !== id));
       setRejectingId(null);
       setRejectionReason('');
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Impossible de moderer le projet'));
+      setError(getErrorMessage(err, 'Impossible de modérer le projet'));
     } finally {
       setActionLoading(null);
     }

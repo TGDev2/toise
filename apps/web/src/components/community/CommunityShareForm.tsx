@@ -162,7 +162,7 @@ export function CommunityShareForm({
               Photos &quot;Avant&quot;
             </span>
             <p className="text-xs text-stone-500">
-              Sélectionnez les photos montrant l&apos;etat avant les travaux.
+              Sélectionnez les photos montrant l&apos;état avant les travaux.
             </p>
             <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
               {photos.map((photo) => (

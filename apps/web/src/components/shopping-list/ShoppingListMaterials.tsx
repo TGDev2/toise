@@ -15,7 +15,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   tiling: 'Carrelage',
   flooring: 'Parquet / Sol',
   partition: 'Cloison',
-  wall_covering: 'Revetement mural',
+  wall_covering: 'Revêtement mural',
 };
 
 interface ShoppingListMaterialsProps {
@@ -238,8 +238,8 @@ function MaterialRow({
                     ? 'text-stone-300 hover:text-stone-400'
                     : 'text-stone-400 hover:bg-stone-100 hover:text-stone-600'
               }`}
-              title={budgetAllowed === false ? 'Fonctionnalité Pro' : 'Saisir le prix reel'}
-              aria-label="Saisir le prix reel"
+              title={budgetAllowed === false ? 'Fonctionnalité Pro' : 'Saisir le prix réel'}
+              aria-label="Saisir le prix réel"
             >
               {budgetAllowed === false ? (
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
@@ -257,9 +257,9 @@ function MaterialRow({
               type="button"
               onClick={handleReset}
               className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 hover:bg-amber-200"
-              title="Reinitialiser la quantité"
+              title="Réinitialiser la quantité"
             >
-              Modifie
+              Modifié
             </button>
           )}
           {readOnly ? (

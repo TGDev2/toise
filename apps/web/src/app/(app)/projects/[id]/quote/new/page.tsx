@@ -54,7 +54,7 @@ export default function NewQuotePage() {
   const [tvaRate, setTvaRate] = useState('20');
   const [validityDays, setValidityDays] = useState('30');
   const [paymentTerms, setPaymentTerms] = useState(
-    'Acompte de 30 % a la commande, solde a la reception des travaux.',
+    'Acompte de 30 % à la commande, solde à la réception des travaux.',
   );
   const [notes, setNotes] = useState('');
 
@@ -277,7 +277,7 @@ export default function NewQuotePage() {
           Générer un devis
         </h1>
         <p className="mt-2 text-sm text-stone-500">
-          {pricedItems.length} matériau(x) avec prix renseigne(s)
+          {pricedItems.length} matériau(x) avec prix renseigné(s)
         </p>
       </div>
 
@@ -289,7 +289,7 @@ export default function NewQuotePage() {
 
       {pricedItems.length === 0 && (
         <div className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
-          Aucun matériau n&apos;a de prix renseigne dans la liste de courses.
+          Aucun matériau n&apos;a de prix renseigné dans la liste de courses.
           Renseignez les prix avant de créer un devis.
         </div>
       )}
@@ -350,7 +350,7 @@ export default function NewQuotePage() {
         {/* Labor */}
         <section className="rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
           <h2 className="text-lg font-semibold text-stone-950">
-            Main d&apos;oeuvre
+            Main-d&apos;œuvre
           </h2>
           <p className="mt-1 text-sm text-stone-500">
             Une ligne par ouvrage, proposée à partir des surfaces du projet —
@@ -416,7 +416,7 @@ export default function NewQuotePage() {
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <label className="space-y-2">
               <span className="text-sm font-medium text-stone-700">
-                Validite (jours)
+                Validité (jours)
               </span>
               <input
                 type="number"
@@ -454,7 +454,7 @@ export default function NewQuotePage() {
         {/* Live totals */}
         <section className="rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
           <h2 className="text-lg font-semibold text-stone-950">
-            Recapitulatif
+            Récapitulatif
           </h2>
           <div className="mt-4 space-y-2 text-sm">
             <div className="flex justify-between">
@@ -465,7 +465,7 @@ export default function NewQuotePage() {
             </div>
             <div className="flex justify-between">
               <span className="text-stone-600">
-                Sous-total main d&apos;oeuvre HT
+                Sous-total main-d&apos;œuvre HT
               </span>
               <span className="font-medium">
                 {formatPrice(subtotalLabor)} EUR
@@ -520,7 +520,7 @@ export default function NewQuotePage() {
             }
             className="inline-flex min-h-12 items-center justify-center rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {submitting ? 'Creation...' : 'Créer le devis'}
+            {submitting ? 'Création...' : 'Créer le devis'}
           </button>
           <button
             type="button"

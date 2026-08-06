@@ -114,7 +114,7 @@ describe('OpeningsSection', () => {
       />,
     );
     expect(
-      screen.getByText(/les dimensions semblent incoherentes/i),
+      screen.getByText(/les dimensions semblent incohérentes/i),
     ).toBeInTheDocument();
   });
 
@@ -132,7 +132,7 @@ describe('OpeningsSection', () => {
       />,
     );
     expect(
-      screen.queryByText(/les dimensions semblent incoherentes/i),
+      screen.queryByText(/les dimensions semblent incohérentes/i),
     ).not.toBeInTheDocument();
   });
 

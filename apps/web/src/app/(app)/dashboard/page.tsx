@@ -337,7 +337,7 @@ export default function DashboardPage() {
                     {nextBilling && (
                       <p className="mt-1 text-xs text-stone-500">
                         {subscription?.cancel_at_period_end
-                          ? `Actif jusqu'àu ${nextBilling}`
+                          ? `Actif jusqu'au ${nextBilling}`
                           : `Prochain prélèvement le ${nextBilling}`}
                       </p>
                     )}

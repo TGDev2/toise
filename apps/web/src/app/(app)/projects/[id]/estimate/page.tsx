@@ -121,7 +121,7 @@ export default function EstimatePage() {
 
       <section className="mb-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
         <label className="mb-3 block text-sm font-medium text-stone-700">
-          Niveau de competence
+          Niveau de compétence
         </label>
         <SkillLevelSelector
           value={skillLevel}
@@ -130,7 +130,7 @@ export default function EstimatePage() {
         />
         <p className="mt-2 text-xs text-stone-400">
           Changer le niveau recalcule automatiquement les quantités avec les
-          facteurs de perte adaptes.
+          facteurs de perte adaptés.
         </p>
       </section>
 

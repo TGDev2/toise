@@ -54,7 +54,7 @@ export function EstimationResults({ items }: EstimationResultsProps) {
   if (items.length === 0) {
     return (
       <p className="py-8 text-center text-stone-400">
-        Aucun matériau a estimer.
+        Aucun matériau à estimer.
       </p>
     );
   }
@@ -189,13 +189,13 @@ export function EstimationResults({ items }: EstimationResultsProps) {
                           {item.pose_type}
                           {item.waste_factor_source === 'default' && (
                             <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
-                              generique
+                              générique
                             </span>
                           )}
                           {item.waste_factor_source === 'learned' && (
                             <span
                               className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700"
-                              title="Ajuste sur les achats reels de chantiers termines"
+                              title="Ajusté sur les achats réels de chantiers terminés"
                             >
                               appris
                             </span>

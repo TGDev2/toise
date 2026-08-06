@@ -6,7 +6,7 @@ const CATEGORIES = [
   { value: 'tiling', label: 'Carrelage' },
   { value: 'flooring', label: 'Parquet' },
   { value: 'partition', label: 'Cloison' },
-  { value: 'wall_covering', label: 'Revetement mural' },
+  { value: 'wall_covering', label: 'Revêtement mural' },
 ] as const;
 
 interface CategoryTabsProps {

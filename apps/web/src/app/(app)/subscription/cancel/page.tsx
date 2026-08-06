@@ -22,10 +22,10 @@ export default function SubscriptionCancelPage() {
         </div>
 
         <h1 className="text-2xl font-bold text-stone-900">
-          Souscription annulee
+          Souscription annulée
         </h1>
         <p className="mt-3 text-sm text-stone-600">
-          Vous n&apos;avez pas ete debite. Vous pouvez souscrire à tout moment
+          Vous n&apos;avez pas été débité. Vous pouvez souscrire à tout moment
           depuis votre tableau de bord.
         </p>
 

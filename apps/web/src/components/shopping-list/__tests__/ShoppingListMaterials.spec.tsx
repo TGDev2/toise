@@ -320,7 +320,7 @@ describe('ShoppingListMaterials', () => {
           knownPrices={known}
         />,
       );
-      fireEvent.click(screen.getByRole('button', { name: 'Saisir le prix reel' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Saisir le prix réel' }));
 
       expect(screen.getByLabelText(/Prix unitaire pour/)).toHaveValue('45.9');
       expect(screen.getByLabelText(/Magasin pour/)).toHaveValue('Leroy Merlin');

@@ -404,7 +404,7 @@ export default function QuoteDetailPage() {
       {/* Labor */}
       <section className="mt-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
         <h2 className="text-lg font-semibold text-stone-950">
-          Main d&apos;oeuvre
+          Main-d&apos;œuvre
         </h2>
         {quote.labor_items_json?.length ? (
           <div className="mt-4 overflow-x-auto">
@@ -470,7 +470,7 @@ export default function QuoteDetailPage() {
           </div>
           <div className="flex justify-between">
             <span className="text-stone-600">
-              Sous-total main d&apos;oeuvre HT
+              Sous-total main-d&apos;œuvre HT
             </span>
             <span className="font-medium">
               {formatPrice(Number(quote.subtotal_labor_ht))} EUR

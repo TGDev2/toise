@@ -43,7 +43,7 @@ export function SupplierTotalsSummary({
       {Math.abs(selectedTotal - optimizedTotal) > 0.01 && (
         <div className="rounded-2xl border border-stone-200 bg-white px-5 py-4">
           <p className="text-xs font-medium text-stone-500">
-            Total de votre selection
+            Total de votre sélection
           </p>
           <p className="mt-1 text-2xl font-bold text-stone-900">
             {selectedTotal.toFixed(2)}{' '}

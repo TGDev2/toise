@@ -7,7 +7,7 @@ const CATEGORIES = [
   { value: 'tiling', label: 'Carrelage' },
   { value: 'flooring', label: 'Parquet' },
   { value: 'partition', label: 'Cloison' },
-  { value: 'wall_covering', label: 'Revetement mural' },
+  { value: 'wall_covering', label: 'Revêtement mural' },
 ];
 
 const UNITS = [
@@ -19,8 +19,8 @@ const UNITS = [
 ];
 
 const SKILL_LEVELS = [
-  { value: 'beginner', label: 'Debutant' },
-  { value: 'intermediate', label: 'Intermediaire' },
+  { value: 'beginner', label: 'Débutant' },
+  { value: 'intermediate', label: 'Intermédiaire' },
   { value: 'expert', label: 'Expert' },
 ];
 
@@ -227,7 +227,7 @@ export function MaterialForm({
         </div>
         <div>
           <label className={labelClass}>
-            Categorie <span className="text-red-500">*</span>
+            Catégorie <span className="text-red-500">*</span>
           </label>
           <select
             value={category}

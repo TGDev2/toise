@@ -58,18 +58,18 @@ export interface LastWorkSelectionItem {
 export const SKILL_LEVELS = [
   {
     value: 'beginner',
-    label: 'Debutant',
+    label: 'Débutant',
     description:
       'Le facteur de perte sera augmenté pour compenser les erreurs de découpe plus fréquentes.',
   },
   {
     value: 'intermediate',
-    label: 'Intermediaire',
+    label: 'Intermédiaire',
     description: '',
   },
   {
     value: 'expert',
-    label: 'Confirme',
+    label: 'Confirmé',
     description: '',
   },
 ] as const;

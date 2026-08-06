@@ -34,7 +34,7 @@ describe('DimensionsForm', () => {
     fireEvent.click(screen.getByText(/enregistrer les dimensions/i));
     await waitFor(() => {
       expect(
-        screen.getByText(/vous n'avez pas ajoute de portes ou fenêtres/i),
+        screen.getByText(/vous n'avez pas ajouté de portes ou fenêtres/i),
       ).toBeInTheDocument();
     });
     fireEvent.click(screen.getByRole('button', { name: /continuer/i }));
@@ -86,7 +86,7 @@ describe('DimensionsForm', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/vous n'avez pas ajoute de portes ou fenêtres/i),
+        screen.getByText(/vous n'avez pas ajouté de portes ou fenêtres/i),
       ).toBeInTheDocument();
     });
 
@@ -125,7 +125,7 @@ describe('DimensionsForm', () => {
     fireEvent.click(screen.getByText(/enregistrer les dimensions/i));
     await waitFor(() => {
       expect(
-        screen.getByText(/vous n'avez pas ajoute de portes ou fenêtres/i),
+        screen.getByText(/vous n'avez pas ajouté de portes ou fenêtres/i),
       ).toBeInTheDocument();
     });
     fireEvent.click(screen.getByRole('button', { name: /continuer/i }));
@@ -164,7 +164,7 @@ describe('DimensionsForm', () => {
     fireEvent.click(screen.getByText(/enregistrer les dimensions/i));
     await waitFor(() => {
       expect(
-        screen.getByText(/vous n'avez pas ajoute de portes ou fenêtres/i),
+        screen.getByText(/vous n'avez pas ajouté de portes ou fenêtres/i),
       ).toBeInTheDocument();
     });
     fireEvent.click(screen.getByRole('button', { name: /continuer/i }));

@@ -486,7 +486,7 @@ export function DimensionsForm({
         {showZeroOpeningsSuggestion && (
           <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
             <p className="text-sm text-blue-800">
-              Vous n&apos;avez pas ajoute de portes ou fenêtres. Souhaitez-vous continuer ?
+              Vous n&apos;avez pas ajouté de portes ou fenêtres. Souhaitez-vous continuer ?
             </p>
             <div className="mt-2 flex flex-col gap-2 sm:flex-row">
               <button

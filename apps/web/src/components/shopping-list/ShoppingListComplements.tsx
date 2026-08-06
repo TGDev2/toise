@@ -101,7 +101,7 @@ function ComplementRow({
             {item.name}
             {item.is_calculated && (
               <span className="ml-2 text-xs font-normal text-stone-400">
-                (estime)
+                (estimé)
               </span>
             )}
             {hasPriceSet && (
@@ -135,8 +135,8 @@ function ComplementRow({
                     ? 'text-stone-300 hover:text-stone-400'
                     : 'text-stone-400 hover:bg-stone-100 hover:text-stone-600'
               }`}
-              title={budgetAllowed === false ? 'Fonctionnalité Pro' : 'Saisir le prix reel'}
-              aria-label="Saisir le prix reel"
+              title={budgetAllowed === false ? 'Fonctionnalité Pro' : 'Saisir le prix réel'}
+              aria-label="Saisir le prix réel"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
                 {budgetAllowed === false ? (
@@ -268,12 +268,12 @@ export function ShoppingListComplements({
   return (
     <div>
       <h2 className="mb-4 text-lg font-semibold text-stone-900">
-        Accessoires recommandes
+        Accessoires recommandés
       </h2>
 
       {activeItems.length === 0 ? (
         <p className="py-4 text-sm text-stone-400">
-          Tous les accessoires ont été retires.
+          Tous les accessoires ont été retirés.
         </p>
       ) : (
         <div className="space-y-3">
@@ -304,7 +304,7 @@ export function ShoppingListComplements({
             onClick={() => setShowRemoved(!showRemoved)}
             className="text-sm text-stone-500 hover:text-stone-700"
           >
-            {showRemoved ? 'Masquer' : 'Voir'} les articles retires (
+            {showRemoved ? 'Masquer' : 'Voir'} les articles retirés (
             {removedItems.length})
           </button>
 

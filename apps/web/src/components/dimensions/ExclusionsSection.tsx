@@ -97,7 +97,7 @@ export function ExclusionsSection({
           role="alert"
           className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800"
         >
-          Les dimensions semblent incoherentes : la surface exclue dépasse la
+          Les dimensions semblent incohérentes : la surface exclue dépasse la
           surface nette des murs.
         </div>
       )}

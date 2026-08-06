@@ -130,7 +130,7 @@ export interface UpdateClientPayload {
 export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
   draft: 'Brouillon',
   sent: 'Envoyé',
-  accepted: 'Accepte',
+  accepted: 'Accepté',
   refused: 'Refusé',
   negotiation: 'En négociation',
 };
