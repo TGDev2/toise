@@ -30,7 +30,10 @@ test('un invité obtient une estimation et arrive sur une liste d’achat non vi
 
   await expect(page.getByRole('button', { name: 'Peinture murale' })).toBeVisible();
   await page.getByRole('button', { name: 'Peinture murale' }).click();
-  await page.getByLabel('Debutant').check();
+  // Le libellé affiché porte son accent (`lib/work-types.ts`), contrairement au
+  // `label_fr` sans accent des ouvrages seedés. Même correction que celle déjà
+  // appliquée à `parcours-chrono`.
+  await page.getByRole('radio', { name: 'Débutant' }).check();
   await page.getByRole('button', { name: 'Calculer' }).click();
 
   await expect(page.getByRole('heading', { name: 'Matériaux nécessaires' })).toBeVisible({

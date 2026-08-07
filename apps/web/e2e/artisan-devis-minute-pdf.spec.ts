@@ -45,9 +45,29 @@ test('un artisan connecté génère un devis-minute et télécharge le PDF', asy
   await page.getByRole('button', { name: '+ Porte' }).click();
   await page.getByRole('button', { name: 'Enregistrer les dimensions' }).click();
 
+  /**
+   * L'écran **reprend les ouvrages du dernier chantier de l'artisan** (« Repris
+   * de votre dernier chantier — modifiable »), et le compte est partagé avec
+   * `parcours-chrono`, dont le dernier scénario pose une cloison sèche. Cliquer
+   * « Peinture murale » sans regarder l'état la **décochait** quand la reprise
+   * l'avait déjà cochée, et laissait une cloison sans linéaire — dont la
+   * validation bloque « Calculer », sans que rien ne dise pourquoi.
+   *
+   * On normalise donc la sélection à exactement « Peinture murale », comme
+   * `parcours-chrono` le fait dans son `selectWork()`. Sans cela, ce test
+   * dépend de l'ordre d'exécution de la suite.
+   */
   await expect(page.getByRole('button', { name: 'Peinture murale' })).toBeVisible();
-  await page.getByRole('button', { name: 'Peinture murale' }).click();
-  await page.getByLabel('Debutant').check();
+  const tiles = page.locator('button[aria-pressed]');
+  for (let i = 0; i < (await tiles.count()); i++) {
+    const tile = tiles.nth(i);
+    const wanted = (await tile.innerText()).includes('Peinture murale');
+    if (((await tile.getAttribute('aria-pressed')) === 'true') !== wanted) {
+      await tile.click();
+    }
+  }
+  // Cf. `guest-estimate-flow.spec.ts` : le libellé affiché porte son accent.
+  await page.getByRole('radio', { name: 'Débutant' }).check();
   await page.getByRole('button', { name: 'Calculer' }).click();
 
   await expect(page.getByRole('heading', { name: 'Matériaux nécessaires' })).toBeVisible({
@@ -56,7 +76,8 @@ test('un artisan connecté génère un devis-minute et télécharge le PDF', asy
   await page.getByRole('button', { name: 'Chiffrer les matériaux' }).click();
 
   await expect(page.getByRole('heading', { name: 'Liste de courses' })).toBeVisible();
-  await page.getByRole('button', { name: 'Saisir le prix reel' }).first().click();
+  // Accentué à l'écran, comme « Débutant » plus haut.
+  await page.getByRole('button', { name: 'Saisir le prix réel' }).first().click();
   const priceInput = page.getByLabel('Prix unitaire').first();
   await priceInput.fill('12.5');
   await priceInput.blur();
