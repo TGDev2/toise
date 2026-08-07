@@ -4,7 +4,9 @@ import {
   ArrayMinSize,
   IsArray,
   IsEnum,
+  IsIn,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   Length,
@@ -44,6 +46,33 @@ export class ApiWorkItemDto {
   @ValidateNested()
   @Type(() => PublicCustomParamsDto)
   custom_params?: PublicCustomParamsDto;
+
+  /**
+   * E1-3 — assiette d'un ouvrage qu'on **crée** (cloison sèche). Optionnels
+   * ici parce que le type d'ouvrage n'est pas encore résolu à la validation ;
+   * `EstimationsService.toWorkItemInput` les exige dès que l'ouvrage demandé
+   * déclare `quantity_basis = 'declared'`, et refuse la requête sinon plutôt
+   * que de chiffrer la cloison sur le périmètre de la pièce.
+   *
+   * Bornes reprises de `SaveWorkItemDto` : une seule description des limites
+   * d'une cloison, pas deux qui divergeront.
+   */
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.1)
+  @Max(50)
+  declared_length_m?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.1)
+  @Max(6)
+  declared_height_m?: number;
+
+  /** Faces à parementer : 1 (doublage) ou 2 (cloison). */
+  @IsOptional()
+  @IsIn([1, 2])
+  declared_clad_faces?: number;
 }
 
 export class ApiRoomDto {

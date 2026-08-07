@@ -5,6 +5,13 @@ import {
   PurchaseContribution,
 } from './entities/estimation-result.entity';
 import { RectSegment, unionAreaCm2, unionPerimeterCm } from './room-geometry';
+// Types seuls : aucune dépendance d'exécution du moteur vers TypeORM. Ils sont
+// importés plutôt que redéclarés parce qu'ils décident de quantités — deux
+// définitions qui divergeraient produiraient un chiffrage faux sans rien casser.
+import type { MaterialQuantityDriver } from '../materials/entities/material-catalog.entity';
+import type { FrameSpec } from '../projects/entities/work-type.entity';
+
+export type { MaterialQuantityDriver, FrameSpec };
 
 export interface SurfaceExclusionInput {
   surface_target: string;
@@ -82,8 +89,66 @@ export interface MaterialInput {
    * d'exclure les accessoires de la fourchette de référence d'un devis.
    */
   role?: 'principal' | 'sous_couche' | 'consommable' | 'accessoire';
+  /**
+   * E1-3 — sur quoi ce matériau se métré, donc dans quelle unité
+   * `yield_per_unit` est exprimé. Absent = `work_surface`, comme le défaut de
+   * la colonne : un appel qui ne renseigne pas l'attribut se métre sur la
+   * surface d'ouvrage, exactement comme avant E1-3.
+   *
+   * C'est ce champ qui distingue le parement de l'ossature. Le moteur ne
+   * regarde jamais `work_type_code` pour en décider.
+   */
+  quantity_driver?: MaterialQuantityDriver;
   waste_factors: WasteFactorInput[];
   packagings: PackagingInput[];
+}
+
+/**
+ * E1-3 — assiette **saisie** d'un ouvrage qu'on crée plutôt qu'on ne recouvre
+ * (`project_work_items.declared_*`). Sa présence sur un `WorkItemInput` est ce
+ * qui fait basculer le moteur : plus rien n'est dérivé de la géométrie de la
+ * pièce, ni la surface, ni les ouvertures, ni les zones exclues — elles
+ * décrivent les murs existants, pas la cloison qu'on dresse.
+ */
+export interface DeclaredWorkBasis {
+  /** Linéaire d'ouvrage à créer, en mètres. */
+  length_m: number;
+  /** Hauteur de l'ouvrage, en mètres. Jamais celle de la pièce par défaut. */
+  height_m: number;
+  /** Faces à parementer : 2 pour une cloison, 1 pour un doublage. */
+  clad_faces: number;
+}
+
+/** Ce que la trame d'un ouvrage demande réellement (E1-3). */
+export interface FrameQuantities {
+  /** `ceil(longueur / entraxe) + 1 + montants déclarés`. */
+  stud_count: number;
+  /** `stud_count × hauteur`, en mètres. */
+  stud_length_m: number;
+  /** `runner_courses × longueur`, en mètres. */
+  runner_length_m: number;
+}
+
+/**
+ * Les assiettes d'un ouvrage sur une pièce, calculées une fois pour tous ses
+ * matériaux. C'est ici, et nulle part ailleurs, que se joue le piège du métré
+ * plâtrerie : `clad_surface_m2` porte le nombre de faces, `frame` ne le porte
+ * pas. Une cloison de 4 ml parementée deux faces a deux peaux de plaques et une
+ * seule trame de rails et de montants.
+ */
+export interface WorkBasis {
+  /** Surface d'ouvrage nette, m². Dérivée de la pièce ou déclarée. */
+  work_surface_m2: number;
+  /** Avant déduction des ouvertures et des zones exclues, m². */
+  gross_surface_m2: number;
+  /** Aire retirée par les zones exclues (ENG-3), m². */
+  excluded_surface_m2: number;
+  /** `work_surface_m2 × clad_faces`, m². */
+  clad_surface_m2: number;
+  /** Faces à parementer. 1 pour un ouvrage de recouvrement. */
+  clad_faces: number;
+  /** `null` quand l'ouvrage ne déclare pas de trame. */
+  frame: FrameQuantities | null;
 }
 
 export interface WorkItemInput {
@@ -97,8 +162,25 @@ export interface WorkItemInput {
    * (`MaterialInput.applies_coats`), jamais déduites de cette valeur.
    */
   category: string;
+  /**
+   * Surface de la pièce sur laquelle l'ouvrage se chiffre. Lue **uniquement**
+   * quand l'assiette est dérivée de la pièce : un ouvrage à assiette déclarée
+   * n'en fait plus rien.
+   */
   surface_target: string;
   skill_level: string;
+  /**
+   * E1-3 — assiette saisie. Sa **présence** dit `quantity_basis = 'declared'` ;
+   * son absence, `room_surface`. Un seul champ, donc pas d'état où l'ouvrage se
+   * dit déclaré sans porter sa déclaration : c'est ce qui rend impossible le
+   * repli silencieux sur le périmètre de la pièce, le défaut que ce lot corrige.
+   */
+  declared_basis?: DeclaredWorkBasis;
+  /**
+   * Trame déclarée par l'ouvrage (`work_types.frame_spec`). Requise dès qu'un
+   * de ses matériaux se métre sur `frame_runner` ou `frame_stud`.
+   */
+  frame_spec?: FrameSpec | null;
   custom_params: Record<string, unknown>;
   materials: MaterialInput[];
 }
@@ -159,6 +241,13 @@ const MAX_PACKAGING_STEPS = 100_000;
  * 16 demi-pots au lieu de 15.
  */
 const STEP_EPSILON = 1e-6;
+
+/**
+ * Tolérance sur le nombre de travées d'une trame (E1-3). Sans elle,
+ * `5,40 / 0,60 = 9.000000000000002` ferait compter dix travées et acheter un
+ * montant de trop. Même rôle que `STEP_EPSILON` un cran plus haut.
+ */
+const SPAN_EPSILON = 1e-9;
 
 const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
 
@@ -363,10 +452,15 @@ export class EstimationEngine {
    * priment) → fourchette nulle en sol/plafond ; seule la hauteur continue
    * de produire une fourchette murale.
    */
-  computeSurfaceBounds(
+  /**
+   * Les deux pièces pire-cas d'une incertitude de mesure, ou `null` si la pièce
+   * n'en porte aucune. Extraite de `computeSurfaceBounds` pour que les assiettes
+   * basses et hautes se calculent en rejouant **le même** code sur ces pièces,
+   * plutôt qu'en dérivant une seconde fois les mêmes formules.
+   */
+  private boundedRooms(
     room: RoomData,
-    surfaceTarget: string,
-  ): SurfaceBounds | null {
+  ): { low: RoomData; high: RoomData } | null {
     const dl = room.length_cm_uncertainty ?? 0;
     const dw = room.width_cm_uncertainty ?? 0;
     const dh = room.height_cm_uncertainty ?? 0;
@@ -374,23 +468,154 @@ export class EstimationEngine {
       return null;
     }
 
-    const lowRoom: RoomData = {
-      ...room,
-      length_cm: Math.max(0, room.length_cm - dl),
-      width_cm: Math.max(0, room.width_cm - dw),
-      height_cm: Math.max(0, room.height_cm - dh),
+    return {
+      low: {
+        ...room,
+        length_cm: Math.max(0, room.length_cm - dl),
+        width_cm: Math.max(0, room.width_cm - dw),
+        height_cm: Math.max(0, room.height_cm - dh),
+      },
+      high: {
+        ...room,
+        length_cm: room.length_cm + dl,
+        width_cm: room.width_cm + dw,
+        height_cm: room.height_cm + dh,
+      },
     };
-    const highRoom: RoomData = {
-      ...room,
-      length_cm: room.length_cm + dl,
-      width_cm: room.width_cm + dw,
-      height_cm: room.height_cm + dh,
-    };
+  }
+
+  computeSurfaceBounds(
+    room: RoomData,
+    surfaceTarget: string,
+  ): SurfaceBounds | null {
+    const bounded = this.boundedRooms(room);
+    if (!bounded) {
+      return null;
+    }
 
     return {
-      low: this.computeSurface(lowRoom, surfaceTarget),
-      high: this.computeSurface(highRoom, surfaceTarget),
+      low: this.computeSurface(bounded.low, surfaceTarget),
+      high: this.computeSurface(bounded.high, surfaceTarget),
     };
+  }
+
+  /**
+   * La trame d'un ouvrage, d'après son linéaire et sa hauteur **réels** — jamais
+   * d'après une surface.
+   *
+   * Règle du métier : un montant tous les `stud_spacing_m`, plus un pour fermer
+   * la dernière travée, plus les montants de rive et d'huisserie que l'ouvrage
+   * déclare. Pour 4,00 m à l'entraxe 0,60 : `ceil(6,67) + 1 = 8` montants.
+   * Les lisses courent `runner_courses` fois la longueur — deux fois, haut et
+   * bas, pour une cloison.
+   *
+   * Aucun de ces nombres n'est écrit ici : ils viennent tous de
+   * `work_types.frame_spec`.
+   */
+  computeFrameQuantities(
+    basis: DeclaredWorkBasis,
+    frameSpec: FrameSpec,
+  ): FrameQuantities {
+    const spacing = Number(frameSpec.stud_spacing_m);
+    if (!Number.isFinite(spacing) || spacing <= 0) {
+      throw new Error(
+        `frame_spec.stud_spacing_m doit être un entraxe strictement positif (reçu : ${frameSpec.stud_spacing_m})`,
+      );
+    }
+
+    // `5,40 / 0,60` vaut 9.000000000000002 en flottant : sans cette tolérance,
+    // une cloison de 5,40 m à l'entraxe 0,60 achèterait un montant de trop —
+    // un défaut invisible en relecture et faux d'une barre sur le chantier.
+    // Même parade que `STEP_EPSILON` pour les conditionnements, et sans effet
+    // réel : 1e-9 travée vaut moins d'un micron de cloison.
+    const spans = Math.ceil(basis.length_m / spacing - SPAN_EPSILON);
+    const studCount = spans + 1 + Number(frameSpec.extra_studs);
+
+    return {
+      stud_count: studCount,
+      stud_length_m: studCount * basis.height_m,
+      runner_length_m: Number(frameSpec.runner_courses) * basis.length_m,
+    };
+  }
+
+  /**
+   * Les assiettes d'un ouvrage sur une pièce.
+   *
+   * Deux chemins, et un seul point de bascule — la présence de `declared_basis` :
+   *
+   *  - **assiette dérivée** : `computeSurface(room, surface_target)`, à
+   *    l'identique d'avant E1-3, une seule face, pas de trame ;
+   *  - **assiette déclarée** : `longueur × hauteur`, sans déduire les ouvertures
+   *    ni les zones exclues de la pièce (elles décrivent les murs existants, pas
+   *    la cloison neuve), et avec la trame que l'ouvrage déclare.
+   */
+  computeWorkBasis(room: RoomData, workItem: WorkItemInput): WorkBasis {
+    const declared = workItem.declared_basis;
+
+    if (!declared) {
+      const workSurfaceM2 = this.computeSurface(room, workItem.surface_target);
+      return {
+        work_surface_m2: workSurfaceM2,
+        gross_surface_m2: this.computeGrossSurface(
+          room,
+          workItem.surface_target,
+        ),
+        excluded_surface_m2:
+          this.excludedAreaCm2(room, workItem.surface_target) / CM2_TO_M2,
+        clad_surface_m2: workSurfaceM2,
+        clad_faces: 1,
+        frame: null,
+      };
+    }
+
+    const workSurfaceM2 = declared.length_m * declared.height_m;
+    return {
+      work_surface_m2: workSurfaceM2,
+      gross_surface_m2: workSurfaceM2,
+      excluded_surface_m2: 0,
+      clad_surface_m2: workSurfaceM2 * declared.clad_faces,
+      clad_faces: declared.clad_faces,
+      frame: workItem.frame_spec
+        ? this.computeFrameQuantities(declared, workItem.frame_spec)
+        : null,
+    };
+  }
+
+  /**
+   * L'assiette d'un matériau donné, dans l'unité de son `yield_per_unit`.
+   *
+   * Le seul endroit du moteur où le nombre de faces entre en jeu — et il n'y
+   * entre que pour `clad_faces`. Un rail et un montant n'en savent rien : leur
+   * assiette est une longueur de trame, identique qu'on parémente une face ou
+   * deux.
+   */
+  private meteringBase(
+    basis: WorkBasis,
+    material: MaterialInput,
+    workItem: WorkItemInput,
+  ): number {
+    const driver = material.quantity_driver ?? 'work_surface';
+
+    switch (driver) {
+      case 'clad_faces':
+        return basis.clad_surface_m2;
+      case 'frame_runner':
+      case 'frame_stud': {
+        if (!basis.frame) {
+          throw new Error(
+            `Le matériau « ${material.name} » se métre sur la trame ` +
+              `(quantity_driver = ${driver}), mais l'ouvrage ` +
+              `« ${workItem.work_type_code} » ne déclare pas de frame_spec.`,
+          );
+        }
+        return driver === 'frame_runner'
+          ? basis.frame.runner_length_m
+          : basis.frame.stud_length_m;
+      }
+      case 'work_surface':
+      default:
+        return basis.work_surface_m2;
+    }
   }
 
   resolveWasteFactor(
@@ -402,22 +627,28 @@ export class EstimationEngine {
   }
 
   /**
-   * Quantité théorique avant perte. Le nombre de couches ne s'applique qu'aux
-   * matériaux qui le déclarent (`applies_coats`, E1-4) — un rouleau, un ruban
-   * ou une bâche ne se rachètent pas à chaque couche.
+   * Quantité théorique avant perte, à partir de l'**assiette du matériau** —
+   * surface d'ouvrage, surface de parement ou longueur de trame selon son
+   * `quantity_driver` (E1-3). Le paramètre garde sa position : la surface
+   * d'ouvrage reste ce qu'on lui passe pour tout matériau `work_surface`,
+   * c'est-à-dire tout le catalogue hors plâtrerie.
+   *
+   * Le nombre de couches ne s'applique qu'aux matériaux qui le déclarent
+   * (`applies_coats`, E1-4) — un rouleau, un ruban ou une bâche ne se rachètent
+   * pas à chaque couche.
    *
    * `coats` n'est renseigné dans le retour que pour ces matériaux : c'est ce
    * qui alimente le « · 2 couches » affiché sur la ligne, qui n'a de sens que
    * là où la quantité en dépend vraiment.
    */
   computeTheoreticalQty(
-    surfaceM2: number,
+    meteringBaseQty: number,
     yieldPerUnit: number,
     customParams: Record<string, unknown>,
     appliesCoats: boolean,
   ): { qty: number; coats?: number } {
     const yield_ = Number(yieldPerUnit);
-    const qty = surfaceM2 / yield_;
+    const qty = meteringBaseQty / yield_;
 
     if (appliesCoats) {
       const coats = Number(customParams.number_of_coats) || DEFAULT_COATS;
@@ -531,11 +762,22 @@ export class EstimationEngine {
     const items: EstimationLineItem[] = [];
 
     for (const wi of workItems) {
-      const surfaceM2 = this.computeSurface(room, wi.surface_target);
-      const grossSurfaceM2 = this.computeGrossSurface(room, wi.surface_target);
-      const excludedSurfaceM2 =
-        this.excludedAreaCm2(room, wi.surface_target) / CM2_TO_M2;
-      const surfaceBounds = this.computeSurfaceBounds(room, wi.surface_target);
+      const basis = this.computeWorkBasis(room, wi);
+      const surfaceM2 = basis.work_surface_m2;
+      const grossSurfaceM2 = basis.gross_surface_m2;
+      const excludedSurfaceM2 = basis.excluded_surface_m2;
+
+      // CV-5 : une assiette déclarée n'a pas d'incertitude de mesure — la
+      // longueur a été saisie, pas relevée. `boundedRooms` ne s'applique donc
+      // qu'aux assiettes dérivées de la pièce.
+      const bounded = wi.declared_basis ? null : this.boundedRooms(room);
+      const basisBounds = bounded
+        ? {
+            low: this.computeWorkBasis(bounded.low, wi),
+            high: this.computeWorkBasis(bounded.high, wi),
+          }
+        : null;
+
       const poseType =
         (wi.custom_params.laying_pattern as string) || 'standard';
 
@@ -549,7 +791,7 @@ export class EstimationEngine {
         const appliesCoats = mat.applies_coats ?? false;
 
         const { qty: theoreticalQty, coats } = this.computeTheoreticalQty(
-          surfaceM2,
+          this.meteringBase(basis, mat, wi),
           mat.yield_per_unit,
           wi.custom_params,
           appliesCoats,
@@ -562,10 +804,10 @@ export class EstimationEngine {
         // CV-5 : mêmes calculs aux bornes basse/haute de la surface, quand
         // la pièce porte une incertitude de mesure connue.
         let rangeFields: Partial<EstimationLineItem> = {};
-        if (surfaceBounds) {
+        if (basisBounds) {
           const adjustedQtyLow =
             this.computeTheoreticalQty(
-              surfaceBounds.low,
+              this.meteringBase(basisBounds.low, mat, wi),
               mat.yield_per_unit,
               wi.custom_params,
               appliesCoats,
@@ -573,7 +815,7 @@ export class EstimationEngine {
             (1 + wasteFactor.percent / 100);
           const adjustedQtyHigh =
             this.computeTheoreticalQty(
-              surfaceBounds.high,
+              this.meteringBase(basisBounds.high, mat, wi),
               mat.yield_per_unit,
               wi.custom_params,
               appliesCoats,
@@ -590,8 +832,10 @@ export class EstimationEngine {
           );
 
           rangeFields = {
-            surface_m2_low: Math.round(surfaceBounds.low * 1000) / 1000,
-            surface_m2_high: Math.round(surfaceBounds.high * 1000) / 1000,
+            surface_m2_low:
+              Math.round(basisBounds.low.work_surface_m2 * 1000) / 1000,
+            surface_m2_high:
+              Math.round(basisBounds.high.work_surface_m2 * 1000) / 1000,
             adjusted_qty_low: Math.round(adjustedQtyLow * 1000) / 1000,
             adjusted_qty_high: Math.round(adjustedQtyHigh * 1000) / 1000,
             units_needed_low: packagingLow.units_needed,

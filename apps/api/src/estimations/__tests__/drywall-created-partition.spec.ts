@@ -17,64 +17,72 @@ import {
  * huit mètres de rail (haut et bas) et une vingtaine de mètres de montant (un
  * tous les 60 cm, sur 2,50 m).
  *
- * Le moteur en produit tout autre chose, et pour une raison qui n'est pas dans
- * le moteur : `projects/work-types.data.ts:110` déclare
- * `drywall.surface_target = 'wall'`. `EstimationEngine.computeSurface`
- * (`estimation-engine.ts:334`) lit ce champ et calcule
- * `unionPerimeterCm(segments) × height_cm` — le **périmètre** de la pièce, moins
- * les ouvertures. Pour la chambre de référence : 14 ml × 2,50 m = 35 m² bruts,
- * 33,307 m² nets. L'ouvrage est donc chiffré comme si l'on habillait les quatre
- * murs existants, pas comme si l'on en dressait un cinquième.
- *
  * Ce test n'affirme rien sur le moteur : il affirme la commande du client, en
- * fourchettes larges que n'importe quel métreur accepterait. Il échoue
- * aujourd'hui, et c'est son objet — le défaut est d'assiette, pas d'arrondi.
+ * fourchettes larges que n'importe quel métreur accepterait.
  *
- * Voir `tasks/todo.md` §Constat pour les champs de saisie qui manquent au modèle
- * de données pour que cette intention soit exprimable.
+ * ---------------------------------------------------------------------------
+ * CE QU'IL A MONTRÉ, ET CE QU'IL GARDE
+ * ---------------------------------------------------------------------------
+ *
+ * Écrit rouge en E0-4, il l'est resté jusqu'à E1-3, et pour une raison qui
+ * n'était pas dans le moteur : `work-types.data.ts` déclarait
+ * `drywall.surface_target = 'wall'`, et `computeSurface` en tirait
+ * `unionPerimeterCm(segments) × height_cm` — le **périmètre** de la pièce. Pour
+ * la chambre de référence : 33,307 m² nets, donc 25 plaques, 28 montants et
+ * 11 rails. L'ouvrage était chiffré comme si l'on habillait les quatre murs
+ * existants, pas comme si l'on en dressait un cinquième.
+ *
+ * Trois lots ont été nécessaires : E1-2 pour que l'intention soit
+ * **exprimable** (les colonnes `declared_*`), E1-3 pour qu'elle soit **lue**
+ * (`WorkItemInput.declared_basis`, `MaterialCatalog.quantity_driver`).
+ * Les trois assertions n'ont pas bougé d'un chiffre entre les deux états.
+ *
+ * Ce qu'il garde, maintenant qu'il est vert : le piège du métré plâtrerie. Un
+ * moteur qui doublerait l'ossature avec le nombre de faces sortirait 40 ml de
+ * montant et 16 ml de rail — hors des deux fourchettes ci-dessous, et cela sans
+ * qu'aucun instantané ne paraisse suspect.
  */
 
 /**
- * L'intention, telle qu'elle se formule sur un chantier. Elle est passée en
- * `custom_params` parce que c'est le seul canal libre du modèle
- * (`project_work_items.custom_params`, `jsonb`) — et le moteur n'y lit que
- * `laying_pattern` et `number_of_coats`. Ces trois clés n'existent nulle part
- * ailleurs : ni colonne, ni DTO, ni question contextuelle. Les écrire ici, c'est
- * montrer qu'il n'y a aucun endroit où les écrire.
+ * L'intention, telle qu'elle se formule sur un chantier — et telle qu'elle
+ * s'écrit maintenant dans le modèle : `project_work_items.declared_length_m`,
+ * `declared_height_m`, `declared_clad_faces` (E1-2), transportées jusqu'au
+ * moteur par `WorkItemInput.declared_basis` (E1-3).
+ *
+ * Elle est déclarée ici plutôt qu'empruntée au défaut du harnais : ce test est
+ * l'endroit où cette cloison-là est décrite, il doit se relire seul.
  */
 const CREATED_PARTITION = {
   /** Longueur de la cloison à dresser, en mètres linéaires. */
-  partition_length_m: 4,
+  length_m: 4,
   /** Hauteur sous plafond, identique à celle de la pièce de référence. */
-  partition_height_m: 2.5,
+  height_m: 2.5,
   /** Cloison neuve : les deux faces sont à parementer. */
-  partition_clad_faces: 2,
+  clad_faces: 2,
 };
 
 /** 4 × 2,50 = 10 m² d'ouvrage. */
 const PARTITION_AREA_M2 =
-  CREATED_PARTITION.partition_length_m * CREATED_PARTITION.partition_height_m;
+  CREATED_PARTITION.length_m * CREATED_PARTITION.height_m;
 
 /** 10 × 2 faces = 20 m² de parement, soit 20 ÷ 3 ≈ 6,7 plaques avant perte. */
-const CLAD_AREA_M2 = PARTITION_AREA_M2 * CREATED_PARTITION.partition_clad_faces;
+const CLAD_AREA_M2 = PARTITION_AREA_M2 * CREATED_PARTITION.clad_faces;
 
 describe('Cloison sèche — créer une cloison de 4 ml dans une chambre 400 × 300 × 250', () => {
   const engine = new EstimationEngine();
 
   /**
-   * Le work item est dérivé du harnais, donc du seed : `surface_target` vient de
-   * `work-types.data.ts` et n'est pas recopié à la main. Niveau intermédiaire —
-   * celui de l'instantané de référence (`rectangular-room.spec.ts.snap`), qui
-   * montre 25 plaques, 28 montants, 11 rails, 5 rouleaux de bande et 2 seaux
-   * d'enduit pour cette même chambre.
+   * Le work item est dérivé du harnais, donc du seed : `quantity_basis` et
+   * `frame_spec` viennent de `work-types.data.ts` et ne sont pas recopiés à la
+   * main. Niveau intermédiaire — celui de l'instantané de référence
+   * (`rectangular-room.spec.ts.snap`).
    */
-  const workItem: WorkItemInput = {
-    ...workItemFor(
-      caseFor('drywall', SkillLevel.INTERMEDIATE),
-      'wi-cloison-4ml',
-    ),
-    custom_params: { ...CREATED_PARTITION },
-  };
+  const workItem: WorkItemInput = workItemFor(
+    caseFor('drywall', SkillLevel.INTERMEDIATE),
+    'wi-cloison-4ml',
+    {},
+    { drywall: CREATED_PARTITION },
+  );
 
   const lines = engine.computeEstimation(RECTANGULAR_ROOM.room, [workItem]);
 
@@ -102,6 +110,25 @@ describe('Cloison sèche — créer une cloison de 4 ml dans une chambre 400 × 
    */
   const purchasedMetres = (name: string): number =>
     purchasedVolume(lineFor(name), materialByName.get(name)!);
+
+  /**
+   * L'assiette que le moteur retient, avant toute question de matériau. Les
+   * trois assertions qui suivent n'ont de sens que si celle-ci est juste : dix
+   * mètres carrés d'ouvrage, vingt de parement, et **une** seule trame.
+   */
+  it('métre 10 m² d’ouvrage, 20 m² de parement et une seule trame', () => {
+    const basis = engine.computeWorkBasis(RECTANGULAR_ROOM.room, workItem);
+
+    expect(basis.work_surface_m2).toBe(PARTITION_AREA_M2);
+    expect(basis.clad_surface_m2).toBe(CLAD_AREA_M2);
+    // Un montant tous les 0,60 m sur 4,00 m, plus celui qui ferme la dernière
+    // travée : 7 + 1. Deux lisses, haute et basse, sur 4 ml.
+    expect(basis.frame).toEqual({
+      stud_count: 8,
+      stud_length_m: 20,
+      runner_length_m: 8,
+    });
+  });
 
   /**
    * 20 m² de parement ÷ 3 m² par plaque = 6,67 → 7 plaques. La fourchette 6–9
@@ -139,5 +166,44 @@ describe('Cloison sèche — créer une cloison de 4 ml dans une chambre 400 × 
 
     expect(rails).toBeGreaterThanOrEqual(8);
     expect(rails).toBeLessThanOrEqual(12);
+  });
+
+  /**
+   * Le cœur du lot, dit en une assertion plutôt qu'en commentaire : passer de
+   * deux faces à une divise le parement par deux et **ne touche pas** à
+   * l'ossature. C'est ce qu'aucune fourchette ci-dessus ne peut affirmer seule,
+   * et c'est l'erreur qu'un métreur ne pardonne pas.
+   */
+  it('ne double que le parement quand on passe d’une face à deux', () => {
+    const oneFace = engine.computeEstimation(RECTANGULAR_ROOM.room, [
+      workItemFor(
+        caseFor('drywall', SkillLevel.INTERMEDIATE),
+        'wi-doublage-4ml',
+        {},
+        { drywall: { ...CREATED_PARTITION, clad_faces: 1 } },
+      ),
+    ]);
+    const qtyByName = new Map(
+      oneFace.map((line) => [line.material_name, line.theoretical_qty]),
+    );
+
+    for (const name of [
+      'Plaque BA13 standard 2.5x1.2m',
+      'Vis placo 25mm (x500)',
+      'Bande à joint papier 23m',
+      'Enduit à joint prêt 7kg',
+    ]) {
+      // Tolérance 5e-3 : `theoretical_qty` est arrondi au millième par le
+      // moteur, et le doubler double l'arrondi. Elle n'affaiblit rien — le
+      // défaut qu'on guette ici vaut un facteur 2, pas un millième.
+      expect(lineFor(name).theoretical_qty).toBeCloseTo(
+        qtyByName.get(name)! * 2,
+        2,
+      );
+    }
+
+    for (const name of ['Rail R48 3m', 'Montant M48 2.7m']) {
+      expect(lineFor(name).theoretical_qty).toBe(qtyByName.get(name));
+    }
   });
 });

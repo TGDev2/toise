@@ -20,6 +20,26 @@ export interface ContextualQuestion {
   required: boolean;
 }
 
+/**
+ * E1-3 — la trame d'un ouvrage à ossature, déclarée par l'ouvrage lui-même.
+ *
+ * Tout ce que le moteur sait de la plâtrerie tient ici : il ne connaît ni
+ * entraxe de 0,60 m, ni « deux lisses », ni le code `drywall`. Un ouvrage sans
+ * ossature laisse ce champ à `NULL` et aucun de ses matériaux ne peut porter un
+ * `quantity_driver` de trame.
+ */
+export interface FrameSpec {
+  /** Entraxe des montants, en mètres. `ceil(longueur / entraxe) + 1` montants. */
+  stud_spacing_m: number;
+  /**
+   * Montants supplémentaires déclarés par l'ouvrage : rives et huisseries. Ils
+   * s'ajoutent au calcul d'entraxe, qui ne compte que la trame courante.
+   */
+  extra_studs: number;
+  /** Lisses par mètre linéaire d'ouvrage : 2 pour une lisse haute et basse. */
+  runner_courses: number;
+}
+
 @Entity('work_types')
 export class WorkType {
   @PrimaryGeneratedColumn('uuid')
@@ -57,6 +77,14 @@ export class WorkType {
 
   @Column({ type: 'jsonb', default: [] })
   contextual_questions!: ContextualQuestion[];
+
+  /**
+   * E1-3 — trame de l'ouvrage, `NULL` pour un ouvrage sans ossature (les six
+   * ouvrages de recouvrement). Lue par le moteur pour métrer rails et montants
+   * sur le linéaire et la hauteur réels, jamais sur une surface.
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  frame_spec!: FrameSpec | null;
 
   @Column({ type: 'integer', default: 0 })
   display_order!: number;

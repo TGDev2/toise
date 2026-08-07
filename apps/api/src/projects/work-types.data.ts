@@ -1,4 +1,4 @@
-import { ContextualQuestion } from './entities/work-type.entity';
+import { ContextualQuestion, FrameSpec } from './entities/work-type.entity';
 
 /**
  * Les 7 ouvrages seedés par la migration
@@ -30,10 +30,15 @@ export interface SeedWorkType {
    * recouvrement, comportement inchangé). `declared` : saisie par l'utilisateur
    * (linéaire, hauteur, faces à parementer — `project_work_items.declared_*`),
    * pour un ouvrage qu'on **crée** plutôt qu'on ne recouvre. Orthogonal à
-   * `surface_target`, que le moteur continue de lire tel quel tant que E1-3
-   * n'a pas câblé la lecture de ce champ.
+   * `surface_target`, que le moteur ne lit plus que pour un `room_surface`
+   * depuis qu'E1-3 a câblé la lecture de ce champ.
    */
   quantity_basis: 'room_surface' | 'declared';
+  /**
+   * E1-3 — trame de l'ouvrage. `null` pour un ouvrage sans ossature : c'est ce
+   * qui rend `frame_runner`/`frame_stud` inapplicable à ses matériaux.
+   */
+  frame_spec: FrameSpec | null;
 }
 
 /**
@@ -76,6 +81,7 @@ export const seedWorkTypes: SeedWorkType[] = [
     contextual_questions: [],
     display_order: 1,
     quantity_basis: 'room_surface',
+    frame_spec: null,
   },
   {
     code: 'ceiling_painting',
@@ -86,6 +92,7 @@ export const seedWorkTypes: SeedWorkType[] = [
     contextual_questions: [],
     display_order: 2,
     quantity_basis: 'room_surface',
+    frame_spec: null,
   },
   {
     code: 'floor_tiling',
@@ -96,6 +103,7 @@ export const seedWorkTypes: SeedWorkType[] = [
     contextual_questions: floorTilingQuestions,
     display_order: 3,
     quantity_basis: 'room_surface',
+    frame_spec: null,
   },
   {
     code: 'wall_tiling',
@@ -106,6 +114,7 @@ export const seedWorkTypes: SeedWorkType[] = [
     contextual_questions: [],
     display_order: 4,
     quantity_basis: 'room_surface',
+    frame_spec: null,
   },
   {
     // Libellés sans accent : tels qu'insérés par la migration `…003`.
@@ -117,6 +126,7 @@ export const seedWorkTypes: SeedWorkType[] = [
     contextual_questions: [],
     display_order: 5,
     quantity_basis: 'room_surface',
+    frame_spec: null,
   },
   {
     code: 'drywall',
@@ -128,9 +138,14 @@ export const seedWorkTypes: SeedWorkType[] = [
     display_order: 6,
     // E1-2 : ouvrage qu'on crée, pas qu'on recouvre — assiette saisie
     // (`project_work_items.declared_length_m/height_m/clad_faces`), câblée
-    // dans le moteur par E1-3. `surface_target` reste 'wall' et continue de
-    // ne servir à rien tant que cette lecture n'existe pas.
+    // dans le moteur par E1-3. `surface_target` reste 'wall' et ne sert plus à
+    // rien pour cet ouvrage : le moteur ne le lit que pour un `room_surface`.
     quantity_basis: 'declared',
+    // Cloison 72/48 : montants simples à l'entraxe 0,60 m, lisse haute et
+    // lisse basse. `extra_studs: 0` — le seul ouvrage seedé ne déclare ni rive
+    // ni huisserie ; la saisie d'une huisserie viendra avec l'interface (E1-4)
+    // et n'aura qu'à incrémenter ce nombre.
+    frame_spec: { stud_spacing_m: 0.6, extra_studs: 0, runner_courses: 2 },
   },
   {
     code: 'wall_covering',
@@ -141,5 +156,6 @@ export const seedWorkTypes: SeedWorkType[] = [
     contextual_questions: [],
     display_order: 7,
     quantity_basis: 'room_surface',
+    frame_spec: null,
   },
 ];

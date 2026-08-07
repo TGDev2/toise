@@ -1,5 +1,6 @@
 import {
   EstimationEngine,
+  FrameSpec,
   RoomData,
   WorkItemInput,
   MaterialInput,
@@ -1372,6 +1373,247 @@ describe('EstimationEngine', () => {
       // low total = 3 + 8 = 11 → ceil(11/10) = 2 ; high total = 5 + 8 = 13 → ceil(13/10) = 2.
       expect(agg[0].units_needed_low).toBe(2);
       expect(agg[0].units_needed_high).toBe(2);
+    });
+  });
+
+  // =========================================================================
+  // Assiette déclarée et trame (E1-3)
+  // =========================================================================
+  describe('assiette déclarée et trame', () => {
+    /** Cloison 72/48 telle que `work-types.data.ts` la déclare. */
+    const PARTITION_FRAME: FrameSpec = {
+      stud_spacing_m: 0.6,
+      extra_studs: 0,
+      runner_courses: 2,
+    };
+
+    const makePartitionItem = (
+      overrides: Partial<WorkItemInput> = {},
+    ): WorkItemInput => ({
+      id: 'wi-partition',
+      work_type_code: 'drywall',
+      work_type_label: 'Cloison seche',
+      category: 'partition',
+      surface_target: 'wall',
+      skill_level: 'intermediate',
+      custom_params: {},
+      declared_basis: { length_m: 4, height_m: 2.5, clad_faces: 2 },
+      frame_spec: PARTITION_FRAME,
+      materials: [],
+      ...overrides,
+    });
+
+    const noWaste = (): WasteFactorInput[] => [
+      {
+        pose_type: 'standard',
+        skill_level: 'intermediate',
+        factor_percent: 0,
+      },
+    ];
+
+    /** Plaque de parement : sa quantité suit le nombre de faces. */
+    const makeBoard = (): MaterialInput => ({
+      id: 'board-uuid',
+      name: 'Plaque BA13 standard 2.5x1.2m',
+      unit: 'm2',
+      yield_per_unit: 0.96,
+      quantity_driver: 'clad_faces',
+      waste_factors: noWaste(),
+      packagings: [
+        { label: 'Plaque (3 m²)', quantity_per_unit: 3, unit: 'm2' },
+      ],
+    });
+
+    /** Montant : sa quantité suit la trame, jamais le nombre de faces. */
+    const makeStud = (): MaterialInput => ({
+      id: 'stud-uuid',
+      name: 'Montant M48 2.7m',
+      unit: 'm',
+      yield_per_unit: 1,
+      quantity_driver: 'frame_stud',
+      waste_factors: noWaste(),
+      packagings: [{ label: 'Barre 2.7 m', quantity_per_unit: 2.7, unit: 'm' }],
+    });
+
+    const makeRunner = (): MaterialInput => ({
+      id: 'runner-uuid',
+      name: 'Rail R48 3m',
+      unit: 'm',
+      yield_per_unit: 1,
+      quantity_driver: 'frame_runner',
+      waste_factors: noWaste(),
+      packagings: [{ label: 'Barre 3 m', quantity_per_unit: 3, unit: 'm' }],
+    });
+
+    it('métre une cloison de 4,00 × 2,50 m sur son linéaire et sa hauteur', () => {
+      const basis = engine.computeWorkBasis(makeRoom(), makePartitionItem());
+
+      expect(basis.work_surface_m2).toBe(10);
+      expect(basis.gross_surface_m2).toBe(10);
+      expect(basis.excluded_surface_m2).toBe(0);
+      expect(basis.clad_surface_m2).toBe(20);
+      expect(basis.clad_faces).toBe(2);
+      // Un montant tous les 0,60 m, plus un pour fermer la dernière travée :
+      // ceil(4,00 / 0,60) + 1 = 7 + 1 = 8. Deux lisses sur 4,00 m = 8,00 ml.
+      expect(basis.frame).toEqual({
+        stud_count: 8,
+        stud_length_m: 20,
+        runner_length_m: 8,
+      });
+    });
+
+    it('ignore les ouvertures et les zones exclues de la pièce', () => {
+      // Elles décrivent les murs existants ; la cloison qu'on dresse n'a ni
+      // porte ni crédence tant que l'ouvrage n'en déclare pas.
+      const room = makeRoom({
+        openings: [{ width_cm: 83, height_cm: 204, count: 1 }],
+        exclusions: [{ surface_target: 'wall', area_m2: 5 }],
+      });
+
+      const basis = engine.computeWorkBasis(room, makePartitionItem());
+
+      expect(basis.work_surface_m2).toBe(10);
+      expect(basis.excluded_surface_m2).toBe(0);
+    });
+
+    it('ajoute les montants de rive et d’huisserie déclarés par l’ouvrage', () => {
+      const basis = engine.computeWorkBasis(
+        makeRoom(),
+        makePartitionItem({
+          frame_spec: { ...PARTITION_FRAME, extra_studs: 3 },
+        }),
+      );
+
+      expect(basis.frame?.stud_count).toBe(11);
+      expect(basis.frame?.stud_length_m).toBe(27.5);
+      // Les lisses ne bougent pas : un montant d'huisserie n'allonge pas la
+      // cloison.
+      expect(basis.frame?.runner_length_m).toBe(8);
+    });
+
+    it('suit l’entraxe déclaré, sans jamais le supposer', () => {
+      const basis = engine.computeWorkBasis(
+        makeRoom(),
+        makePartitionItem({
+          frame_spec: { ...PARTITION_FRAME, stud_spacing_m: 0.4 },
+        }),
+      );
+
+      // ceil(4,00 / 0,40) + 1 = 10 + 1 = 11.
+      expect(basis.frame?.stud_count).toBe(11);
+    });
+
+    it('ne compte pas un montant de trop sur une longueur multiple de l’entraxe', () => {
+      // 5,40 / 0,60 vaut 9.000000000000002 en flottant. Sans tolérance, le
+      // moteur compterait dix travées, donc onze montants au lieu de dix.
+      const basis = engine.computeWorkBasis(
+        makeRoom(),
+        makePartitionItem({
+          declared_basis: { length_m: 5.4, height_m: 2.5, clad_faces: 2 },
+        }),
+      );
+
+      expect(basis.frame?.stud_count).toBe(10);
+    });
+
+    it('refuse un entraxe nul plutôt que de diviser par zéro', () => {
+      expect(() =>
+        engine.computeWorkBasis(
+          makeRoom(),
+          makePartitionItem({
+            frame_spec: { ...PARTITION_FRAME, stud_spacing_m: 0 },
+          }),
+        ),
+      ).toThrow(/entraxe strictement positif/);
+    });
+
+    /**
+     * Le piège du métré plâtrerie, énoncé sur le moteur nu : le nombre de faces
+     * multiplie le parement et **rien d'autre**. Les pertes sont mises à zéro
+     * pour que les quantités se lisent à la main.
+     */
+    it('double le parement avec les faces, jamais l’ossature', () => {
+      const materials = [makeBoard(), makeStud(), makeRunner()];
+      const qtyByName = (cladFaces: number): Map<string, number> =>
+        new Map(
+          engine
+            .computeEstimation(makeRoom(), [
+              makePartitionItem({
+                materials,
+                declared_basis: {
+                  length_m: 4,
+                  height_m: 2.5,
+                  clad_faces: cladFaces,
+                },
+              }),
+            ])
+            .map((line) => [line.material_name, line.theoretical_qty]),
+        );
+
+      const twoFaces = qtyByName(2);
+      const oneFace = qtyByName(1);
+
+      // 20 m² de parement ÷ 0,96 = 20,833 ; une face en demande la moitié.
+      expect(twoFaces.get('Plaque BA13 standard 2.5x1.2m')).toBeCloseTo(
+        20.833,
+        3,
+      );
+      expect(oneFace.get('Plaque BA13 standard 2.5x1.2m')).toBeCloseTo(
+        10.417,
+        3,
+      );
+
+      // L'ossature est identique : une seule trame dans les deux cas.
+      expect(twoFaces.get('Montant M48 2.7m')).toBe(20);
+      expect(oneFace.get('Montant M48 2.7m')).toBe(20);
+      expect(twoFaces.get('Rail R48 3m')).toBe(8);
+      expect(oneFace.get('Rail R48 3m')).toBe(8);
+    });
+
+    it('n’affiche aucune fourchette d’incertitude sur une assiette saisie', () => {
+      // CV-5 mesure une pièce ; une longueur de cloison est **saisie**. Lui
+      // prêter l'incertitude du relevé de la pièce serait une fourchette
+      // inventée.
+      const room = makeRoom({
+        length_cm_uncertainty: 10,
+        width_cm_uncertainty: 10,
+        height_cm_uncertainty: 5,
+      });
+
+      const [line] = engine.computeEstimation(room, [
+        makePartitionItem({ materials: [makeBoard()] }),
+      ]);
+
+      expect(line.surface_m2).toBe(10);
+      expect(line.surface_m2_low).toBeUndefined();
+      expect(line.adjusted_qty_low).toBeUndefined();
+      expect(line.units_needed_high).toBeUndefined();
+    });
+
+    it('lève si un matériau de trame est chiffré sur un ouvrage qui n’en déclare pas', () => {
+      expect(() =>
+        engine.computeEstimation(makeRoom(), [
+          makePartitionItem({ frame_spec: null, materials: [makeStud()] }),
+        ]),
+      ).toThrow(/ne déclare pas de frame_spec/);
+    });
+
+    it('laisse un ouvrage sans assiette déclarée sur la surface de la pièce', () => {
+      const item = makePartitionItem({
+        declared_basis: undefined,
+        frame_spec: null,
+      });
+
+      const basis = engine.computeWorkBasis(
+        makeRoom({ openings: [{ width_cm: 83, height_cm: 204, count: 1 }] }),
+        item,
+      );
+
+      // 2 × (4 + 3) × 2,5 − 0,83 × 2,04 = 33,3068 m², à l'identique d'avant E1-3.
+      expect(basis.work_surface_m2).toBeCloseTo(33.3068, 4);
+      expect(basis.clad_surface_m2).toBe(basis.work_surface_m2);
+      expect(basis.clad_faces).toBe(1);
+      expect(basis.frame).toBeNull();
     });
   });
 });

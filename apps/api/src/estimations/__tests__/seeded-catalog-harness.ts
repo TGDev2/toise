@@ -4,11 +4,14 @@ import {
   PackagingUnitsLine,
 } from '../entities/estimation-result.entity';
 import {
+  DeclaredWorkBasis,
   DEFAULT_COATS,
   EstimationEngine,
   MaterialInput,
+  MaterialQuantityDriver,
   PackagingInput,
   RoomData,
+  WorkBasis,
   WorkItemInput,
 } from '../estimation-engine';
 import { seedMaterials, SeedMaterial } from '../../materials/seed-catalog.data';
@@ -178,6 +181,7 @@ export function materialsForWorkType(workTypeCode: string): MaterialInput[] {
         unit: seedMaterial.unit,
         yield_per_unit: seedMaterial.yield_per_unit,
         applies_coats: seedMaterial.applies_coats ?? false,
+        quantity_driver: seedMaterial.quantity_driver ?? 'work_surface',
         role: link.role,
         waste_factors: seedMaterial.waste_factors.map((wf) => ({
           pose_type: wf.pose_type,
@@ -270,6 +274,24 @@ const paramsFor = (
   workTypeCode: string,
 ): Record<string, unknown> => paramsByWorkType[workTypeCode] ?? {};
 
+/** Assiette d'épreuve d'un ouvrage à quantité déclarée, par code (E1-3). */
+export type DeclaredBasisByWorkType = Record<string, DeclaredWorkBasis>;
+
+/**
+ * L'assiette de cloison annoncée comme configuration à venir par E1-1, arrivée.
+ * Elle entre par la **donnée** : une entrée dans ce dictionnaire traverse
+ * `workItemFor`, donc les instantanés des trois géométries **et** les six
+ * invariants, sans qu'aucun d'eux ne soit réécrit.
+ *
+ * La cloison de référence est celle du cas métier : 4,00 m de long, 2,50 m de
+ * haut — la hauteur de la chambre de référence, donc une cloison qui y tient —
+ * parementée sur ses deux faces. C'est la cloison qu'un artisan commande, et
+ * celle dont `drywall-created-partition.spec.ts` énonce le métré attendu.
+ */
+export const DEFAULT_DECLARED_BASIS: DeclaredBasisByWorkType = {
+  drywall: { length_m: 4, height_m: 2.5, clad_faces: 2 },
+};
+
 /**
  * Work item du moteur pour un cas. La pose implicite se dit en **n'envoyant
  * rien** — `custom_params` vide — plutôt qu'en envoyant `standard` : c'est ce que
@@ -285,13 +307,15 @@ export function workItemFor(
   testCase: HarnessCase,
   workItemId: string,
   extraParams: Record<string, unknown> = {},
+  declaredBasisByWorkType: DeclaredBasisByWorkType = DEFAULT_DECLARED_BASIS,
 ): WorkItemInput {
-  return {
+  const workType = testCase.workType;
+  const base: WorkItemInput = {
     id: workItemId,
-    work_type_code: testCase.workType.code,
-    work_type_label: testCase.workType.label_fr,
-    category: testCase.workType.category,
-    surface_target: testCase.workType.surface_target,
+    work_type_code: workType.code,
+    work_type_label: workType.label_fr,
+    category: workType.category,
+    surface_target: workType.surface_target,
     skill_level: testCase.skillLevel,
     custom_params: {
       ...(testCase.poseType === IMPLICIT_POSE
@@ -299,7 +323,28 @@ export function workItemFor(
         : { laying_pattern: testCase.poseType }),
       ...extraParams,
     },
-    materials: materialsForWorkType(testCase.workType.code),
+    materials: materialsForWorkType(workType.code),
+  };
+
+  if (workType.quantity_basis !== 'declared') {
+    return base;
+  }
+
+  const declaredBasis = declaredBasisByWorkType[workType.code];
+  // Signalé plutôt que sauté, comme une question requise sans valeur d'épreuve
+  // (I6) : un ouvrage à assiette déclarée qu'on ajouterait au seed sans lui
+  // donner d'assiette sortirait ici, et non en chiffrant on ne sait quoi.
+  if (!declaredBasis) {
+    throw new Error(
+      `Ouvrage à assiette déclarée sans assiette d'épreuve : ${workType.code} ` +
+        `(HarnessConfig.declaredBasisByWorkType)`,
+    );
+  }
+
+  return {
+    ...base,
+    declared_basis: declaredBasis,
+    frame_spec: workType.frame_spec,
   };
 }
 
@@ -480,9 +525,59 @@ const purchaseCell = (purchase: {
     .join(' + ');
 
 const caseHeading = (testCase: HarnessCase): string =>
-  `ouvrage : ${testCase.workType.label_fr} (${testCase.workType.code}) · surface ${testCase.workType.surface_target}\n` +
-  `niveau  : ${testCase.skillLevel} · pose : ${testCase.poseType}` +
+  `ouvrage : ${testCase.workType.label_fr} (${testCase.workType.code}) · ` +
+  (testCase.workType.quantity_basis === 'declared'
+    ? 'assiette déclarée'
+    : `surface ${testCase.workType.surface_target}`) +
+  `\nniveau  : ${testCase.skillLevel} · pose : ${testCase.poseType}` +
   (testCase.poseType === IMPLICIT_POSE ? ' (implicite)' : '');
+
+const metres = (value: number): string => `${value.toFixed(3)} m`;
+
+/**
+ * L'assiette du cas, en tête de table.
+ *
+ * Pour un ouvrage dérivé de la pièce, c'est la ligne « surface » d'avant E1-3,
+ * au caractère près et calculée depuis les **mêmes** valeurs (celles de la
+ * première ligne, déjà arrondies par le moteur) : les instantanés des six
+ * ouvrages de recouvrement ne bougent pas d'un octet.
+ *
+ * Pour un ouvrage à assiette déclarée, c'est là que se relit tout l'enjeu du
+ * lot : le parement porte le nombre de faces, la trame ne le porte pas.
+ */
+const basisBlock = (
+  testCase: HarnessCase,
+  workItem: WorkItemInput,
+  basis: WorkBasis,
+  first: EstimationLineItem,
+): string[] => {
+  const declared = workItem.declared_basis;
+  if (!declared) {
+    const deducted = first.gross_surface_m2 - first.surface_m2;
+    return [
+      `surface : brute ${surface(first.gross_surface_m2)} · nette ${surface(first.surface_m2)} · déduction ${surface(deducted)}`,
+    ];
+  }
+
+  const block = [
+    `assiette: ${metres(declared.length_m)} × ${metres(declared.height_m)} ` +
+      `× ${declared.clad_faces} face(s) → ouvrage ${surface(basis.work_surface_m2)} · ` +
+      `parement ${surface(basis.clad_surface_m2)}`,
+  ];
+
+  const spec = workItem.frame_spec;
+  if (basis.frame && spec) {
+    block.push(
+      `trame   : entraxe ${spec.stud_spacing_m.toFixed(2)} m · ` +
+        `${basis.frame.stud_count} montants (dont ${spec.extra_studs} déclarés) ` +
+        `× ${metres(declared.height_m)} = ${metres(basis.frame.stud_length_m)} · ` +
+        `${spec.runner_courses} lisses × ${metres(declared.length_m)} = ` +
+        `${metres(basis.frame.runner_length_m)}`,
+    );
+  }
+
+  return block;
+};
 
 /**
  * Matériaux d'un cas, indexés comme le moteur les identifie. Résoudre par
@@ -517,20 +612,19 @@ export function renderRoomCase(
   paramsByWorkType: ParamsByWorkType = {},
 ): string {
   const byId = materialsById(testCase);
-  const lines = engine.computeEstimation(harnessRoom.room, [
-    workItemFor(
-      testCase,
-      'wi-1',
-      paramsFor(paramsByWorkType, testCase.workType.code),
-    ),
-  ]);
+  const workItem = workItemFor(
+    testCase,
+    'wi-1',
+    paramsFor(paramsByWorkType, testCase.workType.code),
+  );
+  const lines = engine.computeEstimation(harnessRoom.room, [workItem]);
+  const basis = engine.computeWorkBasis(harnessRoom.room, workItem);
   const first = lines[0];
-  const deducted = first.gross_surface_m2 - first.surface_m2;
 
   return [
     `pièce   : ${harnessRoom.name}`,
     caseHeading(testCase),
-    `surface : brute ${surface(first.gross_surface_m2)} · nette ${surface(first.surface_m2)} · déduction ${surface(deducted)}`,
+    ...basisBlock(testCase, workItem, basis, first),
     '',
     row(
       LINE_COLUMNS,
@@ -735,16 +829,35 @@ export function renderProject(
  * simple « 1 snapshot obsolete » en bas d'écran. Ici, sa disparition est une
  * ligne supprimée dans un diff, que quelqu'un doit justifier.
  */
+/**
+ * Ce sur quoi le rendement d'un matériau est exprimé (E1-3). Écrit en toutes
+ * lettres dans l'inventaire parce que c'est la seule chose qui distingue une
+ * plaque d'un montant sur une cloison : la première suit le nombre de faces, le
+ * second la trame. Un relecteur doit pouvoir vérifier cette attribution matériau
+ * par matériau sans ouvrir le catalogue.
+ */
+const DRIVER_LABELS: Record<MaterialQuantityDriver, string> = {
+  work_surface: "surface d'ouvrage",
+  clad_faces: 'parement (× faces)',
+  frame_runner: 'lisses (trame)',
+  frame_stud: 'montants (trame)',
+};
+
 export function renderCaseInventory(): string {
   const blocks = seedWorkTypes.map((workType) => {
     const materials = materialsForWorkType(workType.code);
     const poses = poseTypesForWorkType(workType.code);
+    const spec = workType.frame_spec;
     return [
       `${workType.code} · ${workType.label_fr} · ${workType.category} · surface ${workType.surface_target}`,
+      `  assiette : ${workType.quantity_basis}` +
+        (spec
+          ? ` · trame : entraxe ${spec.stud_spacing_m} m, ${spec.extra_studs} montants déclarés, ${spec.runner_courses} lisses`
+          : ' · aucune trame'),
       `  poses : ${poses.join(', ')} · niveaux : ${SKILL_LEVELS.join(', ')} · ${poses.length * SKILL_LEVELS.length} cas`,
       ...materials.map(
         (mat) =>
-          `  - ${mat.name.padEnd(31)} ${(mat.role ?? '-').padEnd(12)} ${mat.unit.padEnd(5)} rendement ${mat.yield_per_unit} · couches ${mat.applies_coats ? 'oui' : 'non'}`,
+          `  - ${mat.name.padEnd(31)} ${(mat.role ?? '-').padEnd(12)} ${mat.unit.padEnd(5)} rendement ${mat.yield_per_unit} · couches ${mat.applies_coats ? 'oui' : 'non'} · assiette ${DRIVER_LABELS[mat.quantity_driver ?? 'work_surface']}`,
       ),
     ].join('\n');
   });
@@ -774,6 +887,12 @@ export interface HarnessConfig {
   /** Paramètres poussés dans `custom_params`, par ouvrage. */
   paramsByWorkType: ParamsByWorkType;
   /**
+   * Assiette d'épreuve des ouvrages à quantité déclarée (E1-3). Un ouvrage
+   * `declared` absent de ce dictionnaire fait lever `workItemFor` : il ne peut
+   * pas traverser les invariants sans que son assiette ait été décidée.
+   */
+  declaredBasisByWorkType: DeclaredBasisByWorkType;
+  /**
    * Valeurs d'épreuve d'une question `number`, par clé (I6). Une question
    * `select` fournit les siennes ; une question `number` n'en a pas, et une
    * question requise sans valeur d'épreuve est signalée plutôt que sautée —
@@ -796,6 +915,7 @@ export const DEFAULT_HARNESS_CONFIG: HarnessConfig = {
   cases: harnessCases,
   coatCounts: [1, 2, 3],
   paramsByWorkType: {},
+  declaredBasisByWorkType: DEFAULT_DECLARED_BASIS,
   questionProbes: {},
   bounds: consumptionBoundByMaterialKey,
   rateTolerance: 1e-3,
@@ -876,7 +996,12 @@ function coatIndependenceViolations(
     byMaterial: new Map(
       engine
         .computeEstimation(room, [
-          workItemFor(testCase, 'wi-1', { ...base, number_of_coats: coats }),
+          workItemFor(
+            testCase,
+            'wi-1',
+            { ...base, number_of_coats: coats },
+            config.declaredBasisByWorkType,
+          ),
         ])
         .map((line) => [line.material_id, line]),
     ),
@@ -1110,6 +1235,7 @@ function skillMonotonyViolations(
             testCase,
             'wi-1',
             paramsFor(config.paramsByWorkType, testCase.workType.code),
+            config.declaredBasisByWorkType,
           ),
         ])
         .map((line) => [line.material_id, line]),
@@ -1169,7 +1295,12 @@ function requiredQuestionViolations(
     new Map(
       engine
         .computeEstimation(room, [
-          workItemFor(testCase, 'wi-1', { ...base, [key]: value }),
+          workItemFor(
+            testCase,
+            'wi-1',
+            { ...base, [key]: value },
+            config.declaredBasisByWorkType,
+          ),
         ])
         .map((line) => [line.material_id, line]),
     );
@@ -1265,6 +1396,7 @@ export function invariantViolations(
         testCase,
         'wi-1',
         paramsFor(config.paramsByWorkType, testCase.workType.code),
+        config.declaredBasisByWorkType,
       ),
     ]);
 

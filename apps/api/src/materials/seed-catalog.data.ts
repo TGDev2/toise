@@ -8,11 +8,21 @@
  * importe ce module : il n'existe qu'une seule source de vérité.
  */
 
+import { MaterialQuantityDriver } from './entities/material-catalog.entity';
+
 export interface SeedMaterial {
   name: string;
   category: 'painting' | 'tiling' | 'flooring' | 'partition' | 'wall_covering';
   unit: string;
+  /**
+   * Quantité d'assiette couverte par une unité du matériau, **dans l'unité que
+   * désigne `quantity_driver`** : m² de surface d'ouvrage, m² de parement, ou
+   * mètre de trame. Un rail à 1 dit qu'un mètre de rail couvre un mètre de
+   * lisse — l'identité, jusqu'à ce qu'un recouvrement d'emboîtement soit sourcé.
+   */
   yield_per_unit: number;
+  /** Absent = `work_surface`, comme le défaut de la colonne. */
+  quantity_driver?: MaterialQuantityDriver;
   /**
    * E1-4 — la quantité de ce matériau est proportionnelle au `number_of_coats`
    * saisi par l'utilisateur. Vrai des seuls revêtements appliqués en couches
@@ -1459,7 +1469,11 @@ export const partitionMaterials: SeedMaterial[] = [
     name: 'Plaque BA13 standard 2.5x1.2m',
     category: 'partition',
     unit: 'm2',
-    yield_per_unit: 0.48,
+    // 2,10 m² par m² d'ouvrage à deux faces (fiche Placo 72/48) = 1,05 m² par
+    // m² de parement — c'est cette dernière que le rendement exprime depuis
+    // E1-3, le nombre de faces étant désormais porté par l'assiette.
+    yield_per_unit: 0.96,
+    quantity_driver: 'clad_faces',
     packagings: [{ label: 'Plaque (3 m²)', quantity_per_unit: 3, unit: 'm2' }],
     waste_factors: partitionWaste(),
   },
@@ -1467,7 +1481,8 @@ export const partitionMaterials: SeedMaterial[] = [
     name: 'Plaque BA13 hydro 2.5x1.2m',
     category: 'partition',
     unit: 'm2',
-    yield_per_unit: 0.48,
+    yield_per_unit: 0.96,
+    quantity_driver: 'clad_faces',
     packagings: [{ label: 'Plaque (3 m²)', quantity_per_unit: 3, unit: 'm2' }],
     waste_factors: partitionWaste(),
   },
@@ -1476,6 +1491,7 @@ export const partitionMaterials: SeedMaterial[] = [
     category: 'partition',
     unit: 'm2',
     yield_per_unit: 1,
+    quantity_driver: 'clad_faces',
     packagings: [{ label: 'Plaque (3 m²)', quantity_per_unit: 3, unit: 'm2' }],
     waste_factors: partitionWaste(),
   },
@@ -1484,6 +1500,7 @@ export const partitionMaterials: SeedMaterial[] = [
     category: 'partition',
     unit: 'm2',
     yield_per_unit: 1,
+    quantity_driver: 'clad_faces',
     packagings: [{ label: 'Plaque (3 m²)', quantity_per_unit: 3, unit: 'm2' }],
     waste_factors: partitionWaste(),
   },
@@ -1492,6 +1509,7 @@ export const partitionMaterials: SeedMaterial[] = [
     category: 'partition',
     unit: 'm2',
     yield_per_unit: 1,
+    quantity_driver: 'clad_faces',
     packagings: [{ label: 'Plaque (3 m²)', quantity_per_unit: 3, unit: 'm2' }],
     waste_factors: partitionWaste(),
   },
@@ -1500,6 +1518,7 @@ export const partitionMaterials: SeedMaterial[] = [
     category: 'partition',
     unit: 'm2',
     yield_per_unit: 1,
+    quantity_driver: 'clad_faces',
     packagings: [{ label: 'Plaque (3 m²)', quantity_per_unit: 3, unit: 'm2' }],
     waste_factors: partitionWaste(),
   },
@@ -1508,7 +1527,11 @@ export const partitionMaterials: SeedMaterial[] = [
     name: 'Rail R48 3m',
     category: 'partition',
     unit: 'm',
-    yield_per_unit: 1.11,
+    // Un mètre de rail couvre un mètre de lisse. La fiche Placo donnait
+    // 0,90 m/m² de cloison, un ratio qui n'a de sens qu'à une hauteur donnée —
+    // depuis E1-3 la lisse est métrée sur le linéaire réel de l'ouvrage.
+    yield_per_unit: 1,
+    quantity_driver: 'frame_runner',
     packagings: [{ label: 'Barre 3 m', quantity_per_unit: 3, unit: 'm' }],
     waste_factors: partitionWaste(),
   },
@@ -1517,6 +1540,7 @@ export const partitionMaterials: SeedMaterial[] = [
     category: 'partition',
     unit: 'm',
     yield_per_unit: 1,
+    quantity_driver: 'frame_runner',
     packagings: [{ label: 'Barre 3 m', quantity_per_unit: 3, unit: 'm' }],
     waste_factors: partitionWaste(),
   },
@@ -1525,6 +1549,7 @@ export const partitionMaterials: SeedMaterial[] = [
     category: 'partition',
     unit: 'm',
     yield_per_unit: 1,
+    quantity_driver: 'frame_runner',
     packagings: [{ label: 'Barre 3 m', quantity_per_unit: 3, unit: 'm' }],
     waste_factors: partitionWaste(),
   },
@@ -1532,7 +1557,12 @@ export const partitionMaterials: SeedMaterial[] = [
     name: 'Montant M48 2.7m',
     category: 'partition',
     unit: 'm',
-    yield_per_unit: 0.48,
+    // Un mètre de montant couvre un mètre de trame. Les 2,10 m/m² de la fiche
+    // Placo étaient l'entraxe 0,60 replié sur une surface : le nombre de
+    // montants se compte désormais sur la longueur, et leur longueur sur la
+    // hauteur (`work_types.frame_spec`).
+    yield_per_unit: 1,
+    quantity_driver: 'frame_stud',
     packagings: [{ label: 'Barre 2.7 m', quantity_per_unit: 2.7, unit: 'm' }],
     waste_factors: partitionWaste(),
   },
@@ -1541,6 +1571,7 @@ export const partitionMaterials: SeedMaterial[] = [
     category: 'partition',
     unit: 'm',
     yield_per_unit: 1,
+    quantity_driver: 'frame_stud',
     packagings: [{ label: 'Barre 2.7 m', quantity_per_unit: 2.7, unit: 'm' }],
     waste_factors: partitionWaste(),
   },
@@ -1549,6 +1580,7 @@ export const partitionMaterials: SeedMaterial[] = [
     category: 'partition',
     unit: 'm',
     yield_per_unit: 1,
+    quantity_driver: 'frame_stud',
     packagings: [{ label: 'Barre 2.7 m', quantity_per_unit: 2.7, unit: 'm' }],
     waste_factors: partitionWaste(),
   },
@@ -1606,7 +1638,9 @@ export const partitionMaterials: SeedMaterial[] = [
     name: 'Bande à joint papier 23m',
     category: 'partition',
     unit: 'm',
-    yield_per_unit: 0.36,
+    // 2,80 m par m² d'ouvrage à deux faces = 1,40 m par m² de parement.
+    yield_per_unit: 0.72,
+    quantity_driver: 'clad_faces',
     packagings: [{ label: 'Rouleau 23 m', quantity_per_unit: 23, unit: 'm' }],
     waste_factors: partitionWaste(),
   },
@@ -1615,6 +1649,7 @@ export const partitionMaterials: SeedMaterial[] = [
     category: 'partition',
     unit: 'm',
     yield_per_unit: 1,
+    quantity_driver: 'clad_faces',
     packagings: [{ label: 'Rouleau 45 m', quantity_per_unit: 45, unit: 'm' }],
     waste_factors: partitionWaste(),
   },
@@ -1622,7 +1657,9 @@ export const partitionMaterials: SeedMaterial[] = [
     name: 'Enduit à joint poudre 5kg',
     category: 'partition',
     unit: 'kg',
-    yield_per_unit: 1.52,
+    // 0,66 kg par m² d'ouvrage à deux faces = 0,33 kg par m² de parement.
+    yield_per_unit: 3.04,
+    quantity_driver: 'clad_faces',
     packagings: [
       { label: 'Sac 5 kg', quantity_per_unit: 5, unit: 'kg' },
       { label: 'Sac 25 kg', quantity_per_unit: 25, unit: 'kg' },
@@ -1633,7 +1670,10 @@ export const partitionMaterials: SeedMaterial[] = [
     name: 'Enduit à joint prêt 7kg',
     category: 'partition',
     unit: 'kg',
-    yield_per_unit: 1,
+    // 1 kg par m² d'ouvrage à deux faces = 0,50 kg par m² de parement, dans la
+    // plage des fiches (Placomix 0,47 kg/m² de parement, Siniat 0,40-0,45).
+    yield_per_unit: 2,
+    quantity_driver: 'clad_faces',
     packagings: [
       { label: 'Seau 7 kg', quantity_per_unit: 7, unit: 'kg' },
       { label: 'Seau 20 kg', quantity_per_unit: 20, unit: 'kg' },
@@ -1645,6 +1685,7 @@ export const partitionMaterials: SeedMaterial[] = [
     category: 'partition',
     unit: 'kg',
     yield_per_unit: 1.5,
+    quantity_driver: 'clad_faces',
     packagings: [{ label: 'Seau 7 kg', quantity_per_unit: 7, unit: 'kg' }],
     waste_factors: partitionWaste(),
   },
@@ -1653,6 +1694,7 @@ export const partitionMaterials: SeedMaterial[] = [
     category: 'partition',
     unit: 'm',
     yield_per_unit: 1,
+    quantity_driver: 'clad_faces',
     packagings: [{ label: 'Rouleau 50 m', quantity_per_unit: 50, unit: 'm' }],
     waste_factors: partitionWaste(),
   },
@@ -1661,7 +1703,10 @@ export const partitionMaterials: SeedMaterial[] = [
     name: 'Vis placo 25mm (x500)',
     category: 'partition',
     unit: 'unit',
-    yield_per_unit: 22.7,
+    // 22 vis par m² d'ouvrage à deux faces = 11 par m² de parement, en boîtes
+    // de 500 → 500 ÷ 11 ≈ 45,4 m² de parement par boîte.
+    yield_per_unit: 45.4,
+    quantity_driver: 'clad_faces',
     packagings: [
       { label: 'Boîte 500 pcs', quantity_per_unit: 1, unit: 'unit' },
     ],
@@ -1672,6 +1717,7 @@ export const partitionMaterials: SeedMaterial[] = [
     category: 'partition',
     unit: 'unit',
     yield_per_unit: 1,
+    quantity_driver: 'clad_faces',
     packagings: [
       { label: 'Boîte 500 pcs', quantity_per_unit: 1, unit: 'unit' },
     ],
@@ -1682,6 +1728,7 @@ export const partitionMaterials: SeedMaterial[] = [
     category: 'partition',
     unit: 'unit',
     yield_per_unit: 1,
+    quantity_driver: 'clad_faces',
     packagings: [
       { label: 'Boîte 250 pcs', quantity_per_unit: 1, unit: 'unit' },
     ],
@@ -1723,6 +1770,9 @@ export const partitionMaterials: SeedMaterial[] = [
     category: 'partition',
     unit: 'm',
     yield_per_unit: 1,
+    // Une fourrure est un montant de doublage : posée à l'entraxe, sur la
+    // hauteur. Même assiette que les montants.
+    quantity_driver: 'frame_stud',
     packagings: [{ label: 'Barre 3 m', quantity_per_unit: 3, unit: 'm' }],
     waste_factors: partitionWaste(),
   },

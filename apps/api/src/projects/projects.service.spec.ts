@@ -133,6 +133,7 @@ const mockWorkType: WorkTypeEntity = {
   category: 'painting',
   surface_target: 'wall',
   quantity_basis: 'room_surface',
+  frame_spec: null,
   waste_factor_base: 1.1,
   contextual_questions: [],
   display_order: 1,
@@ -148,6 +149,7 @@ const mockFloorTilingWorkType: WorkTypeEntity = {
   category: 'tiling',
   surface_target: 'floor',
   quantity_basis: 'room_surface',
+  frame_spec: null,
   waste_factor_base: 1.1,
   contextual_questions: [
     {

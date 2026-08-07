@@ -11,16 +11,32 @@ import { workTypeMaterialLinks } from './work-type-materials.data';
  * liaison ajoutée sans source — ou le prochain rendement corrigé sans mise à
  * jour du registre — passerait en silence.
  *
- * Le format du tableau (7 colonnes, en-têtes exacts) est contractuel :
+ * Le format du tableau (8 colonnes, en-têtes exacts) est contractuel :
  * renommer une colonne casse ce spec, c'est voulu.
+ *
+ * E1-3 a ajouté la colonne **Assiette**. Un rendement ne veut rien dire sans
+ * l'unité dans laquelle il est exprimé : 0,96 par m² de parement et 0,96 par m²
+ * d'ouvrage décrivent deux cloisons dont l'une consomme le double de l'autre.
+ * Le registre doit donc porter les deux, et le spec vérifie les deux — sans
+ * quoi un `quantity_driver` changé dans le seed laisserait un registre exact au
+ * chiffre et faux au sens.
  */
 
 const DOC = resolve(__dirname, '../../../../docs/SOURCES_CATALOGUE.md');
+
+/** Libellé de registre de chaque `quantity_driver` (E1-3). */
+const DRIVER_LABELS: Record<string, string> = {
+  work_surface: "surface d'ouvrage",
+  clad_faces: 'parement',
+  frame_runner: 'lisses',
+  frame_stud: 'montants',
+};
 
 interface SourceRow {
   name: string;
   category: string;
   yield_v1: string;
+  basis: string;
   decision: string;
   source: string;
   date: string;
@@ -32,7 +48,7 @@ const rows: SourceRow[] = readFileSync(DOC, 'utf8')
   .map((line) => line.split('|').map((cell) => cell.trim()))
   .filter(
     (cells) =>
-      cells.length === 9 &&
+      cells.length === 10 &&
       cells[1] !== 'Matériau' &&
       !/^[-\s]*$/.test(cells[1]),
   )
@@ -40,9 +56,10 @@ const rows: SourceRow[] = readFileSync(DOC, 'utf8')
     name: cells[1],
     category: cells[2],
     yield_v1: cells[3],
-    decision: cells[5],
-    source: cells[6],
-    date: cells[7],
+    basis: cells[4],
+    decision: cells[6],
+    source: cells[7],
+    date: cells[8],
   }));
 
 const rowByKey = new Map(rows.map((r) => [`${r.category}:${r.name}`, r]));
@@ -64,11 +81,14 @@ describe('SOURCES_CATALOGUE.md — registre des rendements V1', () => {
     expect(rows.length).toBeGreaterThanOrEqual(49);
   });
 
-  it('couvre chaque matériau lié par une décision conserver/corriger sourcée', () => {
+  it('couvre chaque matériau lié par une décision sourcée', () => {
     for (const key of linkedKeys) {
       const row = rowByKey.get(key);
       expect(row).toBeDefined();
-      expect(row!.decision).toMatch(/^(conserver|corriger)/);
+      // `ré-exprimer` (E1-3) : la valeur change parce que son **unité** change,
+      // pas parce que la fiche disait autre chose. Le distinguer de `corriger`
+      // évite de faire passer une conversion pour une révision de source.
+      expect(row!.decision).toMatch(/^(conserver|corriger|ré-exprimer)/);
       expect(row!.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       // Un rendement définitionnel (produit vendu au m², posé bord à bord)
       // n'a pas de chiffre de fiche à citer ; tout le reste porte son URL.
@@ -84,6 +104,22 @@ describe('SOURCES_CATALOGUE.md — registre des rendements V1', () => {
       const seed = seedByKey.get(key)!;
       expect(seed).toBeDefined();
       expect(Number(row.yield_v1)).toBe(seed.yield_per_unit);
+    }
+  });
+
+  /**
+   * E1-3 — l'assiette annoncée est celle du catalogue. C'est ce qui empêche le
+   * registre de rester juste au chiffre et faux au sens : un montant passé de
+   * `frame_stud` à `clad_faces` doublerait l'ossature d'une cloison deux faces
+   * sans qu'aucun rendement ne bouge.
+   */
+  it("annonce l'assiette réellement déclarée par le catalogue", () => {
+    for (const key of linkedKeys) {
+      const row = rowByKey.get(key)!;
+      const seed = seedByKey.get(key)!;
+      expect(row.basis).toBe(
+        DRIVER_LABELS[seed.quantity_driver ?? 'work_surface'],
+      );
     }
   });
 

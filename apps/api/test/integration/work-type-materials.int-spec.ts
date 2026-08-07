@@ -60,6 +60,13 @@ function makeApiDto(workTypeCode: string): ApiEstimateRequestDto {
           {
             work_type_code: workTypeCode,
             custom_params: { laying_pattern: 'straight', tile_format: '30x30' },
+            // E1-3 : un ouvrage à assiette déclarée exige son linéaire, sa
+            // hauteur et son nombre de faces. Les envoyer sur les sept codes
+            // est sans effet sur les six autres — `toWorkItemInput` ne les lit
+            // que si `quantity_basis = 'declared'`.
+            declared_length_m: 4,
+            declared_height_m: 2.5,
+            declared_clad_faces: 2,
           },
         ],
       },
@@ -106,6 +113,42 @@ describe('work_type_materials (intégration, PostgreSQL réel)', () => {
       expect(result.items.length).toBeLessThanOrEqual(6);
     },
   );
+
+  /**
+   * E1-3 de bout en bout, contre les vraies migrations : la colonne
+   * `quantity_driver` posée par `…080`, lue par `loadMaterialInputs`, appliquée
+   * par le moteur. Aucune des suites unitaires ne monte cette chaîne — elles
+   * rejouent le catalogue depuis `seed-catalog.data.ts`, donc elles seraient
+   * vertes même si la migration n'écrivait rien en base.
+   */
+  it('métre la cloison sur son assiette déclarée, et non sur la pièce', async () => {
+    const result = await service.estimatePublicMulti(makeApiDto('drywall'));
+
+    // 4,00 × 2,50 = 10 m² d'ouvrage, et non les 33,307 m² de mur de la pièce.
+    for (const item of result.items) {
+      expect(item.surface_m2).toBe(10);
+    }
+
+    const qtyByName = new Map(
+      result.items.map((i) => [i.material_name, i.theoretical_qty]),
+    );
+    // Parement : 20 m² ÷ 0,96. Trame : 8 montants × 2,50 m, 2 lisses × 4,00 m.
+    expect(qtyByName.get('Plaque BA13 standard 2.5x1.2m')).toBeCloseTo(
+      20.833,
+      3,
+    );
+    expect(qtyByName.get('Montant M48 2.7m')).toBe(20);
+    expect(qtyByName.get('Rail R48 3m')).toBe(8);
+  });
+
+  it('refuse une cloison sans assiette au lieu de la chiffrer sur la pièce', async () => {
+    const dto = makeApiDto('drywall');
+    delete dto.rooms[0].work_items[0].declared_length_m;
+
+    await expect(service.estimatePublicMulti(dto)).rejects.toThrow(
+      /declared_length_m/,
+    );
+  });
 
   it('ne chiffre pas un matériau lié en optionnel', async () => {
     const workType = (await dataSource

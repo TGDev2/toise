@@ -14,6 +14,33 @@ import { WasteFactor } from './waste-factor.entity';
 import { MaterialEcoEquivalence } from './material-eco-equivalence.entity';
 import { numericTransformer } from '../../common/transformers/numeric.transformer';
 
+/**
+ * E1-3 — sur quoi la quantité d'un matériau se métré, c'est-à-dire **dans quelle
+ * unité `yield_per_unit` est exprimé**. Les deux vont ensemble et vivent dans la
+ * même ligne : les séparer laisserait un rendement dire une chose et son
+ * assiette une autre. Même décision qu'`applies_coats` (E1-4) et pour la même
+ * raison — une règle de quantité se porte par la donnée du matériau, jamais par
+ * une condition sur la catégorie ou le code de l'ouvrage.
+ *
+ *  - `work_surface` : la surface de l'ouvrage, qu'elle soit dérivée de la pièce
+ *    (`surface_target`) ou déclarée. Défaut, et le seul cas hors plâtrerie.
+ *  - `clad_faces` : cette surface **multipliée par le nombre de faces à
+ *    parementer**. Une cloison de 10 m² parementée deux faces, c'est 20 m² de
+ *    parement — plaques, vis, bande à joint, enduits.
+ *  - `frame_runner` : la longueur cumulée des lisses (`runner_courses` fois la
+ *    longueur de l'ouvrage), en mètres. Rails.
+ *  - `frame_stud` : la longueur cumulée des montants (nombre de montants fois
+ *    la hauteur), en mètres. Montants, fourrures.
+ *
+ * Les deux dernières ne dépendent **pas** du nombre de faces : une cloison
+ * parementée deux faces n'a qu'une seule trame. C'est tout l'objet de ce champ.
+ */
+export type MaterialQuantityDriver =
+  | 'work_surface'
+  | 'clad_faces'
+  | 'frame_runner'
+  | 'frame_stud';
+
 export enum MaterialCategory {
   PAINTING = 'painting',
   TILING = 'tiling',
@@ -36,6 +63,11 @@ export class MaterialCatalog {
   @Column({ type: 'varchar', length: 20 })
   unit!: string;
 
+  /**
+   * Quantité d'assiette couverte par une unité, **dans l'unité que désigne
+   * `quantity_driver`** : m² de surface d'ouvrage, m² de parement, ou mètre de
+   * trame. Les deux colonnes se lisent ensemble.
+   */
   @Column({
     type: 'numeric',
     precision: 10,
@@ -43,6 +75,22 @@ export class MaterialCatalog {
     transformer: numericTransformer,
   })
   yield_per_unit!: number;
+
+  /**
+   * E1-3 — sur quoi la quantité se métré. `work_surface` (défaut) : la surface
+   * de l'ouvrage. `clad_faces` : cette surface multipliée par le nombre de
+   * faces à parementer — plaques, vis, bande, enduit. `frame_runner` /
+   * `frame_stud` : la longueur de lisse ou de montant de la trame, qui ne
+   * dépend **pas** du nombre de faces (une cloison parementée deux faces n'a
+   * qu'une seule ossature).
+   *
+   * Porté par le matériau et non par la liaison ouvrage → matériau, pour la
+   * même raison qu'`applies_coats` : ce champ définit l'unité de
+   * `yield_per_unit`, et deux lignes qui se contrediraient donneraient un
+   * chiffrage faux sans que rien ne le signale.
+   */
+  @Column({ type: 'varchar', length: 20, default: 'work_surface' })
+  quantity_driver!: MaterialQuantityDriver;
 
   /**
    * E1-4 — la quantité de ce matériau est proportionnelle au nombre de couches

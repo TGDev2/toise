@@ -171,6 +171,9 @@ export class EstimationsService {
         unit: m.unit,
         yield_per_unit: Number(m.yield_per_unit),
         applies_coats: m.applies_coats,
+        // E1-3 : c'est ce champ qui dit dans quelle unité `yield_per_unit` est
+        // exprimé, donc si la quantité suit le nombre de faces ou la trame.
+        quantity_driver: m.quantity_driver,
         role: l.role,
         waste_factors: overlayLearnedWasteFactors(
           m.waste_factors.map((wf) => ({
@@ -187,6 +190,71 @@ export class EstimationsService {
         })),
       };
     });
+  }
+
+  /**
+   * Traduction d'un ouvrage en entrée du moteur — **le seul endroit** où un
+   * `WorkItemInput` se construit.
+   *
+   * Il y en avait trois (chantier, calculateur public, API multi-pièces), et le
+   * champ ajouté à l'un aurait manqué aux deux autres. Ici l'omission n'est pas
+   * possible : un ouvrage à assiette déclarée qui perdrait sa déclaration en
+   * route ne retomberait pas en silence sur le périmètre de la pièce — il
+   * lèverait, et c'est exactement le défaut que ce lot corrige.
+   *
+   * `declared` sans assiette complète est une donnée d'avant E1-2 (colonnes
+   * `NULL`) ou un appel qui ne l'a pas fournie : c'est une demande invalide,
+   * pas un cas à combler par un défaut plausible (leçon 18).
+   */
+  private toWorkItemInput(
+    workType: WorkType,
+    params: {
+      id: string;
+      skillLevel: SkillLevel;
+      customParams: Record<string, unknown>;
+      materials: MaterialInput[];
+      declaredLengthM?: number | null;
+      declaredHeightM?: number | null;
+      declaredCladFaces?: number | null;
+    },
+  ): WorkItemInput {
+    const base: WorkItemInput = {
+      id: params.id,
+      work_type_code: workType.code,
+      work_type_label: workType.label_fr,
+      category: workType.category,
+      surface_target: workType.surface_target,
+      skill_level: params.skillLevel,
+      custom_params: params.customParams,
+      materials: params.materials,
+    };
+
+    if (workType.quantity_basis !== 'declared') {
+      return base;
+    }
+
+    const declared: Array<[string, number | null | undefined]> = [
+      ['declared_length_m', params.declaredLengthM],
+      ['declared_height_m', params.declaredHeightM],
+      ['declared_clad_faces', params.declaredCladFaces],
+    ];
+    for (const [field, value] of declared) {
+      if (value === undefined || value === null) {
+        throw new BadRequestException(
+          `Missing required parameter "${field}" for work type "${workType.code}"`,
+        );
+      }
+    }
+
+    return {
+      ...base,
+      declared_basis: {
+        length_m: Number(params.declaredLengthM),
+        height_m: Number(params.declaredHeightM),
+        clad_faces: Number(params.declaredCladFaces),
+      },
+      frame_spec: workType.frame_spec,
+    };
   }
 
   async estimate(
@@ -292,16 +360,17 @@ export class EstimationsService {
 
         if (firstSkillLevel === undefined) firstSkillLevel = wi.skill_level;
 
-        workItemInputs.push({
-          id: wi.id,
-          work_type_code: wt.code,
-          work_type_label: wt.label_fr,
-          category: wt.category,
-          surface_target: wt.surface_target,
-          skill_level: skillLevelOverride || wi.skill_level,
-          custom_params: wi.custom_params,
-          materials: materialInputs,
-        });
+        workItemInputs.push(
+          this.toWorkItemInput(wt, {
+            id: wi.id,
+            skillLevel: skillLevelOverride || wi.skill_level,
+            customParams: wi.custom_params,
+            materials: materialInputs,
+            declaredLengthM: wi.declared_length_m,
+            declaredHeightM: wi.declared_height_m,
+            declaredCladFaces: wi.declared_clad_faces,
+          }),
+        );
       }
 
       const lines = this.engine.computeEstimation(roomData, workItemInputs);
@@ -397,16 +466,16 @@ export class EstimationsService {
     const room = this.toRoomData(dto);
 
     const skillLevel = dto.skill_level || SkillLevel.INTERMEDIATE;
-    const workItemInput: WorkItemInput = {
+    // `PUBLIC_WORK_TYPE_CODES` n'expose aucun ouvrage à assiette déclarée : le
+    // calculateur public ne peut donc pas atteindre la branche `declared`. Il
+    // passe quand même par le même constructeur, pour que le jour où il en
+    // exposerait un, le manque soit une erreur et non un chiffrage faux.
+    const workItemInput: WorkItemInput = this.toWorkItemInput(workType, {
       id: 'public',
-      work_type_code: workType.code,
-      work_type_label: workType.label_fr,
-      category: workType.category,
-      surface_target: workType.surface_target,
-      skill_level: skillLevel,
-      custom_params: { ...dto.custom_params },
+      skillLevel,
+      customParams: { ...dto.custom_params },
       materials: await this.loadMaterialInputs(workType),
-    };
+    });
 
     const items = this.engine.computeEstimation(room, [workItemInput]);
 
@@ -591,16 +660,17 @@ export class EstimationsService {
           }
         }
 
-        workItemInputs.push({
-          id: `${roomId}:${workType.code}`,
-          work_type_code: workType.code,
-          work_type_label: workType.label_fr,
-          category: workType.category,
-          surface_target: workType.surface_target,
-          skill_level: item.skill_level ?? defaultSkillLevel,
-          custom_params: { ...item.custom_params },
-          materials: materialInputs,
-        });
+        workItemInputs.push(
+          this.toWorkItemInput(workType, {
+            id: `${roomId}:${workType.code}`,
+            skillLevel: item.skill_level ?? defaultSkillLevel,
+            customParams: { ...item.custom_params },
+            materials: materialInputs,
+            declaredLengthM: item.declared_length_m,
+            declaredHeightM: item.declared_height_m,
+            declaredCladFaces: item.declared_clad_faces,
+          }),
+        );
       }
 
       for (const line of this.engine.computeEstimation(
