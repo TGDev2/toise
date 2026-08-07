@@ -404,6 +404,10 @@ L'invariant 5 du harnais — monter le niveau ne doit jamais augmenter une quant
 **Zones** — `apps/api/src/estimations/estimation-engine.ts`, `seed-catalog.data.ts`, `work-types.data.ts`.
 **Fin quand** — un support bois ne fait plus acheter de pare-vapeur, et une hauteur de 2,50 m fait acheter un montant par emplacement et non un montant divisé en barres. **Charge M.**
 
+**Livré** (migrations `…084` et `…085`). Deux propriétés de registre : `materials_catalog.vapour_barrier` (`dedicated` / `integrated`) et `materials_catalog.offcuts_reusable`. Deux règles portées par la donnée : `estimations/vapour-barrier.ts` et `estimations/piece-cutting.ts`. Une exclusion motivée voyage jusqu'à l'écran (`estimation_results.exclusions_json`), et l'invariant **I7** du harnais interdit le retour de la division. Registre : `docs/SOURCES_CATALOGUE.md`, sections « Déclenchement du pare-vapeur » et « Découpe à longueur ».
+
+Deux écarts avec l'énoncé, assumés et écrits au registre : le forfait de coupe des montants passe à **0 %** (la chute est désormais mesurée, l'ajouter la compterait deux fois — la casse n'est donc plus couverte) ; et le **plancher chauffant**, troisième déclencheur du NF DTU 51.11, n'est pas traité faute d'une question qui l'exprime.
+
 **`/model opus` · `/effort high`** — deux défauts de nature différente réunis parce qu'ils partagent la même racine : le moteur raisonne en quantité continue là où le métier raisonne en pièces découpées. Un montant de 2,70 m coupé pour un plafond de 2,50 m ne laisse pas 0,20 m réutilisables. Modéliser cela demande de comprendre la différence entre un matériau aboutable et un matériau non aboutable. Opus 5 pour le jugement, `high` pour le périmètre.
 
 ```text
