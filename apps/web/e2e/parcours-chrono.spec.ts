@@ -203,7 +203,7 @@ const dimensionsReady = async (p: Page): Promise<void> => {
 
 const workSelectionReady = async (p: Page): Promise<void> => {
   await expect(
-    p.getByRole('heading', { name: 'Selection des travaux' }),
+    p.getByRole('heading', { name: 'Sélection des travaux' }),
   ).toBeVisible({ timeout: 20_000 });
 };
 
@@ -260,7 +260,7 @@ async function selectWork(
     if (pressed === wanted.has(label)) continue;
     await chrono.tap(tile, { decision: true });
   }
-  const expertLevel = page.getByLabel('Confirme');
+  const expertLevel = page.getByLabel('Confirmé');
   await ensureVisible(expertLevel);
   if (!(await expertLevel.isChecked())) {
     await chrono.tap(expertLevel, { decision: true });
@@ -296,7 +296,7 @@ async function priceEveryMaterial(chrono: Chrono, page: Page): Promise<number> {
   };
   page.on('response', countPatch);
 
-  const priceButtons = page.getByRole('button', { name: 'Saisir le prix reel' });
+  const priceButtons = page.getByRole('button', { name: 'Saisir le prix réel' });
   const count = await priceButtons.count();
 
   /*
