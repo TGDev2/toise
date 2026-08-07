@@ -127,7 +127,13 @@ export interface SelectedPackaging {
 
 const CM2_TO_M2 = 10_000;
 export const DEFAULT_WASTE_PERCENT = 10;
-const DEFAULT_COATS = 2;
+/**
+ * Couches appliquées quand `custom_params.number_of_coats` est absent. Exporté
+ * parce que le harnais de non-régression doit diviser une quantité par le
+ * nombre de couches réellement appliqué : recopier `2` de son côté ferait
+ * diverger les deux valeurs le jour où celle-ci change.
+ */
+export const DEFAULT_COATS = 2;
 
 /** Format de conditionnement normalisé pour le choix d'achat (E1-5). */
 interface PackagingFormat {

@@ -99,6 +99,34 @@ des fiches sont par couche — vérifié), puis applique le facteur de perte.
 | Roulette de joint | wall_covering | — | Outil : pas de rendement exprimable en m²/unité | retirer (outil) | — | 2026-08-03 |
 | Cutter de précision | wall_covering | — | Outil : pas de rendement exprimable en m²/unité | retirer (outil) | — | 2026-08-03 |
 
+## Encadrements de consommation : le pendant exécutable de ce registre
+
+Ce registre dit ce que le catalogue **retient**. Il ne dit pas ce qu'une
+consommation **peut** valoir — et c'est cette seconde information, seule, qui
+permet à un test de constater qu'un rendement a dérivé. Sans elle, un rendement
+faux produit une liste d'achat parfaitement plausible : c'est ainsi que douze
+des vingt et un rendements ci-dessus ont vécu jusqu'à E1-7 sous 1 619 tests
+verts.
+
+`apps/api/src/materials/consumption-bounds.data.ts` porte donc, matériau par
+matériau, un intervalle `min_per_m2` / `max_per_m2` — la consommation par m²
+d'ouvrage et par couche — assorti de la phrase de fiche dont il est tiré. Le
+harnais de non-régression du moteur (invariant I3,
+`estimations/__tests__/seeded-catalog-harness.ts`) échoue hors de cet
+intervalle, et échoue également sur un matériau lié qui n'en déclare aucun.
+
+Une règle décide de tout : **une borne vient de l'étalement des chiffres publiés
+par les fabricants sur l'hypothèse d'ouvrage écrite plus haut, jamais de la
+valeur seedée ± une tolérance.** Une borne calée sur le seed ne peut rien
+attraper — elle vérifie que le catalogue est égal à lui-même.
+
+Un encadrement déjà violé, et assumé comme tel : `Joint fin 1-6mm` consomme
+0,25 kg/m² quels que soient le format du carreau et la largeur de joint, quand
+la ligne du registre ci-dessus cite elle-même « carreau 45×45, joint 2-3 mm :
+0,1-0,2 kg/m² » et note que 0,25 a été « retenu, prudent ». La violation est
+énumérée dans les suites du harnais, à supprimer le jour où le rendement du
+joint suivra la géométrie de la pose.
+
 ## Facteurs de perte : statut
 
 Les `waste_factors` seedés (6 familles, 9 triplets pose × niveau,

@@ -4,6 +4,7 @@ import {
   PackagingUnitsLine,
 } from '../entities/estimation-result.entity';
 import {
+  DEFAULT_COATS,
   EstimationEngine,
   MaterialInput,
   PackagingInput,
@@ -11,6 +12,10 @@ import {
   WorkItemInput,
 } from '../estimation-engine';
 import { seedMaterials, SeedMaterial } from '../../materials/seed-catalog.data';
+import {
+  ConsumptionBound,
+  consumptionBoundByMaterialKey,
+} from '../../materials/consumption-bounds.data';
 import { workTypeMaterialLinks } from '../../materials/work-type-materials.data';
 import { WorkTypeMaterialRole } from '../../materials/entities/work-type-material.entity';
 import { SkillLevel } from '../../projects/entities/project-work-item.entity';
@@ -39,6 +44,79 @@ import { seedWorkTypes, SeedWorkType } from '../../projects/work-types.data';
  *
  * Conséquence voulue : un matériau lié, délié ou requalifié change les
  * instantanés sans qu'on ait à penser à mettre le harnais à jour.
+ *
+ * ---------------------------------------------------------------------------
+ * LES SIX INVARIANTS MÉTIER (`invariantViolations`)
+ * ---------------------------------------------------------------------------
+ *
+ * Les instantanés ne suffisent pas, et il faut le dire précisément : un
+ * instantané fige ce que le moteur produit, **juste ou faux**. Rejoué sur le
+ * moteur d'avant E1-1, celui de ce fichier aurait figé les 54 lignes sans
+ * broncher, et un `jest -u` distrait aurait béni chaque régression suivante.
+ * Les invariants ci-dessous ne dépendent d'aucune valeur enregistrée : `-u` ne
+ * peut pas les emporter. Chacun vient d'un défaut réellement constaté dans ce
+ * dépôt, pas d'une inquiétude théorique.
+ *
+ * **I1 — on n'achète jamais moins que le besoin ajusté.**
+ * D'où il vient : `STEP_EPSILON` (`estimation-engine.ts`), la tolérance de
+ * 1e-6 pas introduite pour que 7,5 L — dont la représentation flottante vaut
+ * 7500,000000000001 millièmes — ne demande pas 16 demi-pots au lieu de 15.
+ * Une tolérance qui grandit sous-achète en silence. Ce qu'il protège :
+ * sur-acheter se voit dans l'instantané et se garde en fond de pot ;
+ * sous-acheter renvoie au magasin, et c'est le seul défaut qu'un chantier ne
+ * pardonne pas.
+ *
+ * **I2 — un matériau à `applies_coats` faux ne bouge pas avec les couches.**
+ * D'où il vient : E1-4. `computeTheoreticalQty` multipliait par le nombre de
+ * couches dès que la *catégorie* de l'ouvrage valait `painting` — d'où les
+ * 70 pinceaux et les 3 pots de peinture plafond du défaut d'origine. La règle
+ * est passée sur le matériau (`materials_catalog.applies_coats`) ; cet
+ * invariant interdit qu'elle redevienne une déduction de catégorie.
+ *
+ * **I3 — la consommation par m² reste dans un encadrement déclaré en données.**
+ * D'où il vient : E1-7. Confrontés aux fiches fabricant, **douze des vingt et
+ * un rendements servis étaient faux**, jusqu'à un facteur 4. Aucun test ne
+ * pouvait le voir : un rendement faux produit une table plausible, seulement
+ * fausse. L'encadrement vit dans `materials/consumption-bounds.data.ts`, dérivé
+ * des fiches et **jamais de la valeur seedée** — une borne calée sur le seed
+ * serait une tautologie. C'est ce mécanisme qui attrape le joint de carrelage
+ * à 0,25 kg/m², identique quels que soient le format du carreau et la largeur
+ * de joint, quand sa propre fiche Cermix donne 0,1 à 0,2 kg/m².
+ *
+ * **I4 — le nombre de contenants est minimal à surplus égal.**
+ * D'où il vient : E1-5. Le critère d'avant minimisait le surplus absolu et
+ * achetait 14 pots de 0,5 L pour 6,66 L de peinture, trois à cinq fois le prix
+ * de 5 L + 2,5 L. Le critère actuel minimise `S = q_min × contenants + volume` ;
+ * cet invariant en éprouve la conséquence observable, par une programmation
+ * dynamique **indépendante** de celle du moteur : aucun panachage ne doit
+ * donner strictement moins de contenants sans acheter plus de volume.
+ *
+ * **I5 — monter en compétence n'augmente jamais une quantité.**
+ * D'où il vient : DATA-3. Les facteurs de perte **appris** sur les achats réels
+ * se superposent au catalogue (`overlayLearnedWasteFactors`) en étant bornés à
+ * ±10 points et à l'intervalle 0-30 % — de quoi représenter un débutant à 5 %
+ * et un expert à 15 %, c'est-à-dire l'ordre des niveaux inversé, sans qu'aucune
+ * borne ne s'en émeuve. Ce que « niveau de compétence » veut dire n'est écrit
+ * nulle part ailleurs que dans cet invariant.
+ *
+ * **I6 — une question requise change au moins une quantité.**
+ * D'où il vient : `tile_format`. La question est seedée `required: true` sur
+ * `floor_tiling` (`work-types.data.ts`), affichée à l'écran, transportée par
+ * les DTO, stockée dans `custom_params` — et lue par **aucun calcul**. On
+ * demande à l'artisan un renseignement obligatoire dont sa liste d'achat ne
+ * tiendra aucun compte. Cet invariant est violé aujourd'hui : c'est voulu, il
+ * passera au vert le jour où le format du carreau pilotera le chiffrage.
+ *
+ * Chaque violation nomme l'ouvrage, le matériau et les deux valeurs comparées,
+ * et porte son numéro d'invariant en préfixe — `[I0]` étant réservé aux deux
+ * gardes structurels antérieurs (un ouvrage chiffre ses matériaux liés, ni plus
+ * ni moins, et en garde un principal). Elles sont **renvoyées en clair** plutôt
+ * qu'asserties une par une : la suite dit alors *tout* ce qui a cassé, pas le
+ * premier cas venu.
+ *
+ * Ce que ces invariants attrapent réellement n'est pas affirmé, c'est démontré :
+ * `invariant-detection.spec.ts` remet chacun des défauts ci-dessus dans le
+ * moteur et exige que l'invariant correspondant le nomme.
  */
 
 /** Les 3 niveaux de compétence, dans l'ordre de l'énumération. */
@@ -178,15 +256,35 @@ export function caseFor(
 }
 
 /**
+ * Paramètres supplémentaires poussés dans `custom_params`, par code d'ouvrage.
+ *
+ * C'est le point d'entrée des configurations à venir — assiette de cloison,
+ * hauteur sous plafond, raccord de papier peint — et la raison pour laquelle
+ * elles n'exigeront pas de réécrire ce fichier : une entrée dans ce dictionnaire
+ * traverse `workItemFor`, donc les instantanés **et** les six invariants.
+ */
+export type ParamsByWorkType = Record<string, Record<string, unknown>>;
+
+const paramsFor = (
+  paramsByWorkType: ParamsByWorkType,
+  workTypeCode: string,
+): Record<string, unknown> => paramsByWorkType[workTypeCode] ?? {};
+
+/**
  * Work item du moteur pour un cas. La pose implicite se dit en **n'envoyant
  * rien** — `custom_params` vide — plutôt qu'en envoyant `standard` : c'est ce que
  * fait un appelant qui ne pose pas la question, et le seul moyen d'éprouver le
  * repli de `resolveWasteFactor`. `number_of_coats` reste absent, donc au défaut
  * de 2 couches, comme pour un utilisateur qui ne le renseigne pas.
+ *
+ * `extraParams` s'ajoute **après** la pose, donc peut la surcharger : c'est
+ * voulu, l'invariant I6 s'en sert pour éprouver `laying_pattern` valeur par
+ * valeur sans construire un second chemin de code.
  */
 export function workItemFor(
   testCase: HarnessCase,
   workItemId: string,
+  extraParams: Record<string, unknown> = {},
 ): WorkItemInput {
   return {
     id: workItemId,
@@ -195,10 +293,12 @@ export function workItemFor(
     category: testCase.workType.category,
     surface_target: testCase.workType.surface_target,
     skill_level: testCase.skillLevel,
-    custom_params:
-      testCase.poseType === IMPLICIT_POSE
+    custom_params: {
+      ...(testCase.poseType === IMPLICIT_POSE
         ? {}
-        : { laying_pattern: testCase.poseType },
+        : { laying_pattern: testCase.poseType }),
+      ...extraParams,
+    },
     materials: materialsForWorkType(testCase.workType.code),
   };
 }
@@ -414,10 +514,15 @@ export function renderRoomCase(
   engine: EstimationEngine,
   harnessRoom: HarnessRoom,
   testCase: HarnessCase,
+  paramsByWorkType: ParamsByWorkType = {},
 ): string {
   const byId = materialsById(testCase);
   const lines = engine.computeEstimation(harnessRoom.room, [
-    workItemFor(testCase, 'wi-1'),
+    workItemFor(
+      testCase,
+      'wi-1',
+      paramsFor(paramsByWorkType, testCase.workType.code),
+    ),
   ]);
   const first = lines[0];
   const deducted = first.gross_surface_m2 - first.surface_m2;
@@ -475,6 +580,7 @@ export function runProject(
   engine: EstimationEngine,
   rooms: HarnessRoom[],
   cases: HarnessCase[],
+  paramsByWorkType: ParamsByWorkType = {},
 ): ProjectRun {
   const perRoomLines: EstimationLineItem[] = [];
   const perRoomUnitsByMaterial = new Map<string, number>();
@@ -482,7 +588,11 @@ export function runProject(
 
   rooms.forEach((harnessRoom, roomIndex) => {
     const workItems = cases.map((testCase, caseIndex) =>
-      workItemFor(testCase, `wi-${roomIndex + 1}-${caseIndex + 1}`),
+      workItemFor(
+        testCase,
+        `wi-${roomIndex + 1}-${caseIndex + 1}`,
+        paramsFor(paramsByWorkType, testCase.workType.code),
+      ),
     );
     for (const workItem of workItems) {
       for (const mat of workItem.materials) {
@@ -532,11 +642,13 @@ export function renderProject(
   engine: EstimationEngine,
   rooms: HarnessRoom[],
   cases: HarnessCase[],
+  paramsByWorkType: ParamsByWorkType = {},
 ): string {
   const { perRoomLines, aggregated, perRoomUnitsByMaterial } = runProject(
     engine,
     rooms,
     cases,
+    paramsByWorkType,
   );
 
   const roomSummary = rooms
@@ -645,54 +757,580 @@ export function renderCaseInventory(): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Un instantané fige ce que le moteur produit, juste ou faux : rejoué sur le
- * moteur d'avant E1-1, il aurait figé les 54 lignes sans broncher. Ces
- * invariants-ci ne dépendent d'aucune valeur enregistrée, donc `-u` ne les
- * emporte pas. Ils sont renvoyés en clair plutôt qu'assertés un par un : la
- * suite dit alors *tout* ce qui a cassé, pas le premier cas venu.
+ * Ce qui fait varier une exécution du harnais, rassemblé en un seul objet.
+ *
+ * L'intention est précise : les configurations annoncées — assiette de cloison,
+ * hauteur sous plafond, raccord de papier peint — doivent entrer par des
+ * **données**, pas par une réécriture des invariants. Une nouvelle question
+ * d'ouvrage se déclare dans `questionProbes`, un nouveau paramètre de calcul
+ * dans `paramsByWorkType`, une nouvelle géométrie dans le `HarnessRoom` passé
+ * en argument, un nouveau matériau dans `consumption-bounds.data.ts`.
  */
-export function invariantViolations(
-  engine: EstimationEngine,
-  room: RoomData,
+export interface HarnessConfig {
+  /** Cas éprouvés. Un sous-ensemble reste licite : tout est dérivé de lui. */
+  cases: HarnessCase[];
+  /** Nombres de couches comparés par I2. Au moins deux valeurs distinctes. */
+  coatCounts: number[];
+  /** Paramètres poussés dans `custom_params`, par ouvrage. */
+  paramsByWorkType: ParamsByWorkType;
+  /**
+   * Valeurs d'épreuve d'une question `number`, par clé (I6). Une question
+   * `select` fournit les siennes ; une question `number` n'en a pas, et une
+   * question requise sans valeur d'épreuve est signalée plutôt que sautée —
+   * c'est ce qui empêchera une future « hauteur sous plafond » d'entrer dans le
+   * produit sans que personne n'éprouve son effet.
+   */
+  questionProbes: Record<string, unknown[]>;
+  /** Encadrements de consommation (I3), indexés par `catégorie:nom`. */
+  bounds: Map<string, ConsumptionBound>;
+  /**
+   * Tolérance relative sur le taux de consommation (I3). Le moteur arrondit
+   * surfaces et quantités au millième : 1e-3 absorbe cet arrondi, et rien
+   * d'autre — le défaut le plus discret qu'on cherche ici (0,25 contre 0,20)
+   * pèse 25 %.
+   */
+  rateTolerance: number;
+}
+
+export const DEFAULT_HARNESS_CONFIG: HarnessConfig = {
+  cases: harnessCases,
+  coatCounts: [1, 2, 3],
+  paramsByWorkType: {},
+  questionProbes: {},
+  bounds: consumptionBoundByMaterialKey,
+  rateTolerance: 1e-3,
+};
+
+const caseLabel = (testCase: HarnessCase): string =>
+  `${testCase.workType.code} · ${testCase.skillLevel} · ${testCase.poseType}`;
+
+/** Taux de consommation, tel que I3 le compare à son encadrement. */
+const rate = (value: number, unit: string): string =>
+  `${value.toFixed(3)} ${unit}/m²`;
+
+/** Couches effectivement appliquées, telles que le moteur les résout. */
+const coatsFor = (params: Record<string, unknown>): number =>
+  Number(params.number_of_coats) || DEFAULT_COATS;
+
+const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+
+/**
+ * I1 — volume acheté ≥ besoin ajusté.
+ *
+ * Précédé des deux gardes structurels qui existaient avant ces invariants, et
+ * qui gardent leur propre marque `[I0]` : un ouvrage chiffre ses matériaux
+ * liés, ni plus (la catégorie entière — le défaut des 54 lignes) ni moins, et
+ * il en garde un principal, sans quoi le cas rétrécirait sans qu'aucun compte
+ * de lignes ne s'en émeuve.
+ */
+function coverageViolations(
+  lines: EstimationLineItem[],
+  materials: MaterialInput[],
+  byId: Map<string, MaterialInput>,
+  testCase: HarnessCase,
 ): string[] {
   const violations: string[] = [];
+  const label = caseLabel(testCase);
 
-  for (const testCase of harnessCases) {
-    const label = `${testCase.workType.code} · ${testCase.skillLevel} · ${testCase.poseType}`;
-    const materials = materialsForWorkType(testCase.workType.code);
-    const byId = new Map(materials.map((mat) => [mat.id, mat]));
-    const lines = engine.computeEstimation(room, [
-      workItemFor(testCase, 'wi-1'),
-    ]);
+  if (lines.length !== materials.length) {
+    violations.push(
+      `[I0] ${label} : ${lines.length} lignes chiffrées pour ${materials.length} matériaux liés`,
+    );
+  }
+  if (!materials.some((mat) => mat.role === 'principal')) {
+    violations.push(`[I0] ${label} : aucun matériau principal lié`);
+  }
 
-    // Le garde-fou direct contre le défaut des 54 lignes : un ouvrage chiffre
-    // ses matériaux liés, ni plus (la catégorie entière) ni moins.
-    if (lines.length !== materials.length) {
+  for (const line of lines) {
+    const bought = purchasedVolume(line, byId.get(line.material_id)!);
+    if (bought < line.adjusted_qty) {
       violations.push(
-        `${label} : ${lines.length} lignes chiffrées pour ${materials.length} matériaux liés`,
+        `[I1] ${label} : ${line.material_name} — ${qty(bought, line.material_unit)} achetés ` +
+          `pour ${qty(line.adjusted_qty, line.material_unit)} nécessaires`,
       );
     }
+  }
 
-    // Un ouvrage sans matériau principal ne chiffre plus rien d'utile : le cas
-    // rétrécirait sans qu'aucun compte de lignes ne s'en émeuve.
-    if (!materials.some((mat) => mat.role === 'principal')) {
-      violations.push(`${label} : aucun matériau principal lié`);
+  return violations;
+}
+
+/**
+ * I2 — la quantité d'un matériau à `applies_coats` faux ne dépend pas du nombre
+ * de couches. Le même cas est rejoué à 1, 2 et 3 couches ; toute différence sur
+ * un matériau qui ne déclare pas les couches est une régression vers la
+ * déduction par catégorie d'avant E1-4.
+ */
+function coatIndependenceViolations(
+  engine: EstimationEngine,
+  room: RoomData,
+  testCase: HarnessCase,
+  byId: Map<string, MaterialInput>,
+  config: HarnessConfig,
+): string[] {
+  const violations: string[] = [];
+  const label = caseLabel(testCase);
+  const base = paramsFor(config.paramsByWorkType, testCase.workType.code);
+
+  const runs = config.coatCounts.map((coats) => ({
+    coats,
+    byMaterial: new Map(
+      engine
+        .computeEstimation(room, [
+          workItemFor(testCase, 'wi-1', { ...base, number_of_coats: coats }),
+        ])
+        .map((line) => [line.material_id, line]),
+    ),
+  }));
+
+  const [reference, ...others] = runs;
+  for (const [materialId, refLine] of reference.byMaterial) {
+    if (byId.get(materialId)?.applies_coats) {
+      continue;
     }
-
-    for (const line of lines) {
-      const bought = purchasedVolume(line, byId.get(line.material_id)!);
-      // Sous-acheter est le seul défaut qu'un chantier ne pardonne pas : il
-      // faut retourner au magasin. Sur-acheter, lui, se voit dans l'instantané.
-      if (bought < line.adjusted_qty) {
+    for (const run of others) {
+      const line = run.byMaterial.get(materialId);
+      if (line && line.adjusted_qty !== refLine.adjusted_qty) {
         violations.push(
-          `${label} : ${line.material_name} — ${qty(bought, line.material_unit)} achetés ` +
-            `pour ${qty(line.adjusted_qty, line.material_unit)} nécessaires`,
+          `[I2] ${label} : ${refLine.material_name} (applies_coats faux) — ` +
+            `${qty(refLine.adjusted_qty, refLine.material_unit)} à ${reference.coats} couche(s) ` +
+            `contre ${qty(line.adjusted_qty, line.material_unit)} à ${run.coats} couche(s)`,
         );
       }
     }
   }
 
   return violations;
+}
+
+/**
+ * I3 — consommation par m² d'ouvrage et par couche, contre l'encadrement de
+ * `materials/consumption-bounds.data.ts`.
+ *
+ * Le taux est divisé par les couches **seulement si le catalogue déclare
+ * `applies_coats`**, jamais parce que le moteur annonce un `number_of_coats`.
+ * La nuance décide de tout : le défaut d'E1-4, où un pinceau était multiplié
+ * par les couches, sortirait ici à 2,0 pour un encadrement à [1, 1] — alors
+ * qu'en divisant par les couches *annoncées par le moteur* il s'annulerait,
+ * et l'invariant regarderait le défaut sans le voir.
+ *
+ * Le libellé ne porte ni le niveau ni la pose : le taux n'en dépend pas, et
+ * 9 messages identiques par ouvrage se replient ainsi en un seul. S'il en
+ * dépendait, les messages différeraient et ne se replieraient pas — ce qui est
+ * exactement l'information qu'on voudrait voir.
+ */
+function consumptionRateViolations(
+  lines: EstimationLineItem[],
+  byId: Map<string, MaterialInput>,
+  testCase: HarnessCase,
+  config: HarnessConfig,
+): string[] {
+  const violations: string[] = [];
+  const code = testCase.workType.code;
+  const coats = coatsFor(paramsFor(config.paramsByWorkType, code));
+
+  for (const line of lines) {
+    const material = byId.get(line.material_id)!;
+    const bound = config.bounds.get(material.id);
+
+    if (!bound) {
+      violations.push(
+        `[I3] ${code} : ${line.material_name} — aucun encadrement de consommation déclaré ` +
+          `(materials/consumption-bounds.data.ts)`,
+      );
+      continue;
+    }
+    if (bound.unit !== material.unit) {
+      violations.push(
+        `[I3] ${code} : ${line.material_name} — encadrement déclaré en ${bound.unit}/m² ` +
+          `pour un matériau vendu en ${material.unit}`,
+      );
+      continue;
+    }
+    if (line.surface_m2 <= 0) {
+      continue;
+    }
+
+    const observed =
+      line.theoretical_qty /
+      line.surface_m2 /
+      (material.applies_coats ? coats : 1);
+
+    if (
+      observed < bound.min_per_m2 * (1 - config.rateTolerance) ||
+      observed > bound.max_per_m2 * (1 + config.rateTolerance)
+    ) {
+      violations.push(
+        `[I3] ${code} : ${line.material_name} — ${rate(observed, material.unit)} consommés, ` +
+          `encadrement ${rate(bound.min_per_m2, material.unit)} à ${rate(bound.max_per_m2, material.unit)} ` +
+          `(${bound.basis})`,
+      );
+    }
+  }
+
+  return violations;
+}
+
+/**
+ * Plafond de la table d'alternatives. Même rôle que `MAX_PACKAGING_STEPS` dans
+ * le moteur : hors d'atteinte sur le catalogue réel, garde-fou contre une
+ * donnée aberrante qui ferait exploser le harnais au lieu de le faire échouer.
+ */
+const MAX_ALTERNATIVE_STEPS = 100_000;
+
+/**
+ * Le meilleur panachage qui achète **au plus** le volume retenu par le moteur,
+ * en strictement moins de contenants — ou `null` s'il n'en existe pas.
+ *
+ * Programmation dynamique délibérément **indépendante** de celle du moteur :
+ * elle énumère le nombre minimal de contenants pour chaque volume atteignable
+ * entre le besoin et le volume acheté, sans rien savoir du critère `S`. Rejouer
+ * l'algorithme du moteur pour vérifier le moteur ne prouverait que sa
+ * cohérence avec lui-même.
+ */
+function fewerContainersFor(
+  adjustedQty: number,
+  material: MaterialInput,
+  purchase: {
+    packaging_breakdown?: PackagingUnitsLine[];
+    packaging_label: string;
+    units_needed: number;
+  },
+): { units: number; volume: number } | null {
+  const stepsByLabel = new Map(
+    material.packagings.map((pkg) => [
+      pkg.label,
+      Math.round(Number(pkg.quantity_per_unit) * 1000),
+    ]),
+  );
+  const sizes = [...new Set(stepsByLabel.values())].filter(
+    (steps) => Number.isFinite(steps) && steps > 0,
+  );
+  // Zéro ou un contenant : « strictement moins » vaudrait ne rien acheter.
+  if (sizes.length === 0 || purchase.units_needed <= 1) {
+    return null;
+  }
+
+  const parts = purchase.packaging_breakdown ?? [
+    { label: purchase.packaging_label, units: purchase.units_needed },
+  ];
+  let boughtSteps = 0;
+  for (const part of parts) {
+    const steps = stepsByLabel.get(part.label);
+    // Format inconnu du catalogue : I1 le signale déjà, ne pas en déduire un
+    // second grief sur un volume qu'on ne sait pas reconstituer.
+    if (steps === undefined) {
+      return null;
+    }
+    boughtSteps += part.units * steps;
+  }
+
+  const step = sizes.reduce((acc, size) => gcd(acc, size), 0);
+  const grid = sizes.map((size) => size / step);
+  const need = Math.max(0, Math.ceil((adjustedQty * 1000) / step - 1e-6));
+  const cap = boughtSteps / step;
+  if (cap < need || cap > MAX_ALTERNATIVE_STEPS) {
+    return null;
+  }
+
+  const minUnits = new Array<number>(cap + 1).fill(Number.POSITIVE_INFINITY);
+  minUnits[0] = 0;
+  for (let n = 1; n <= cap; n++) {
+    for (const size of grid) {
+      if (size <= n && minUnits[n - size] + 1 < minUnits[n]) {
+        minUnits[n] = minUnits[n - size] + 1;
+      }
+    }
+  }
+
+  let bestUnits = purchase.units_needed;
+  let bestSteps = cap;
+  for (let n = need; n <= cap; n++) {
+    if (minUnits[n] < bestUnits) {
+      bestUnits = minUnits[n];
+      bestSteps = n;
+    }
+  }
+
+  return bestUnits < purchase.units_needed
+    ? { units: bestUnits, volume: (bestSteps * step) / 1000 }
+    : null;
+}
+
+/** I4 — aucun panachage ne fait mieux en contenants sans acheter plus. */
+function containerMinimalityViolations(
+  lines: EstimationLineItem[],
+  byId: Map<string, MaterialInput>,
+  testCase: HarnessCase,
+): string[] {
+  const violations: string[] = [];
+  const label = caseLabel(testCase);
+
+  for (const line of lines) {
+    const material = byId.get(line.material_id)!;
+    const better = fewerContainersFor(line.adjusted_qty, material, line);
+    if (better) {
+      violations.push(
+        `[I4] ${label} : ${line.material_name} — ${line.units_needed} contenants pour ` +
+          `${qty(purchasedVolume(line, material), line.material_unit)}, alors que ` +
+          `${better.units} suffisent pour ${qty(better.volume, line.material_unit)}`,
+      );
+    }
+  }
+
+  return violations;
+}
+
+/**
+ * I5 — monter de `beginner` à `expert`, à pose identique, n'augmente jamais une
+ * quantité.
+ *
+ * L'assertion porte sur `adjusted_qty` et non sur `units_needed`, et c'est
+ * délibéré : le critère `S` d'E1-5 arbitre en coût, pas en nombre de
+ * contenants, et le harnais démontre ailleurs (`extraContainers`) qu'il peut
+ * préférer un contenant de plus pour moins de volume. Exiger la monotonie des
+ * contenants exigerait donc du moteur autre chose que ce qu'il promet.
+ */
+function skillMonotonyViolations(
+  engine: EstimationEngine,
+  room: RoomData,
+  cases: HarnessCase[],
+  config: HarnessConfig,
+): string[] {
+  const violations: string[] = [];
+  const ordered = [...cases].sort(
+    (a, b) =>
+      SKILL_LEVELS.indexOf(a.skillLevel) - SKILL_LEVELS.indexOf(b.skillLevel),
+  );
+
+  const quantitiesFor = (testCase: HarnessCase) =>
+    new Map(
+      engine
+        .computeEstimation(room, [
+          workItemFor(
+            testCase,
+            'wi-1',
+            paramsFor(config.paramsByWorkType, testCase.workType.code),
+          ),
+        ])
+        .map((line) => [line.material_id, line]),
+    );
+
+  for (let i = 1; i < ordered.length; i++) {
+    const lower = ordered[i - 1];
+    const higher = ordered[i];
+    const lowerLines = quantitiesFor(lower);
+
+    for (const [materialId, line] of quantitiesFor(higher)) {
+      const before = lowerLines.get(materialId);
+      if (before && line.adjusted_qty > before.adjusted_qty) {
+        violations.push(
+          `[I5] ${higher.workType.code} · pose ${higher.poseType} : ${line.material_name} — ` +
+            `${qty(line.adjusted_qty, line.material_unit)} en ${higher.skillLevel} ` +
+            `contre ${qty(before.adjusted_qty, before.material_unit)} en ${lower.skillLevel}`,
+        );
+      }
+    }
+  }
+
+  return violations;
+}
+
+/**
+ * I6 — changer la valeur d'une question **requise** change au moins une
+ * quantité.
+ *
+ * Une question requise est une promesse faite à l'artisan : ce que vous
+ * répondez sert à quelque chose. `tile_format` ne la tient pas — il est exigé,
+ * affiché, stocké, et lu par aucun calcul. L'invariant échoue donc aujourd'hui,
+ * et c'est le résultat attendu.
+ *
+ * La comparaison balaie toutes les valeurs déclarées **et** tous les niveaux de
+ * compétence énumérés : il suffit qu'un seul couple produise une différence
+ * pour que la question soit tenue pour lue. C'est la forme la plus faible de
+ * l'exigence, donc celle dont un échec ne se discute pas.
+ */
+function requiredQuestionViolations(
+  engine: EstimationEngine,
+  room: RoomData,
+  workType: SeedWorkType,
+  cases: HarnessCase[],
+  config: HarnessConfig,
+): string[] {
+  const violations: string[] = [];
+  const base = paramsFor(config.paramsByWorkType, workType.code);
+
+  /**
+   * Le chiffrage d'un cas pour une réponse donnée. Le cas est **le même** des
+   * deux côtés de la comparaison : opposer le niveau d'un cas au niveau d'un
+   * autre ferait passer l'écart de facteur de perte pour un effet de la
+   * question, et l'invariant serait vert sans rien prouver.
+   */
+  const answeredWith = (testCase: HarnessCase, key: string, value: unknown) =>
+    new Map(
+      engine
+        .computeEstimation(room, [
+          workItemFor(testCase, 'wi-1', { ...base, [key]: value }),
+        ])
+        .map((line) => [line.material_id, line]),
+    );
+
+  for (const question of workType.contextual_questions) {
+    if (!question.required) {
+      continue;
+    }
+
+    const values: unknown[] =
+      question.type === 'select'
+        ? (question.options ?? []).map((option) => option.value)
+        : (config.questionProbes[question.key] ?? []);
+
+    if (values.length < 2) {
+      violations.push(
+        `[I6] ${workType.code} : question requise « ${question.key} » (${question.type}) — ` +
+          `moins de deux valeurs d'épreuve déclarées, l'invariant ne peut rien affirmer ` +
+          `(HarnessConfig.questionProbes)`,
+      );
+      continue;
+    }
+
+    const [reference, ...alternatives] = values;
+    const changesSomething = cases.some((testCase) => {
+      const before = answeredWith(testCase, question.key, reference);
+      return alternatives.some((value) =>
+        [...answeredWith(testCase, question.key, value)].some(
+          ([materialId, line]) =>
+            line.adjusted_qty !== before.get(materialId)?.adjusted_qty,
+        ),
+      );
+    });
+
+    if (!changesSomething) {
+      const unchanged = [
+        ...answeredWith(cases[0], question.key, reference).values(),
+      ]
+        .map(
+          (line) =>
+            `${line.material_name} ${qty(line.adjusted_qty, line.material_unit)}`,
+        )
+        .join(', ');
+      violations.push(
+        `[I6] ${workType.code} : question requise « ${question.key} » — ` +
+          `les ${values.length} valeurs (${values.join(', ')}) donnent les mêmes quantités ` +
+          `à tous les niveaux : ${unchanged}`,
+      );
+    }
+  }
+
+  return violations;
+}
+
+const groupCases = (
+  cases: HarnessCase[],
+  key: (testCase: HarnessCase) => string,
+): HarnessCase[][] => {
+  const groups = new Map<string, HarnessCase[]>();
+  for (const testCase of cases) {
+    const group = groups.get(key(testCase));
+    if (group) {
+      group.push(testCase);
+    } else {
+      groups.set(key(testCase), [testCase]);
+    }
+  }
+  return [...groups.values()];
+};
+
+/**
+ * Les six invariants, sur une pièce.
+ *
+ * Le résultat est dédoublonné en conservant l'ordre de première apparition :
+ * le taux de consommation d'I3 ne dépend ni du niveau ni de la pose, et son
+ * message est écrit pour ne pas les porter — sans quoi le même grief reviendrait
+ * neuf fois par ouvrage. Deux messages identiques *sont* le même fait.
+ */
+export function invariantViolations(
+  engine: EstimationEngine,
+  harnessRoom: HarnessRoom,
+  overrides: Partial<HarnessConfig> = {},
+): string[] {
+  const config: HarnessConfig = { ...DEFAULT_HARNESS_CONFIG, ...overrides };
+  const room = harnessRoom.room;
+  const violations: string[] = [];
+
+  for (const testCase of config.cases) {
+    const materials = materialsForWorkType(testCase.workType.code);
+    const byId = new Map(materials.map((mat) => [mat.id, mat]));
+    const lines = engine.computeEstimation(room, [
+      workItemFor(
+        testCase,
+        'wi-1',
+        paramsFor(config.paramsByWorkType, testCase.workType.code),
+      ),
+    ]);
+
+    violations.push(
+      ...coverageViolations(lines, materials, byId, testCase),
+      ...coatIndependenceViolations(engine, room, testCase, byId, config),
+      ...consumptionRateViolations(lines, byId, testCase, config),
+      ...containerMinimalityViolations(lines, byId, testCase),
+    );
+  }
+
+  // I5 compare les niveaux entre eux : il se raisonne par (ouvrage, pose), pas
+  // par cas — un cas isolé ne peut rien dire d'une progression.
+  for (const group of groupCases(
+    config.cases,
+    (testCase) => `${testCase.workType.code}:${testCase.poseType}`,
+  )) {
+    violations.push(...skillMonotonyViolations(engine, room, group, config));
+  }
+
+  // I6 se raisonne par ouvrage : une question appartient à l'ouvrage, pas au cas.
+  for (const group of groupCases(
+    config.cases,
+    (testCase) => testCase.workType.code,
+  )) {
+    violations.push(
+      ...requiredQuestionViolations(
+        engine,
+        room,
+        group[0].workType,
+        group,
+        config,
+      ),
+    );
+  }
+
+  return [...new Set(violations)];
+}
+
+/**
+ * Les violations que le dépôt sait porter aujourd'hui, et qui sont énumérées
+ * dans les suites plutôt que tolérées en bloc.
+ *
+ * Ce ne sont pas des exceptions : ce sont deux défauts ouverts, écrits en clair
+ * là où ils gênent. Le jour où le format du carreau pilotera le chiffrage et où
+ * le rendement du joint suivra la largeur de joint, les instantanés en ligne
+ * des suites casseront et quelqu'un devra **supprimer** ces préfixes — pas les
+ * mettre à jour. C'est la même convention que `extraContainers` : un fait
+ * constaté se compte, il ne se tolère pas.
+ */
+export const KNOWN_VIOLATIONS: string[] = [
+  '[I3] floor_tiling : Joint fin 1-6mm',
+  '[I3] wall_tiling : Joint fin 1-6mm',
+  '[I6] floor_tiling : question requise « tile_format »',
+];
+
+export function splitKnownViolations(violations: string[]): {
+  known: string[];
+  others: string[];
+} {
+  const isKnown = (violation: string) =>
+    KNOWN_VIOLATIONS.some((prefix) => violation.startsWith(prefix));
+  return {
+    known: violations.filter(isKnown),
+    others: violations.filter((violation) => !isKnown(violation)),
+  };
 }
 
 export interface MutualisationReport {
