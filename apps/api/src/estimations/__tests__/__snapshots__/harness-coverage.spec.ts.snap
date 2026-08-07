@@ -4,45 +4,45 @@ exports[`Harnais — couverture du catalogue seedé fige l’inventaire des cas 
 wall_painting · Peinture murale · painting · surface wall
   assiette : room_surface · aucune trame
   poses : standard · niveaux : beginner, intermediate, expert · 3 cas
-  - Peinture acrylique mate         principal    L     rendement 11 · couches oui · assiette surface d'ouvrage · loi aucune
-  - Sous-couche universelle         sous_couche  L     rendement 10 · couches non · assiette surface d'ouvrage · loi aucune
+  - Peinture acrylique mate         principal    L     rendement 11 · couches oui · assiette surface d'ouvrage · loi aucune · rouleau aucun
+  - Sous-couche universelle         sous_couche  L     rendement 10 · couches non · assiette surface d'ouvrage · loi aucune · rouleau aucun
 ceiling_painting · Peinture plafond · painting · surface ceiling
   assiette : room_surface · aucune trame
   poses : standard · niveaux : beginner, intermediate, expert · 3 cas
-  - Peinture plafond mate           principal    L     rendement 10 · couches oui · assiette surface d'ouvrage · loi aucune
-  - Sous-couche universelle         sous_couche  L     rendement 10 · couches non · assiette surface d'ouvrage · loi aucune
+  - Peinture plafond mate           principal    L     rendement 10 · couches oui · assiette surface d'ouvrage · loi aucune · rouleau aucun
+  - Sous-couche universelle         sous_couche  L     rendement 10 · couches non · assiette surface d'ouvrage · loi aucune · rouleau aucun
 floor_tiling · Carrelage sol · tiling · surface floor
   assiette : room_surface · aucune trame
   poses : standard, diagonal, straight · niveaux : beginner, intermediate, expert · 9 cas
-  - Carrelage sol 45x45 cm          principal    m2    rendement 1 · couches non · assiette surface d'ouvrage · loi aucune
-  - Mortier-colle flexible (C2)     consommable  kg    rendement 0.14 · couches non · assiette surface d'ouvrage · loi tile_adhesive
-  - Joint fin 1-6mm                 consommable  kg    rendement 5 · couches non · assiette surface d'ouvrage · loi tile_grout
+  - Carrelage sol 45x45 cm          principal    m2    rendement 1 · couches non · assiette surface d'ouvrage · loi aucune · rouleau aucun
+  - Mortier-colle flexible (C2)     consommable  kg    rendement 0.14 · couches non · assiette surface d'ouvrage · loi tile_adhesive · rouleau aucun
+  - Joint fin 1-6mm                 consommable  kg    rendement 5 · couches non · assiette surface d'ouvrage · loi tile_grout · rouleau aucun
 wall_tiling · Carrelage mural · tiling · surface wall
   assiette : room_surface · aucune trame
   poses : standard, diagonal, straight · niveaux : beginner, intermediate, expert · 9 cas
-  - Faïence murale 25x40 cm         principal    m2    rendement 1 · couches non · assiette surface d'ouvrage · loi aucune
-  - Colle en pâte prête à l'emploi  consommable  kg    rendement 0.22 · couches non · assiette surface d'ouvrage · loi aucune
-  - Joint fin 1-6mm                 consommable  kg    rendement 5 · couches non · assiette surface d'ouvrage · loi tile_grout
+  - Faïence murale 25x40 cm         principal    m2    rendement 1 · couches non · assiette surface d'ouvrage · loi aucune · rouleau aucun
+  - Colle en pâte prête à l'emploi  consommable  kg    rendement 0.22 · couches non · assiette surface d'ouvrage · loi aucune · rouleau aucun
+  - Joint fin 1-6mm                 consommable  kg    rendement 5 · couches non · assiette surface d'ouvrage · loi tile_grout · rouleau aucun
 parquet_flooring · Parquet ou stratifie · flooring · surface floor
   assiette : room_surface · aucune trame
   poses : standard, diagonal · niveaux : beginner, intermediate, expert · 6 cas
-  - Stratifié 8mm AC4               principal    m2    rendement 1 · couches non · assiette surface d'ouvrage · loi aucune
-  - Sous-couche mousse 3mm          sous_couche  m2    rendement 1 · couches non · assiette surface d'ouvrage · loi aucune
-  - Film pare-vapeur PE             sous_couche  m2    rendement 0.8 · couches non · assiette surface d'ouvrage · loi aucune
+  - Stratifié 8mm AC4               principal    m2    rendement 1 · couches non · assiette surface d'ouvrage · loi aucune · rouleau aucun
+  - Sous-couche mousse 3mm          sous_couche  m2    rendement 1 · couches non · assiette surface d'ouvrage · loi aucune · rouleau aucun
+  - Film pare-vapeur PE             sous_couche  m2    rendement 0.8 · couches non · assiette surface d'ouvrage · loi aucune · rouleau aucun
 drywall · Cloison seche · partition · surface wall
   assiette : declared · trame : entraxe 0.6 m, 0 montants déclarés, 2 lisses
   poses : standard · niveaux : beginner, intermediate, expert · 3 cas
-  - Plaque BA13 standard 2.5x1.2m   principal    m2    rendement 0.96 · couches non · assiette parement (× faces) · loi aucune
-  - Rail R48 3m                     consommable  m     rendement 1 · couches non · assiette lisses (trame) · loi aucune
-  - Montant M48 2.7m                consommable  m     rendement 1 · couches non · assiette montants (trame) · loi aucune
-  - Vis placo 25mm (x500)           consommable  unit  rendement 45.4 · couches non · assiette parement (× faces) · loi aucune
-  - Bande à joint papier 23m        consommable  m     rendement 0.72 · couches non · assiette parement (× faces) · loi aucune
-  - Enduit à joint prêt 7kg         consommable  kg    rendement 2 · couches non · assiette parement (× faces) · loi aucune
+  - Plaque BA13 standard 2.5x1.2m   principal    m2    rendement 0.96 · couches non · assiette parement (× faces) · loi aucune · rouleau aucun
+  - Rail R48 3m                     consommable  m     rendement 1 · couches non · assiette lisses (trame) · loi aucune · rouleau aucun
+  - Montant M48 2.7m                consommable  m     rendement 1 · couches non · assiette montants (trame) · loi aucune · rouleau aucun
+  - Vis placo 25mm (x500)           consommable  unit  rendement 45.4 · couches non · assiette parement (× faces) · loi aucune · rouleau aucun
+  - Bande à joint papier 23m        consommable  m     rendement 0.72 · couches non · assiette parement (× faces) · loi aucune · rouleau aucun
+  - Enduit à joint prêt 7kg         consommable  kg    rendement 2 · couches non · assiette parement (× faces) · loi aucune · rouleau aucun
 wall_covering · Revetement mural · wall_covering · surface wall
   assiette : room_surface · aucune trame
   poses : standard, plain · niveaux : beginner, intermediate, expert · 6 cas
-  - Papier peint intissé uni        principal    m2    rendement 1 · couches non · assiette surface d'ouvrage · loi aucune
-  - Colle papier peint intissé      consommable  kg    rendement 8 · couches non · assiette surface d'ouvrage · loi aucune
+  - Papier peint intissé uni        principal    m2    rendement 1 · couches non · assiette surface d'ouvrage · loi aucune · rouleau 10.05 × 0.53 m (rendement non lu)
+  - Colle papier peint intissé      consommable  kg    rendement 8 · couches non · assiette surface d'ouvrage · loi aucune · rouleau aucun
 
 total : 39 cas
 `;

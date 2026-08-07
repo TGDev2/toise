@@ -42,9 +42,9 @@ export interface SeedWorkType {
 }
 
 /**
- * Les seules questions contextuelles seedées : le format, la largeur de joint
- * et le type de pose du carrelage sol. Les six autres ouvrages n'en portent
- * aucune.
+ * Les questions contextuelles du carrelage sol : le format, la largeur de joint
+ * et le type de pose. Le revêtement mural porte les siennes plus bas (E1-6) ;
+ * les cinq autres ouvrages n'en portent aucune.
  *
  * E1-5 — `tile_format` pilote enfin quelque chose : la consommation de colle
  * (par le peigne que le format impose et par le double encollage que le NF DTU
@@ -104,6 +104,73 @@ const floorTilingQuestions: ContextualQuestion[] = [
       { value: 'diagonal', label_fr: 'Pose diagonale' },
     ],
     required: true,
+  },
+];
+
+/**
+ * E1-6 — ce qu'il faut savoir d'un revêtement mural pour le débiter en lés.
+ *
+ * Toutes deux `select`, et non `number` : `ContextualQuestions.tsx` ne rend que
+ * le type `select`. Une question `number` serait affichée sans champ de saisie —
+ * invisible pour l'utilisateur, requise pour le serveur. Le jour où le
+ * formulaire saura rendre un nombre, `pattern_repeat_cm` pourra le devenir sans
+ * que le moteur bouge : il lit un nombre de centimètres, pas une option.
+ */
+const wallCoveringQuestions: ContextualQuestion[] = [
+  {
+    /**
+     * Hauteur de raccord de motif, en centimètres, telle qu'elle est imprimée
+     * sur l'étiquette du rouleau. Elle s'ajoute à la longueur de chaque lé et
+     * décide donc du nombre de lés qu'un rouleau donne.
+     *
+     * Requise : c'est le paramètre qui pèse le plus, et le seul que l'artisan
+     * ne peut pas deviner — il se lit sur le produit. La première option, « Uni,
+     * sans raccord », est aussi la valeur que retient le moteur en l'absence de
+     * réponse : l'écran et le calcul disent la même chose.
+     *
+     * **Pourquoi l'échelle va jusqu'à 80 cm.** Le raccord n'agit que par la
+     * partie entière `⌊10,05 / lé⌋`, qui ne bouge que par marches. À 2,50 m sous
+     * plafond et 10 cm de marge, un uni comme un raccord de 64 cm donnent tous
+     * deux 3 lés par rouleau : sur cette hauteur-là, la réponse ne change rien.
+     * La marche suivante tombe au-delà de 75 cm de raccord — d'où le 80 cm, qui
+     * est par ailleurs la valeur d'exemple du guide ManoMano. C'est ce qui rend
+     * la question **démontrablement lue** sur la pièce de référence du harnais
+     * (invariant I6). Retirer cette option ferait rougir I6 à juste titre : les
+     * options restantes seraient sans effet à 2,50 m.
+     */
+    key: 'pattern_repeat_cm',
+    type: 'select',
+    label_fr: 'Raccord de motif',
+    options: [
+      { value: '0', label_fr: 'Uni, sans raccord' },
+      { value: '16', label_fr: '16 cm' },
+      { value: '32', label_fr: '32 cm' },
+      { value: '53', label_fr: '53 cm' },
+      { value: '64', label_fr: '64 cm' },
+      { value: '80', label_fr: '80 cm' },
+    ],
+    required: true,
+  },
+  {
+    /**
+     * Marge de coupe par lé — l'arasement en haut et en bas.
+     *
+     * **Facultative**, contrairement au raccord : 10 cm (5 en haut, 5 en bas)
+     * est une constante du métier que trois guides de pose indépendants donnent
+     * à l'identique, pas une décision de chantier. Elle est posée quand même
+     * parce qu'un mur d'aplomb douteux se rattrape par la marge, et que c'est le
+     * seul levier qui reste à un poseur expérimenté pour tirer un lé de plus
+     * d'un rouleau.
+     */
+    key: 'cut_margin_cm',
+    type: 'select',
+    label_fr: 'Marge de coupe par lé',
+    options: [
+      { value: '10', label_fr: '10 cm — recommandé (5 en haut, 5 en bas)' },
+      { value: '5', label_fr: '5 cm' },
+      { value: '15', label_fr: '15 cm' },
+    ],
+    required: false,
   },
 ];
 
@@ -189,7 +256,7 @@ export const seedWorkTypes: SeedWorkType[] = [
     category: 'wall_covering',
     surface_target: 'wall',
     waste_factor_base: 1.1,
-    contextual_questions: [],
+    contextual_questions: wallCoveringQuestions,
     display_order: 7,
     quantity_basis: 'room_surface',
     frame_spec: null,

@@ -177,6 +177,16 @@ export class EstimationsService {
         // E1-5 : et c'est celui-ci qui dit à quelle géométrie de carreau il est
         // exprimé, donc de combien il bouge avec le format posé.
         consumption_model: m.consumption_model,
+        // E1-6 : et celui-ci le remplace tout à fait — un matériau vendu au
+        // rouleau se compte en lés, pas au mètre carré. Les deux dimensions ne
+        // valent qu'ensemble : une seule renseignée ne bascule rien.
+        roll_spec:
+          m.roll_width_cm && m.roll_length_cm
+            ? {
+                width_cm: Number(m.roll_width_cm),
+                length_cm: Number(m.roll_length_cm),
+              }
+            : null,
         role: l.role,
         waste_factors: overlayLearnedWasteFactors(
           m.waste_factors.map((wf) => ({

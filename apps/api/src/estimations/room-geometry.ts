@@ -6,11 +6,16 @@
  * `x_cm`/`y_cm` = coin minimal, `length_cm` = extension sur X, `width_cm` =
  * extension sur Y.
  *
- * Deux grandeurs suffisent au moteur d'estimation :
+ * Trois grandeurs suffisent au moteur d'estimation :
  *  - l'aire de l'union (sol / plafond) ;
  *  - le périmètre du contour de l'union (base du calcul des murs : périmètre ×
  *    hauteur). Les arêtes internes partagées entre deux rectangles ne sont pas
  *    des murs — une simple somme des périmètres serait fausse.
+ *  - E1-6 : le **détail** de ce périmètre, pan par pan (`unionWallRunsCm`).
+ *    Un revêtement posé en lés ne se compte pas sur une longueur totale : un lé
+ *    ne tourne pas un angle, et chaque pan arrondit sa dernière laize au lé
+ *    entier. Sur le séjour en L de référence, 18,00 m de périmètre donnent 34
+ *    lés de 0,53 m ; les six pans réels en demandent 36.
  *
  * Méthode : compression de coordonnées + remplissage de cellules. Exact pour
  * toute forme rectilinéaire, robuste aux chevauchements (union, pas de double
@@ -131,4 +136,84 @@ export function unionPerimeterCm(segments: RectSegment[]): number {
   }
 
   return perimeter;
+}
+
+/**
+ * Les **pans droits** du contour de l'union, en cm — un nombre par mur, et non
+ * leur somme (E1-6).
+ *
+ * Pourquoi cette fonction existe. `unionPerimeterCm` répond « 18,00 m de mur »,
+ * ce qui suffit à une peinture mais pas à un revêtement posé en lés : chaque pan
+ * arrondit sa dernière laize au lé entier, et une chute de 20 cm ne va pas
+ * recommencer sur le mur d'à côté. Compter sur le périmètre total sous-compte
+ * donc **systématiquement**, et d'autant plus que la pièce a de pans.
+ *
+ * Méthode : la même grille compressée que les deux fonctions ci-dessus. Une
+ * arête exposée est prolongée tant que la cellule suivante, dans la même
+ * direction et du même côté, l'est aussi ; la rencontre d'une cellule non
+ * exposée ferme le pan. Deux pans colinéaires séparés par un décrochement —
+ * les deux branches d'un U vues de l'extérieur — ne se rejoignent donc pas,
+ * puisque les cellules qui les séparent ne sont pas exposées de ce côté.
+ *
+ * Deux propriétés en découlent, toutes deux éprouvées :
+ *  - `Σ unionWallRunsCm(s) === unionPerimeterCm(s)` — le découpage ne perd ni
+ *    n'invente de mur ;
+ *  - un rectangle rend exactement `[l, l, L, L]`.
+ */
+export function unionWallRunsCm(segments: RectSegment[]): number[] {
+  const { xs, ys, grid } = buildGrid(segments);
+  const cols = grid.length;
+  if (cols === 0) {
+    return [];
+  }
+  const rows = grid[0].length;
+  const runs: number[] = [];
+
+  /**
+   * Parcourt une ligne de cellules dans l'ordre, accumule la longueur des
+   * cellules exposées et referme le pan dès qu'une cellule ne l'est pas.
+   */
+  const sweep = (
+    count: number,
+    exposedAt: (k: number) => boolean,
+    lengthAt: (k: number) => number,
+  ): void => {
+    let run = 0;
+    for (let k = 0; k < count; k++) {
+      if (exposedAt(k)) {
+        run += lengthAt(k);
+      } else if (run > 0) {
+        runs.push(run);
+        run = 0;
+      }
+    }
+    if (run > 0) {
+      runs.push(run);
+    }
+  };
+
+  // Murs verticaux : une passe par côté (ouest, est) et par colonne. La
+  // longueur d'un pan est la hauteur cumulée des cellules qu'il borde.
+  const rowHeight = (j: number): number => ys[j + 1] - ys[j];
+  for (let i = 0; i < cols; i++) {
+    sweep(rows, (j) => grid[i][j] && (i === 0 || !grid[i - 1][j]), rowHeight);
+    sweep(
+      rows,
+      (j) => grid[i][j] && (i === cols - 1 || !grid[i + 1][j]),
+      rowHeight,
+    );
+  }
+
+  // Murs horizontaux : une passe par côté (sud, nord) et par ligne.
+  const colWidth = (i: number): number => xs[i + 1] - xs[i];
+  for (let j = 0; j < rows; j++) {
+    sweep(cols, (i) => grid[i][j] && (j === 0 || !grid[i][j - 1]), colWidth);
+    sweep(
+      cols,
+      (i) => grid[i][j] && (j === rows - 1 || !grid[i][j + 1]),
+      colWidth,
+    );
+  }
+
+  return runs;
 }

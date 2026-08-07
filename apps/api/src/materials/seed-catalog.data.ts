@@ -52,6 +52,19 @@ export interface SeedMaterial {
    * égal, et que ce qui les distingue est le format sur lequel on les pose.
    */
   consumption_model?: TileConsumptionModel;
+  /**
+   * E1-6 — dimensions du rouleau dans lequel le matériau se débite, en cm.
+   * Absentes = le matériau ne se pose pas en lés, `yield_per_unit` vaut tel
+   * quel. Présentes, elles **remplacent** `yield_per_unit` : la quantité vient
+   * de la découpe (`estimations/wallpaper-strips.ts`), qui dépend de la hauteur
+   * sous plafond, du raccord et de la longueur des pans — ce qu'un rendement au
+   * mètre carré ne peut pas porter.
+   *
+   * Le conditionnement d'un matériau qui les déclare doit valoir exactement
+   * `roll_width_cm × roll_length_cm` : c'est le même rouleau, décrit deux fois.
+   */
+  roll_width_cm?: number;
+  roll_length_cm?: number;
   packagings: { label: string; quantity_per_unit: number; unit: string }[];
   waste_factors: {
     pose_type: string;
@@ -121,6 +134,33 @@ const partitionWaste = (): SeedMaterial['waste_factors'] => [
   { pose_type: 'standard', skill_level: 'intermediate', factor_percent: 8 },
   { pose_type: 'standard', skill_level: 'expert', factor_percent: 4 },
 ];
+
+/**
+ * E1-6 — le rouleau de papier peint standard européen, 10,05 m × 0,53 m.
+ *
+ * Bricoflor : « Un rouleau de papier peint de taille standard en Europe présente
+ * une longueur de 10,05 mètres. La largeur de lés est de 0,53 m. »
+ *
+ * Les dimensions et le conditionnement se déclarent **ensemble**, par cet objet,
+ * parce qu'ils décrivent le même rouleau : le conditionnement vaut exactement
+ * `0,53 × 10,05 = 5,3265 m²`. Les 5,3 m² arrondis d'avant ce lot faisaient
+ * racheter un rouleau dès qu'un besoin tombait sur un compte entier — le séjour
+ * en L de référence, qui demande exactement 12 rouleaux, en achetait 13.
+ */
+const standardWallpaperRoll = (): Pick<
+  SeedMaterial,
+  'roll_width_cm' | 'roll_length_cm' | 'packagings'
+> => ({
+  roll_width_cm: 53,
+  roll_length_cm: 1005,
+  packagings: [
+    {
+      label: 'Rouleau 10.05m x 0.53m (5.33 m²)',
+      quantity_per_unit: 5.3265,
+      unit: 'm2',
+    },
+  ],
+});
 
 const wallCoveringPlainWaste = (): SeedMaterial['waste_factors'] => [
   { pose_type: 'plain', skill_level: 'beginner', factor_percent: 10 },
@@ -1854,14 +1894,13 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     name: 'Papier peint intissé uni',
     category: 'wall_covering',
     unit: 'm2',
+    // E1-6 : les cinq papiers peints ci-dessous ne lisent plus ce rendement —
+    // leur quantité vient de la découpe en lés. Il reste à 1 parce que c'est la
+    // valeur juste du seul énoncé qu'il porte encore, « 1 m² de papier couvre
+    // 1 m² de papier », et parce que le registre en fait le contrat de la
+    // colonne. Cf. `roll_width_cm` sur `materials_catalog`.
     yield_per_unit: 1,
-    packagings: [
-      {
-        label: 'Rouleau 10.05m x 0.53m (~5.3 m²)',
-        quantity_per_unit: 5.3,
-        unit: 'm2',
-      },
-    ],
+    ...standardWallpaperRoll(),
     waste_factors: wallCoveringPlainWaste(),
   },
   {
@@ -1869,13 +1908,7 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     category: 'wall_covering',
     unit: 'm2',
     yield_per_unit: 1,
-    packagings: [
-      {
-        label: 'Rouleau 10.05m x 0.53m (~5.3 m²)',
-        quantity_per_unit: 5.3,
-        unit: 'm2',
-      },
-    ],
+    ...standardWallpaperRoll(),
     waste_factors: wallCoveringWaste(),
   },
   {
@@ -1883,13 +1916,7 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     category: 'wall_covering',
     unit: 'm2',
     yield_per_unit: 1,
-    packagings: [
-      {
-        label: 'Rouleau 10.05m x 0.53m (~5.3 m²)',
-        quantity_per_unit: 5.3,
-        unit: 'm2',
-      },
-    ],
+    ...standardWallpaperRoll(),
     waste_factors: wallCoveringWaste(),
   },
   {
@@ -1897,13 +1924,7 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     category: 'wall_covering',
     unit: 'm2',
     yield_per_unit: 1,
-    packagings: [
-      {
-        label: 'Rouleau 10.05m x 0.53m (~5.3 m²)',
-        quantity_per_unit: 5.3,
-        unit: 'm2',
-      },
-    ],
+    ...standardWallpaperRoll(),
     waste_factors: wallCoveringWaste(),
   },
   {
@@ -1911,16 +1932,12 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     category: 'wall_covering',
     unit: 'm2',
     yield_per_unit: 1,
-    packagings: [
-      {
-        label: 'Rouleau 10.05m x 0.53m (~5.3 m²)',
-        quantity_per_unit: 5.3,
-        unit: 'm2',
-      },
-    ],
+    ...standardWallpaperRoll(),
     waste_factors: wallCoveringWaste(),
   },
   {
+    // E1-6 : pas de dimensions de rouleau — un panoramique se vend en panneaux
+    // calepinés sur le mur, pas en lés à débiter dans une bobine.
     name: 'Papier peint panoramique',
     category: 'wall_covering',
     unit: 'm2',
@@ -1983,12 +2000,22 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     category: 'wall_covering',
     unit: 'm2',
     yield_per_unit: 1,
+    // E1-6 : le conditionnement qui justifie que les dimensions soient une
+    // propriété du matériau et non une constante du moteur — 10 × 0,50 m et non
+    // 10,05 × 0,53 m. Le rendement d'un rouleau en lés n'a rien d'universel.
+    roll_width_cm: 50,
+    roll_length_cm: 1000,
     packagings: [
       { label: 'Rouleau 10m x 0.50m (5 m²)', quantity_per_unit: 5, unit: 'm2' },
     ],
     waste_factors: wallCoveringPlainWaste(),
   },
   {
+    // E1-6 : pas de dimensions de rouleau. Les toiles et voiles de verre
+    // offrent **deux longueurs de bobine** pour la même référence (25 et
+    // 50 m²) : une dimension par matériau ne peut pas les décrire, et leur en
+    // inventer une seule chiffrerait faux la moitié des achats. Ils restent au
+    // calcul surfacique, ce qui est écrit au registre.
     name: 'Toile de verre maille',
     category: 'wall_covering',
     unit: 'm2',
@@ -2179,17 +2206,15 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     waste_factors: accessoryWaste(),
   },
   {
+    // Rangé loin de ses cinq semblables dans ce fichier, mais posé sur le même
+    // rouleau qu'eux : il suit donc la même loi. Deux bobines identiques
+    // chiffrées différemment seraient un piège pour l'administrateur qui les
+    // compare à l'écran.
     name: 'Papier peint intissé texturé',
     category: 'wall_covering',
     unit: 'm2',
     yield_per_unit: 1,
-    packagings: [
-      {
-        label: 'Rouleau 10.05m x 0.53m (~5.3 m²)',
-        quantity_per_unit: 5.3,
-        unit: 'm2',
-      },
-    ],
+    ...standardWallpaperRoll(),
     waste_factors: wallCoveringWaste(),
   },
 ];

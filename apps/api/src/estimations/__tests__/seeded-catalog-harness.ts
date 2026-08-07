@@ -189,6 +189,15 @@ export function materialsForWorkType(workTypeCode: string): MaterialInput[] {
         applies_coats: seedMaterial.applies_coats ?? false,
         quantity_driver: seedMaterial.quantity_driver ?? 'work_surface',
         consumption_model: seedMaterial.consumption_model ?? null,
+        // E1-6 : les deux dimensions ne valent qu'ensemble, exactement comme
+        // dans `EstimationsService.loadMaterialInputs`.
+        roll_spec:
+          seedMaterial.roll_width_cm && seedMaterial.roll_length_cm
+            ? {
+                width_cm: seedMaterial.roll_width_cm,
+                length_cm: seedMaterial.roll_length_cm,
+              }
+            : null,
         role: link.role,
         waste_factors: seedMaterial.waste_factors.map((wf) => ({
           pose_type: wf.pose_type,
@@ -864,7 +873,11 @@ export function renderCaseInventory(): string {
       `  poses : ${poses.join(', ')} · niveaux : ${SKILL_LEVELS.join(', ')} · ${poses.length * SKILL_LEVELS.length} cas`,
       ...materials.map(
         (mat) =>
-          `  - ${mat.name.padEnd(31)} ${(mat.role ?? '-').padEnd(12)} ${mat.unit.padEnd(5)} rendement ${mat.yield_per_unit} · couches ${mat.applies_coats ? 'oui' : 'non'} · assiette ${DRIVER_LABELS[mat.quantity_driver ?? 'work_surface']} · loi ${mat.consumption_model ?? 'aucune'}`,
+          `  - ${mat.name.padEnd(31)} ${(mat.role ?? '-').padEnd(12)} ${mat.unit.padEnd(5)} rendement ${mat.yield_per_unit} · couches ${mat.applies_coats ? 'oui' : 'non'} · assiette ${DRIVER_LABELS[mat.quantity_driver ?? 'work_surface']} · loi ${mat.consumption_model ?? 'aucune'} · rouleau ${
+            mat.roll_spec
+              ? `${mat.roll_spec.length_cm / 100} × ${mat.roll_spec.width_cm / 100} m (rendement non lu)`
+              : 'aucun'
+          }`,
       ),
     ].join('\n');
   });

@@ -62,6 +62,14 @@ pas bougé.
   (`project_work_items.declared_clad_faces`). L'entraxe 0,60 m non plus : il est
   déclaré par l'ouvrage (`work_types.frame_spec`). En montants doublés dos à
   dos, la consommation de montants double — non couvert par la V1.
+- `wall_covering` : rouleau standard européen 10,05 × 0,53 m, papier posé bord
+  à bord (les intissés ne se recouvrent pas), hauteur sous plafond de la pièce,
+  arasement de 10 cm par lé.
+  **E1-6 — ces valeurs ne sont plus des hypothèses de rendement, ce sont des
+  données.** Les dimensions du rouleau vivent dans
+  `materials_catalog.roll_width_cm` / `roll_length_cm`, le raccord de motif et
+  la marge de coupe sont demandés à l'ouvrage, et le moteur en dérive un nombre
+  de lés. Cf. la section « Comptage en lés (E1-6) » plus bas.
 - `Colle papier peint intissé` : les conditionnements seedés (seaux 5 et
   10 kg) désignent une **colle en pâte prête à l'emploi** (≈ 8 m²/kg, Quelyd
   Perfect). Une poudre à diluer ferait 100-160 m²/kg (fiches Quelyd Intissé /
@@ -69,10 +77,12 @@ pas bougé.
   seedés. La lecture pâte est retenue et écrite ici.
 - `Film pare-vapeur PE` : lé de 1 m (Wineo), recouvrement ≥ 20 cm imposé par
   les fiches (Wineo, Tarkett) → 1 m² de film couvre 0,8 m² de sol.
-- Les produits vendus au m² et posés bord à bord (carrelages, papiers peints,
-  stratifiés, sous-couche, laine) ont un rendement **définitionnel** de
-  1 m²/m² : la fiche sert à confirmer l'unité de vente et la pose, pas un
-  chiffre de rendement.
+- Les produits vendus au m² et posés bord à bord (carrelages, stratifiés,
+  sous-couche, laine) ont un rendement **définitionnel** de 1 m²/m² : la fiche
+  sert à confirmer l'unité de vente et la pose, pas un chiffre de rendement.
+  **E1-6 a retiré les papiers peints de cette liste** : ils sont vendus au
+  rouleau et non au mètre carré, et un rouleau ne rend pas sa surface en mur
+  couvert — il rend un nombre entier de lés.
 - Accès : `placo.fr` et `isover.fr` refusent les clients non-navigateur
   (403) ; leurs documents ont été lus via une copie Wayback Machine
   octet-à-octet de l'URL fabricant indiquée. Tous les autres domaines ont été
@@ -123,9 +133,15 @@ pas bougé.
 | Enduit à joint prêt 7kg | partition | 2 | parement | Placo® Placomix® : « Consommation minimum 470 g/m² » de parement ; corroboré Siniat PRÉGY S PE (0,40-0,45 kg/m²). La valeur retenue, 0,50 kg par m² de parement, est celle qui reconduit exactement le 1 kg/m² de cloison seedé par E1-7 | ré-exprimer par m² de parement (1 → 2) | https://www.placo.fr/Produits/enduits-joint/placomixr-5kg | 2026-08-03 |
 | Enduit à joint poudre 5kg | partition | 3.04 | parement | Placo® Fiche Solution 72/48 : « Placojoint® PR4 25kg — KG — 0,66 » par m² de cloison (deux faces) → 0,33 kg par m² de parement | ré-exprimer par m² de parement (1.52 → 3.04) | https://www.placo.fr/sites/mac3.placo.fr/files/files/forum/Maison_Cloison_Placostil_Ep_72_BA13_39dB.pdf | 2026-08-03 |
 | Laine de verre 45mm | partition | 1 | surface d'ouvrage | Vendue au m² (Isover PAR PHONIC 45 mm, rouleau 0,6 × 13 m), posée entre montants sans recouvrement ; le quantitatif Placo compte 1,05 (chutes portées ici par les facteurs de perte) | conserver (définitionnel) | https://www.isover.fr/produits/laine-de-verre/par-phonic | 2026-08-03 |
-| Papier peint intissé uni | wall_covering | 1 | surface d'ouvrage | Vendu et posé au m² : rendement définitionnel (les chutes de raccord relèvent des facteurs de perte) | conserver (définitionnel) | — | 2026-08-03 |
-| Papier peint intissé à motif | wall_covering | 1 | surface d'ouvrage | Idem, facteur de chute « patterned » du catalogue | conserver (définitionnel) | — | 2026-08-03 |
-| Papier peint vinyle sur intissé | wall_covering | 1 | surface d'ouvrage | Idem | conserver (définitionnel) | — | 2026-08-03 |
+| Papier peint intissé uni | wall_covering | 1 | surface d'ouvrage | **E1-6 : `yield_per_unit` n'est plus lu.** Vendu au rouleau 10,05 × 0,53 m (`roll_length_cm` 1005, `roll_width_cm` 53) et débité en lés entiers ; la quantité vient de la découpe, pas d'un rendement au m². Bricoflor : « Un rouleau de papier peint de taille standard en Europe présente une longueur de 10,05 mètres. La largeur de lés est de 0,53 m » | ré-exprimer (compté en lés) | https://www.bricoflor.fr/blog/2020/02/14/calcul-rouleau-papier-peint-quelle-quantite-me-faut-il | 2026-08-07 |
+| Papier peint intissé à motif | wall_covering | 1 | surface d'ouvrage | Idem, plus le raccord de motif saisi (`pattern_repeat_cm`) qui allonge chaque lé ; facteur de chute « patterned » du catalogue inchangé | ré-exprimer (compté en lés) | https://www.bricoflor.fr/blog/2020/02/14/calcul-rouleau-papier-peint-quelle-quantite-me-faut-il | 2026-08-07 |
+| Papier peint vinyle expansé | wall_covering | 1 | surface d'ouvrage | Idem — même rouleau standard | ré-exprimer (compté en lés) | https://www.bricoflor.fr/blog/2020/02/14/calcul-rouleau-papier-peint-quelle-quantite-me-faut-il | 2026-08-07 |
+| Papier peint vinyle sur intissé | wall_covering | 1 | surface d'ouvrage | Idem — même rouleau standard | ré-exprimer (compté en lés) | https://www.bricoflor.fr/blog/2020/02/14/calcul-rouleau-papier-peint-quelle-quantite-me-faut-il | 2026-08-07 |
+| Papier peint intissé texturé | wall_covering | 1 | surface d'ouvrage | Idem — même rouleau standard | ré-exprimer (compté en lés) | https://www.bricoflor.fr/blog/2020/02/14/calcul-rouleau-papier-peint-quelle-quantite-me-faut-il | 2026-08-07 |
+| Papier peint traditionnel | wall_covering | 1 | surface d'ouvrage | Idem — même rouleau standard | ré-exprimer (compté en lés) | https://www.bricoflor.fr/blog/2020/02/14/calcul-rouleau-papier-peint-quelle-quantite-me-faut-il | 2026-08-07 |
+| Papier d'apprêt lisse | wall_covering | 1 | surface d'ouvrage | Compté en lés lui aussi, mais sur **son** rouleau : 10 × 0,50 m et non 10,05 × 0,53 m. C'est le conditionnement qui justifie que les dimensions soient une propriété du matériau et non une constante du moteur | ré-exprimer (compté en lés) | https://www.bricoflor.fr/blog/2020/02/14/calcul-rouleau-papier-peint-quelle-quantite-me-faut-il | 2026-08-07 |
+| Papier peint panoramique | wall_covering | 1 | surface d'ouvrage | **Pas de dimensions de rouleau** : vendu en panneaux calepinés sur le mur, pas en bobine à débiter. Reste au calcul surfacique | conserver (définitionnel) | — | 2026-08-07 |
+| Toile de verre maille | wall_covering | 1 | surface d'ouvrage | **Pas de dimensions de rouleau** : deux longueurs de bobine (25 et 50 m²) pour la même référence, qu'un seul couple de dimensions par matériau ne peut pas décrire. Leur en inventer un chiffrerait faux la moitié des achats. Reste au calcul surfacique | conserver (définitionnel) | — | 2026-08-07 |
 | Colle papier peint intissé | wall_covering | 8 | surface d'ouvrage | Quelyd Perfect (pâte prête à l'emploi, guide Bostik 2024) : « Envers intissés — 11 [rouleaux] — 55 [m²] » par seau 7 kg ≈ 7,9 m²/kg — lecture pâte imposée par les seaux seedés (voir hypothèses) | corriger (30 → 8) | https://www.bostik.com/files/live/sites/shared_bostik/files/documents-brochures/France/Brochures/C&C/GUIDE%20SOLUTIONS%20PRO%202024%20QUELYD%20COLLES%20MURALES.pdf | 2026-08-03 |
 | Rouleau méché 180mm | painting | — | surface d'ouvrage | Outil : pas de rendement exprimable en m²/unité | retirer (outil) | — | 2026-08-03 |
 | Pinceau à rechampir 25mm | painting | — | surface d'ouvrage | Outil : pas de rendement exprimable en m²/unité | retirer (outil) | — | 2026-08-03 |
@@ -172,6 +188,13 @@ utilisateur qui répond « Recommandé pour ce format ». Le reste de la courbe 
 éprouvé cellule par cellule contre les tables fabricant dans
 `estimations/tile-consumption.spec.ts`, ce qui est plus exigeant qu'un
 intervalle.
+
+**E1-6 étend la même doctrine au papier peint.** Un matériau vendu au rouleau
+(`materials_catalog.roll_width_cm`) n'a plus de rendement du tout : sa quantité
+est une découpe, qui dépend de la hauteur sous plafond et du raccord de motif.
+Son encadrement change donc de grandeur — des m² de **papier acheté** par m² de
+mur, et non plus des m² posés par m² posés — et n'encadre lui aussi que la
+géométrie par défaut de l'ouvrage. Cf. « Comptage en lés (E1-6) ».
 
 ## Consommation pilotée par la géométrie du carreau (E1-5)
 
@@ -340,6 +363,116 @@ sienne — c'est exactement le défaut que ce lot corrige. Ordres de grandeur
 relevés en seconde main, à confirmer avant usage : densité 1,8 pour un joint
 large cimentaire, 1,6 pour un époxy (consensus resserré, 1,55-1,63 chez sept
 fabricants).
+
+## Comptage en lés (E1-6)
+
+Le revêtement mural était chiffré au mètre carré : le catalogue annonçait un
+rouleau « 10.05m x 0.53m (~5.3 m²) » et le moteur divisait la surface murale
+nette par 5,3. **Un rouleau ne rend jamais 5,3 m² utiles.** Il rend un nombre
+*entier* de lés, dont la longueur est la hauteur sous plafond augmentée du
+raccord de motif et d'une marge de coupe ; le bout de bobine est perdu. Et un lé
+ne tourne pas un angle : la dernière laize de chaque pan s'arrondit au lé
+entier.
+
+Le défaut était invisible à l'écran et visible sur le dernier mur. Sur la
+chambre de référence (4 × 3 m, une porte, 28 lés) :
+
+| Hauteur | Lé (marge 10 cm) | Lés par rouleau | Rouleaux | Ancien calcul |
+| --- | --- | --- | --- | --- |
+| 2,40 m | 2,50 m | 4 | 7 | 7 |
+| 2,50 m | 2,60 m | 3 | **10** | 7 |
+| 2,60 m | 2,70 m | 3 | **10** | 8 |
+
+La ligne de backlog annonçait « 8 au lieu de 10 » à 2,60 m et « juste par
+coïncidence » à 2,50 m. Les deux se vérifient **à marge de coupe nulle**
+(10,05 / 2,50 = 4,02 lés). Avec les 10 cm d'arasement du métier, le sous-achat
+commence dès 2,50 m.
+
+### La loi, et où elle vit
+
+    lé              = hauteur + raccord + marge de coupe
+    lés par rouleau = ⌊ longueur du rouleau / lé ⌋              (entier)
+    lés nécessaires = Σ_pans ⌈ longueur du pan / largeur ⌉      (pan par pan)
+    rouleaux        = lés nécessaires / lés par rouleau
+
+Le module `estimations/wallpaper-strips.ts` porte la loi ; les dimensions du
+rouleau sont des **données** (`materials_catalog.roll_width_cm` /
+`roll_length_cm`), parce que le catalogue en porte déjà deux — 10,05 × 0,53 m
+pour les papiers peints, 10 × 0,50 m pour le papier d'apprêt. Une constante de
+moteur aurait chiffré le second comme le premier.
+
+**Ce que devient `yield_per_unit` pour ces matériaux : il n'est plus lu.** La
+géométrie du rouleau le remplace entièrement. Il reste à 1 au registre parce que
+c'est la valeur juste du seul énoncé qu'il porte encore, et parce que la colonne
+« Rendement V1 » est un contrat vérifié par `sources-catalogue.spec.ts`.
+
+### Valeurs de référence et sources
+
+| Valeur | Retenue | Verbatim |
+| --- | --- | --- |
+| Rouleau standard européen | 10,05 m × 0,53 m | Bricoflor : « Un rouleau de papier peint de taille standard en Europe présente une longueur de 10,05 mètres. La largeur de lés est de 0,53 m. » |
+| Marge de coupe | 10 cm (5 en haut, 5 en bas) | Bricoflor : « Vous pouvez ajouter 10 cm supplémentaires à la hauteur, soit 5 cm en haut et en bas pour des finitions plus propres. » ; sol-peinture : « Hauteur sous plafond + 10 cm (5 cm en haut et 5 cm en bas) pour les coupes d'arasement. » ; ManoMano : « 10 ÷ (2,5 + 0,10) » |
+| Longueur d'un lé | hauteur + raccord + marge | sol-peinture publie la formule : « L_lé-coupé = H_mur + M_sécurité + R_raccord » ; Bricoflor : « Additionnez le raccord du papier peint avec la hauteur de votre mur » |
+| Lés par rouleau | partie entière | ManoMano, raccord de 80 cm : « 10 ÷ (2,5 + 0,10 + 0,80) = 2,94 » → 2 lés utilisables |
+
+Sources consultées le 2026-08-07 :
+<https://www.bricoflor.fr/blog/2020/02/14/calcul-rouleau-papier-peint-quelle-quantite-me-faut-il>,
+<https://www.sol-peinture.fr/combien-de-les-dans-un-rouleau-de-papier-peint>,
+<https://www.manomano.fr/conseil/comment-calculer-le-nombre-de-rouleaux-de-papier-peint-7098>
+(cette dernière refuse les clients non-navigateur — 403 — et n'a été lue qu'au
+travers de l'index de recherche, ce qui est signalé ici plutôt que masqué).
+
+**Forme sûre du raccord, et non forme exacte.** Le rigoureux, pour un raccord
+droit, serait `⌈(hauteur + marge) / raccord⌉ × raccord` — 3,20 m à 2,60 m de lé
+utile et 64 cm de raccord, contre 3,24 m retenus. La forme retenue majore d'au
+plus la fraction de raccord perdue avant le premier point de départ utilisable
+de la bobine : une perte réelle, dont on ne sait pas où elle tombe tant que le
+rouleau n'est pas déroulé. C'est aussi la forme que publient les trois guides.
+
+### Ce qui n'est pas déduit, et pourquoi
+
+**Ni les ouvertures, ni les zones exclues** ne réduisent le nombre de lés. Le lé
+au-dessus d'une porte se coupe dans un lé entier et sa chute ne fait pas un
+second lé. C'est la règle de tous les guides de pose, et elle penche du côté
+sûr. Le nombre de lés d'un mur ne dépend donc que de sa longueur.
+
+**Le découpage pan par pan est une règle de métier, pas une donnée fabricant** —
+au même titre que les `waste_factors`, et étiquetée comme telle. Aucun fabricant
+ne la publie ; Bricoflor traite bien chaque mur séparément dans ses exemples
+chiffrés, et la raison physique se suffit. `estimations/room-geometry.ts` expose
+les pans réels d'une pièce (`unionWallRunsCm`) : sur le séjour en L de
+référence, le périmètre total donne 34 lés, les six pans réels en demandent 36.
+
+**Le facteur de perte n'a pas été retouché.** La découpe capture désormais la
+chute géométrique que `wallCoveringWaste()` représentait forfaitairement ; les
+deux se recouvrent partiellement. Les facteurs de perte sont le périmètre
+d'E1-7, qui doit trancher la question sur les sept ouvrages à la fois et avec
+ses propres sources.
+
+### Encadrement de consommation : changement de grandeur
+
+`Papier peint intissé uni` passe d'un rendement définitionnel (1 m²/m²) à un
+intervalle de **m² de papier acheté par m² de mur**, `1,34` à `1,80`. Le
+plancher est exact et se relit : à 2,50 m sous plafond avec 10 cm de marge, un
+rouleau donne 3 lés de 2,60 m, donc `10,05 / (3 × 2,50) = 1,34`. Les deux
+majorations qui s'y ajoutent sont ≥ 1 par construction — l'arrondi de la
+dernière laize de chaque pan, et les ouvertures non déduites.
+
+Comme pour E1-5, l'intervalle encadre la **géométrie par défaut de l'ouvrage** ;
+le reste de la courbe est éprouvé lé par lé dans
+`estimations/wallpaper-strips.spec.ts`, ce qui est plus exigeant.
+
+### Deux limites assumées
+
+1. **Mutualisation à hauteurs différentes.** Les rouleaux sont comptés
+   fractionnairement pour que la mutualisation ENG-2 fonctionne. Deux pièces de
+   hauteurs différentes n'ont pourtant pas des lés interchangeables : l'achat
+   mutualisé peut valoir un rouleau de moins que la somme des besoins réels.
+   Sans effet à hauteur égale — le cas courant.
+2. **Toiles et voiles de verre non couverts.** Deux longueurs de bobine (25 et
+   50 m²) pour la même référence : un seul couple de dimensions par matériau ne
+   peut pas les décrire. Ils restent au calcul surfacique, et le dire vaut mieux
+   que leur inventer un conditionnement.
 
 ## Facteurs de perte : statut
 

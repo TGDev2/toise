@@ -310,10 +310,10 @@ niveau  : beginner · pose : plain
 surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Papier peint intissé uni        principal      10 % exact                 36.637 m2      7 7 × Rouleau 10.05m x 0.53m (~5.3 m²)
+Papier peint intissé uni        principal      10 % exact                 54.685 m2     11 11 × Rouleau 10.05m x 0.53m (5.33 m²)
 Colle papier peint intissé      consommable    10 % exact                  4.580 kg      1 1 × Seau 5 kg
 
-total : 2 lignes · 8 contenants
+total : 2 lignes · 12 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_covering · beginner · pose standard 1`] = `
@@ -323,10 +323,10 @@ niveau  : beginner · pose : standard (implicite)
 surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Papier peint intissé uni        principal      10 % défaut                36.637 m2      7 7 × Rouleau 10.05m x 0.53m (~5.3 m²)
+Papier peint intissé uni        principal      10 % défaut                54.685 m2     11 11 × Rouleau 10.05m x 0.53m (5.33 m²)
 Colle papier peint intissé      consommable    10 % défaut                 4.580 kg      1 1 × Seau 5 kg
 
-total : 2 lignes · 8 contenants
+total : 2 lignes · 12 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_covering · expert · pose plain 1`] = `
@@ -336,10 +336,10 @@ niveau  : expert · pose : plain
 surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Papier peint intissé uni        principal       3 % exact                 34.306 m2      7 7 × Rouleau 10.05m x 0.53m (~5.3 m²)
+Papier peint intissé uni        principal       3 % exact                 51.205 m2     10 10 × Rouleau 10.05m x 0.53m (5.33 m²)
 Colle papier peint intissé      consommable     3 % exact                  4.288 kg      1 1 × Seau 5 kg
 
-total : 2 lignes · 8 contenants
+total : 2 lignes · 11 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_covering · expert · pose standard 1`] = `
@@ -349,10 +349,10 @@ niveau  : expert · pose : standard (implicite)
 surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Papier peint intissé uni        principal      10 % défaut                36.637 m2      7 7 × Rouleau 10.05m x 0.53m (~5.3 m²)
+Papier peint intissé uni        principal      10 % défaut                54.685 m2     11 11 × Rouleau 10.05m x 0.53m (5.33 m²)
 Colle papier peint intissé      consommable    10 % défaut                 4.580 kg      1 1 × Seau 5 kg
 
-total : 2 lignes · 8 contenants
+total : 2 lignes · 12 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_covering · intermediate · pose plain 1`] = `
@@ -362,10 +362,10 @@ niveau  : intermediate · pose : plain
 surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Papier peint intissé uni        principal       7 % exact                 35.638 m2      7 7 × Rouleau 10.05m x 0.53m (~5.3 m²)
+Papier peint intissé uni        principal       7 % exact                 53.194 m2     10 10 × Rouleau 10.05m x 0.53m (5.33 m²)
 Colle papier peint intissé      consommable     7 % exact                  4.455 kg      1 1 × Seau 5 kg
 
-total : 2 lignes · 8 contenants
+total : 2 lignes · 11 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_covering · intermediate · pose standard 1`] = `
@@ -375,10 +375,10 @@ niveau  : intermediate · pose : standard (implicite)
 surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Papier peint intissé uni        principal      10 % défaut                36.637 m2      7 7 × Rouleau 10.05m x 0.53m (~5.3 m²)
+Papier peint intissé uni        principal      10 % défaut                54.685 m2     11 11 × Rouleau 10.05m x 0.53m (5.33 m²)
 Colle papier peint intissé      consommable    10 % défaut                 4.580 kg      1 1 × Seau 5 kg
 
-total : 2 lignes · 8 contenants
+total : 2 lignes · 12 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_painting · beginner · pose standard 1`] = `

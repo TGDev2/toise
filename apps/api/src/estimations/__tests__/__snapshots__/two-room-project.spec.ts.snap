@@ -726,17 +726,17 @@ pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.86
 ouvrages: Revetement mural (wall_covering, pose plain)
 
 Papier peint intissé uni  [wall_covering] · 2 pièces · 2 contributions
-   Chambre rectangulaire    wall_covering         36.637 m2      7 7 × Rouleau 10.05m x 0.53m (~5.3 m²)
-   Séjour en L              wall_covering         46.053 m2      9 9 × Rouleau 10.05m x 0.53m (~5.3 m²)
-   mutualisé                                      82.690 m2     16 16 × Rouleau 10.05m x 0.53m (~5.3 m²)
-   économie de mutualisation                                      0 aucun contenant évité
+   Chambre rectangulaire    wall_covering         54.685 m2     11 11 × Rouleau 10.05m x 0.53m (5.33 m²)
+   Séjour en L              wall_covering         70.310 m2     14 14 × Rouleau 10.05m x 0.53m (5.33 m²)
+   mutualisé                                     124.995 m2     24 24 × Rouleau 10.05m x 0.53m (5.33 m²)
+   économie de mutualisation                                      1 contenants évités
 Colle papier peint intissé  [wall_covering] · 2 pièces · 2 contributions
    Chambre rectangulaire    wall_covering          4.580 kg      1 1 × Seau 5 kg
    Séjour en L              wall_covering          5.757 kg      1 1 × Seau 10 kg
    mutualisé                                      10.337 kg      2 1 × Seau 10 kg + 1 × Seau 5 kg
    économie de mutualisation                                      0 aucun contenant évité
 
-total : 2 matériaux · 18 contenants pièce par pièce → 18 mutualisés
+total : 2 matériaux · 27 contenants pièce par pièce → 26 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_covering · beginner · pose standard 1`] = `
@@ -745,17 +745,17 @@ pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.86
 ouvrages: Revetement mural (wall_covering, pose standard)
 
 Papier peint intissé uni  [wall_covering] · 2 pièces · 2 contributions
-   Chambre rectangulaire    wall_covering         36.637 m2      7 7 × Rouleau 10.05m x 0.53m (~5.3 m²)
-   Séjour en L              wall_covering         46.053 m2      9 9 × Rouleau 10.05m x 0.53m (~5.3 m²)
-   mutualisé                                      82.690 m2     16 16 × Rouleau 10.05m x 0.53m (~5.3 m²)
-   économie de mutualisation                                      0 aucun contenant évité
+   Chambre rectangulaire    wall_covering         54.685 m2     11 11 × Rouleau 10.05m x 0.53m (5.33 m²)
+   Séjour en L              wall_covering         70.310 m2     14 14 × Rouleau 10.05m x 0.53m (5.33 m²)
+   mutualisé                                     124.995 m2     24 24 × Rouleau 10.05m x 0.53m (5.33 m²)
+   économie de mutualisation                                      1 contenants évités
 Colle papier peint intissé  [wall_covering] · 2 pièces · 2 contributions
    Chambre rectangulaire    wall_covering          4.580 kg      1 1 × Seau 5 kg
    Séjour en L              wall_covering          5.757 kg      1 1 × Seau 10 kg
    mutualisé                                      10.337 kg      2 1 × Seau 10 kg + 1 × Seau 5 kg
    économie de mutualisation                                      0 aucun contenant évité
 
-total : 2 matériaux · 18 contenants pièce par pièce → 18 mutualisés
+total : 2 matériaux · 27 contenants pièce par pièce → 26 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_covering · expert · pose plain 1`] = `
@@ -764,9 +764,9 @@ pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.86
 ouvrages: Revetement mural (wall_covering, pose plain)
 
 Papier peint intissé uni  [wall_covering] · 2 pièces · 2 contributions
-   Chambre rectangulaire    wall_covering         34.306 m2      7 7 × Rouleau 10.05m x 0.53m (~5.3 m²)
-   Séjour en L              wall_covering         43.123 m2      9 9 × Rouleau 10.05m x 0.53m (~5.3 m²)
-   mutualisé                                      77.429 m2     15 15 × Rouleau 10.05m x 0.53m (~5.3 m²)
+   Chambre rectangulaire    wall_covering         51.205 m2     10 10 × Rouleau 10.05m x 0.53m (5.33 m²)
+   Séjour en L              wall_covering         65.836 m2     13 13 × Rouleau 10.05m x 0.53m (5.33 m²)
+   mutualisé                                     117.041 m2     22 22 × Rouleau 10.05m x 0.53m (5.33 m²)
    économie de mutualisation                                      1 contenants évités
 Colle papier peint intissé  [wall_covering] · 2 pièces · 2 contributions
    Chambre rectangulaire    wall_covering          4.288 kg      1 1 × Seau 5 kg
@@ -774,7 +774,7 @@ Colle papier peint intissé  [wall_covering] · 2 pièces · 2 contributions
    mutualisé                                       9.678 kg      1 1 × Seau 10 kg
    économie de mutualisation                                      1 contenants évités
 
-total : 2 matériaux · 18 contenants pièce par pièce → 16 mutualisés
+total : 2 matériaux · 25 contenants pièce par pièce → 23 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_covering · expert · pose standard 1`] = `
@@ -783,17 +783,17 @@ pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.86
 ouvrages: Revetement mural (wall_covering, pose standard)
 
 Papier peint intissé uni  [wall_covering] · 2 pièces · 2 contributions
-   Chambre rectangulaire    wall_covering         36.637 m2      7 7 × Rouleau 10.05m x 0.53m (~5.3 m²)
-   Séjour en L              wall_covering         46.053 m2      9 9 × Rouleau 10.05m x 0.53m (~5.3 m²)
-   mutualisé                                      82.690 m2     16 16 × Rouleau 10.05m x 0.53m (~5.3 m²)
-   économie de mutualisation                                      0 aucun contenant évité
+   Chambre rectangulaire    wall_covering         54.685 m2     11 11 × Rouleau 10.05m x 0.53m (5.33 m²)
+   Séjour en L              wall_covering         70.310 m2     14 14 × Rouleau 10.05m x 0.53m (5.33 m²)
+   mutualisé                                     124.995 m2     24 24 × Rouleau 10.05m x 0.53m (5.33 m²)
+   économie de mutualisation                                      1 contenants évités
 Colle papier peint intissé  [wall_covering] · 2 pièces · 2 contributions
    Chambre rectangulaire    wall_covering          4.580 kg      1 1 × Seau 5 kg
    Séjour en L              wall_covering          5.757 kg      1 1 × Seau 10 kg
    mutualisé                                      10.337 kg      2 1 × Seau 10 kg + 1 × Seau 5 kg
    économie de mutualisation                                      0 aucun contenant évité
 
-total : 2 matériaux · 18 contenants pièce par pièce → 18 mutualisés
+total : 2 matériaux · 27 contenants pièce par pièce → 26 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_covering · intermediate · pose plain 1`] = `
@@ -802,9 +802,9 @@ pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.86
 ouvrages: Revetement mural (wall_covering, pose plain)
 
 Papier peint intissé uni  [wall_covering] · 2 pièces · 2 contributions
-   Chambre rectangulaire    wall_covering         35.638 m2      7 7 × Rouleau 10.05m x 0.53m (~5.3 m²)
-   Séjour en L              wall_covering         44.797 m2      9 9 × Rouleau 10.05m x 0.53m (~5.3 m²)
-   mutualisé                                      80.435 m2     16 16 × Rouleau 10.05m x 0.53m (~5.3 m²)
+   Chambre rectangulaire    wall_covering         53.194 m2     10 10 × Rouleau 10.05m x 0.53m (5.33 m²)
+   Séjour en L              wall_covering         68.392 m2     13 13 × Rouleau 10.05m x 0.53m (5.33 m²)
+   mutualisé                                     121.586 m2     23 23 × Rouleau 10.05m x 0.53m (5.33 m²)
    économie de mutualisation                                      0 aucun contenant évité
 Colle papier peint intissé  [wall_covering] · 2 pièces · 2 contributions
    Chambre rectangulaire    wall_covering          4.455 kg      1 1 × Seau 5 kg
@@ -812,7 +812,7 @@ Colle papier peint intissé  [wall_covering] · 2 pièces · 2 contributions
    mutualisé                                      10.055 kg      2 1 × Seau 10 kg + 1 × Seau 5 kg
    économie de mutualisation                                      0 aucun contenant évité
 
-total : 2 matériaux · 18 contenants pièce par pièce → 18 mutualisés
+total : 2 matériaux · 25 contenants pièce par pièce → 25 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_covering · intermediate · pose standard 1`] = `
@@ -821,17 +821,17 @@ pièces  : Chambre rectangulaire (nette 33.307 m²) · Séjour en L (nette 41.86
 ouvrages: Revetement mural (wall_covering, pose standard)
 
 Papier peint intissé uni  [wall_covering] · 2 pièces · 2 contributions
-   Chambre rectangulaire    wall_covering         36.637 m2      7 7 × Rouleau 10.05m x 0.53m (~5.3 m²)
-   Séjour en L              wall_covering         46.053 m2      9 9 × Rouleau 10.05m x 0.53m (~5.3 m²)
-   mutualisé                                      82.690 m2     16 16 × Rouleau 10.05m x 0.53m (~5.3 m²)
-   économie de mutualisation                                      0 aucun contenant évité
+   Chambre rectangulaire    wall_covering         54.685 m2     11 11 × Rouleau 10.05m x 0.53m (5.33 m²)
+   Séjour en L              wall_covering         70.310 m2     14 14 × Rouleau 10.05m x 0.53m (5.33 m²)
+   mutualisé                                     124.995 m2     24 24 × Rouleau 10.05m x 0.53m (5.33 m²)
+   économie de mutualisation                                      1 contenants évités
 Colle papier peint intissé  [wall_covering] · 2 pièces · 2 contributions
    Chambre rectangulaire    wall_covering          4.580 kg      1 1 × Seau 5 kg
    Séjour en L              wall_covering          5.757 kg      1 1 × Seau 10 kg
    mutualisé                                      10.337 kg      2 1 × Seau 10 kg + 1 × Seau 5 kg
    économie de mutualisation                                      0 aucun contenant évité
 
-total : 2 matériaux · 18 contenants pièce par pièce → 18 mutualisés
+total : 2 matériaux · 27 contenants pièce par pièce → 26 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_painting · beginner · pose standard 1`] = `

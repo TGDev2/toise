@@ -4,7 +4,12 @@ import {
   AggregatedMaterialLine,
   PurchaseContribution,
 } from './entities/estimation-result.entity';
-import { RectSegment, unionAreaCm2, unionPerimeterCm } from './room-geometry';
+import {
+  RectSegment,
+  unionAreaCm2,
+  unionPerimeterCm,
+  unionWallRunsCm,
+} from './room-geometry';
 // Types seuls : aucune dépendance d'exécution du moteur vers TypeORM. Ils sont
 // importés plutôt que redéclarés parce qu'ils décident de quantités — deux
 // définitions qui divergeraient produiraient un chiffrage faux sans rien casser.
@@ -14,8 +19,10 @@ import type {
 } from '../materials/entities/material-catalog.entity';
 import type { FrameSpec } from '../projects/entities/work-type.entity';
 import { tileConsumptionFactor } from './tile-consumption';
+import { computeStripCut, RollSpec, StripCut } from './wallpaper-strips';
 
 export type { MaterialQuantityDriver, TileConsumptionModel, FrameSpec };
+export type { RollSpec, StripCut };
 
 export interface SurfaceExclusionInput {
   surface_target: string;
@@ -112,6 +119,17 @@ export interface MaterialInput {
    * `resolveEffectiveYield`.
    */
   consumption_model?: TileConsumptionModel | null;
+  /**
+   * E1-6 — dimensions du rouleau dans lequel ce matériau se débite
+   * (`materials_catalog.roll_width_cm` / `roll_length_cm`). Absent = aucun :
+   * la quantité se calcule sur `yield_per_unit`, exactement comme avant E1-6.
+   *
+   * Présent, il **remplace** `yield_per_unit` : la quantité vient alors de la
+   * découpe en lés (`wallpaper-strips.ts`), qui dépend de la hauteur sous
+   * plafond, du raccord de motif et de la longueur des pans de mur — trois
+   * grandeurs qu'aucun rendement au mètre carré ne peut porter.
+   */
+  roll_spec?: RollSpec | null;
   waste_factors: WasteFactorInput[];
   packagings: PackagingInput[];
 }
@@ -162,6 +180,23 @@ export interface WorkBasis {
   clad_faces: number;
   /** `null` quand l'ouvrage ne déclare pas de trame. */
   frame: FrameQuantities | null;
+  /**
+   * E1-6 — les pans de mur à couvrir, un par mur et en cm, ou `null` quand
+   * l'ouvrage ne se pose pas sur des murs (sol, plafond).
+   *
+   * Le **détail** et non la somme : un revêtement posé en lés arrondit sa
+   * dernière laize au lé entier sur chaque pan, et compter sur le périmètre
+   * total sous-compte systématiquement les pièces à plusieurs pans. Les
+   * ouvertures ne sont pas déduites — cf. `wallpaper-strips.ts`.
+   */
+  wall_runs_cm: number[] | null;
+  /**
+   * Hauteur des pans ci-dessus, en cm : celle de la pièce, ou celle que
+   * l'ouvrage déclare. Portée par l'assiette pour que les bornes d'incertitude
+   * (CV-5) rejouent le même calcul sur la hauteur haute et la hauteur basse
+   * sans que le moteur ait à retrouver la pièce.
+   */
+  wall_height_cm: number;
 }
 
 export interface WorkItemInput {
@@ -578,6 +613,13 @@ export class EstimationEngine {
         clad_surface_m2: workSurfaceM2,
         clad_faces: 1,
         frame: null,
+        // E1-6 : les pans réels de la pièce, exacts pour toute forme
+        // rectilinéaire — jamais une majoration du périmètre.
+        wall_runs_cm:
+          workItem.surface_target === 'wall'
+            ? unionWallRunsCm(this.resolveSegments(room))
+            : null,
+        wall_height_cm: room.height_cm,
       };
     }
 
@@ -591,6 +633,14 @@ export class EstimationEngine {
       frame: workItem.frame_spec
         ? this.computeFrameQuantities(declared, workItem.frame_spec)
         : null,
+      // Un ouvrage à assiette déclarée est un pan unique par face parementée :
+      // une cloison de 4 ml recouverte sur ses deux faces, c'est deux murs de
+      // 4 ml, chacun arrondissant sa dernière laize.
+      wall_runs_cm: Array.from(
+        { length: declared.clad_faces },
+        () => declared.length_m * 100,
+      ),
+      wall_height_cm: declared.height_m * 100,
     };
   }
 
@@ -689,6 +739,68 @@ export class EstimationEngine {
         workItem.custom_params,
         workItem.surface_target,
       )
+    );
+  }
+
+  /**
+   * E1-6 — la découpe en lés de ce matériau sur cette assiette.
+   *
+   * Un matériau vendu au rouleau posé sur un ouvrage qui n'a pas de murs
+   * échoue bruyamment, comme un rail sans trame : il n'existe aucun linéaire de
+   * pan à découper, et le seul repli imaginable — le périmètre du sol — serait
+   * un chiffrage faux qui ne se signale pas.
+   */
+  resolveStripCut(
+    basis: WorkBasis,
+    material: MaterialInput,
+    workItem: WorkItemInput,
+  ): StripCut {
+    if (!material.roll_spec) {
+      throw new Error(
+        `Le matériau « ${material.name} » n'a pas de dimensions de rouleau.`,
+      );
+    }
+    if (!basis.wall_runs_cm) {
+      throw new Error(
+        `Le matériau « ${material.name} » se pose en lés, mais l'ouvrage ` +
+          `« ${workItem.work_type_code} » ne se chiffre pas sur des murs ` +
+          `(surface_target = ${workItem.surface_target}).`,
+      );
+    }
+    return computeStripCut(
+      basis.wall_runs_cm,
+      basis.wall_height_cm,
+      material.roll_spec,
+      workItem.custom_params,
+    );
+  }
+
+  /**
+   * La quantité théorique d'un matériau sur une assiette, quelle que soit la loi
+   * qu'il suit. Point de branchement unique des deux régimes — rendement au
+   * mètre carré, ou découpe en lés — appelé aux trois endroits qui chiffrent
+   * (la quantité nominale et les deux bornes de CV-5), pour qu'aucun d'eux ne
+   * puisse répondre autre chose que les deux autres.
+   *
+   * Un matériau vendu au rouleau ne lit ni `yield_per_unit`, ni son
+   * `quantity_driver`, ni le nombre de couches : sa quantité est un métré de
+   * papier, en m², chute de bobine comprise.
+   */
+  private materialQty(
+    basis: WorkBasis,
+    material: MaterialInput,
+    workItem: WorkItemInput,
+    effectiveYield: number,
+    appliesCoats: boolean,
+  ): { qty: number; coats?: number } {
+    if (material.roll_spec) {
+      return { qty: this.resolveStripCut(basis, material, workItem).paper_m2 };
+    }
+    return this.computeTheoreticalQty(
+      this.meteringBase(basis, material, workItem),
+      effectiveYield,
+      workItem.custom_params,
+      appliesCoats,
     );
   }
 
@@ -845,10 +957,11 @@ export class EstimationEngine {
         // chaque borne laisserait la porte ouverte à trois réponses.
         const effectiveYield = this.resolveEffectiveYield(mat, wi);
 
-        const { qty: theoreticalQty, coats } = this.computeTheoreticalQty(
-          this.meteringBase(basis, mat, wi),
+        const { qty: theoreticalQty, coats } = this.materialQty(
+          basis,
+          mat,
+          wi,
           effectiveYield,
-          wi.custom_params,
           appliesCoats,
         );
 
@@ -861,18 +974,20 @@ export class EstimationEngine {
         let rangeFields: Partial<EstimationLineItem> = {};
         if (basisBounds) {
           const adjustedQtyLow =
-            this.computeTheoreticalQty(
-              this.meteringBase(basisBounds.low, mat, wi),
+            this.materialQty(
+              basisBounds.low,
+              mat,
+              wi,
               effectiveYield,
-              wi.custom_params,
               appliesCoats,
             ).qty *
             (1 + wasteFactor.percent / 100);
           const adjustedQtyHigh =
-            this.computeTheoreticalQty(
-              this.meteringBase(basisBounds.high, mat, wi),
+            this.materialQty(
+              basisBounds.high,
+              mat,
+              wi,
               effectiveYield,
-              wi.custom_params,
               appliesCoats,
             ).qty *
             (1 + wasteFactor.percent / 100);

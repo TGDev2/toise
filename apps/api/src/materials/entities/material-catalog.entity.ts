@@ -143,6 +143,48 @@ export class MaterialCatalog {
   @Column({ type: 'varchar', length: 20, nullable: true })
   consumption_model!: TileConsumptionModel | null;
 
+  /**
+   * E1-6 — dimensions du rouleau dans lequel ce matériau se débite, en
+   * centimètres. `NULL` (le défaut) pour tout matériau qui ne se pose pas en
+   * lés, c'est-à-dire tout le catalogue hors revêtements muraux en rouleau.
+   *
+   * Leur **présence** bascule le matériau sur le calcul en lés
+   * (`estimations/wallpaper-strips.ts`) : le moteur en dérive le nombre de lés
+   * qu'un rouleau donne pour la hauteur sous plafond posée, et n'utilise plus
+   * `yield_per_unit`. Les deux colonnes vont donc ensemble et se renseignent
+   * ensemble — un matériau ne peut pas se dire « en lés » sans dire de quel
+   * rouleau, ce qui rend impossible le repli silencieux sur le calcul
+   * surfacique, le défaut que ce lot corrige.
+   *
+   * Portées par le matériau et non par le moteur pour une raison factuelle : le
+   * catalogue V1 contient déjà des conditionnements différents — papiers peints
+   * en 10,05 × 0,53 m, papier d'apprêt en 10 × 0,50 m. Une constante de moteur
+   * aurait chiffré le second comme le premier.
+   *
+   * Contrainte de cohérence, éprouvée par `wallpaper-strips.spec.ts` : le
+   * conditionnement d'un tel matériau doit valoir exactement
+   * `roll_width_cm × roll_length_cm`, sinon l'arrondi au contenant rachèterait
+   * un rouleau sur un besoin qui tombe juste.
+   */
+  @Column({
+    type: 'numeric',
+    precision: 8,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  roll_width_cm!: number | null;
+
+  /** Longueur du rouleau, en cm. Cf. `roll_width_cm`. */
+  @Column({
+    type: 'numeric',
+    precision: 8,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  roll_length_cm!: number | null;
+
   @Column({ type: 'boolean', default: true })
   is_active!: boolean;
 

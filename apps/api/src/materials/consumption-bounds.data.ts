@@ -253,11 +253,36 @@ export const consumptionBounds: ConsumptionBound[] = [
   },
 
   // --- wall_covering ------------------------------------------------------
-  laidPerSquareMetre(
-    'wall_covering',
-    'Papier peint intissé uni',
-    'Vendu et posé au m² : rendement définitionnel, les chutes de raccord relevant des facteurs de perte',
-  ),
+  {
+    material_category: 'wall_covering',
+    material_name: 'Papier peint intissé uni',
+    unit: 'm2',
+    // E1-6 — ce n'est plus un rendement définitionnel, et l'encadrement change
+    // de grandeur : m² de **papier acheté** par m² de mur, et non plus m² posés
+    // par m² posés. La différence est tout l'objet du lot : un rouleau ne donne
+    // pas sa surface en mur couvert, il donne un nombre entier de lés.
+    //
+    // Dérivation, à la géométrie par défaut de l'ouvrage — 2,50 m sous plafond,
+    // uni, marge de coupe 10 cm, celle que le harnais éprouve :
+    //
+    //   lé = 2,50 + 0,10 = 2,60 m → ⌊10,05 / 2,60⌋ = 3 lés par rouleau
+    //   7,80 m des 10,05 m de bobine servent → 10,05 / (3 × 2,50) = 1,34
+    //
+    // 1,34 est un **plancher exact** : il n'est atteint que par une pièce dont
+    // chaque pan est un multiple de 0,53 m et qui n'a aucune ouverture. Deux
+    // majorations s'y ajoutent, toutes deux ≥ 1 par construction — l'arrondi de
+    // la dernière laize de chaque pan, et le non-décompte des ouvertures (un lé
+    // au-dessus d'une porte se coupe dans un lé entier). 1,80 les couvre sur des
+    // pièces aux pans d'au moins 1,50 m.
+    //
+    // Le reste de la courbe — 2,40 m, 2,60 m, raccords de 16 à 64 cm — est
+    // éprouvé lé par lé dans `estimations/wallpaper-strips.spec.ts`, une
+    // exigence plus forte qu'un intervalle. Même doctrine qu'E1-5.
+    min_per_m2: 1.34,
+    max_per_m2: 1.8,
+    basis:
+      'Bricoflor : « Un rouleau de papier peint de taille standard en Europe présente une longueur de 10,05 mètres. La largeur de lés est de 0,53 m » ; marge d’arasement de 10 cm (Bricoflor, ManoMano, sol-peinture) → 3 lés de 2,60 m par rouleau à 2,50 m sous plafond, soit 10,05 / (3 × 2,50) = 1,34 m² de papier par m² de mur, majoré de l’arrondi de laize et des ouvertures non déduites',
+  },
   {
     material_category: 'wall_covering',
     material_name: 'Colle papier peint intissé',

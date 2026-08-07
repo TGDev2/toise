@@ -1,4 +1,9 @@
-import { RectSegment, unionAreaCm2, unionPerimeterCm } from './room-geometry';
+import {
+  RectSegment,
+  unionAreaCm2,
+  unionPerimeterCm,
+  unionWallRunsCm,
+} from './room-geometry';
 
 describe('room-geometry', () => {
   // ---------------------------------------------------------------------------
@@ -148,6 +153,89 @@ describe('room-geometry', () => {
       ];
       // Contour d'un seul carré 200x200
       expect(unionPerimeterCm(dup)).toBe(800);
+    });
+  });
+
+  // ===========================================================================
+  // unionWallRunsCm (E1-6)
+  // ===========================================================================
+  describe('unionWallRunsCm', () => {
+    /**
+     * Les pans sont rendus dans un ordre de balayage (colonnes puis lignes) qui
+     * est un détail d'implémentation ; ce qui compte est **l'ensemble** des
+     * longueurs. On compare donc des multiensembles triés — une assertion sur
+     * l'ordre figerait le balayage et casserait au premier refactor sans qu'une
+     * seule pièce soit mal découpée.
+     */
+    const runs = (segments: RectSegment[]): number[] =>
+      [...unionWallRunsCm(segments)].sort((a, b) => a - b);
+
+    it('returns no wall for an empty composition', () => {
+      expect(unionWallRunsCm([])).toEqual([]);
+    });
+
+    it('gives a rectangle its four walls', () => {
+      expect(runs(singleRect)).toEqual([300, 300, 400, 400]);
+    });
+
+    it('gives an L-shape its six walls, not its bounding box', () => {
+      // 600 (bas) · 150 (droite du retour) · 200 (dessus du retour) ·
+      // 150 (décroché) · 400 (haut) · 300 (gauche)
+      expect(runs(lShape)).toEqual([150, 150, 200, 300, 400, 600]);
+    });
+
+    it('gives a T-shape its eight walls', () => {
+      expect(runs(tShape)).toEqual([100, 100, 200, 200, 200, 200, 200, 600]);
+    });
+
+    it('gives a U-shape its eight walls, notch included', () => {
+      expect(runs(uShape)).toEqual([100, 100, 200, 200, 200, 300, 300, 400]);
+    });
+
+    it('never merges two collinear walls separated by a notch', () => {
+      // Les deux extrémités hautes du U sont à la même ordonnée (300) et du
+      // même côté : les fusionner donnerait un pan de 200 au lieu de deux de
+      // 100, et un lé de moins à découper.
+      expect(unionWallRunsCm(uShape).filter((r) => r === 100)).toHaveLength(2);
+    });
+
+    /**
+     * La propriété qui rend ce découpage vérifiable sans le relire : il ne perd
+     * ni n'invente de mur. Rejouée sur les cinq géométries du fichier.
+     */
+    it.each([
+      ['rectangle', singleRect],
+      ['L', lShape],
+      ['T', tShape],
+      ['U', uShape],
+      [
+        'recouvrement partiel',
+        [
+          { x_cm: 0, y_cm: 0, length_cm: 200, width_cm: 200 },
+          { x_cm: 100, y_cm: 100, length_cm: 200, width_cm: 200 },
+        ] as RectSegment[],
+      ],
+    ])('sums back to the outline perimeter (%s)', (_name, segments) => {
+      expect(unionWallRunsCm(segments).reduce((a, b) => a + b, 0)).toBe(
+        unionPerimeterCm(segments),
+      );
+    });
+
+    /**
+     * Ce que le lot corrige, en une ligne : sur le séjour en L, compter les lés
+     * sur le périmètre total en donne 34 ; les six pans réels en demandent 36.
+     */
+    it('exposes the under-count of a perimeter-wide strip count', () => {
+      const LAIZE = 53;
+      const onPerimeter = Math.ceil(unionPerimeterCm(lShape) / LAIZE);
+      const wallByWall = unionWallRunsCm(lShape).reduce(
+        (total, run) => total + Math.ceil(run / LAIZE),
+        0,
+      );
+      expect({ onPerimeter, wallByWall }).toEqual({
+        onPerimeter: 34,
+        wallByWall: 36,
+      });
     });
   });
 });
