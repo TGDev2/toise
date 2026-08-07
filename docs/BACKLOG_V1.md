@@ -456,11 +456,13 @@ L'invariant 4 du harnais — nombre de contenants minimal à surplus égal — d
 
 ---
 
-### E1-10 · Étendre le registre sourcé à soixante matériaux
+### E1-10 · Étendre le registre sourcé à soixante matériaux — **livré**
 
 **Résultat** — la liste devient achetable. Les consommables qui bloquent un chantier entrent au catalogue : croisillons, primaire d'accrochage, ragréage, plinthes, barre de seuil, laine dans la cloison, cornières, bande résiliente, système d'étanchéité en pièce humide. Chacun avec sa source.
 **Zones** — `apps/api/src/materials/seed-catalog.data.ts`, migrations de liaison, `docs/SOURCES_CATALOGUE.md`, `docs/MATERIAUX_OUVRAGES.md`.
 **Fin quand** — pour chacun des sept ouvrages, un professionnel peut partir au dépôt avec la liste. Et chaque rendement ajouté porte une URL de fiche fabricant et une date. **Charge L.**
+
+**Livré (migrations `…086` → `…093`)** — 54 matériaux liés (59 liaisons, 37 obligatoires dont 6 conditionnelles), contre 36 (38) avant. Deux assiettes moteur nouvelles (`floor_perimeter` portes déduites, `door_count`), la règle E1-10 écrite dans `MATERIAUX_OUVRAGES.md`, le SEL déclenché par la question `water_exposure` (défaut `dry` — inversion **arbitrée** de la doctrine E1-8, garde-fou = exclusion motivée à l'écran), ragréage + primaire par `floor_flatness` (5 mm/2 m), croisillons par dérivation géométrique (`tile_spacers`). Trois écarts avec l'énoncé, assumés et écrits au registre : les **cornières d'angle** sont écartées (le modèle ne connaît pas les angles sortants d'une cloison — arbitrage utilisateur, justification dans `MATERIAUX_OUVRAGES.md` §6) ; la **cale de dilatation** est écartée (Quick-Step ne publie aucun espacement — N'INVENTE PAS) ; **Mapei** n'a pu être cité (403 sur pages et PDF). Le compte est 54 vérifiés plutôt que 60 affirmés.
 
 **`/model fable` · `/effort high`** — c'est la tâche qui correspond le mieux à la définition officielle de Fable 5 : plus grande qu'une session, ambiguë (aucune règle mécanique ne dit si un fixateur de fond appartient à la peinture murale), volume de recherche important sur des fiches fabricants dispersées, et vérification autonome de son propre travail. C'est aussi la tâche dont l'erreur est la plus coûteuse et la plus difficile à détecter. Sa fenêtre de 1M absorbe le catalogue entier plus les fiches. `high` est le défaut de Fable 5 et suffit : la difficulté est le jugement et le volume, pas la longueur de chaîne d'outils.
 
