@@ -7,8 +7,8 @@ import type {
   SavedWorkItem,
   WorkSelectionSuggestion,
 } from '@/lib/work-types';
-import { SKILL_LEVELS, WORK_TYPE_ICONS } from '@/lib/work-types';
-import { StickyActionBar } from '@/components/ui';
+import { SKILL_LEVELS, WORK_TYPE_ICONS, DECLARED_QUANTITY_BASIS } from '@/lib/work-types';
+import { DecimalInput, StickyActionBar } from '@/components/ui';
 import { ContextualQuestions } from './ContextualQuestions';
 
 interface WorkSelectionFormProps {
@@ -20,14 +20,144 @@ interface WorkSelectionFormProps {
    * enregistré pour cette pièce prime toujours.
    */
   suggestion?: WorkSelectionSuggestion;
+  /** E1-4 — hauteur de la pièce active, en mètres. Préremplit la hauteur de cloison. */
+  roomHeightM?: number;
   onSave: (items: WorkItemSelection[]) => Promise<void>;
   isSaving: boolean;
+}
+
+interface DeclaredBasisValues {
+  length_m: string;
+  height_m: string;
+  clad_faces: string;
+}
+
+const CLAD_FACES_OPTIONS = [
+  { value: '2', label: 'Cloison, deux faces' },
+  { value: '1', label: 'Doublage, une face' },
+] as const;
+
+const declaredFieldInputClass =
+  'w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] focus:outline-none';
+
+interface DeclaredBasisFieldsProps {
+  workTypeId: string;
+  values: DeclaredBasisValues;
+  onChange: (field: keyof DeclaredBasisValues, value: string) => void;
+  showErrors: boolean;
+}
+
+/**
+ * E1-4 — assiette d'un ouvrage qu'on crée plutôt qu'on ne recouvre
+ * (aujourd'hui : la cloison sèche). Réutilise `DecimalInput` (déjà le
+ * composant de saisie décimale du tunnel, cf. `DimensionsForm`) et le motif
+ * carte radio déjà utilisé ci-dessous pour le niveau de compétence.
+ */
+function DeclaredBasisFields({
+  workTypeId,
+  values,
+  onChange,
+  showErrors,
+}: DeclaredBasisFieldsProps) {
+  const length = Number.parseFloat(values.length_m);
+  const height = Number.parseFloat(values.height_m);
+  const lengthInvalid = !values.length_m || !Number.isFinite(length) || length <= 0;
+  const heightInvalid = !values.height_m || !Number.isFinite(height) || height <= 0;
+  const facesInvalid = values.clad_faces !== '1' && values.clad_faces !== '2';
+
+  const lengthId = `declared-length-m-${workTypeId}`;
+  const heightId = `declared-height-m-${workTypeId}`;
+
+  return (
+    <div className="mt-3 space-y-4 rounded-2xl border border-stone-200 bg-stone-50 p-4">
+      <div>
+        <label
+          htmlFor={lengthId}
+          className="mb-1 block text-sm font-medium text-stone-700"
+        >
+          Linéaire à créer (m)
+          <span className="ml-1 text-red-500">*</span>
+        </label>
+        <DecimalInput
+          id={lengthId}
+          value={values.length_m}
+          onValueChange={(v) => onChange('length_m', v)}
+          className={declaredFieldInputClass}
+        />
+        {showErrors && lengthInvalid && (
+          <p className="mt-1 text-sm text-red-600">
+            Veuillez indiquer un linéaire supérieur à zéro.
+          </p>
+        )}
+      </div>
+
+      <div>
+        <label
+          htmlFor={heightId}
+          className="mb-1 block text-sm font-medium text-stone-700"
+        >
+          Hauteur (m)
+          <span className="ml-1 text-red-500">*</span>
+        </label>
+        <DecimalInput
+          id={heightId}
+          value={values.height_m}
+          onValueChange={(v) => onChange('height_m', v)}
+          className={declaredFieldInputClass}
+        />
+        {showErrors && heightInvalid && (
+          <p className="mt-1 text-sm text-red-600">
+            Veuillez indiquer une hauteur supérieure à zéro.
+          </p>
+        )}
+      </div>
+
+      <div>
+        <span className="mb-1 block text-sm font-medium text-stone-700">
+          Faces à parementer
+          <span className="ml-1 text-red-500">*</span>
+        </span>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          {CLAD_FACES_OPTIONS.map((opt) => (
+            <label
+              key={opt.value}
+              className={`flex flex-1 cursor-pointer items-center gap-2 rounded-xl border-2 px-3 py-2 text-sm transition-all ${
+                values.clad_faces === opt.value
+                  ? 'border-[var(--accent)] bg-[var(--accent)]/10'
+                  : 'border-stone-200 bg-white hover:border-stone-300'
+              }`}
+            >
+              <input
+                type="radio"
+                name={`declared-clad-faces-${workTypeId}`}
+                value={opt.value}
+                checked={values.clad_faces === opt.value}
+                onChange={(e) => onChange('clad_faces', e.target.value)}
+                className="accent-[var(--accent)]"
+              />
+              {opt.label}
+            </label>
+          ))}
+        </div>
+        <p className="mt-2 rounded-xl bg-amber-50 px-4 py-2 text-sm text-amber-800">
+          Choisissez « cloison » pour une paroi neuve visible des deux côtés,
+          et « doublage » pour habiller un mur existant d&rsquo;un seul côté.
+        </p>
+        {showErrors && facesInvalid && (
+          <p className="mt-1 text-sm text-red-600">
+            Veuillez choisir le nombre de faces à parementer.
+          </p>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function WorkSelectionForm({
   workTypes,
   initialSelections = [],
   suggestion,
+  roomHeightM,
   onSave,
   isSaving,
 }: WorkSelectionFormProps) {
@@ -56,7 +186,56 @@ export function WorkSelectionForm({
     return params;
   });
 
+  const [declaredBasis, setDeclaredBasis] = useState<
+    Record<string, DeclaredBasisValues>
+  >(() => {
+    const result: Record<string, DeclaredBasisValues> = {};
+    for (const s of initialSelections) {
+      if (
+        s.declared_length_m != null ||
+        s.declared_height_m != null ||
+        s.declared_clad_faces != null
+      ) {
+        result[s.work_type.id] = {
+          length_m: s.declared_length_m != null ? String(s.declared_length_m) : '',
+          height_m: s.declared_height_m != null ? String(s.declared_height_m) : '',
+          clad_faces:
+            s.declared_clad_faces != null ? String(s.declared_clad_faces) : '',
+        };
+      }
+    }
+    return result;
+  });
+
   const [touched, setTouched] = useState(false);
+
+  /**
+   * Valeurs effectives d'un ouvrage à assiette déclarée : ce qui a été saisi,
+   * ou à défaut la hauteur de la pièce pour `height_m` — jamais une chaîne
+   * vide écrite en dur, qui écraserait ce repli au prochain rendu.
+   */
+  const getDeclaredBasisValue = useCallback(
+    (typeId: string): DeclaredBasisValues => {
+      const stored = declaredBasis[typeId];
+      return {
+        length_m: stored?.length_m ?? '',
+        height_m:
+          stored?.height_m ?? (roomHeightM != null ? String(roomHeightM) : ''),
+        clad_faces: stored?.clad_faces ?? '',
+      };
+    },
+    [declaredBasis, roomHeightM],
+  );
+
+  const handleDeclaredBasisChange = useCallback(
+    (workTypeId: string, field: keyof DeclaredBasisValues, value: string) => {
+      setDeclaredBasis((prev) => ({
+        ...prev,
+        [workTypeId]: { ...getDeclaredBasisValue(workTypeId), [field]: value },
+      }));
+    },
+    [getDeclaredBasisValue],
+  );
 
   const toggleWorkType = useCallback((id: string) => {
     setSelectedTypeIds((prev) => {
@@ -98,7 +277,22 @@ export function WorkSelectionForm({
     return true;
   }, [selectedTypeIds, workTypes, customParams]);
 
-  const canSubmit = isValid && hasAllRequiredContextualParams();
+  const hasValidDeclaredBasis = useCallback(() => {
+    for (const typeId of selectedTypeIds) {
+      const wt = workTypes.find((w) => w.id === typeId);
+      if (!wt || wt.quantity_basis !== DECLARED_QUANTITY_BASIS) continue;
+      const basis = getDeclaredBasisValue(typeId);
+      const length = Number.parseFloat(basis.length_m);
+      const height = Number.parseFloat(basis.height_m);
+      if (!basis.length_m || !Number.isFinite(length) || length <= 0) return false;
+      if (!basis.height_m || !Number.isFinite(height) || height <= 0) return false;
+      if (basis.clad_faces !== '1' && basis.clad_faces !== '2') return false;
+    }
+    return true;
+  }, [selectedTypeIds, workTypes, getDeclaredBasisValue]);
+
+  const canSubmit =
+    isValid && hasAllRequiredContextualParams() && hasValidDeclaredBasis();
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -107,16 +301,34 @@ export function WorkSelectionForm({
       if (!canSubmit) return;
 
       const items: WorkItemSelection[] = Array.from(selectedTypeIds).map(
-        (typeId) => ({
-          work_type_id: typeId,
-          skill_level: skillLevel,
-          custom_params: customParams[typeId] ?? {},
-        }),
+        (typeId) => {
+          const wt = workTypes.find((w) => w.id === typeId);
+          const item: WorkItemSelection = {
+            work_type_id: typeId,
+            skill_level: skillLevel,
+            custom_params: customParams[typeId] ?? {},
+          };
+          if (wt?.quantity_basis === DECLARED_QUANTITY_BASIS) {
+            const basis = getDeclaredBasisValue(typeId);
+            item.declared_length_m = Number.parseFloat(basis.length_m);
+            item.declared_height_m = Number.parseFloat(basis.height_m);
+            item.declared_clad_faces = Number.parseInt(basis.clad_faces, 10);
+          }
+          return item;
+        },
       );
 
       await onSave(items);
     },
-    [canSubmit, selectedTypeIds, skillLevel, customParams, onSave],
+    [
+      canSubmit,
+      selectedTypeIds,
+      workTypes,
+      skillLevel,
+      customParams,
+      getDeclaredBasisValue,
+      onSave,
+    ],
   );
 
   const skillLevelInfo = SKILL_LEVELS.find((s) => s.value === skillLevel);
@@ -182,6 +394,17 @@ export function WorkSelectionForm({
                       }
                     />
                   )}
+
+                {isSelected && wt.quantity_basis === DECLARED_QUANTITY_BASIS && (
+                  <DeclaredBasisFields
+                    workTypeId={wt.id}
+                    values={getDeclaredBasisValue(wt.id)}
+                    onChange={(field, value) =>
+                      handleDeclaredBasisChange(wt.id, field, value)
+                    }
+                    showErrors={touched}
+                  />
+                )}
               </div>
             );
           })}

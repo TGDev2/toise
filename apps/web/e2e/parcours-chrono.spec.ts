@@ -587,4 +587,67 @@ test.describe('E4-4 — chronométrage du parcours artisan', () => {
     const total = chrono.report('Scénario 2 — trois pièces, deux ouvrages');
     expect(total.human + total.machine).toBeLessThan(600);
   });
+
+  /*
+    E1-4 — la cloison sèche est le seul ouvrage à assiette déclarée du
+    catalogue : linéaire, hauteur, faces à parementer. La hauteur n'est
+    volontairement **pas** ressaisie ci-dessous — le préremplissage depuis la
+    hauteur de la pièce (2,5 m, saisie par `measureRoom`) est ce que ce
+    scénario prouve. Un seul geste de plus que le scénario 1 (le linéaire) et
+    une décision (les faces), pour un ouvrage qui change radicalement de
+    parcours de saisie par rapport aux six ouvrages de recouvrement.
+  */
+  test('chantier une pièce, cloison 4 ml', async ({ page }) => {
+    test.setTimeout(180_000);
+    await signIn(page);
+
+    const chrono = new Chrono(page);
+    chrono.enter('Tableau de bord');
+
+    await chrono.advance(
+      page.getByRole('button', { name: /Devis-minute/i }),
+      'Mesures',
+      dimensionsReady,
+    );
+
+    await measureRoom(
+      chrono,
+      page,
+      { length: '4', width: '3', height: '2,5' },
+      'Ouvrages',
+    );
+    await selectWork(chrono, page, ['Cloison seche']);
+    await chrono.fillNumber(page.getByLabel('Linéaire à créer (m)'), '4');
+    await chrono.tap(page.getByLabel('Cloison, deux faces'), {
+      decision: true,
+    });
+    await chrono.advance(
+      page.getByRole('button', { name: 'Calculer' }),
+      'Estimation',
+      async (p) => {
+        await expect(
+          p.getByRole('heading', { name: 'Matériaux nécessaires' }),
+        ).toBeVisible({ timeout: 30_000 });
+      },
+    );
+
+    chrono.decide(); // lire les quantités proposées avant de chiffrer
+    await chrono.advance(
+      page.getByRole('button', { name: 'Chiffrer les matériaux' }),
+      'Prix',
+      async (p) => {
+        await expect(
+          p.getByRole('heading', { name: 'Liste de courses' }),
+        ).toBeVisible({ timeout: 30_000 });
+      },
+    );
+
+    const materialCount = await priceEveryMaterial(chrono, page);
+    await quoteAndSend(chrono, page);
+
+    // eslint-disable-next-line no-console
+    console.log(`\nMatériaux à chiffrer : ${materialCount}`);
+    const total = chrono.report('Scénario 4 — cloison 4 ml');
+    expect(total.human + total.machine).toBeLessThan(600);
+  });
 });

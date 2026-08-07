@@ -17,13 +17,26 @@ export interface WorkTypeRef {
   label_fr: string;
   category: string;
   surface_target: string;
+  quantity_basis: string;
   contextual_questions: ContextualQuestion[];
 }
+
+/**
+ * E1-4 — valeur de `WorkTypeRef.quantity_basis` pour un ouvrage qu'on crée
+ * plutôt qu'on ne recouvre (aujourd'hui : la cloison sèche). L'assiette est
+ * alors saisie par l'utilisateur (`declared_*`) au lieu d'être dérivée de la
+ * géométrie de la pièce. Voir `work_types.quantity_basis` côté API.
+ */
+export const DECLARED_QUANTITY_BASIS = 'declared';
 
 export interface WorkItemSelection {
   work_type_id: string;
   skill_level: string;
   custom_params: Record<string, unknown>;
+  /** E1-4 — assiette saisie, uniquement quand `quantity_basis === DECLARED_QUANTITY_BASIS`. */
+  declared_length_m?: number;
+  declared_height_m?: number;
+  declared_clad_faces?: number;
 }
 
 export interface SavedWorkItem {
@@ -31,6 +44,9 @@ export interface SavedWorkItem {
   work_type: WorkTypeRef;
   skill_level: string;
   custom_params: Record<string, unknown>;
+  declared_length_m?: number | null;
+  declared_height_m?: number | null;
+  declared_clad_faces?: number | null;
 }
 
 /**

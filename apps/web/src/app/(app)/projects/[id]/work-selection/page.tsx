@@ -110,6 +110,13 @@ export default function WorkSelectionPage() {
     return rooms.find((r) => r.id === activeRoomId)?.work_items ?? [];
   }, [appUser, activeRoomId, rooms]);
 
+  /** E1-4 — préremplit la hauteur d'une cloison créée dans cette pièce. */
+  const activeRoomHeightM = useMemo(() => {
+    const heightCm = rooms.find((r) => r.id === activeRoomId)?.dimensions
+      ?.height_cm;
+    return heightCm && heightCm > 0 ? heightCm / 100 : undefined;
+  }, [rooms, activeRoomId]);
+
   const goToRoom = useCallback(
     (roomId: string) => {
       router.replace(`/projects/${projectId}/work-selection?room=${roomId}`);
@@ -237,6 +244,7 @@ export default function WorkSelectionPage() {
             workTypes={workTypes}
             initialSelections={initialSelections}
             suggestion={suggestion}
+            roomHeightM={activeRoomHeightM}
             onSave={handleSave}
             isSaving={isSaving}
           />

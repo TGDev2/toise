@@ -9,6 +9,7 @@ const mockWorkTypes: WorkTypeRef[] = [
     label_fr: 'Peinture murale',
     category: 'painting',
     surface_target: 'wall',
+    quantity_basis: 'room_surface',
     contextual_questions: [],
   },
   {
@@ -17,6 +18,7 @@ const mockWorkTypes: WorkTypeRef[] = [
     label_fr: 'Peinture plafond',
     category: 'painting',
     surface_target: 'ceiling',
+    quantity_basis: 'room_surface',
     contextual_questions: [],
   },
   {
@@ -25,6 +27,7 @@ const mockWorkTypes: WorkTypeRef[] = [
     label_fr: 'Carrelage sol',
     category: 'tiling',
     surface_target: 'floor',
+    quantity_basis: 'room_surface',
     contextual_questions: [
       {
         key: 'tile_format',
@@ -54,6 +57,7 @@ const mockWorkTypes: WorkTypeRef[] = [
     label_fr: 'Carrelage mural',
     category: 'tiling',
     surface_target: 'wall',
+    quantity_basis: 'room_surface',
     contextual_questions: [],
   },
   {
@@ -62,6 +66,7 @@ const mockWorkTypes: WorkTypeRef[] = [
     label_fr: 'Parquet ou stratifié',
     category: 'flooring',
     surface_target: 'floor',
+    quantity_basis: 'room_surface',
     contextual_questions: [],
   },
   {
@@ -70,6 +75,7 @@ const mockWorkTypes: WorkTypeRef[] = [
     label_fr: 'Cloison sèche',
     category: 'partition',
     surface_target: 'wall',
+    quantity_basis: 'declared',
     contextual_questions: [],
   },
   {
@@ -78,6 +84,7 @@ const mockWorkTypes: WorkTypeRef[] = [
     label_fr: 'Revêtement mural',
     category: 'wall_covering',
     surface_target: 'wall',
+    quantity_basis: 'room_surface',
     contextual_questions: [],
   },
 ];
@@ -166,6 +173,114 @@ describe('WorkSelectionForm', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /carrelage sol/i }));
     expect(screen.queryByText('Format du carreau')).not.toBeInTheDocument();
+  });
+
+  /*
+    E1-4 — assiette de la cloison sèche : linéaire, hauteur préremplie, faces
+    à parementer. Seule la cloison (quantity_basis === 'declared') gagne ces
+    champs ; les six ouvrages de recouvrement n'en gagnent aucun.
+  */
+  describe('assiette déclarée de la cloison sèche (E1-4)', () => {
+    it('affiche les champs d’assiette uniquement pour la cloison sèche', () => {
+      render(<WorkSelectionForm workTypes={mockWorkTypes} onSave={mockSave} isSaving={false} />);
+
+      expect(screen.queryByLabelText(/linéaire à créer/i)).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: /peinture murale/i }));
+      expect(screen.queryByLabelText(/linéaire à créer/i)).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: /cloison sèche/i }));
+      expect(screen.getByLabelText(/linéaire à créer/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/hauteur \(m\)/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/cloison, deux faces/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/doublage, une face/i)).toBeInTheDocument();
+    });
+
+    it('préremplit la hauteur avec celle de la pièce, modifiable', () => {
+      render(
+        <WorkSelectionForm
+          workTypes={mockWorkTypes}
+          roomHeightM={2.5}
+          onSave={mockSave}
+          isSaving={false}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /cloison sèche/i }));
+      const height = screen.getByLabelText(/hauteur \(m\)/i) as HTMLInputElement;
+      expect(height.value).toBe('2.5');
+
+      fireEvent.change(height, { target: { value: '2.7' } });
+      expect(height.value).toBe('2.7');
+    });
+
+    it('bloque la soumission avec un linéaire vide, même message que les autres champs requis', async () => {
+      render(<WorkSelectionForm workTypes={mockWorkTypes} onSave={mockSave} isSaving={false} />);
+
+      fireEvent.click(screen.getByRole('button', { name: /cloison sèche/i }));
+      fireEvent.click(screen.getByLabelText(/confirmé/i));
+      fireEvent.click(screen.getByLabelText(/cloison, deux faces/i));
+      // Le linéaire reste vide.
+      fireEvent.click(screen.getByText('Calculer'));
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/veuillez indiquer un linéaire supérieur à zéro/i),
+        ).toBeInTheDocument();
+      });
+      expect(mockSave).not.toHaveBeenCalled();
+    });
+
+    it('bloque la soumission avec un linéaire à zéro', async () => {
+      render(<WorkSelectionForm workTypes={mockWorkTypes} onSave={mockSave} isSaving={false} />);
+
+      fireEvent.click(screen.getByRole('button', { name: /cloison sèche/i }));
+      fireEvent.click(screen.getByLabelText(/confirmé/i));
+      fireEvent.click(screen.getByLabelText(/cloison, deux faces/i));
+      fireEvent.change(screen.getByLabelText(/linéaire à créer/i), {
+        target: { value: '0' },
+      });
+      fireEvent.click(screen.getByText('Calculer'));
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/veuillez indiquer un linéaire supérieur à zéro/i),
+        ).toBeInTheDocument();
+      });
+      expect(mockSave).not.toHaveBeenCalled();
+    });
+
+    it('envoie declared_length_m/height_m/clad_faces pour la cloison', async () => {
+      render(
+        <WorkSelectionForm
+          workTypes={mockWorkTypes}
+          roomHeightM={2.5}
+          onSave={mockSave}
+          isSaving={false}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /cloison sèche/i }));
+      fireEvent.click(screen.getByLabelText(/confirmé/i));
+      fireEvent.change(screen.getByLabelText(/linéaire à créer/i), {
+        target: { value: '4' },
+      });
+      fireEvent.click(screen.getByLabelText(/cloison, deux faces/i));
+      fireEvent.click(screen.getByText('Calculer'));
+
+      await waitFor(() => {
+        expect(mockSave).toHaveBeenCalledWith([
+          {
+            work_type_id: 'wt-6',
+            skill_level: 'expert',
+            custom_params: {},
+            declared_length_m: 4,
+            declared_height_m: 2.5,
+            declared_clad_faces: 2,
+          },
+        ]);
+      });
+    });
   });
 
   it('calls onSave with correct payload for simple work type', async () => {
