@@ -102,6 +102,8 @@ Remets la documentation du dépôt à l'état réel du produit. 1) Crée docs/ar
 
 **Résultat** — un ADR unique fige : cible = artisan de finition ; le particulier reste surface d'acquisition sans monétisation ; la CV sort du périmètre avec sa condition de retour chiffrée ; widget/API/SSO gelés puis supprimés.
 **Zones** — `docs/adr/0001-cible-et-perimetre-v1.md` (à créer).
+
+> **Livré, puis amendé le 7 août 2026.** L'[ADR 0002](adr/0002-modele-economique-facturation-distribution.md) confirme D1 et D2, étend D3 (les organisations et le multi-utilisateurs rejoignent les suppressions), **révise D4** (chiffrage gratuit et illimité ; conformité à 279 €/an) et ajoute **D5** (facturation électronique) et **D6** (canal B2B2C). Le prompt d'origine ci-dessous est conservé tel quel — il dit ce qui a été demandé le 3 août, pas ce qui fait foi aujourd'hui.
 **Fin quand** — chaque décision de l'ADR porte sa conséquence de périmètre et son critère de réouverture. **Charge S.**
 
 **Modèle : `opus` · Effort : `high`** — un ADR est un exercice de raisonnement et d'arbitrage, pas de rédaction : il doit tenir des conséquences ensemble (une cible implique un tarif, qui implique un périmètre chiffrable, qui implique des ouvrages). C'est du « raisonnement complexe, analyse nuancée » — la définition officielle de `high`. Opus 5 plutôt que Sonnet parce que la qualité de l'arbitrage conditionne tout le reste du backlog et qu'une erreur ici ne se voit qu'après des semaines.
@@ -451,6 +453,8 @@ Dans .github/workflows/deploy.yml, supprime l'étape de récupération et de vé
 
 ### E3-3 · Retirer le widget, l'API publique et le SSO/Enterprise
 
+> **Étendu par l'[ADR 0002 (D3)](adr/0002-modele-economique-facturation-distribution.md)** : les **organisations** et le **multi-utilisateurs** rejoignent les suppressions — l'exception « ne touche pas au module organizations » du prompt ci-dessous est levée. La suppression se fait en **deux lots séparés et dans cet ordre** : (1) les surfaces — écrans d'invitation, rôles, membres, lignes d'offre, gates ; (2) **et seulement ensuite** les colonnes `organization_id`, qui sont portées par toutes les entités métier et touchent chaque requête. Le second lot se vérifie par une migration `up` puis `down` complète sur une base réelle, pas par des tests unitaires.
+
 **Résultat** — après une période de gel (E0-3), ces trois surfaces sortent du dépôt. Le point qui rend cette tâche urgente n'est pas le volume de code : c'est que **l'application du SSO se fait dans `FirebaseAuthGuard`, sur le chemin critique de toute requête authentifiée**.
 **Zones** — `apps/widget/`, `apps/api/src/{widget,api-keys,enterprise}/`, `apps/api/src/auth/guards/firebase-auth.guard.ts:51-57`, migrations de retrait, `main.ts:61-76` (CORS dynamique).
 **Fin quand** — la suite complète passe, le CORS dynamique du widget a disparu, et le guard d'authentification est plus court qu'avant. **Charge L.**
@@ -465,18 +469,18 @@ Retire du dépôt trois surfaces livrées mais atteignables depuis aucune interf
 
 ---
 
-### E3-4 · Ramener l'offre à un palier payant
+### E3-4 · Ramener l'offre à deux paliers : chiffrage gratuit, conformité annuelle
 
-**Résultat** — Free et un unique palier artisan à 19 €/mois. Les trois paliers Contractor sont ramenés à un ; le palier `enterprise` disparaît des surfaces.
-**Zones** — `apps/web/src/lib/pricing.ts`, pages `/`, `/artisans`, `/pricing`, migration de gates, `offer-catalogue.spec.ts`.
+**Résultat** — un palier **gratuit portant tout le chiffrage, sans limite de chantiers**, et un unique palier payant **Conformité à 279 € par an, en annuel uniquement**, avec 30 jours satisfait ou remboursé. Les trois paliers Contractor sont ramenés à un ; les paliers `pro` (DIY 9,99 €) et `enterprise` disparaissent des surfaces, ainsi que la landing particulier.
+**Zones** — `apps/web/src/lib/pricing.ts`, `apps/api/src/subscriptions/plans.constants.ts`, `apps/web/src/app/page.tsx`, pages `/artisans`, `/pricing`, migration de gates, `offer-catalogue.spec.ts`.
 **Fin quand** — la suite `offer-catalogue.spec.ts` passe et chaque ligne vendue est atteignable. **Charge M.**
 
-**Modèle : `sonnet` · Effort : `high`** — la décision de tarif est prise en E0-2 ; il reste à la propager sur quatre surfaces et une migration, avec un test qui vérifie déjà la cohérence. Le catalogue d'offre étant une donnée typée, la tâche est précisément spécifiable.
+**Modèle : `sonnet` · Effort : `high`** — la décision de tarif est prise en E0-2 puis révisée par l'[ADR 0002 (D4)](adr/0002-modele-economique-facturation-distribution.md) ; il reste à la propager sur quatre surfaces et une migration, avec un test qui vérifie déjà la cohérence. Le catalogue d'offre étant une donnée typée, la tâche est précisément spécifiable.
 
 ```text
 /model sonnet
 /effort high
-Ramène l'offre à deux paliers : Free et un unique palier artisan à 19 EUR par mois. Aujourd'hui apps/web/src/lib/pricing.ts porte trois paliers Contractor (19/29/49) plus un bandeau Enterprise, dont deux vendent des fonctionnalités sans interface. 1) Réduis OFFER_PLANS à Free et Artisan 19 EUR, en ne conservant que les lignes de fonctionnalité adossées à une gate active après E0-3. 2) Migration réversible qui ramène les gates du palier unique au bon rang et retire le palier enterprise des surfaces. 3) Mets à jour /, /artisans et /pricing, et retire le bandeau Enterprise. 4) Conserve intact le nommage du périmètre couvert et non couvert (COVERED_TRADES et TRADES_NOT_COVERED dans work-types.ts) : c'est un actif, une couverture partielle annoncée coûte des inscriptions, une couverture partielle découverte après paiement coûte la confiance. 5) apps/web/src/__tests__/offer-catalogue.spec.ts doit passer sans être affaibli — s'il rougit, corrige le catalogue, jamais le test. Vérifie : migration up et down, pnpm test:web, pnpm test:api, pnpm lint, pnpm build:web.
+Ramène l'offre à deux paliers, selon l'ADR 0002 D4 : un gratuit qui porte TOUT le chiffrage sans limite de chantiers, et un unique palier payant "Conformité" à 279 EUR par an, en annuel uniquement, qui porte le devis PDF conforme, le fichier clients, l'historique de prix et la facturation, avec 30 jours satisfait ou remboursé. Aujourd'hui apps/web/src/lib/pricing.ts porte un palier Pro à 9,99 EUR, trois paliers Contractor (19/29/49) et un bandeau Enterprise, dont plusieurs vendent des fonctionnalités sans interface. 1) Réduis OFFER_PLANS à Free et Conformité 279 EUR/an, en ne conservant que les lignes de fonctionnalité adossées à une gate active après E0-3 ; conserve l'identifiant technique contractor_essentiel, seuls le libellé, le montant et la périodicité changent. 2) Retire le quota FREE_TIER_PROJECT_LIMIT du chemin de chiffrage : le chiffrage est illimité par décision. 3) Supprime le palier pro des surfaces, et supprime la landing particulier apps/web/src/app/page.tsx en faisant de la surface artisan la page d'accueil — sans toucher aux calculateurs publics ni au mode invité jusqu'à la liste d'achat, qui restent (ADR 0001 D1). 4) Migration réversible qui ramène les gates du palier unique au bon rang et retire les paliers pro et enterprise des surfaces. 5) Conserve intact le nommage du périmètre couvert et non couvert (COVERED_TRADES et TRADES_NOT_COVERED dans work-types.ts) : c'est un actif, une couverture partielle annoncée coûte des inscriptions, une couverture partielle découverte après paiement coûte la confiance. 6) apps/web/src/__tests__/offer-catalogue.spec.ts doit passer sans être affaibli — s'il rougit, corrige le catalogue, jamais le test. Signale, sans le corriger toi-même, que STRIPE_PRO_PRICE_ID reste exigée au démarrage par env.validation.ts alors que le palier pro n'existe plus : c'est le sujet de E5-1. Vérifie : migration up et down, pnpm test:web, pnpm test:api, pnpm lint, pnpm build:web.
 ```
 
 ---
@@ -497,9 +501,11 @@ Purge le dépôt des mentions de fonctionnalités qui ne sont plus proposées en
 
 ---
 
-## E4 — Différenciation : ce qui justifie de payer 19 €
+## E4 — Différenciation : ce qui fait rester, puis payer
 
-*Ces cinq tâches sont la réponse à « pourquoi vous et pas Tolteck, Obat ou la calculette de Leroy Merlin ». Aucune n'invente de fonctionnalité : elles rendent visible ce que le dépôt sait déjà faire et que personne d'autre ne fait.*
+*Ces cinq tâches sont la réponse à « pourquoi vous et pas ArtisanSmart, Tolteck, Obat ou la calculette de Leroy Merlin ». Aucune n'invente de fonctionnalité : elles rendent visible ce que le dépôt sait déjà faire et que personne d'autre ne documente.*
+
+> **Recadrage par l'[ADR 0002](adr/0002-modele-economique-facturation-distribution.md).** Le chiffrage étant désormais gratuit, ces tâches ne justifient plus un prix : elles font la **démonstration** qui amène à la conformité payante. Et la formulation change — ArtisanSmart calcule aussi des quantités, à 29 € HT/mois sur 15 métiers. L'argument n'est plus « le seul qui calcule » mais **« le seul dont on peut vérifier le calcul »** : surface nette, pièces non rectangulaires, ouvertures déduites une par une, perte par pose et par niveau, conditionnement commercial, rendements sourcés fabricant. Les affirmations interdites sont listées dans `VEILLE_CONCURRENTIELLE.md` §5.2 — elles sont opposables.
 
 ---
 
@@ -589,7 +595,7 @@ Recentre les trois calculateurs publics sur "combien acheter". Aujourd'hui ils s
 
 ### E5-1 · Créer les produits Stripe réels et éprouver le cycle complet
 
-**Résultat** — un prix live pour le palier artisan, l'endpoint webhook configuré, et un cycle abonnement → paiement → annulation → remboursement déroulé de bout en bout sur un compte réel.
+**Résultat** — un prix live **annuel à 279 €** pour le palier Conformité, l'endpoint webhook configuré, et un cycle abonnement → paiement → annulation → remboursement déroulé de bout en bout sur un compte réel.
 **Zones** — tableau de bord Stripe, `.env` de production, `apps/api/src/subscriptions/`.
 **Fin quand** — un euro réel est encaissé puis remboursé, et l'état de l'abonnement en base suit chaque étape. **Charge M.**
 
@@ -598,7 +604,7 @@ Recentre les trois calculateurs publics sur "combien acheter". Aujourd'hui ils s
 ```text
 /model opus
 /effort xhigh
-Prépare et éprouve la chaîne de paiement en conditions réelles. 1) Documente dans docs/DEPLOY.md la procédure exacte de création du produit et du prix Stripe en mode live pour le palier artisan à 19 EUR par mois avec essai de 7 jours, les variables STRIPE_* à renseigner, et la configuration de l'endpoint webhook avec la liste des événements à souscrire — dérive cette liste du code de apps/api/src/subscriptions/, pas de la documentation Stripe générale. 2) Écris un script de vérification (apps/api/src/scripts/) qui, sur une clé de test, déroule le cycle complet checkout, abonnement actif, changement de palier, annulation, et vérifie après chaque étape l'état en base et le palier effectif rendu par les feature gates. 3) Traite explicitement le défaut d'ordonnancement : handleSubscriptionUpdated (subscriptions.service.ts:501) applique l'événement qui arrive en dernier alors que Stripe ne garantit pas l'ordre, si bien qu'un événement retardé peut restaurer un palier périmé — ajoute une garde par horodatage ou par version, et un test qui rejoue deux événements dans le désordre. Vérifie : pnpm test:api, pnpm test:api:integration, et exécute le script sur une clé de test.
+Prépare et éprouve la chaîne de paiement en conditions réelles. 0) Traite d'abord le blocage signalé par E3-4 : env.validation.ts exige STRIPE_PRO_PRICE_ID au démarrage alors que le palier pro (DIY 9,99 EUR) est supprimé par l'ADR 0002 D4 — rends la variable facultative plutôt que de créer un prix fantôme, et couvre-le d'un test de configuration. 1) Documente dans docs/DEPLOY.md la procédure exacte de création du produit et du prix Stripe en mode live pour le palier Conformité à 279 EUR par an, en périodicité annuelle, avec la garantie 30 jours satisfait ou remboursé (qui est une politique de remboursement, pas un essai Stripe : dis explicitement comment elle s'opère), les variables STRIPE_* à renseigner, et la configuration de l'endpoint webhook avec la liste des événements à souscrire — dérive cette liste du code de apps/api/src/subscriptions/, pas de la documentation Stripe générale. 2) Écris un script de vérification (apps/api/src/scripts/) qui, sur une clé de test, déroule le cycle complet checkout, abonnement actif, changement de palier, annulation, et vérifie après chaque étape l'état en base et le palier effectif rendu par les feature gates. 3) Traite explicitement le défaut d'ordonnancement : handleSubscriptionUpdated (subscriptions.service.ts:501) applique l'événement qui arrive en dernier alors que Stripe ne garantit pas l'ordre, si bien qu'un événement retardé peut restaurer un palier périmé — ajoute une garde par horodatage ou par version, et un test qui rejoue deux événements dans le désordre. Vérifie : pnpm test:api, pnpm test:api:integration, et exécute le script sur une clé de test.
 ```
 
 ---
@@ -647,6 +653,42 @@ Instrumente le funnel de revenu de la V1 sur le module analytics existant (apps/
 /model sonnet
 /effort high
 Prépare l'activation réelle de l'affiliation, sans l'activer. Les adaptateurs ManoMano et Leroy Merlin existent dans apps/api/src/price-comparison/adapters/ et les liens d'achat sont posés sur la liste sans feature gate ; il manque un compte marchand et un flux produits. 1) Documente dans docs/ ce qu'il faut obtenir côté partenaire : type de compte, format du flux, fréquence de rafraîchissement, règles d'attribution, mentions légales obligatoires sur un lien commissionné en France. 2) Écris un script de validation qui prend un flux produits en entrée et rapporte le taux de rapprochement avec le catalogue matériaux de la V1, matériau par matériau, pour que je sache avant de m'engager combien de lignes de liste porteront réellement un lien. 3) Ajoute un garde-fou dans le code : aucun lien d'achat ne doit être rendu tant que la liste n'est pas issue du moteur corrigé — expose une constante ou un flag explicite avec un commentaire qui rappelle pourquoi (envoyer quelqu'un acheter une liste fausse via un lien commissionné est pire que de ne pas avoir de lien). Ne crée aucun compte, ne modifie pas les gates. Vérifie : pnpm test:api, pnpm lint.
+```
+
+---
+
+### E5-5 · Obtenir le chiffre ferme du raccordement à une Plateforme Agréée
+
+**Résultat** — trois devis comparables sur une grille de coûts complets, et la décision de l'[ADR 0002 D5](adr/0002-modele-economique-facturation-distribution.md) tranchée : option (a) partenariat PA, ou option (b) retrait de la facturation de l'offre.
+**Zones** — `docs/CONFORMITE_FACTURATION.md` §8. **Aucun code.**
+**Fin quand** — la ligne « € par client et par mois, tout compris, e-reporting B2C inclus » est écrite, sourcée d'un devis, et confrontée au seuil de 3,50 €. **Charge S** (délai long, effort court).
+
+**Échéances, écrites d'avance** — envois **avant le 30 septembre 2026** · décision **au 31 octobre 2026** · **non-retour au 1er mars 2027** : sans connecteur en production à cette date, l'option (b) s'applique d'office. Une facturation vendue et non conforme au 1er septembre 2027, c'est la totalité de la base client perdue en un mois.
+
+**Modèle : `opus` · Effort : `high`** — la tâche est de la négociation et de la comparaison sur critères, pas de la frappe. Le risque est de comparer des prix unitaires au lieu de coûts complets, ce qui est précisément l'erreur que la grille de `CONFORMITE_FACTURATION.md` §8.5 existe pour empêcher.
+
+```text
+/model opus
+/effort high
+Exécute les trois actions de docs/CONFORMITE_FACTURATION.md §8.5 et consigne les résultats dans le même fichier. 1) Candidature au programme partenaire Pennylane (catégorie Partenaires Plateforme Agréée) en citant le précédent ArtisanSmart, raccordé en mai 2026. Questions à poser PAR ÉCRIT, dans cet ordre : l'e-reporting B2C est-il inclus et à quelles conditions (c'est l'inconnue n°1, le B2C domine le volume d'un artisan) ; gratuité effective pour un éditeur opérateur de dématérialisation, par facture ou par SIREN ; conditions contractuelles du statut d'OD ; engagement de réversibilité — Pennylane vend aussi un logiciel de facturation, c'est un fournisseur potentiellement concurrent. 2) Deux devis comparables à des PA infrastructurelles, Iopole et Seqino en marque grise, sur un profil chiffré identique : 50 artisans, 5 factures B2B par mois chacun, e-reporting B2C, émission Factur-X générée par Chiffréo. Exige la décomposition set-up / minimum mensuel / prix unitaire / archivage. 3) Compare sur une grille unique de coûts complets et écris le € par client et par mois qui en sort, à confronter au seuil de 3,50 € fixé par l'ADR 0002 §5.2. N'écris aucun code.
+```
+
+---
+
+### E5-6 · Envoyer les cinq e-mails B2B2C et arbitrer le canal
+
+**Résultat** — cinq e-mails nominatifs partis, une relance chacun, et la règle d'arbitrage de l'[ADR 0002 D6](adr/0002-modele-economique-facturation-distribution.md) appliquée au 31 décembre 2026 : soit une suite sérieuse est obtenue et cette voie prime sur le SaaS self-service, soit le canal est clos par défaut.
+**Zones** — `docs/PROSPECTION_B2B2C.md`. **Aucun code.**
+**Fin quand** — les cinq envois et leurs relances sont consignés, avec pour chacun le nom du destinataire et la réponse obtenue. **Charge S.**
+
+**« Suite sérieuse » — les trois conditions, toutes requises** : une demande écrite de seconde réunion à leur initiative · un interlocuteur nommé avec rôle de décision ou de budget · un périmètre pilote énoncé (nombre de points de vente, gamme, zone). Une réponse polie, un « recontactez-nous », un contact de salon sans suite écrite ne comptent pas.
+
+**Modèle : `sonnet` · Effort : `medium`** — les cinq textes et leurs garde-fous sont déjà écrits ; le travail est d'identifier les destinataires nommés et de tenir le registre des envois. Aucune décision produit n'est en jeu à ce stade.
+
+```text
+/model sonnet
+/effort medium
+Prépare l'envoi des cinq e-mails de docs/PROSPECTION_B2B2C.md §3. 1) Pour chaque cible (Gedimat, Tout Faire Matériaux, Chausson Matériaux ou Doras, Siniat ou Knauf, Cermix ou Parexlanko), identifie UN destinataire nommé avec sa fonction — jamais une adresse contact@, jamais deux noms en copie. 2) Contre-vérifie sur les pages publiques de Tolteck la liste de ses enseignes distributrices (Point.P, Cedeo, Asturienne, La Plateforme du Bâtiment) : elle est citée dans les e-mails et n'est adossée à aucune trace du dépôt. 3) Relis chaque e-mail contre les interdits de §1 avant envoi — pas de "conforme aux DTU", pas de "le seul à…", pas de promesse de justesse générale tant que le défaut cloison sèche est ouvert, pas de revendication de largeur, pas de plan importé, pas de marque blanche présentée comme existante. 4) Ajoute au document un tableau de suivi : date d'envoi, destinataire, date de relance à J+10, réponse, et si la réponse remplit les TROIS conditions de "suite sérieuse" de l'ADR 0002 §5.3. N'écris aucun code et n'invente aucune fonctionnalité dans les textes.
 ```
 
 ---

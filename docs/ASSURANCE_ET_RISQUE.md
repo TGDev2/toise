@@ -126,10 +126,18 @@ Pour Chiffréo — éditeur SaaS, CA < 50 k€, garantie DINC explicite d'au moi
   DINC sérieuse tirant vers le haut de la fourchette (le plancher Hiscox à
   455 €/an pour 100 k€ de garantie est le meilleur proxy d'un contrat réellement
   adapté).
-- Rapporté au modèle (palier Artisan à 19 €/mois,
-  [ADR 0001 §D4](adr/0001-cible-et-perimetre-v1.md)) : la prime annuelle
-  équivaut au revenu brut de **1 à 2 clients** — ce n'est pas un facteur de
-  viabilité, c'est un coût fixe à provisionner dès la première vente.
+- Rapporté au modèle (palier Conformité à **279 €/an**,
+  [ADR 0002 §D4](adr/0002-modele-economique-facturation-distribution.md)) : la
+  prime annuelle équivaut au revenu brut de **moins d'un à deux clients** — ce
+  n'est pas un facteur de viabilité, c'est un coût fixe à provisionner dès la
+  première vente.
+- **Le chiffrage étant désormais gratuit et ouvert à tous, l'exposition
+  s'élargit sans que le revenu suive.** Une erreur de quantité peut atteindre
+  un utilisateur qui n'a jamais rien payé, et la responsabilité de l'éditeur
+  ne se limite pas à ses clients. La garantie doit couvrir les dommages
+  immatériels non consécutifs sans clause restreignant l'indemnisation aux
+  seuls utilisateurs sous contrat — **point à vérifier explicitement dans les
+  conditions particulières.**
 
 ---
 

@@ -310,8 +310,10 @@ l'ordre de **50 clients payants** pour amortir un éventuel forfait socle.
 | **Haut** — marque blanche dédiée | Instance dédiée type Iopole Enterprise/Seqino marque blanche, avec set-up : injustifiable à l'échelle V1 | > 5 € — écarté |
 
 **Fourchette retenue : 0 à ~3,50 € par client et par mois, centre de gravité
-autour de 1 €** — soit 0 à 18 % du palier Artisan à 19 €/mois
-([ADR 0001 §D4](adr/0001-cible-et-perimetre-v1.md)), ~5 % au centre. Ce qui est
+autour de 1 €** — soit 0 à 15 % du revenu mensuel équivalent du palier
+Conformité (**279 €/an, soit 23,25 €/mois**,
+[ADR 0002 §D4](adr/0002-modele-economique-facturation-distribution.md)), ~4 %
+au centre. Ce qui est
 sourcé dans cette fourchette : les prix unitaires 0,10–0,50 €/facture, les
 plans B2BRouter/A-Cube, la gratuité annoncée de la PA Pennylane et le précédent
 ArtisanSmart. Ce qui est estimé : le nombre de factures par artisan, la taille
@@ -320,16 +322,35 @@ inclus dans ces prix, ce qu'aucune source ne confirme : **c'est le premier
 point à faire chiffrer** (le B2C domine le volume d'un artisan).
 
 Conclusion d'orientation **[estimé]** : au coût central (~1 €/client/mois), le
-raccordement PA n'est pas un sujet de viabilité mais un sujet de marge (~5 % du
-MRR) ; la facturation reste dans l'offre. Seul le scénario haut, ou un
+raccordement PA n'est pas un sujet de viabilité mais un sujet de marge (~4 % du
+revenu) ; la facturation reste dans l'offre. Seul le scénario haut, ou un
 e-reporting B2C facturé à la transaction, rouvrirait la question du repli
 (export Factur-X déposé par l'artisan dans sa propre PA).
 
+> **Hypothèse de planification plus prudente que cette estimation.** L'[ADR 0002
+> §D5](adr/0002-modele-economique-facturation-distribution.md) retient
+> **3 à 6 € par client et par mois** comme ordre de grandeur à instruire —
+> au-dessus de la fourchette ci-dessus. L'écart est assumé et il est dans le
+> bon sens : une sous-estimation de ce poste se paierait en marge sur toute la
+> base, une surestimation ne coûte qu'une prudence. **On planifie sur
+> l'hypothèse haute, on décide sur devis.**
+
 ### 8.5 Trois actions pour obtenir le chiffre ferme
 
-Seuil d'acceptabilité fixé **avant** de recevoir les devis : **≤ 2 € par client
-et par mois tout compris** (≈ 10 % du palier à 19 €). Au-delà, le repli
-« export Factur-X » redevient l'option de référence.
+Seuil d'acceptabilité fixé **avant** de recevoir les devis : **≤ 3,50 € par
+client et par mois tout compris** — ≈ 15 % du revenu mensuel équivalent du
+palier Conformité (23,25 €). Au-delà de 6 €, ou en l'absence de tout devis, le
+repli « export Factur-X » redevient l'option de référence. Entre 3,50 et 6 €,
+le surcoût est répercuté dans le prix au renouvellement suivant, jamais absorbé
+en silence. *(Ce seuil remplace le ≤ 2 €/client/mois publié précédemment, calé
+sur un palier mensuel à 19 € qui n'existe plus —
+[ADR 0002 §5.2](adr/0002-modele-economique-facturation-distribution.md).)*
+
+**Deux dates fermes** : décision au **31 octobre 2026** ; si le connecteur PA
+n'est pas en production au **1er mars 2027**, le repli s'applique d'office.
+L'obligation d'émission et d'e-reporting pour les TPE tombe le **1er septembre
+2027** — une facturation vendue et non conforme à cette date fait perdre la
+totalité de la base client en un mois.
 
 1. **Candidater au programme partenaire Pennylane** via le formulaire
    [pennylane.com/fr/partenaires](https://www.pennylane.com/fr/partenaires)

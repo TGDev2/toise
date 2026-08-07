@@ -163,8 +163,11 @@ Copier `.env.example` vers `.env` et renseigner les valeurs :
 
 ## Modèle économique
 
-| Tier | Fonctionnalités |
+| Palier | Fonctionnalités |
 |------|----------------|
-| **Free** | 2 projets actifs, saisie manuelle, estimation basique, export PDF |
-| **Pro** (9,99 €/mois) | Projets illimités, facteurs de perte avancés, suivi budgétaire |
-| **Contractor** (19-49 €/mois) | Métiers de finition : gestion clients, devis conformes, suivi de chantier, facturation |
+| **Gratuit** | **Tout le chiffrage, sans limite de chantiers** : métré, quantités, facteurs de perte par pose et par niveau, liste d'achat en conditionnements commerciaux |
+| **Conformité** — 279 €/an, annuel uniquement, 30 jours satisfait ou remboursé | Tout le gratuit, plus : devis PDF conforme, fichier clients, historique de prix, facturation |
+
+Décidé par l'[ADR 0002](docs/adr/0002-modele-economique-facturation-distribution.md) :
+le calcul est ce qui est difficile à copier et coûte zéro à servir — il est
+donné ; la conformité est ce qu'on ne quitte pas — elle est vendue.

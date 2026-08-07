@@ -101,9 +101,19 @@ Caddy obtient et renouvelle automatiquement les certificats TLS.
 
 ## 4. Stripe : produits, prix et webhook
 
-La V1 ne vend qu'un palier payant, **Artisan à 19 €/mois avec 7 jours
-d'essai** (ADR 0001 §D4). Le palier Pro à 9,99 €/mois reste vendu au
-particulier — et reste **obligatoire au démarrage**, voir §4.2.
+La V1 ne vend qu'un palier payant, **Conformité à 279 € par an, en annuel
+uniquement**, avec **30 jours satisfait ou remboursé**
+([ADR 0002 §D4](adr/0002-modele-economique-facturation-distribution.md)). Le
+chiffrage est **gratuit et sans limite de chantiers** : il n'y a rien à
+facturer pour lui. Le palier Pro à 9,99 €/mois **est supprimé** de l'offre —
+mais la variable qui le porte reste **obligatoire au démarrage** tant que le
+code n'a pas changé, voir §4.2.
+
+> **La garantie de 30 jours n'est pas un essai Stripe.** C'est une politique
+> de remboursement : l'abonnement est payé immédiatement et intégralement, et
+> un remboursement est émis à la demande dans les 30 jours. Ne pas la
+> configurer en `trial_period_days` — un essai ne prélève rien, donc ne
+> rembourse rien, et l'engagement annoncé au client ne serait pas tenu.
 
 ### 4.1 Créer le produit et le prix (mode live)
 
@@ -112,19 +122,26 @@ droite) — un prix créé en mode test est invisible d'une clé live, et l'API
 refusera le checkout avec « Offre invalide ».
 
 1. *Products* → *Add product*
-   - **Nom** : `Chiffréo Artisan` (il apparaît sur la facture Stripe du client)
-   - **Pricing** : `Recurring`, `19,00`, `EUR`, `Monthly`
+   - **Nom** : `Chiffréo Conformité` (il apparaît sur la facture Stripe du client)
+   - **Pricing** : `Recurring`, `279,00`, `EUR`, **`Yearly`**
 2. Copier l'identifiant du **prix** : `price_…`, pas `prod_…`. C'est le prix,
    jamais le produit, que l'API transmet à Stripe.
-3. Répéter pour `Chiffréo Pro` : `9,99`, `EUR`, `Monthly`.
+3. Créer aussi un prix pour `Chiffréo Pro` **uniquement si**
+   `STRIPE_PRO_PRICE_ID` est encore exigée au démarrage (voir §4.2) — c'est un
+   contournement, pas une offre : ce palier n'est plus vendu.
 
-> **L'essai de 7 jours ne se règle pas ici.** Il n'est pas un attribut du prix
+> **La périodicité est annuelle, et elle se règle ici.** C'est le seul endroit.
+> Un prix créé en `Monthly` facturerait 279 € par mois.
+
+> **L'essai éventuel ne se règle pas ici.** Il n'est pas un attribut du prix
 > Stripe : `createCheckoutSession` l'envoie dans
 > `subscription_data.trial_period_days`, lu dans `trial_days` de
 > [`plans.constants.ts`](../apps/api/src/subscriptions/plans.constants.ts), et
 > cette valeur prime sur tout réglage du dashboard. Chercher l'essai dans
 > l'interface Stripe est une perte de temps ; le changer se fait dans ce
 > fichier, et se répercute sur la vitrine via `apps/web/src/lib/pricing.ts`.
+> **Le modèle en vigueur ne comporte pas d'essai** : la démonstration est le
+> chiffrage gratuit, et la garantie est un remboursement à 30 jours.
 
 ### 4.2 Renseigner les variables
 
@@ -132,24 +149,29 @@ refusera le checkout avec « Offre invalide ».
 |---|---|---|
 | `STRIPE_SECRET_KEY` | `sk_live_…` | oui, validée au démarrage |
 | `STRIPE_WEBHOOK_SECRET` | `whsec_…` (§4.4) | oui, validée au démarrage |
-| `STRIPE_PRO_PRICE_ID` | prix **Pro** 9,99 € | oui, validée au démarrage |
-| `STRIPE_CONTRACTOR_ESSENTIEL_PRICE_ID` | prix **Artisan** 19 € | de fait (voir ci-dessous) |
+| `STRIPE_PRO_PRICE_ID` | palier supprimé — **valeur de contournement** tant que la validation l'exige | oui, validée au démarrage |
+| `STRIPE_CONTRACTOR_ESSENTIEL_PRICE_ID` | prix **Conformité** 279 €/an | de fait (voir ci-dessous) |
 | `STRIPE_CONTRACTOR_STANDARD_PRICE_ID` | laisser vide | non |
 | `STRIPE_CONTRACTOR_PREMIUM_PRICE_ID` | laisser vide | non |
 | `STRIPE_PAST_DUE_GRACE_DAYS` | `14` (défaut si absente) | non |
 
 Trois pièges, dans l'ordre où ils coûtent cher :
 
-- **`CONTRACTOR_ESSENTIEL` *est* le palier artisan à 19 €.** Le nom est hérité
-  des trois paliers Contractor d'avant leur fusion (E3-4). Mettre le prix à
-  19 € dans `STRIPE_PRO_PRICE_ID` ferait vendre l'offre artisan **au palier
-  `pro`** : le client paierait 19 € et n'aurait ni devis PDF, ni fichier
-  clients, ni facturation — les gates de ces capacités exigent
+- **`CONTRACTOR_ESSENTIEL` *est* le palier Conformité à 279 €/an.** Le nom est
+  hérité des trois paliers Contractor d'avant leur fusion (E3-4) ; l'ADR 0002
+  a délibérément conservé l'identifiant technique pour éviter une migration.
+  Mettre le prix à 279 € dans `STRIPE_PRO_PRICE_ID` ferait vendre l'offre **au
+  palier `pro`** : le client paierait 279 € et n'aurait ni devis PDF, ni
+  fichier clients, ni facturation — les gates de ces capacités exigent
   `contractor_essentiel`.
 - **`STRIPE_PRO_PRICE_ID` est requise au démarrage** en production
   ([`env.validation.ts`](../apps/api/src/config/env.validation.ts)) : sans elle
-  l'API refuse de démarrer avec « Configuration invalide », même si l'on ne
-  compte vendre que le palier artisan. Le prix Pro doit donc exister.
+  l'API refuse de démarrer avec « Configuration invalide », **alors même que le
+  palier DIY à 9,99 € est supprimé de l'offre** par l'ADR 0002 §D4. C'est un
+  reliquat, et il doit être traité dans E5-1 (rendre la variable facultative)
+  **avant** la mise en vente. En attendant, un prix Pro doit exister dans
+  Stripe sans être vendu nulle part — un contournement à supprimer, pas une
+  configuration à pérenniser.
 - **`CONTRACTOR_ESSENTIEL` n'est pas validée au démarrage, mais rien ne se
   vend sans elle.** Vide, le prix artisan n'entre pas dans les prix autorisés :
   `GET /subscriptions/plans` renvoie `price_id: null`, le bouton de la page
@@ -584,7 +606,8 @@ panne, webhook Stripe qui échoue) ne se voit qu'en allant lire les logs.
 | L'API refuse de démarrer avec « Configuration invalide » | une variable requise manque, garde `CHANGEME`/sa valeur d'exemple, pointe sur localhost, ou `DB_PASSWORD` fait moins de 16 caractères — le message nomme la variable, §1 |
 | Checkout Stripe → 503 | `STRIPE_SECRET_KEY` absente (l'API tourne mais les paiements sont désactivés) |
 | Checkout Stripe → 400 « Offre invalide » | le `price_id` demandé n'est dans aucune variable `STRIPE_*_PRICE_ID`, ou il a été créé dans l'autre mode (test/live) que la clé secrète — §4.2 |
-| Un abonné à 19 € n'a ni devis PDF ni facturation | le prix artisan a été mis dans `STRIPE_PRO_PRICE_ID` au lieu de `STRIPE_CONTRACTOR_ESSENTIEL_PRICE_ID` — §4.2 |
+| Un abonné à 279 € n'a ni devis PDF ni facturation | le prix Conformité a été mis dans `STRIPE_PRO_PRICE_ID` au lieu de `STRIPE_CONTRACTOR_ESSENTIEL_PRICE_ID` — §4.2 |
+| Un client est prélevé de 279 € tous les mois | le prix Stripe a été créé en `Monthly` au lieu de `Yearly` — §4.1 |
 | « Gérer mon abonnement » → 500 | portail de facturation Stripe jamais configuré en mode live — §4.3 |
 | Webhook Stripe → 400 dans le dashboard | `STRIPE_WEBHOOK_SECRET` erroné, ou secret du mode test utilisé en live — §4.4 |
 | Analyse photo refusée avec un message d'indisponibilité | comportement attendu : `CV_ENABLED=false` par défaut (débranché, ADR 0001 §D2), l'API refuse proprement toute demande d'analyse — la saisie manuelle des dimensions est le seul chemin en production |

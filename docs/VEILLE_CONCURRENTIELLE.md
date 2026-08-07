@@ -367,6 +367,15 @@ chiffrage tarifaire sur quantités manuelles. [DÉDUIT]
 10. **Ce que produit réellement chaque « moteur » en usage** — toute cette note repose
     sur la documentation publique ; aucun essai produit n'a été réalisé. Un essai
     gratuit d'ArtisanSmart, Obat, Mediabat et JLogiciels serait l'étape suivante logique.
+11. **Tolteck** — hors du panel de cette note, donc **aucun de ses chiffres n'a été
+    vérifié selon la méthode ci-dessus**. Les montants qui servent de repère tarifaire
+    ailleurs dans le dépôt (25 € HT/mois sans engagement, 19 € HT en annuel, 12,35 € HT
+    en annuel pour une entreprise de moins de cinq ans, tous corps d'état) sont
+    consignés en [ADR 0002 §1.3](adr/0002-modele-economique-facturation-distribution.md)
+    **avec leur réserve de contre-vérification**. Ils ne doivent pas être traités comme
+    [VÉRIFIÉ] tant que les pages publiques de Tolteck n'ont pas été lues à la source.
+    Même réserve pour l'affirmation « 30 000 clients construits par la distribution en
+    négoce », qui fonde la décision D6 du même ADR.
 
 ---
 

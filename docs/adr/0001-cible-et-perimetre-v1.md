@@ -7,6 +7,19 @@
 | **Portée** | Produit et périmètre. Cet ADR est opposable : toute tâche du dépôt qui le contredit est hors périmètre. |
 | **Sources** | [`docs/REPRISE_PROJET.md`](../REPRISE_PROJET.md) (état des lieux), [`docs/BACKLOG_V1.md`](../BACKLOG_V1.md) (exécution) |
 | **Remplace** | Les orientations produit de `docs/archive/PRODUCT_STRATEGY.md` et `docs/archive/BACKLOG.md`, archivés |
+| **Amendé par** | [`ADR 0002 — Modèle économique, facturation électronique, canal de distribution`](0002-modele-economique-facturation-distribution.md), 7 août 2026 |
+
+> ### ⚠ Ce texte est amendé — ne pas le lire seul
+>
+> L'[ADR 0002](0002-modele-economique-facturation-distribution.md) du 7 août 2026 :
+>
+> - **corrige une prémisse fausse du présent texte** — le calcul automatique de quantités *est* servi par un concurrent (ArtisanSmart, 29 € HT/mois, 15 métiers), et le prix de référence de Tolteck n'est pas 19 € (ADR 0002 §1) ;
+> - **confirme D1 et D2** sans réserve ;
+> - **confirme et étend D3** : les organisations et le multi-utilisateurs rejoignent les suppressions ;
+> - **révise D4 de fond en comble** : le chiffrage devient gratuit et illimité, la conformité devient le produit payant à 279 €/an ;
+> - **ajoute D5** (facturation électronique) et **D6** (canal B2B2C).
+>
+> Rien n'a été réécrit ci-dessous : le raisonnement du 3 août 2026 est conservé tel qu'il a été tenu, y compris là où il repose sur des faits depuis corrigés. Les passages périmés portent un marqueur en ligne renvoyant à la section correspondante de l'ADR 0002.
 
 ---
 
@@ -51,6 +64,8 @@ La condition de retour est chiffrée et **écrite avant la collecte**, pour qu'o
 
 ### D3 — Widget marque blanche, API publique à clés et SSO/Enterprise sont gelés immédiatement, puis supprimés après la V1 s'ils ne sont pas demandés.
 
+> **Étendue par l'[ADR 0002 §2 (D3)](0002-modele-economique-facturation-distribution.md)** : les **organisations** et le **multi-utilisateurs** rejoignent les suppressions. L'exception écrite ci-dessous à leur sujet ne vaut plus.
+
 **Gel immédiat** : gates désactivées en base par migration réversible, miroir front mis à jour, aucune ligne d'offre adossée à ces gates, aucune mention commerciale, aucune évolution — seuls les correctifs de sécurité restent admissibles tant que le code est présent.
 
 **Suppression** au verdict de l'étape 5 (mise en ligne + cinq artisans) si aucun prospect ne les a demandés. Git garde tout.
@@ -60,6 +75,8 @@ Ne sont pas concernés, et restent :
 - **`waste-learning` et `cost-benchmark`** : gelés en base, sans coût, inatteignables avant plusieurs centaines de chantiers réels — et le benchmark est de plus structurellement cassé (il exclut tout projet mêlant peinture murale et peinture plafond).
 
 ### D4 — Un seul palier payant à 19 €/mois en V1, plus un gratuit limité.
+
+> **PÉRIMÉE — révisée par l'[ADR 0002 §2 (D4)](0002-modele-economique-facturation-distribution.md).** Le chiffrage devient **gratuit et sans limite de chantiers** ; la conformité (devis PDF conforme, fichier clients, historique de prix, facturation) devient le produit payant, à **279 € par an, en annuel uniquement**, avec 30 jours satisfait ou remboursé. Le palier DIY à 9,99 € et la landing particulier sont supprimés. Le raisonnement ci-dessous est conservé pour mémoire : il reposait sur deux faits erronés, corrigés en [ADR 0002 §1](0002-modele-economique-facturation-distribution.md).
 
 `OFFER_PLANS` se réduit à **Free** et **Artisan 19 €/mois**. Les trois paliers Contractor différenciés (19/29/49) fusionnent en un seul, le palier `enterprise` disparaît des surfaces. Un seul produit Stripe en mode live.
 
@@ -115,6 +132,8 @@ Les paliers différenciés attendront d'avoir des clients à différencier : auj
 
 ### 3.4 Conséquences de D4 (palier unique à 19 €)
 
+> **PÉRIMÉE — voir [ADR 0002 §3.2](0002-modele-economique-facturation-distribution.md).** Deux faits utilisés ci-dessous sont erronés : le prix de référence de Tolteck (25 € HT sans engagement, 19 € en annuel, 12,35 € pour une entreprise de moins de cinq ans) et l'idée que le calcul de quantités serait le seul argument de vente disponible sur le marché. Trois conséquences restent valables et ont été reprises telles quelles dans l'ADR 0002 : la correction de `past_due` avant la première vente, le produit Stripe unique, et l'exigence que toute ligne vendue soit atteignable depuis la navigation.
+
 **Sur le périmètre, concrètement :**
 
 - **Il n'y a plus de fonctionnalité à réserver à un palier supérieur.** Toute fonctionnalité livrée en V1 est dans le palier unique — ce qui est une contrainte de conception : elle pousse à en livrer peu et bien, et interdit de justifier une nouvelle fonctionnalité par « elle différenciera le palier du dessus ».
@@ -146,7 +165,7 @@ C'est l'alternative sérieuse, et elle mérite d'être exposée à son meilleur 
 **Pourquoi elle est écartée :**
 
 1. **Le besoin est épisodique.** Un chantier tous les deux à cinq ans. Un abonnement mensuel pour un besoin ponctuel est une thèse faible, et le dépôt en était déjà conscient : le carnet du logement a été proposé (`PRODUCT_STRATEGY.md §7.5`) comme antidote au churn *structurel* — on construit rarement un antidote à une maladie que l'on n'a pas.
-2. **L'alternative gratuite est suffisante pour lui.** La calculette de Leroy Merlin couvre environ 80 % de ses cas, ne coûte rien et ne demande pas de compte. Chiffréo doit être *beaucoup* meilleur pour justifier un abonnement ; face à un artisan, il doit seulement faire quelque chose que Tolteck et Obat ne font pas — et il le fait.
+2. **L'alternative gratuite est suffisante pour lui.** La calculette de Leroy Merlin couvre environ 80 % de ses cas, ne coûte rien et ne demande pas de compte. Chiffréo doit être *beaucoup* meilleur pour justifier un abonnement ; face à un artisan, il doit seulement faire quelque chose que Tolteck et Obat ne font pas — et il le fait. *[La fin de cette phrase est la prémisse corrigée par l'[ADR 0002 §1.1](0002-modele-economique-facturation-distribution.md) : ArtisanSmart le fait aussi, à 29 € HT/mois sur 15 métiers. La conclusion de ce §4.1 — écarter le particulier — n'en dépend pas et tient.]*
 3. **La valeur ne se convertit pas en euros pour lui.** Acheter 20 % de peinture en trop coûte 30 € à un particulier une fois tous les trois ans. Cela coûte à un artisan plusieurs centaines d'euros par an, tous chantiers confondus, plus la crédibilité devant son client quand la liste est visiblement fausse.
 4. **Il n'y a pas de récurrence donc pas de signal.** Un produit sans utilisateur qui revient ne peut pas apprendre. Toutes les mécaniques de données du dépôt (facteurs de perte appris, benchmark de coûts) supposent des chantiers clôturés à répétition : elles n'ont de sens que sur le segment récurrent.
 5. **Choisir le particulier obligerait à conserver la CV**, donc 4 Go de VPS, une AGPL non arbitrée, un CD bloqué, et une mesure à +24/+42 % d'erreur au cœur d'un produit dont la promesse est la justesse. La décision D2 ne serait pas possible, et le seul composant véritablement disproportionné du dépôt resterait à financer.
@@ -233,6 +252,8 @@ En dessous de ce seuil, le composant ne revient pas — quel que soit le travail
 
 ### 5.4 Réouvrir D4 — le tarif
 
+> **PÉRIMÉE — remplacée par l'[ADR 0002 §5.1](0002-modele-economique-facturation-distribution.md).** Les seuils ci-dessous portent sur un palier mensuel à 19 € qui n'existe plus. Les critères en vigueur portent sur le modèle « chiffrage gratuit / conformité annuelle à 279 € ».
+
 **Ajouter un palier au-dessus (au-delà de 29 €) uniquement si** le **périmètre chiffrable s'élargit** à des corps d'état hors finition. C'est le seul chemin qui justifie un prix supérieur à Obat, et c'est aussi celui qui ouvre le segment généraliste.
 
 **Segmenter en plusieurs paliers uniquement quand** des clients payants existent **et** que leurs usages divergent de façon mesurée — pas anticipée.
@@ -249,7 +270,7 @@ Trois questions restent ouvertes et seront tranchées ailleurs, dans le cours de
 
 - **Le sort du catalogue à 208 matériaux.** 184 rendements sur 208 ne sont sourcés nulle part et les facteurs de perte sont des nombres ronds appelés « catalogue DTU » sans qu'aucune référence DTU n'existe. Si les rendements ne peuvent pas être sourcés, un catalogue de 40 matériaux vérifiés vaut mieux qu'un catalogue de 208 dont on ne peut rien affirmer. À trancher pendant l'épic moteur, sur pièces.
 - **La forme de la liaison ouvrage → matériaux** (`required_materials` en jsonb ou table `work_type_materials` porteuse d'un rôle) : décision d'architecture, prise à l'exécution.
-- **Le périmètre de conformité facturation.** Avoir, acompte, autoliquidation BTP, multi-taux de TVA et e-invoicing restent hors V1 ; le modèle est déjà aligné EN 16931 et la cible TPE relève de septembre 2027. Décision antérieure, bonne, non rouverte ici.
+- **Le périmètre de conformité facturation.** Avoir, acompte, autoliquidation BTP, multi-taux de TVA et e-invoicing restent hors V1 ; le modèle est déjà aligné EN 16931 et la cible TPE relève de septembre 2027. Décision antérieure, bonne, non rouverte ici. *[Partiellement tranché depuis : l'**e-invoicing** fait l'objet de la décision D5 de l'[ADR 0002](0002-modele-economique-facturation-distribution.md) — raccordement à une Plateforme Agréée, à trancher en octobre 2026. Le reste de la liste demeure ouvert.]*
 
 ---
 
@@ -262,6 +283,8 @@ Cet ADR est appliqué par les tâches suivantes de [`docs/BACKLOG_V1.md`](../BAC
 | **D1** — cible artisan | E1 (moteur juste) · E2-1 et E2-2 (parcours invité) · E2-3 (MO par ouvrage) |
 | **D2** — CV hors périmètre | E0-3 (gate `cv_analysis`) · E3-1 (débranchement) · E3-2 (déblocage du CD) |
 | **D3** — gel puis suppression | E0-3 (gates) · E3-5 (purge des mentions) |
-| **D4** — palier unique 19 € | E3-4 (offre à deux paliers) |
+| **D4** — palier unique 19 € | ~~E3-4 (offre à deux paliers)~~ — **révisée**, voir [ADR 0002 §7](0002-modele-economique-facturation-distribution.md) |
 
 Toute tâche du dépôt qui contredit une décision de cet ADR est hors périmètre tant que l'ADR n'est pas révisé par un ADR successeur — la révision se fait par un nouvel ADR qui remplace celui-ci, jamais par édition silencieuse.
+
+**Cette règle a été appliquée** : l'[ADR 0002](0002-modele-economique-facturation-distribution.md) du 7 août 2026 est ce successeur. Le tableau de suivi en vigueur est le sien.

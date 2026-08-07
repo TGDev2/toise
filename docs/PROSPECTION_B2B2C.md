@@ -60,6 +60,19 @@ retenue : « le canal est déjà éprouvé ; l'étage du calcul n'y est pas enco
 > Tolteck avant le premier envoi. Elle est exacte à date de rédaction mais
 > n'est adossée à aucune trace du dépôt, contrairement au reste de ce document.
 
+**Ce que ce précédent pèse désormais dans la décision.** Tolteck a construit sa
+base de **30 000 clients par la distribution en négoce**, pas par le
+self-service. L'[ADR 0002 (D6)](adr/0002-modele-economique-facturation-distribution.md)
+en tire une décision : le B2B2C est testé **en parallèle du SaaS, dès
+maintenant**, et **si un négoce ou un fabricant donne une suite sérieuse, cette
+voie prime sur le self-service**. « Suite sérieuse » y est défini avant le
+premier envoi, et il faut les **trois** conditions : demande écrite de seconde
+réunion à leur initiative, interlocuteur nommé avec rôle de décision ou de
+budget, périmètre pilote énoncé. Calendrier : envois avant le **30 septembre
+2026**, arbitrage au **31 décembre 2026** — sans suite sérieuse à cette date,
+le canal est clos par défaut et ne se rouvre que sur demande entrante.
+Exécution : **E5-6** de `BACKLOG_V1.md`.
+
 ---
 
 ## 2. Destinataires à identifier

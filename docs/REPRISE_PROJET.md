@@ -4,6 +4,14 @@
 > Le diff de la copie de travail est un artefact de fins de ligne (48 398 insertions / 48 397 suppressions) : `HEAD` est représentatif.
 > Convention : **[O]** observé dans le code · **[D]** déduit · **[?]** incertain.
 
+> **⚠ Audit daté du 3 août 2026 — les décisions produit qu'il propose ont évolué.**
+> Les arbitrages en vigueur sont ceux de l'[ADR 0001](adr/0001-cible-et-perimetre-v1.md),
+> **amendé par l'[ADR 0002](adr/0002-modele-economique-facturation-distribution.md)** du
+> 7 août 2026. En particulier : le tarif proposé ici (**un palier artisan à 19 €/mois**)
+> est remplacé par « chiffrage gratuit et illimité + conformité à **279 €/an** », et la
+> veille de `VEILLE_CONCURRENTIELLE.md` corrige le paysage concurrentiel décrit au §2.2.
+> Le constat technique de ce document, lui, n'est pas affecté.
+
 ---
 
 ## 1. Verdict
@@ -65,6 +73,8 @@ Deux candidats, et il faut trancher.
 **Le particulier qui rénove.** Besoin réel, mais **épisodique** : un chantier tous les deux à cinq ans. Il ne reviendra pas. Un abonnement à 9,99 €/mois pour un besoin ponctuel est une thèse faible, et le dépôt en est conscient : `PRODUCT_STRATEGY.md §7.5` propose le « carnet du logement » comme antidote au churn structurel — un antidote a été construit (PLAT-1) avant que la maladie ait un seul porteur. Son alternative, aujourd'hui : la calculette gratuite de Leroy Merlin, qui suffit à 80 % des cas.
 
 **L'artisan des métiers de finition** — peintre, carreleur, plaquiste, solier. Besoin **récurrent** : chaque devis, plusieurs fois par semaine. Volonté de payer démontrée par un marché à 15-30 €/mois (Tolteck 19 €, Obat 29 €, EBP 29,25 €). Et surtout : **ces outils lui font saisir les quantités à la main.** C'est le seul endroit où Chiffréo fait quelque chose que personne d'autre ne fait sur ce segment.
+
+> **Corrigé le 7 août 2026** ([ADR 0002 §1](adr/0002-modele-economique-facturation-distribution.md)) : les deux affirmations de ce paragraphe sont fausses. Tolteck est à **25 € HT sans engagement, 19 € en annuel et 12,35 € pour une entreprise de moins de cinq ans**, tous corps d'état. Et **ArtisanSmart calcule bien des quantités** — 29 € HT/mois, 15 métiers, matériaux et heures de main-d'œuvre. Ce qui reste vrai et différenciant est la *méthode* : surface nette, pièces non rectangulaires, déduction des ouvertures, perte par pose et par niveau, conditionnement commercial, rendements sourcés — six gestes qu'aucun concurrent du panel ne documente ensemble.
 
 **Arbitrage : l'artisan de finition est l'utilisateur de la V1. Le particulier reste une surface d'acquisition, pas une cible de revenu.**
 
@@ -182,7 +192,7 @@ saisie des dimensions → ouvrage, niveau, pose → **liste d'achat de 3 à 6 li
 
 **Le particulier** garde exactement deux choses, parce qu'elles sont déjà construites et coûtent trois lignes à réparer : les calculateurs publics indexables, et le mode invité — **jusqu'à la liste d'achat incluse**, ce qui n'est pas le cas aujourd'hui. Aucun autre investissement DIY. Pas de monétisation DIY en V1.
 
-**Tarif V1 : un seul palier artisan à 19 €/mois**, plus un gratuit limité. Les trois paliers Contractor différenciés attendront d'avoir des clients à différencier — aujourd'hui deux des trois vendent des fonctionnalités sans interface.
+**Tarif V1** — ~~un seul palier artisan à 19 €/mois, plus un gratuit limité~~ → **révisé** ([ADR 0002 D4](adr/0002-modele-economique-facturation-distribution.md)) : **le chiffrage est gratuit et sans limite de chantiers ; la conformité — devis PDF conforme, fichier clients, historique de prix, facturation — est vendue 279 € par an, en annuel uniquement, avec 30 jours satisfait ou remboursé.** Les trois paliers Contractor différenciés attendront d'avoir des clients à différencier — aujourd'hui deux des trois vendent des fonctionnalités sans interface.
 
 **La V1 est atteinte quand**, sur un environnement de production, un artisan qui n'a pas écrit le code mesure une pièce, obtient une liste qu'il juge achetable telle quelle, produit un devis, l'envoie, et revient de lui-même chiffrer un second chantier.
 
@@ -234,7 +244,7 @@ Trois décisions bloquent tout le reste et n'appartiennent qu'à vous : (a) l'ar
 
 ### Étape 3 — Réduire le produit à la V1 · 2 jours
 
-- **Résultat** : la CV est débranchée, le CD n'est plus bloqué par des poids inexistants, les surfaces commerciales ne vendent que ce qui est atteignable, un seul palier artisan à 19 €.
+- **Résultat** : la CV est débranchée, le CD n'est plus bloqué par des poids inexistants, les surfaces commerciales ne vendent que ce qui est atteignable, un seul palier payant — la **conformité à 279 €/an** ([ADR 0002 D4](adr/0002-modele-economique-facturation-distribution.md)), le chiffrage étant gratuit.
 - **Zones** : `docker-compose.prod.yml` (retirer le service, libérer 4 Go), `.github/workflows/deploy.yml:87-94` (retirer la vérification bloquante), `apps/web/src/lib/{pricing.ts,calculators.ts}`, migrations de gates.
 - **Risque** : le test `offer-catalogue.spec.ts` interdit structurellement de vendre une ligne sans gate réelle — c'est le meilleur garde-fou du dépôt, **le mettre à jour, jamais le désactiver**.
 - **Vérification** : chaque ligne vendue sur `/`, `/artisans` et `/pricing` est atteignable depuis la navigation par un compte du palier concerné. Aujourd'hui, deux ne le sont pas.
@@ -264,7 +274,7 @@ Les cinq premières étapes représentent **12 à 16 jours**. Tout ce qui a ét�
 |---|---|---|---|
 | **Les quantités restent contestées après correction** — les rendements servis sont désormais sourcés (E1-7, `docs/SOURCES_CATALOGUE.md`), mais les facteurs de perte restent des valeurs d'usage non normatives, et les hypothèses (formats par défaut, cloison 72/48 deux faces) peuvent ne pas coller au chantier | **Moyenne** — la promesse est désormais adossée à des fiches, pas encore au terrain | Un artisan sur cinq conteste une quantité à l'étape 5 | Confronter les 7 listes sourcées aux artisans ; les écarts constatés nourrissent DATA-3 (facteurs appris) ou corrigent le registre, pièce par pièce |
 | **Reprise du développement au lieu de la confrontation** | **Élevée** — c'est le mode de défaillance déjà observé : 20 épics en 48 h pour zéro utilisateur | Un commit `feat(...)` avant les cinq artisans | Règle explicite : aucune nouvelle fonctionnalité tant que l'étape 5 n'a pas rendu son verdict |
-| **Le segment artisan ne convertit pas à 19 €** — face à Tolteck 19 € et Obat 29 € qui couvrent *tous* les corps d'état | Élevée | Aucun essai converti sur les vingt premiers | Le calcul de quantités est le seul argument ; s'il ne suffit pas, la thèse artisan tombe et il faut revenir au particulier avec un modèle non-abonnement (paiement à l'usage, affiliation) |
+| **Le segment artisan ne paie pas la conformité à 279 €/an** — face à Tolteck en annuel (228 € HT/an, 148,20 € pour une entreprise de moins de cinq ans) et ArtisanSmart (348 € HT/an), qui couvrent *tous* ou *quinze* corps d'état | Élevée | Moins de 4 souscriptions sur les 40 premiers artisans ayant produit trois listes d'achat ([ADR 0002 §5.1](adr/0002-modele-economique-facturation-distribution.md)) | Le chiffrage gratuit est le protocole de démonstration ; s'il ne convertit pas, c'est le prix ou l'emballage de la conformité qui est faux, pas le segment |
 | **Régression d'isolation multi-tenant** — zéro test inter-organisation, 46 filtres manuels | Moyenne, conséquence sévère | — | Trois tests d'isolation (projets, devis, listes) à écrire pendant l'étape 4 |
 | **Dépendance AGPL `ultralytics`** | Suspendue par §3.3 | Retour de la CV au périmètre | Arbitrage juridique **avant** tout retour, pas après |
 | **Instance unique implicite** — rate-limit et cache de gates en mémoire, VPS unique | Faible à ce stade | Un second nœud envisagé | Ne rien faire aujourd'hui ; l'écrire dans le README pour que personne ne scale horizontalement par erreur |
