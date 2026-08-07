@@ -42,8 +42,16 @@ export interface SeedWorkType {
 }
 
 /**
- * Les seules questions contextuelles seedées : le format et le type de pose du
- * carrelage sol. Les six autres ouvrages n'en portent aucune.
+ * Les seules questions contextuelles seedées : le format, la largeur de joint
+ * et le type de pose du carrelage sol. Les six autres ouvrages n'en portent
+ * aucune.
+ *
+ * E1-5 — `tile_format` pilote enfin quelque chose : la consommation de colle
+ * (par le peigne que le format impose et par le double encollage que le NF DTU
+ * 52.2 déclenche au-delà d'un seuil de surface) et celle de joint (par le
+ * volume de joint sous un m²). La troisième question est la largeur de joint,
+ * qui pèse plus que tout le reste sur le joint — un 20 × 20 à 5 mm en consomme
+ * trois fois plus qu'un 60 × 60 à 2 mm.
  */
 const floorTilingQuestions: ContextualQuestion[] = [
   {
@@ -56,6 +64,34 @@ const floorTilingQuestions: ContextualQuestion[] = [
       { value: '45x45', label_fr: '45 x 45 cm' },
       { value: '60x60', label_fr: '60 x 60 cm' },
       { value: '30x60', label_fr: '30 x 60 cm' },
+    ],
+    required: true,
+  },
+  {
+    /**
+     * E1-5 — largeur de joint, en millimètres.
+     *
+     * `auto` est la première option et la réponse attendue par défaut : le
+     * moteur retient alors la largeur recommandée pour le format choisi
+     * (`estimations/tile-consumption.ts`, `default_joint_width_mm`). C'est
+     * volontairement le **moteur** qui décide, et pas le formulaire : une table
+     * format → joint recopiée côté web finirait par diverger de celle qui
+     * chiffre, et l'écran promettrait une valeur que la liste d'achat
+     * ignorerait.
+     *
+     * Requise plutôt que facultative pour la même raison qu'elle est posée : un
+     * champ laissé vide donnerait une largeur par défaut que l'artisan n'aurait
+     * jamais vue passer. Ici il la choisit, fût-ce en acceptant la recommandée.
+     */
+    key: 'joint_width_mm',
+    type: 'select',
+    label_fr: 'Largeur de joint',
+    options: [
+      { value: 'auto', label_fr: 'Recommandé pour ce format' },
+      { value: '2', label_fr: '2 mm' },
+      { value: '3', label_fr: '3 mm' },
+      { value: '5', label_fr: '5 mm' },
+      { value: '8', label_fr: '8 mm' },
     ],
     required: true,
   },

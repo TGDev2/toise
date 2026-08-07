@@ -82,9 +82,13 @@ import { seedWorkTypes, SeedWorkType } from '../../projects/work-types.data';
  * pouvait le voir : un rendement faux produit une table plausible, seulement
  * fausse. L'encadrement vit dans `materials/consumption-bounds.data.ts`, dérivé
  * des fiches et **jamais de la valeur seedée** — une borne calée sur le seed
- * serait une tautologie. C'est ce mécanisme qui attrape le joint de carrelage
+ * serait une tautologie. C'est ce mécanisme qui a attrapé le joint de carrelage
  * à 0,25 kg/m², identique quels que soient le format du carreau et la largeur
- * de joint, quand sa propre fiche Cermix donne 0,1 à 0,2 kg/m².
+ * de joint, quand sa propre fiche Cermix donnait 0,1 à 0,2 kg/m² — corrigé par
+ * E1-5. Depuis, les encadrements des matériaux à `consumption_model` valent à
+ * la **géométrie par défaut** de l'ouvrage : le reste de la courbe est éprouvé
+ * cellule par cellule dans `estimations/tile-consumption.spec.ts`, une exigence
+ * plus forte qu'un intervalle.
  *
  * **I4 — le nombre de contenants est minimal à surplus égal.**
  * D'où il vient : E1-5. Le critère d'avant minimisait le surplus absolu et
@@ -103,12 +107,14 @@ import { seedWorkTypes, SeedWorkType } from '../../projects/work-types.data';
  * nulle part ailleurs que dans cet invariant.
  *
  * **I6 — une question requise change au moins une quantité.**
- * D'où il vient : `tile_format`. La question est seedée `required: true` sur
+ * D'où il vient : `tile_format`. La question était seedée `required: true` sur
  * `floor_tiling` (`work-types.data.ts`), affichée à l'écran, transportée par
  * les DTO, stockée dans `custom_params` — et lue par **aucun calcul**. On
- * demande à l'artisan un renseignement obligatoire dont sa liste d'achat ne
- * tiendra aucun compte. Cet invariant est violé aujourd'hui : c'est voulu, il
- * passera au vert le jour où le format du carreau pilotera le chiffrage.
+ * demandait à l'artisan un renseignement obligatoire dont sa liste d'achat ne
+ * tenait aucun compte. E1-5 l'a câblé, et cet invariant est passé au vert sans
+ * qu'on ait eu à le retoucher : c'est exactement ce qu'on attend d'un
+ * garde-fou. Il garde désormais les trois questions du carrelage sol — dont
+ * `joint_width_mm`, ajoutée par le même lot.
  *
  * Chaque violation nomme l'ouvrage, le matériau et les deux valeurs comparées,
  * et porte son numéro d'invariant en préfixe — `[I0]` étant réservé aux deux
@@ -182,6 +188,7 @@ export function materialsForWorkType(workTypeCode: string): MaterialInput[] {
         yield_per_unit: seedMaterial.yield_per_unit,
         applies_coats: seedMaterial.applies_coats ?? false,
         quantity_driver: seedMaterial.quantity_driver ?? 'work_surface',
+        consumption_model: seedMaterial.consumption_model ?? null,
         role: link.role,
         waste_factors: seedMaterial.waste_factors.map((wf) => ({
           pose_type: wf.pose_type,
@@ -857,7 +864,7 @@ export function renderCaseInventory(): string {
       `  poses : ${poses.join(', ')} · niveaux : ${SKILL_LEVELS.join(', ')} · ${poses.length * SKILL_LEVELS.length} cas`,
       ...materials.map(
         (mat) =>
-          `  - ${mat.name.padEnd(31)} ${(mat.role ?? '-').padEnd(12)} ${mat.unit.padEnd(5)} rendement ${mat.yield_per_unit} · couches ${mat.applies_coats ? 'oui' : 'non'} · assiette ${DRIVER_LABELS[mat.quantity_driver ?? 'work_surface']}`,
+          `  - ${mat.name.padEnd(31)} ${(mat.role ?? '-').padEnd(12)} ${mat.unit.padEnd(5)} rendement ${mat.yield_per_unit} · couches ${mat.applies_coats ? 'oui' : 'non'} · assiette ${DRIVER_LABELS[mat.quantity_driver ?? 'work_surface']} · loi ${mat.consumption_model ?? 'aucune'}`,
       ),
     ].join('\n');
   });
@@ -1266,9 +1273,8 @@ function skillMonotonyViolations(
  * quantité.
  *
  * Une question requise est une promesse faite à l'artisan : ce que vous
- * répondez sert à quelque chose. `tile_format` ne la tient pas — il est exigé,
- * affiché, stocké, et lu par aucun calcul. L'invariant échoue donc aujourd'hui,
- * et c'est le résultat attendu.
+ * répondez sert à quelque chose. `tile_format` ne la tenait pas — exigé,
+ * affiché, stocké, et lu par aucun calcul — jusqu'à E1-5.
  *
  * La comparaison balaie toutes les valeurs déclarées **et** tous les niveaux de
  * compétence énumérés : il suffit qu'un seul couple produise une différence
@@ -1436,34 +1442,22 @@ export function invariantViolations(
   return [...new Set(violations)];
 }
 
-/**
- * Les violations que le dépôt sait porter aujourd'hui, et qui sont énumérées
- * dans les suites plutôt que tolérées en bloc.
+/*
+ * `KNOWN_VIOLATIONS` / `splitKnownViolations` ont été **supprimés** par E1-5.
  *
- * Ce ne sont pas des exceptions : ce sont deux défauts ouverts, écrits en clair
- * là où ils gênent. Le jour où le format du carreau pilotera le chiffrage et où
- * le rendement du joint suivra la largeur de joint, les instantanés en ligne
- * des suites casseront et quelqu'un devra **supprimer** ces préfixes — pas les
- * mettre à jour. C'est la même convention que `extraContainers` : un fait
- * constaté se compte, il ne se tolère pas.
+ * Ils portaient trois défauts ouverts, énumérés en clair plutôt que tolérés en
+ * bloc : le joint de `floor_tiling` et celui de `wall_tiling` à 0,25 kg/m²
+ * constants, et `tile_format` requis sans effet sur aucune quantité. Le
+ * commentaire d'alors annonçait que le jour où le format du carreau pilotera le
+ * chiffrage, quelqu'un devrait **supprimer** ces préfixes plutôt que les mettre
+ * à jour. C'est fait, et la liste vidée ne laissait plus qu'une indirection
+ * qui ne filtrait rien : les suites affirment désormais que les six invariants
+ * passent, sans exception ni note de bas de page.
+ *
+ * Le jour où un défaut devra de nouveau être porté sciemment, le rétablir est
+ * l'affaire de six lignes — et ce sera un geste visible en revue, ce qui est
+ * exactement l'intention d'origine.
  */
-export const KNOWN_VIOLATIONS: string[] = [
-  '[I3] floor_tiling : Joint fin 1-6mm',
-  '[I3] wall_tiling : Joint fin 1-6mm',
-  '[I6] floor_tiling : question requise « tile_format »',
-];
-
-export function splitKnownViolations(violations: string[]): {
-  known: string[];
-  others: string[];
-} {
-  const isKnown = (violation: string) =>
-    KNOWN_VIOLATIONS.some((prefix) => violation.startsWith(prefix));
-  return {
-    known: violations.filter(isKnown),
-    others: violations.filter((violation) => !isKnown(violation)),
-  };
-}
 
 export interface MutualisationReport {
   /** Cas où mutualiser augmente le coût `S` du moteur. Doit rester vide. */

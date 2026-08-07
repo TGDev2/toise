@@ -41,6 +41,22 @@ export type MaterialQuantityDriver =
   | 'frame_runner'
   | 'frame_stud';
 
+/**
+ * E1-5 — loi qui fait varier la consommation d'un matériau avec la géométrie du
+ * carreau posé. Déclarée ici, aux côtés de `MaterialQuantityDriver` et pour la
+ * même raison : c'est une propriété du **matériau**, et c'est elle qui donne son
+ * sens à `yield_per_unit`. La loi elle-même, ses tables et ses sources vivent
+ * dans `estimations/tile-consumption.ts` ; l'entité n'en connaît que le nom.
+ *
+ *  - `tile_adhesive` : mortier-colle. La consommation suit le peigne, que le
+ *    format du carreau sélectionne, et le mode d'encollage, que le NF DTU 52.2
+ *    impose au-delà d'un seuil de surface.
+ *  - `tile_grout` : mortier de jointoiement. La consommation suit le volume de
+ *    joint sous un m², donc les dimensions du carreau, son épaisseur et la
+ *    largeur de joint saisie.
+ */
+export type TileConsumptionModel = 'tile_adhesive' | 'tile_grout';
+
 export enum MaterialCategory {
   PAINTING = 'painting',
   TILING = 'tiling',
@@ -105,6 +121,27 @@ export class MaterialCatalog {
    */
   @Column({ type: 'boolean', default: false })
   applies_coats!: boolean;
+
+  /**
+   * E1-5 — loi de consommation de ce matériau en fonction de la géométrie du
+   * carreau posé. `NULL` (le défaut) : la consommation ne dépend d'aucun
+   * carreau, `yield_per_unit` vaut tel quel — c'est le cas de tout le catalogue
+   * hors mortiers-colle et mortiers de jointoiement.
+   *
+   * Quand la colonne est renseignée, `yield_per_unit` est le rendement à la
+   * **géométrie de référence du modèle** (`estimations/tile-consumption.ts`,
+   * citée ligne à ligne dans `docs/SOURCES_CATALOGUE.md`), et le moteur en
+   * dérive le rendement effectif du carreau réellement choisi. Le catalogue
+   * garde donc le niveau, le moteur porte la forme : rien n'est décrit deux
+   * fois.
+   *
+   * Portée par le matériau et non par la liaison ouvrage → matériau, pour la
+   * même raison qu'`applies_coats` et que `quantity_driver` : ce champ décide
+   * de la signification de `yield_per_unit`, et deux lignes qui se
+   * contrediraient donneraient un chiffrage faux sans que rien ne le signale.
+   */
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  consumption_model!: TileConsumptionModel | null;
 
   @Column({ type: 'boolean', default: true })
   is_active!: boolean;

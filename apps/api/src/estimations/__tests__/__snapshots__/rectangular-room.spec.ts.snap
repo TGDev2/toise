@@ -102,7 +102,7 @@ surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Carrelage sol 45x45 cm          principal      20 % exact                 14.400 m2     10 9 × Boîte 1.5 m² + 1 × Boîte 1 m²
 Mortier-colle flexible (C2)     consommable    20 % exact                102.857 kg      5 5 × Sac 25 kg
-Joint fin 1-6mm                 consommable    20 % exact                  3.600 kg      1 1 × Sac 5 kg
+Joint fin 1-6mm                 consommable    20 % exact                  2.880 kg      1 1 × Sac 5 kg
 
 total : 3 lignes · 16 contenants
 `;
@@ -116,7 +116,7 @@ surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Carrelage sol 45x45 cm          principal      10 % défaut                13.200 m2      9 9 × Boîte 1.5 m²
 Mortier-colle flexible (C2)     consommable    10 % défaut                94.286 kg      4 4 × Sac 25 kg
-Joint fin 1-6mm                 consommable    10 % défaut                 3.300 kg      1 1 × Sac 5 kg
+Joint fin 1-6mm                 consommable    10 % défaut                 2.640 kg      1 1 × Sac 5 kg
 
 total : 3 lignes · 14 contenants
 `;
@@ -130,7 +130,7 @@ surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Carrelage sol 45x45 cm          principal      15 % exact                 13.800 m2     10 8 × Boîte 1.5 m² + 2 × Boîte 1 m²
 Mortier-colle flexible (C2)     consommable    15 % exact                 98.571 kg      4 4 × Sac 25 kg
-Joint fin 1-6mm                 consommable    15 % exact                  3.450 kg      1 1 × Sac 5 kg
+Joint fin 1-6mm                 consommable    15 % exact                  2.760 kg      1 1 × Sac 5 kg
 
 total : 3 lignes · 15 contenants
 `;
@@ -144,7 +144,7 @@ surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Carrelage sol 45x45 cm          principal      10 % exact                 13.200 m2      9 9 × Boîte 1.5 m²
 Mortier-colle flexible (C2)     consommable    10 % exact                 94.286 kg      4 4 × Sac 25 kg
-Joint fin 1-6mm                 consommable    10 % exact                  3.300 kg      1 1 × Sac 5 kg
+Joint fin 1-6mm                 consommable    10 % exact                  2.640 kg      1 1 × Sac 5 kg
 
 total : 3 lignes · 14 contenants
 `;
@@ -158,7 +158,7 @@ surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Carrelage sol 45x45 cm          principal      10 % défaut                13.200 m2      9 9 × Boîte 1.5 m²
 Mortier-colle flexible (C2)     consommable    10 % défaut                94.286 kg      4 4 × Sac 25 kg
-Joint fin 1-6mm                 consommable    10 % défaut                 3.300 kg      1 1 × Sac 5 kg
+Joint fin 1-6mm                 consommable    10 % défaut                 2.640 kg      1 1 × Sac 5 kg
 
 total : 3 lignes · 14 contenants
 `;
@@ -172,7 +172,7 @@ surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Carrelage sol 45x45 cm          principal       5 % exact                 12.600 m2      9 8 × Boîte 1.5 m² + 1 × Boîte 1 m²
 Mortier-colle flexible (C2)     consommable     5 % exact                 90.000 kg      4 4 × Sac 25 kg
-Joint fin 1-6mm                 consommable     5 % exact                  3.150 kg      1 1 × Sac 5 kg
+Joint fin 1-6mm                 consommable     5 % exact                  2.520 kg      1 1 × Sac 5 kg
 
 total : 3 lignes · 14 contenants
 `;
@@ -186,7 +186,7 @@ surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Carrelage sol 45x45 cm          principal      15 % exact                 13.800 m2     10 8 × Boîte 1.5 m² + 2 × Boîte 1 m²
 Mortier-colle flexible (C2)     consommable    15 % exact                 98.571 kg      4 4 × Sac 25 kg
-Joint fin 1-6mm                 consommable    15 % exact                  3.450 kg      1 1 × Sac 5 kg
+Joint fin 1-6mm                 consommable    15 % exact                  2.760 kg      1 1 × Sac 5 kg
 
 total : 3 lignes · 15 contenants
 `;
@@ -200,7 +200,7 @@ surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Carrelage sol 45x45 cm          principal      10 % défaut                13.200 m2      9 9 × Boîte 1.5 m²
 Mortier-colle flexible (C2)     consommable    10 % défaut                94.286 kg      4 4 × Sac 25 kg
-Joint fin 1-6mm                 consommable    10 % défaut                 3.300 kg      1 1 × Sac 5 kg
+Joint fin 1-6mm                 consommable    10 % défaut                 2.640 kg      1 1 × Sac 5 kg
 
 total : 3 lignes · 14 contenants
 `;
@@ -214,7 +214,7 @@ surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Carrelage sol 45x45 cm          principal      10 % exact                 13.200 m2      9 9 × Boîte 1.5 m²
 Mortier-colle flexible (C2)     consommable    10 % exact                 94.286 kg      4 4 × Sac 25 kg
-Joint fin 1-6mm                 consommable    10 % exact                  3.300 kg      1 1 × Sac 5 kg
+Joint fin 1-6mm                 consommable    10 % exact                  2.640 kg      1 1 × Sac 5 kg
 
 total : 3 lignes · 14 contenants
 `;
@@ -429,7 +429,7 @@ surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Faïence murale 25x40 cm         principal      20 % exact                 39.968 m2     40 40 × Boîte 1 m²
 Colle en pâte prête à l'emploi  consommable    20 % exact                181.673 kg     13 12 × Seau 15 kg + 1 × Seau 7 kg
-Joint fin 1-6mm                 consommable    20 % exact                  9.992 kg      1 1 × Sac 10 kg
+Joint fin 1-6mm                 consommable    20 % exact                  9.093 kg      1 1 × Sac 10 kg
 
 total : 3 lignes · 54 contenants
 `;
@@ -443,7 +443,7 @@ surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Faïence murale 25x40 cm         principal      10 % défaut                36.637 m2     37 37 × Boîte 1 m²
 Colle en pâte prête à l'emploi  consommable    10 % défaut               166.534 kg     12 11 × Seau 15 kg + 1 × Seau 7 kg
-Joint fin 1-6mm                 consommable    10 % défaut                 9.159 kg      1 1 × Sac 10 kg
+Joint fin 1-6mm                 consommable    10 % défaut                 8.335 kg      1 1 × Sac 10 kg
 
 total : 3 lignes · 50 contenants
 `;
@@ -457,7 +457,7 @@ surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Faïence murale 25x40 cm         principal      15 % exact                 38.303 m2     39 39 × Boîte 1 m²
 Colle en pâte prête à l'emploi  consommable    15 % exact                174.104 kg     12 12 × Seau 15 kg
-Joint fin 1-6mm                 consommable    15 % exact                  9.576 kg      1 1 × Sac 10 kg
+Joint fin 1-6mm                 consommable    15 % exact                  8.714 kg      1 1 × Sac 10 kg
 
 total : 3 lignes · 52 contenants
 `;
@@ -471,7 +471,7 @@ surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Faïence murale 25x40 cm         principal      10 % exact                 36.637 m2     37 37 × Boîte 1 m²
 Colle en pâte prête à l'emploi  consommable    10 % exact                166.534 kg     12 11 × Seau 15 kg + 1 × Seau 7 kg
-Joint fin 1-6mm                 consommable    10 % exact                  9.159 kg      1 1 × Sac 10 kg
+Joint fin 1-6mm                 consommable    10 % exact                  8.335 kg      1 1 × Sac 10 kg
 
 total : 3 lignes · 50 contenants
 `;
@@ -485,7 +485,7 @@ surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Faïence murale 25x40 cm         principal      10 % défaut                36.637 m2     37 37 × Boîte 1 m²
 Colle en pâte prête à l'emploi  consommable    10 % défaut               166.534 kg     12 11 × Seau 15 kg + 1 × Seau 7 kg
-Joint fin 1-6mm                 consommable    10 % défaut                 9.159 kg      1 1 × Sac 10 kg
+Joint fin 1-6mm                 consommable    10 % défaut                 8.335 kg      1 1 × Sac 10 kg
 
 total : 3 lignes · 50 contenants
 `;
@@ -499,7 +499,7 @@ surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Faïence murale 25x40 cm         principal       5 % exact                 34.972 m2     35 35 × Boîte 1 m²
 Colle en pâte prête à l'emploi  consommable     5 % exact                158.964 kg     11 11 × Seau 15 kg
-Joint fin 1-6mm                 consommable     5 % exact                  8.743 kg      1 1 × Sac 10 kg
+Joint fin 1-6mm                 consommable     5 % exact                  7.956 kg      1 1 × Sac 10 kg
 
 total : 3 lignes · 47 contenants
 `;
@@ -513,7 +513,7 @@ surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Faïence murale 25x40 cm         principal      15 % exact                 38.303 m2     39 39 × Boîte 1 m²
 Colle en pâte prête à l'emploi  consommable    15 % exact                174.104 kg     12 12 × Seau 15 kg
-Joint fin 1-6mm                 consommable    15 % exact                  9.576 kg      1 1 × Sac 10 kg
+Joint fin 1-6mm                 consommable    15 % exact                  8.714 kg      1 1 × Sac 10 kg
 
 total : 3 lignes · 52 contenants
 `;
@@ -527,7 +527,7 @@ surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Faïence murale 25x40 cm         principal      10 % défaut                36.637 m2     37 37 × Boîte 1 m²
 Colle en pâte prête à l'emploi  consommable    10 % défaut               166.534 kg     12 11 × Seau 15 kg + 1 × Seau 7 kg
-Joint fin 1-6mm                 consommable    10 % défaut                 9.159 kg      1 1 × Sac 10 kg
+Joint fin 1-6mm                 consommable    10 % défaut                 8.335 kg      1 1 × Sac 10 kg
 
 total : 3 lignes · 50 contenants
 `;
@@ -541,7 +541,7 @@ surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Faïence murale 25x40 cm         principal      10 % exact                 36.637 m2     37 37 × Boîte 1 m²
 Colle en pâte prête à l'emploi  consommable    10 % exact                166.534 kg     12 11 × Seau 15 kg + 1 × Seau 7 kg
-Joint fin 1-6mm                 consommable    10 % exact                  9.159 kg      1 1 × Sac 10 kg
+Joint fin 1-6mm                 consommable    10 % exact                  8.335 kg      1 1 × Sac 10 kg
 
 total : 3 lignes · 50 contenants
 `;

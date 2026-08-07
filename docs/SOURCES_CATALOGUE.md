@@ -45,6 +45,14 @@ pas bougé.
   colle impose le **double encollage** pour ce format, la consommation retenue
   l'inclut. `wall_tiling` : faïence 25 × 40 cm, mur intérieur, double encollage
   également (fiche).
+  **E1-5 — ces deux formats ne sont plus des hypothèses figées, ils sont des
+  défauts.** `floor_tiling` demande désormais le format du carreau et la
+  largeur de joint, et le moteur en dérive la consommation de colle et de joint
+  (`estimations/tile-consumption.ts`). Les deux valeurs ci-dessus restent ce
+  qu'on retient quand la question n'est pas posée — `wall_tiling` — ou pas
+  répondue, et ce sont les géométries auxquelles les encadrements de la section
+  « Encadrements de consommation » sont énoncés. Cf. la section
+  « Consommation pilotée par la géométrie du carreau (E1-5) » plus bas.
 - `drywall` : cloison Placostil® 72/48, **simple peau**, montants simples,
   hauteur ≤ 2,6 m (fiche solution Placo® ; conforme à
   `docs/MATERIAUX_OUVRAGES.md` §6). Les ratios de la fiche sont « par m² de
@@ -88,9 +96,12 @@ pas bougé.
 | Faïence murale 25x40 cm | tiling | 1 | surface d'ouvrage | Vendu et posé au m² : rendement définitionnel | conserver (définitionnel) | — | 2026-08-03 |
 | Carrelage métro 7.5x15 cm | tiling | 1 | surface d'ouvrage | Vendu et posé au m² : rendement définitionnel | conserver (définitionnel) | — | 2026-08-03 |
 | Carrelage mural 20x40 cm | tiling | 1 | surface d'ouvrage | Vendu et posé au m² : rendement définitionnel | conserver (définitionnel) | — | 2026-08-03 |
-| Mortier-colle flexible (C2) | tiling | 0.14 | surface d'ouvrage | Cermix CERMIFLEX (C2S1ET), sol intérieur, carreau 1 200-2 200 cm² : « 7 (U9) » kg/m² en double encollage — le 45×45 (2 025 cm²) tombe dans cette colonne | corriger (0.22 → 0.14) | https://www.cermix.com/wp-content/uploads/2020/02/FT_CERMIFLEX.pdf | 2026-08-03 |
+| Mortier-colle flexible (C2) | tiling | 0.14 | surface d'ouvrage | Cermix CERMIPLUS 2.0 (C2, « CONFORME À LA NORME EN 12004 »), sol intérieur, carreau 1 200-2 200 cm² : « 7 (U9) » kg/m² en double encollage — le 45×45 (2 025 cm²) tombe dans cette colonne | conserver (E1-5 : rendement à la géométrie de référence) | https://www.cermix.com/wp-content/uploads/2020/02/FT_CERMIPLUS-2.0_V2.pdf | 2026-08-07 |
+| Mortier-colle standard (C1) | tiling | 0.14 | surface d'ouvrage | Cermix CERMICOL EXTRA (**C1 E**), sol intérieur, carreau 1 200-2 200 cm² : « 7 (U9) » — table identique à celle des C2, la classe de colle ne change pas la consommation | corriger (0.25 → 0.14) | https://www.cermix.com/wp-content/uploads/2020/02/FT_CERMICOL_EXTRA.pdf | 2026-08-07 |
+| Mortier-colle rapide (C2F) | tiling | 0.14 | surface d'ouvrage | Cermix CERMIPLUS RAPID, sol intérieur, carreau 1 200-2 200 cm² : « 7 (U9) » — table identique à CERMIPLUS 2.0 | corriger (0.25 → 0.14) | https://www.cermix.com/wp-content/uploads/2020/02/FT_CERMIPLUS_RAPID.pdf | 2026-08-07 |
+| Mortier-colle grand format (C2S1) | tiling | 0.14 | surface d'ouvrage | Cermix CERMIFLEX (**C2S1 ET**), sol intérieur, carreau 1 200-2 200 cm² : « 7 (U9) » ; 2 200-3 600 cm² : « 8 (E10) » — c'est le format, pas la classe, qui fait la surconsommation | corriger (0.15 → 0.14) | https://www.cermix.com/wp-content/uploads/2020/02/FT_CERMIFLEX.pdf | 2026-08-07 |
 | Colle en pâte prête à l'emploi | tiling | 0.22 | surface d'ouvrage | Cermix CERMIFIX (D2ET), mur intérieur, carreau 500-1 200 cm² : « 4,5 (U6) » kg/m² en double encollage — la faïence 25×40 (1 000 cm²) tombe dans cette colonne | corriger (0.4 → 0.22) | https://www.cermix.com/wp-content/uploads/2020/02/FT_CERMIFIX.pdf | 2026-08-03 |
-| Joint fin 1-6mm | tiling | 4 | surface d'ouvrage | Cermix CERMIJOINT COLOR (1-6 mm), carreau 45×45, joint 2-3 mm : 0,1-0,2 kg/m² ; PRB JOINT FR : « de 250 à 900 g/m² » — 0,25 kg/m² retenu, prudent | corriger (2.5 → 4) | https://www.cermix.com/wp-content/uploads/2020/02/FT_CERMIJOINT_COLOR.pdf | 2026-08-03 |
+| Joint fin 1-6mm | tiling | 5 | surface d'ouvrage | Cermix CERMIJOINT COLOR (CG2WA, 1-6 mm), cellule « carreau 45×45, joint 3 mm » : 0,2 kg/m² — et la formule de la même fiche, « 0,17 × ép(mm) × largeur de joint(mm) × (L + l)/(L × l) », vaut 0,204 kg/m² à cette géométrie avec une épaisseur de 9 mm | corriger (4 → 5) | https://www.cermix.com/wp-content/uploads/2020/02/FT_CERMIJOINT_COLOR.pdf | 2026-08-07 |
 | Joint souple silicone | tiling | — | surface d'ouvrage | Bostik S300 Bain & Cuisine : « 12 m environ de cordon de diamètre 5 mm » par cartouche 300 ml — grandeur linéaire, aucun fabricant ne publie de rendement en m² | retirer (grandeur fiche linéaire) | https://www.bostik.com/files/live/sites/shared_bostik/files/documents-brochures/France/Documents/TDS/FT%20BOSTIK_S300%20BAIN%20CUISINE%20CERAMIQUE.pdf | 2026-08-03 |
 | Croisillons 2mm (x200) | tiling | — | surface d'ouvrage | Sachet de 200 confirmé (Raimondi) mais aucune table de consommation par m² chez Rubi, Raimondi ni Taliaplast | retirer (non sourçable) | — | 2026-08-03 |
 | Croisillons 3mm (x200) | tiling | — | surface d'ouvrage | Idem croisillons 2 mm | retirer (non sourçable) | — | 2026-08-03 |
@@ -145,12 +156,190 @@ par les fabricants sur l'hypothèse d'ouvrage écrite plus haut, jamais de la
 valeur seedée ± une tolérance.** Une borne calée sur le seed ne peut rien
 attraper — elle vérifie que le catalogue est égal à lui-même.
 
-Un encadrement déjà violé, et assumé comme tel : `Joint fin 1-6mm` consomme
-0,25 kg/m² quels que soient le format du carreau et la largeur de joint, quand
-la ligne du registre ci-dessus cite elle-même « carreau 45×45, joint 2-3 mm :
-0,1-0,2 kg/m² » et note que 0,25 a été « retenu, prudent ». La violation est
-énumérée dans les suites du harnais, à supprimer le jour où le rendement du
-joint suivra la géométrie de la pose.
+**E1-5 — l'encadrement violé a été refermé, et la portée des bornes a changé.**
+`Joint fin 1-6mm` consommait 0,25 kg/m² quels que soient le format du carreau
+et la largeur de joint, quand la ligne du registre citait elle-même
+« 0,1-0,2 kg/m² ». Le rendement suit désormais la géométrie, et les deux
+violations `[I3]` du harnais ont été supprimées, pas mises à jour.
+
+En contrepartie, un matériau qui porte une loi de consommation
+(`materials_catalog.consumption_model`) n'a plus *une* consommation mais une
+courbe : la même colle va de 4,5 à 8 kg/m² selon le format, et le même joint
+varie d'un facteur 6. Un intervalle qui contiendrait toute la courbe ne
+prouverait plus rien. Les bornes de ces matériaux encadrent donc la
+consommation **à la géométrie par défaut de l'ouvrage** — celle qu'obtient un
+utilisateur qui répond « Recommandé pour ce format ». Le reste de la courbe est
+éprouvé cellule par cellule contre les tables fabricant dans
+`estimations/tile-consumption.spec.ts`, ce qui est plus exigeant qu'un
+intervalle.
+
+## Consommation pilotée par la géométrie du carreau (E1-5)
+
+Le format du carreau était demandé, obligatoire, stocké — et lu par aucun
+calcul. Il pilote désormais la colle et le joint. Deux lois, portées par
+`materials_catalog.consumption_model`, dont les tables et les citations vivent
+dans `estimations/tile-consumption.ts`.
+
+**Ce que devient `yield_per_unit` pour ces matériaux.** Il cesse d'être « le
+rendement » pour devenir « le rendement **à la géométrie de référence du
+modèle** ». Le catalogue garde le niveau, le moteur porte la forme :
+
+    rendement effectif = yield_per_unit / facteur(géométrie)
+
+Le facteur vaut 1 à la référence — un 45 × 45 posé au sol avec son joint
+recommandé chiffre donc exactement ce que le registre ci-dessus annonce.
+
+| Modèle | Géométrie de référence | Consommation à la référence |
+| --- | --- | --- |
+| `tile_adhesive` | 45 × 45 cm, sol intérieur, double encollage | 7 kg/m² (seedé 0,14 → 7,14) |
+| `tile_grout` | 45 × 45 cm, épaisseur 9 mm, joint 3 mm | 0,2 kg/m² (seedé 5) |
+
+### Double encollage : seuil retenu et source
+
+Le mode d'encollage **n'est pas demandé à l'utilisateur** : c'est une
+obligation de mise en œuvre, pas une préférence. Il est déduit du format et de
+la destination.
+
+| Destination | Double encollage obligatoire |
+| --- | --- |
+| Mur intérieur | **S ≥ 500 cm²**, seuil sec |
+| Sol intérieur | **S > 1 200 cm²** quelle que soit la porosité ; **500 ≤ S ≤ 1 200 cm²** si porosité < 0,5 % |
+| Extérieur | S > 50 cm² — hors périmètre V1, aucun ouvrage ne pose en extérieur |
+
+**Source** : NF DTU 52.2 (juin 2022), « Pose collée des revêtements céramiques
+et assimilés — Pierres naturelles ». **Le texte intégral est payant et n'a pas
+été lu** ([boutique CSTB](https://boutique.cstb.fr/Detail/Documents-Techniques-Unifies/DTU-NF-DTU/52-Revetements-durs/NF-DTU-52-2-Pose-collee-des-revetements-ceramiques)).
+Les seuils viennent du mémento « Les points-clés — LA RÉGLEMENTATION DTU 52.2 »,
+retrouvé **identique sur deux hôtes indépendants**, ce qui écarte l'erreur de
+transcription d'un seul site :
+<https://checkmy-house.fr/wp-content/uploads/2021/08/DTU-52.2.pdf> et
+<https://carrelage-au-carre.com/pdf/extraits-dtu-52-2.pdf> (consultés le
+2026-08-07). Verbatim, murs intérieurs : « Double encollage obligatoire à
+partir de 500 cm², que ce soit avec un mortier-colle (jusqu'à 3 600 cm²) ou un
+adhésif (jusqu'à 2 200 cm²). » Sols : « En intérieur au-delà de 1 200 cm²
+quelle que soit la porosité. En intérieur entre 500 et 1 200 cm² uniquement si
+la porosité < 0,5 (ou < 2,0 pour la pierre naturelle). »
+
+**Écarté explicitement** : le seuil de 900 cm² / 30 × 30 cm que répètent
+plusieurs pages marchandes n'est corroboré par aucune des deux copies du
+mémento, et les pages qui l'avancent se contredisent entre elles.
+
+**Hypothèse assumée** : le catalogue ne porte pas la porosité de ses carreaux.
+Les carrelages sol seedés sont du grès cérame, dont la porosité est couramment
+inférieure à 0,5 % : la tranche 500-1 200 cm² bascule donc en double encollage.
+`LOW_POROSITY_ASSUMED` rend l'hypothèse lisible dans le code, et il n'y aura
+qu'un prédicat à brancher le jour où la porosité sera saisie.
+
+**Surconsommation du double encollage : +1,5 kg/m², additive et non
+multiplicative.** Note (1) des fiches Cermix : « Double encollage si carreaux à
+faible porosité (DTU 52.2) : soit une consommation supplémentaire de 1 à
+1.5 kg/m² ». Les fabricants qui publient deux colonnes distinctes donnent le
+même écart : Weber webercol flex +1,5 exactement sur ses trois lignes
+(3 → 4,5 ; 4 → 5,5 ; 5 → 6,5), Mapei KERAFLEX +1,5, PRB +1,5 à +2,5. Un
+facteur multiplicatif constant calé sur le petit format (× 1,5) surestimerait
+la colle de 15 à 20 % au-delà de 1 200 cm².
+
+### Colle : la classe ne change pas la consommation, le format oui
+
+C'est le résultat qui décide du volet catalogue. **Quatre fiches Cermix de
+classes différentes publient la même table** de consommation en sol intérieur,
+consistance normale :
+
+| Produit | Classe | ≤ 300 | 300-500 | 500-1 200 | 1 200-2 200 | 2 200-3 600 |
+| --- | --- | --- | --- | --- | --- | --- |
+| CERMICOL EXTRA | C1 E | 3,5 (U6) | 4,5 (U9) | 4,5 (U9)¹ | 7 (U9) | — |
+| CERMIPLUS 2.0 | C2 | 3,5 | 4,5 | 4,5¹ | 7 | 8 (E10) |
+| CERMIPLUS RAPID | C2 rapide | 3,5 | 4,5 | 4,5¹ | 7 | 8 (E10) |
+| CERMIFLEX | C2S1 ET | 3,5 | 4,5 | 4,5¹ | 7 | 8 (E10) |
+
+La consommation dépend du **peigne**, que le format sélectionne, et du mode
+d'encollage. Les quatre mortiers-colle seedés portent donc le même rendement de
+référence, `0,14`, et ce qui les sépare à l'usage est le format sur lequel on
+les pose :
+
+| Format | Surface | Encollage | Colle |
+| --- | --- | --- | --- |
+| 20 × 20 | 400 cm² | simple | 4,5 kg/m² |
+| 30 × 30 | 900 cm² | double (porosité) | 6,0 kg/m² |
+| 45 × 45 | 2 025 cm² | double | 7,0 kg/m² |
+| 30 × 60 | 1 800 cm² | double | 7,0 kg/m² |
+| 60 × 60 | 3 600 cm² | double | 8,0 kg/m² |
+
+**C'est la correction de l'inversion du « grand format ».** Le C2S1 était seedé
+à `0,15`, soit 6,67 kg/m², donc **moins** que le C2 à `0,14` (7,14) : un
+mortier grand format qui consommait moins que le standard. Aucune fiche lue ne
+fait dépendre la consommation de la classe de colle — l'inversion ne se corrige
+donc pas en faisant consommer plus le C2S1 à format égal, mais en exprimant
+toute la famille à une référence commune et en laissant le format faire son
+travail. Sur un 60 × 60, le grand format demande bien 8 kg/m² contre 7 pour un
+45 × 45.
+
+### Joint : la formule fabricant
+
+    consommation (kg/m²) = ((L + l) / (L × l)) × e × j × d
+
+L, l, e (épaisseur du carreau) et j (largeur de joint) en millimètres, `d` la
+densité apparente du mortier de jointoiement. C'est la formule que **neuf
+fabricants publient à l'identique**. Cermix l'imprime sur chaque fiche sous la
+forme « 0,17 × ép(mm) × largeur de joint(mm) × (L + l)/(L × l) » avec L et l en
+centimètres — algébriquement la même, avec `d = 1,7`. Bostik publie la même en
+nommant explicitement le coefficient « D / 10 », ce qui confirme la lecture.
+
+**La densité n'apparaît pas dans le moteur** : elle se simplifie dans le
+rapport de deux géométries. C'est elle, et elle seule, qui distingue un joint
+fin d'un joint époxy — donc elle appartient au rendement catalogue du produit,
+pas à la loi de forme. C'est ce qui permet à une seule loi de servir toute la
+famille sans qu'aucun produit n'ait à déclarer sa densité au moteur.
+
+**Vérification de la formule contre la table de la même fiche.** Les 16
+cellules publiées par CERMIJOINT COLOR de 20 × 20 à 60 × 60 sont reproduites
+exactement — **à une épaisseur de 7 mm**, constatée et non supposée : c'est la
+seule valeur de la plage « 7-10 mm » que la fiche annonce qui les reproduise
+toutes. La table est donc une illustration au bas de la plage, pas un carreau
+réel. `estimations/tile-consumption.spec.ts` fige cette vérification.
+
+### Format → largeur de joint et épaisseur : ce qui est sourcé, ce qui ne l'est pas
+
+| Format | Épaisseur retenue | Joint recommandé |
+| --- | --- | --- |
+| 20 × 20 | 8 mm | 5 mm |
+| 30 × 30 | 8 mm | 3 mm |
+| 45 × 45 | 9 mm | 3 mm |
+| 30 × 60 | 9 mm | 3 mm |
+| 60 × 60 | 10 mm | 2 mm |
+| 25 × 40 (faïence murale) | 7 mm | 3 mm |
+
+**L'épaisseur est une interpolation à l'intérieur d'une plage publiée, pas un
+chiffre de fiche.** CERMIJOINT COLOR annonce « 7-10 mm » pour tous les formats
+de 20 × 20 à 100 × 100 sans les distinguer ; la progression retenue reste dans
+cette plage et suit le fait qu'un grand format se fait plus épais. C'est le
+terme le moins déterminant : il varie de 30 % quand la largeur de joint varie
+de 300 %.
+
+**La largeur de joint recommandée est un défaut de catalogue, au-dessus des
+minimums normatifs.** Le NF DTU 52.2 ne donne que des planchers, lus dans le
+même mémento : sol intérieur, carreaux NF UPEC « joints ≥ 2 mm » ; mur
+intérieur, carreaux pressés à chants rectifiés « 2 mm minimum », non rectifiés
+« 2 mm pour les formats ≤ 500 cm² et 3 mm pour les formats > 500 cm² ». Au-delà
+de ces planchers, le défaut retenu élargit le joint quand le format rétrécit,
+parce qu'un petit format multiplie les lignes de joint et pardonne moins un
+joint fin. **Ce n'est pas une prescription** : `joint_width_mm` est une question
+posée à l'écran, et la réponse de l'artisan prime toujours sur la
+recommandation.
+
+### Ce que ce lot n'a pas sourcé
+
+`Joint large 5-20mm` (1 kg/m²) et `Joint époxy` (1,25 kg/m²) restent **non
+marqués et inchangés**. Ils ne sont liés à aucun ouvrage V1, donc chiffrés par
+personne, et leur coefficient de densité n'a pas pu être lu sur une fiche
+fabricant : les URL Cermix correspondantes (CERMIJOINT TX / PRO LARGE pour les
+joints larges, EPOSOL 2.0 / EPOGLASS 2.0 pour l'époxy) répondent 404 sur le
+motif d'URL qui sert les autres fiches de la marque. Les marquer sans avoir lu
+leur référence ferait dire à leur rendement une géométrie qui n'est pas la
+sienne — c'est exactement le défaut que ce lot corrige. Ordres de grandeur
+relevés en seconde main, à confirmer avant usage : densité 1,8 pour un joint
+large cimentaire, 1,6 pour un époxy (consensus resserré, 1,55-1,63 chez sept
+fabricants).
 
 ## Facteurs de perte : statut
 

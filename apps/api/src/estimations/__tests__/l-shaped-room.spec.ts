@@ -6,7 +6,6 @@ import {
   invariantViolations,
   L_SHAPED_ROOM,
   renderRoomCase,
-  splitKnownViolations,
 } from './seeded-catalog-harness';
 
 /**
@@ -38,23 +37,7 @@ describe('Harnais — séjour en L (400 × 300 + 200 × 150), hauteur 250', () =
    * un encadrement de consommation ou une minimalité de contenants qui ne
    * tiendrait que sur 12 m² et 33,307 m² ne tiendrait rien du tout.
    */
-  describe('invariants métier', () => {
-    const { known, others } = splitKnownViolations(
-      invariantViolations(engine, L_SHAPED_ROOM),
-    );
-
-    it('n’en viole aucun, hors les deux défauts ouverts', () => {
-      expect(others).toEqual([]);
-    });
-
-    it('énumère les deux défauts ouverts, et eux seuls', () => {
-      expect(known).toMatchInlineSnapshot(`
-       [
-         "[I3] floor_tiling : Joint fin 1-6mm — 0.250 kg/m² consommés, encadrement 0.100 kg/m² à 0.200 kg/m² (Cermix CERMIJOINT COLOR (1-6 mm), carreau 45×45, joint 2-3 mm : 0,1-0,2 kg/m²)",
-         "[I3] wall_tiling : Joint fin 1-6mm — 0.250 kg/m² consommés, encadrement 0.100 kg/m² à 0.200 kg/m² (Cermix CERMIJOINT COLOR (1-6 mm), carreau 45×45, joint 2-3 mm : 0,1-0,2 kg/m²)",
-         "[I6] floor_tiling : question requise « tile_format » — les 5 valeurs (20x20, 30x30, 45x45, 60x60, 30x60) donnent les mêmes quantités à tous les niveaux : Carrelage sol 45x45 cm 16.500 m2, Mortier-colle flexible (C2) 117.857 kg, Joint fin 1-6mm 4.125 kg",
-       ]
-      `);
-    });
+  it('ne viole aucun invariant métier', () => {
+    expect(invariantViolations(engine, L_SHAPED_ROOM)).toEqual([]);
   });
 });

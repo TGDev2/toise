@@ -111,8 +111,27 @@ A = accessoire. Les lignes « optionnel » ne sont pas chiffrées.
 | 2 | Mortier-colle flexible (C2) | C | obligatoire | Le bon défaut sur supports existants |
 | 3 | Joint fin 1-6mm | C | obligatoire | Largeur courante en 45x45 intérieur |
 | 4 | Carrelage sol 30x30 cm | P | optionnel | Ancien défaut, conservé comme variante petit format |
-| 5 | Carrelage sol 60x60 cm | P | optionnel | Grand format — appellerait colle C2S1 et nivelage (limite documentée) |
+| 5 | Carrelage sol 60x60 cm | P | optionnel | Grand format — le nivelage reste une limite documentée, la surconsommation de colle non (E1-5) |
 | 6 | Carrelage imitation bois 20x120 cm | P | optionnel | Grand format — même réserve que le 60x60 |
+
+**E1-5 — le format du carreau et la largeur de joint pilotent la colle et le
+joint.** Cet ouvrage porte trois questions contextuelles requises :
+`tile_format`, `joint_width_mm` et `laying_pattern`. Le format sélectionne le
+peigne, et le NF DTU 52.2 déclenche le double encollage au-delà de 1 200 cm²
+(500 cm² pour un carreau peu poreux) : la colle passe de 4,5 kg/m² en 20 × 20 à
+8 kg/m² en 60 × 60. La largeur de joint, elle, fait varier le joint d'un
+facteur 6 entre un 20 × 20 à 5 mm et un 60 × 60 à 2 mm. Le mode d'encollage
+n'est **pas** demandé : c'est une obligation de mise en œuvre, déduite du format
+et de la destination. Seuils, tables et sources :
+`docs/SOURCES_CATALOGUE.md`, section « Consommation pilotée par la géométrie du
+carreau (E1-5) ».
+
+La réserve « le 60 × 60 appellerait une colle C2S1 » n'en est plus tout à fait
+une : les quatre mortiers du catalogue consomment la même chose à format égal —
+aucune fiche fabricant lue ne lie la consommation à la classe de colle — et la
+surconsommation du grand format est désormais chiffrée quel que soit le mortier
+retenu. Ce qui reste une limite documentée, c'est le **nivelage** exigé par les
+grands formats, absent du chiffrage.
 
 **Écartés qu'on pourrait croire nécessaires** :
 
@@ -137,6 +156,15 @@ A = accessoire. Les lignes « optionnel » ne sont pas chiffrées.
 | 3 | Joint fin 1-6mm | C | obligatoire | Joints fins muraux |
 | 4 | Carrelage métro 7.5x15 cm | P | optionnel | Même colle |
 | 5 | Carrelage mural 20x40 cm | P | optionnel | — |
+
+**E1-5 — cet ouvrage ne demande toujours aucune question**, et c'est assumé.
+Le moteur retient pour lui la faïence 25 × 40 cm, l'hypothèse déjà écrite au
+registre depuis E1-7, et en dérive la consommation de joint (0,228 kg/m² au
+lieu des 0,25 kg/m² constants d'avant). La colle en pâte, elle, ne bouge pas :
+c'est un adhésif D2 dont la fiche est distincte de celle des mortiers, et sans
+question de format sa valeur ne pourrait de toute façon pas varier. Ajouter le
+format au carrelage mural relèverait d'une mise à jour de
+`docs/BACKLOG_V1.md`.
 
 **Écartés qu'on pourrait croire nécessaires** :
 

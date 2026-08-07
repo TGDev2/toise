@@ -8,7 +8,10 @@
  * importe ce module : il n'existe qu'une seule source de vérité.
  */
 
-import { MaterialQuantityDriver } from './entities/material-catalog.entity';
+import {
+  MaterialQuantityDriver,
+  TileConsumptionModel,
+} from './entities/material-catalog.entity';
 
 export interface SeedMaterial {
   name: string;
@@ -35,6 +38,20 @@ export interface SeedMaterial {
    * que soit le nombre de couches de finition choisi.
    */
   applies_coats?: boolean;
+  /**
+   * E1-5 — loi de consommation en fonction de la géométrie du carreau posé.
+   * Absent = aucune, `yield_per_unit` vaut tel quel.
+   *
+   * Quand elle est présente, `yield_per_unit` cesse d'être « le rendement » pour
+   * devenir « le rendement **à la géométrie de référence du modèle** »
+   * (`estimations/tile-consumption.ts`) : 45 × 45 cm au sol en double encollage
+   * pour `tile_adhesive`, 45 × 45 cm d'épaisseur 9 mm à joint de 3 mm pour
+   * `tile_grout`. Deux valeurs de ce champ ne sont donc comparables entre elles
+   * que parce qu'elles sont exprimées à la même référence — c'est ce qui rend
+   * lisible que les quatre mortiers-colle consomment la même chose à format
+   * égal, et que ce qui les distingue est le format sur lequel on les pose.
+   */
+  consumption_model?: TileConsumptionModel;
   packagings: { label: string; quantity_per_unit: number; unit: string }[];
   waste_factors: {
     pose_type: string;
@@ -734,11 +751,26 @@ export const tilingMaterials: SeedMaterial[] = [
     waste_factors: tileWaste(),
   },
   // Adhesives
+  //
+  // E1-5 — les quatre mortiers portent le **même** rendement, et ce n'est pas
+  // un oubli : les tables de consommation de Cermix sont identiques d'une
+  // classe à l'autre (CERMICOL EXTRA C1 E, CERMIPLUS 2.0 C2, CERMIPLUS RAPID,
+  // CERMIFLEX C2S1 ET). Aucune fiche lue ne fait dépendre la consommation de la
+  // classe de colle : elle dépend du peigne, que le format du carreau
+  // sélectionne. 0,14 = 7,14 kg/m², la cellule « 1 200 < S ≤ 2 200 cm², sol
+  // intérieur : 7 (U9) » où tombe le 45 × 45 de référence, double encollage
+  // imposé par le NF DTU 52.2 au-delà de 1 200 cm².
+  //
+  // C'est ce qui corrige l'inversion du « grand format » : il ne consommait pas
+  // moins que le C2 parce qu'il est meilleur, il était simplement mal seedé. Ce
+  // qui le fait consommer plus, c'est le 60 × 60 sur lequel on le pose — 8 kg/m²
+  // (E10) contre 7 — et cela, c'est le moteur qui le calcule désormais.
   {
     name: 'Mortier-colle standard (C1)',
     category: 'tiling',
     unit: 'kg',
-    yield_per_unit: 0.25,
+    yield_per_unit: 0.14,
+    consumption_model: 'tile_adhesive',
     packagings: [{ label: 'Sac 25 kg', quantity_per_unit: 25, unit: 'kg' }],
     waste_factors: tileWaste(),
   },
@@ -747,6 +779,7 @@ export const tilingMaterials: SeedMaterial[] = [
     category: 'tiling',
     unit: 'kg',
     yield_per_unit: 0.14,
+    consumption_model: 'tile_adhesive',
     packagings: [{ label: 'Sac 25 kg', quantity_per_unit: 25, unit: 'kg' }],
     waste_factors: tileWaste(),
   },
@@ -754,7 +787,8 @@ export const tilingMaterials: SeedMaterial[] = [
     name: 'Mortier-colle rapide (C2F)',
     category: 'tiling',
     unit: 'kg',
-    yield_per_unit: 0.25,
+    yield_per_unit: 0.14,
+    consumption_model: 'tile_adhesive',
     packagings: [{ label: 'Sac 25 kg', quantity_per_unit: 25, unit: 'kg' }],
     waste_factors: tileWaste(),
   },
@@ -762,7 +796,8 @@ export const tilingMaterials: SeedMaterial[] = [
     name: 'Mortier-colle grand format (C2S1)',
     category: 'tiling',
     unit: 'kg',
-    yield_per_unit: 0.15,
+    yield_per_unit: 0.14,
+    consumption_model: 'tile_adhesive',
     packagings: [{ label: 'Sac 25 kg', quantity_per_unit: 25, unit: 'kg' }],
     waste_factors: tileWaste(),
   },
@@ -778,11 +813,25 @@ export const tilingMaterials: SeedMaterial[] = [
     waste_factors: tileWaste(),
   },
   // Grout
+  //
+  // E1-5 — 5 = 0,200 kg/m², la cellule « 45 × 45 cm, joint 3 mm » de la table
+  // CERMIJOINT COLOR, qui est aussi la géométrie de référence du modèle. La
+  // constante de 0,25 kg/m² qui tenait lieu de rendement jusqu'ici ne
+  // correspondait à aucune ligne de fiche, et surtout ne bougeait ni avec le
+  // format ni avec la largeur de joint : elle valait +25 % sur un 45 × 45 à
+  // 3 mm et −63 % sur un 20 × 20 à 5 mm.
+  //
+  // `Joint large 5-20mm` et `Joint époxy` restent **non marqués et inchangés** :
+  // aucun ouvrage V1 ne les sert, et leur coefficient de densité n'a pas pu être
+  // lu sur une fiche fabricant dans cette session. Les marquer sans avoir lu
+  // leur référence reviendrait à faire dire à leur rendement une géométrie qui
+  // n'est pas la sienne. Cf. docs/SOURCES_CATALOGUE.md.
   {
     name: 'Joint fin 1-6mm',
     category: 'tiling',
     unit: 'kg',
-    yield_per_unit: 4,
+    yield_per_unit: 5,
+    consumption_model: 'tile_grout',
     packagings: [
       { label: 'Sac 5 kg', quantity_per_unit: 5, unit: 'kg' },
       { label: 'Sac 10 kg', quantity_per_unit: 10, unit: 'kg' },

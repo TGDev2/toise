@@ -8,10 +8,14 @@ import { RectSegment, unionAreaCm2, unionPerimeterCm } from './room-geometry';
 // Types seuls : aucune dépendance d'exécution du moteur vers TypeORM. Ils sont
 // importés plutôt que redéclarés parce qu'ils décident de quantités — deux
 // définitions qui divergeraient produiraient un chiffrage faux sans rien casser.
-import type { MaterialQuantityDriver } from '../materials/entities/material-catalog.entity';
+import type {
+  MaterialQuantityDriver,
+  TileConsumptionModel,
+} from '../materials/entities/material-catalog.entity';
 import type { FrameSpec } from '../projects/entities/work-type.entity';
+import { tileConsumptionFactor } from './tile-consumption';
 
-export type { MaterialQuantityDriver, FrameSpec };
+export type { MaterialQuantityDriver, TileConsumptionModel, FrameSpec };
 
 export interface SurfaceExclusionInput {
   surface_target: string;
@@ -99,6 +103,15 @@ export interface MaterialInput {
    * regarde jamais `work_type_code` pour en décider.
    */
   quantity_driver?: MaterialQuantityDriver;
+  /**
+   * E1-5 — loi qui fait varier la consommation de ce matériau avec la géométrie
+   * du carreau posé (`materials_catalog.consumption_model`). Absent = aucune :
+   * `yield_per_unit` vaut tel quel, exactement comme avant E1-5. Quand elle est
+   * présente, `yield_per_unit` est le rendement à la **géométrie de référence**
+   * du modèle et le moteur en dérive le rendement effectif — cf.
+   * `resolveEffectiveYield`.
+   */
+  consumption_model?: TileConsumptionModel | null;
   waste_factors: WasteFactorInput[];
   packagings: PackagingInput[];
 }
@@ -641,6 +654,44 @@ export class EstimationEngine {
    * qui alimente le « · 2 couches » affiché sur la ligne, qui n'a de sens que
    * là où la quantité en dépend vraiment.
    */
+  /**
+   * E1-5 — le rendement que ce matériau tient **sur le carreau réellement
+   * choisi**, en m² d'assiette par unité.
+   *
+   * Un matériau sans `consumption_model` rend son rendement catalogue, sans
+   * détour : c'est tout le catalogue hors mortiers-colle et mortiers de
+   * jointoiement, et le comportement d'avant ce lot.
+   *
+   * Pour les deux autres, `yield_per_unit` est le rendement à la géométrie de
+   * référence du modèle, et le facteur dit de combien la géométrie posée s'en
+   * écarte. Une consommation plus forte est un rendement plus faible : le
+   * facteur **divise**. Un 60 × 60, qui demande 8 kg/m² de colle là où le
+   * 45 × 45 de référence en demande 7, tire donc 14 % de sacs en plus, et un
+   * 20 × 20 posé à joint de 5 mm trois fois plus de joint qu'un 60 × 60 à 2 mm.
+   *
+   * Le format n'est pas seul en cause : le NF DTU 52.2 impose le double
+   * encollage au-delà d'un seuil de surface qui dépend de la destination, et
+   * ce basculement est **déduit**, jamais demandé à l'utilisateur — c'est une
+   * obligation de mise en œuvre, pas une préférence.
+   */
+  resolveEffectiveYield(
+    material: MaterialInput,
+    workItem: WorkItemInput,
+  ): number {
+    const model = material.consumption_model;
+    if (!model) {
+      return material.yield_per_unit;
+    }
+    return (
+      material.yield_per_unit /
+      tileConsumptionFactor(
+        model,
+        workItem.custom_params,
+        workItem.surface_target,
+      )
+    );
+  }
+
   computeTheoreticalQty(
     meteringBaseQty: number,
     yieldPerUnit: number,
@@ -789,10 +840,14 @@ export class EstimationEngine {
         );
 
         const appliesCoats = mat.applies_coats ?? false;
+        // E1-5 : résolu une fois par matériau, puis servi aux trois calculs —
+        // la quantité nominale et les deux bornes de CV-5. Le recalculer à
+        // chaque borne laisserait la porte ouverte à trois réponses.
+        const effectiveYield = this.resolveEffectiveYield(mat, wi);
 
         const { qty: theoreticalQty, coats } = this.computeTheoreticalQty(
           this.meteringBase(basis, mat, wi),
-          mat.yield_per_unit,
+          effectiveYield,
           wi.custom_params,
           appliesCoats,
         );
@@ -808,7 +863,7 @@ export class EstimationEngine {
           const adjustedQtyLow =
             this.computeTheoreticalQty(
               this.meteringBase(basisBounds.low, mat, wi),
-              mat.yield_per_unit,
+              effectiveYield,
               wi.custom_params,
               appliesCoats,
             ).qty *
@@ -816,7 +871,7 @@ export class EstimationEngine {
           const adjustedQtyHigh =
             this.computeTheoreticalQty(
               this.meteringBase(basisBounds.high, mat, wi),
-              mat.yield_per_unit,
+              effectiveYield,
               wi.custom_params,
               appliesCoats,
             ).qty *

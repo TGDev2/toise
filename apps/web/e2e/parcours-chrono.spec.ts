@@ -469,6 +469,11 @@ test.describe('E4-4 — chronométrage du parcours artisan', () => {
       'Carrelage sol',
     ]);
     await answerSelect(chrono, page, /format du carreau/i, '30x60');
+    // E1-5 — troisième question du carrelage sol : la largeur de joint. Elle
+    // coûte un tap de plus, et c'est le seul geste que ce lot ajoute au
+    // parcours. « auto » est la réponse attendue par défaut : le moteur retient
+    // la largeur recommandée pour le format choisi.
+    await answerSelect(chrono, page, /largeur de joint/i, 'auto');
     await answerSelect(chrono, page, /type de pose/i, 'straight');
     await chrono.advance(
       page.getByRole('button', { name: 'Calculer' }),

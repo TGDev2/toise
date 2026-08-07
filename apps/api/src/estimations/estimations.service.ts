@@ -174,6 +174,9 @@ export class EstimationsService {
         // E1-3 : c'est ce champ qui dit dans quelle unité `yield_per_unit` est
         // exprimé, donc si la quantité suit le nombre de faces ou la trame.
         quantity_driver: m.quantity_driver,
+        // E1-5 : et c'est celui-ci qui dit à quelle géométrie de carreau il est
+        // exprimé, donc de combien il bouge avec le format posé.
+        consumption_model: m.consumption_model,
         role: l.role,
         waste_factors: overlayLearnedWasteFactors(
           m.waste_factors.map((wf) => ({

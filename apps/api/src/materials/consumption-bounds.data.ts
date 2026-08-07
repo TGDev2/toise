@@ -31,6 +31,21 @@
  * chiffre. Un matériau lié sans borne déclarée ici n'est pas ignoré par le
  * harnais : il en sort une violation. Lier un matériau sans sourcer sa
  * consommation est donc une action visible, pas un oubli silencieux.
+ *
+ * **E1-5 — ce que ces bornes ne couvrent pas, et où c'est couvert.** Depuis que
+ * le format du carreau pilote la colle et le joint
+ * (`materials_catalog.consumption_model`), la consommation d'un mortier-colle
+ * ou d'un mortier de jointoiement n'est plus un nombre mais une courbe : de 4,5
+ * à 8 kg/m² de colle, et d'un facteur 7 sur le joint entre un 20 × 20 à 8 mm et
+ * un 60 × 60 à 2 mm. Un encadrement unique par matériau qui devrait contenir
+ * toute la courbe ne prouverait plus rien.
+ *
+ * Les bornes ci-dessous encadrent donc la consommation **à la géométrie par
+ * défaut de l'ouvrage** — celle que le harnais éprouve, et celle qu'obtient un
+ * utilisateur qui répond « Recommandé pour ce format ». Le reste de la courbe
+ * est éprouvé ailleurs, et de façon plus exigeante qu'un intervalle :
+ * `estimations/tile-consumption.spec.ts` confronte le moteur, format par
+ * format, aux **cellules exactes** des tables fabricant.
  */
 
 export interface ConsumptionBound {
@@ -109,24 +124,33 @@ export const consumptionBounds: ConsumptionBound[] = [
     material_category: 'tiling',
     material_name: 'Mortier-colle flexible (C2)',
     unit: 'kg',
-    // 5 à 8 kg/m² : la table Cermix par format, sur l'hypothèse « sol
-    // intérieur, double encollage » du registre.
+    // Géométrie par défaut de `floor_tiling` : 45 × 45 (2 025 cm²), donc la
+    // cellule « 1 200 < S ≤ 2 200 » à 7 kg/m², double encollage imposé par le
+    // NF DTU 52.2 au-delà de 1 200 cm². L'intervalle 5-8 laisse la place à
+    // l'écart entre fabricants sur cette même cellule (Weber 5,5 au peigne U9
+    // en double, Mapei 6, Cermix et PRB 7 à 8).
     min_per_m2: 5,
     max_per_m2: 8,
     basis:
-      'Cermix CERMIFLEX (C2S1ET), sol intérieur, double encollage : 7 kg/m² (U9) pour un carreau 1 200-2 200 cm², 5 à 6 kg/m² sur les formats inférieurs',
+      'Cermix (CERMIFLEX C2S1 ET, CERMIPLUS 2.0, CERMIPLUS RAPID, CERMICOL EXTRA C1 E — table identique), sol intérieur, 1 200 < S ≤ 2 200 cm² : « 7 (U9) » ; Weber webercol flex U9 double 5,5 ; Mapei KERAFLEX U9 double 6 ; PRB U9 double 6 à 7',
   },
   {
     material_category: 'tiling',
     material_name: 'Joint fin 1-6mm',
     unit: 'kg',
-    // 0,10 à 0,20 kg/m². Le registre écrit lui-même que 0,25 kg/m² a été
-    // « retenu, prudent » — c'est-à-dire au-dessus de sa propre source, et
-    // constant quels que soient le format du carreau et la largeur de joint.
-    min_per_m2: 0.1,
-    max_per_m2: 0.2,
+    // Formule de fiche appliquée aux deux géométries par défaut du registre —
+    // sol 45 × 45 / 9 mm / joint 3 mm, mur 25 × 40 / 7 mm / joint 3 mm — sur
+    // l'étalement des densités apparentes publiées pour les mortiers de
+    // jointoiement cimentaires (1,5 à 1,9) : 0,180 à 0,259 kg/m².
+    //
+    // Ce que cet encadrement remplace : 0,10-0,20, calé sur une consommation
+    // qui valait 0,25 kg/m² **quels que soient** le format et la largeur de
+    // joint. Ce n'est pas la borne qui se desserre, c'est la grandeur mesurée
+    // qui a cessé d'être fausse.
+    min_per_m2: 0.18,
+    max_per_m2: 0.26,
     basis:
-      'Cermix CERMIJOINT COLOR (1-6 mm), carreau 45×45, joint 2-3 mm : 0,1-0,2 kg/m²',
+      'Cermix CERMIJOINT COLOR (CG2WA) : « 0,17 × ép(mm) × largeur de joint(mm) × (L + l) / (L × l) », L et l en cm — soit ((L+l)/(L·l)) × e × j × d avec d = 1,7 ; table de la même fiche : 45×45 à 3 mm = 0,2 kg/m²',
   },
   laidPerSquareMetre(
     'tiling',

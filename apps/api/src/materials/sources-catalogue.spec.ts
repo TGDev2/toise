@@ -136,4 +136,30 @@ describe('SOURCES_CATALOGUE.md — registre des rendements V1', () => {
       expect(seedByKey.has(`${row.category}:${row.name}`)).toBe(true);
     }
   });
+
+  /**
+   * E1-5 — le registre a cessé de ne documenter que des matériaux **liés** : la
+   * famille colle et joint y figure en entier, y compris les mortiers qu'aucun
+   * ouvrage V1 ne sert (C1, C2F, C2S1), parce que c'est leur comparaison qui
+   * rend lisible la correction de l'inversion du « grand format ».
+   *
+   * Sans cette assertion, ces lignes-là seraient les seules du fichier que rien
+   * ne rattacherait au seed : un rendement corrigé dans le code sans être
+   * répercuté ici passerait en silence, exactement le trou que ce registre
+   * existe pour boucher. Les lignes « retirer » n'annoncent aucun rendement
+   * (`—`) et sont donc hors du contrôle.
+   */
+  it('affiche le rendement seedé pour toute ligne qui en annonce un', () => {
+    const quantified = rows.filter((r) => /^[\d.]+$/.test(r.yield_v1));
+    // Garde anti-vacuité : une colonne renommée viderait ce filtre en silence.
+    expect(quantified.length).toBeGreaterThanOrEqual(35);
+
+    for (const row of quantified) {
+      const seed = seedByKey.get(`${row.category}:${row.name}`)!;
+      expect({ name: row.name, yield: Number(row.yield_v1) }).toEqual({
+        name: row.name,
+        yield: seed.yield_per_unit,
+      });
+    }
+  });
 });
