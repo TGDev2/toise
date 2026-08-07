@@ -264,18 +264,42 @@ export function WorkSelectionForm({
 
   const isValid = selectedTypeIds.size > 0 && skillLevel !== '';
 
-  const hasAllRequiredContextualParams = useCallback(() => {
+  /**
+   * Les ouvrages dont une question requise reste sans réponse, par leur libellé.
+   *
+   * E1-7 — la liste, et non un booléen. « Calculer » se désactive dès le premier
+   * clic quand une réponse manque, et jusqu'ici **sans rien dire** : l'écran
+   * porte un message pour l'absence d'ouvrage et un pour l'absence de niveau,
+   * aucun pour une question restée sur « -- Choisir -- ». La revue d'E1-6 avait
+   * déjà nommé la variante cloison sèche du même défaut (« dont la validation
+   * bloque Calculer sans rien dire »).
+   *
+   * Ce lot le rend franchement visible en donnant une question requise au
+   * carrelage mural et au parquet : deux ouvrages de plus derrière un bouton
+   * qui s'éteint sans motif. D'où le message ci-dessous, qui nomme l'ouvrage —
+   * sur un écran à sept tuiles, « une réponse manque » n'aiderait personne.
+   */
+  const workTypesMissingParams = useCallback((): string[] => {
+    const missing: string[] = [];
     for (const typeId of selectedTypeIds) {
       const wt = workTypes.find((w) => w.id === typeId);
       if (!wt) continue;
       const required = wt.contextual_questions.filter((q) => q.required);
       for (const q of required) {
         const val = customParams[typeId]?.[q.key];
-        if (!val || val === '') return false;
+        if (!val || val === '') {
+          missing.push(wt.label_fr);
+          break;
+        }
       }
     }
-    return true;
+    return missing;
   }, [selectedTypeIds, workTypes, customParams]);
+
+  const hasAllRequiredContextualParams = useCallback(
+    () => workTypesMissingParams().length === 0,
+    [workTypesMissingParams],
+  );
 
   const hasValidDeclaredBasis = useCallback(() => {
     for (const typeId of selectedTypeIds) {
@@ -413,6 +437,13 @@ export function WorkSelectionForm({
         {touched && selectedTypeIds.size === 0 && (
           <p className="mt-3 text-sm text-red-600">
             Veuillez sélectionner au moins un type de travaux.
+          </p>
+        )}
+
+        {touched && workTypesMissingParams().length > 0 && (
+          <p className="mt-3 text-sm text-red-600">
+            Répondez aux questions marquées d’une étoile pour :{' '}
+            {workTypesMissingParams().join(', ')}.
           </p>
         )}
       </div>
