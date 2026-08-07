@@ -24,12 +24,14 @@ import { workTypeMaterialLinks } from './work-type-materials.data';
 
 const DOC = resolve(__dirname, '../../../../docs/SOURCES_CATALOGUE.md');
 
-/** Libellé de registre de chaque `quantity_driver` (E1-3). */
+/** Libellé de registre de chaque `quantity_driver` (E1-3, E1-10). */
 const DRIVER_LABELS: Record<string, string> = {
   work_surface: "surface d'ouvrage",
   clad_faces: 'parement',
   frame_runner: 'lisses',
   frame_stud: 'montants',
+  floor_perimeter: 'périmètre au sol',
+  door_count: 'passages de porte',
 };
 
 interface SourceRow {

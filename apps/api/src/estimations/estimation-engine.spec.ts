@@ -1639,4 +1639,161 @@ describe('EstimationEngine', () => {
       expect(basis.frame).toBeNull();
     });
   });
+
+  // -------------------------------------------------------------------------
+  // E1-10 — assiettes linéaires et comptées
+  // -------------------------------------------------------------------------
+  describe('E1-10 — périmètre au sol et passages de porte', () => {
+    const flatWaste = (): WasteFactorInput[] => [
+      { pose_type: 'standard', skill_level: 'beginner', factor_percent: 0 },
+      { pose_type: 'standard', skill_level: 'intermediate', factor_percent: 0 },
+      { pose_type: 'standard', skill_level: 'expert', factor_percent: 0 },
+    ];
+
+    const makeSkirting = (
+      overrides?: Partial<MaterialInput>,
+    ): MaterialInput => ({
+      id: 'skirting-uuid',
+      name: 'Plinthe MDF 60mm 2.4m',
+      unit: 'm',
+      yield_per_unit: 1,
+      quantity_driver: 'floor_perimeter',
+      waste_factors: flatWaste(),
+      packagings: [{ label: 'Barre 2.4 m', quantity_per_unit: 2.4, unit: 'm' }],
+      ...overrides,
+    });
+
+    const makeThreshold = (
+      overrides?: Partial<MaterialInput>,
+    ): MaterialInput => ({
+      id: 'threshold-uuid',
+      name: 'Barre de seuil alu 93cm',
+      unit: 'unit',
+      yield_per_unit: 1,
+      quantity_driver: 'door_count',
+      waste_factors: flatWaste(),
+      packagings: [{ label: 'Unité', quantity_per_unit: 1, unit: 'unit' }],
+      ...overrides,
+    });
+
+    const makeFloorItem = (
+      materials: MaterialInput[],
+      overrides: Partial<WorkItemInput> = {},
+    ): WorkItemInput => ({
+      id: 'wi-floor',
+      work_type_code: 'parquet_flooring',
+      work_type_label: 'Parquet ou stratifie',
+      category: 'flooring',
+      surface_target: 'floor',
+      skill_level: 'intermediate',
+      custom_params: {},
+      materials,
+      ...overrides,
+    });
+
+    it('métre la plinthe sur le périmètre, portes déduites', () => {
+      const room = makeRoom({
+        openings: [
+          { width_cm: 83, height_cm: 204, count: 1, type: 'door' },
+          { width_cm: 120, height_cm: 120, count: 1, type: 'window' },
+        ],
+      });
+      const [line] = engine.computeEstimation(room, [
+        makeFloorItem([makeSkirting()]),
+      ]);
+
+      // 2 × (4 + 3) = 14 m, moins la porte de 0,83 m — la fenêtre ne troue
+      // pas une plinthe.
+      expect(line.theoretical_qty).toBeCloseTo(13.17, 3);
+      // 13,17 / 2,4 = 5,49 → 6 barres.
+      expect(line.units_needed).toBe(6);
+    });
+
+    it('compte une ouverture sans type comme une porte — le défaut documenté', () => {
+      const room = makeRoom({
+        openings: [{ width_cm: 90, height_cm: 210, count: 1 }],
+      });
+      const [line] = engine.computeEstimation(room, [
+        makeFloorItem([makeSkirting()]),
+      ]);
+      expect(line.theoretical_qty).toBeCloseTo(14 - 0.9, 3);
+    });
+
+    it('clampe le périmètre à zéro plutôt que de le rendre négatif', () => {
+      const room = makeRoom({
+        length_cm: 100,
+        width_cm: 100,
+        openings: [{ width_cm: 500, height_cm: 204, count: 1, type: 'door' }],
+      });
+      const [line] = engine.computeEstimation(room, [
+        makeFloorItem([makeSkirting()]),
+      ]);
+      expect(line.theoretical_qty).toBe(0);
+      expect(line.units_needed).toBe(0);
+    });
+
+    it('suit le contour exact d’une pièce en L, pas la somme des rectangles', () => {
+      const room = makeRoom({
+        openings: [],
+        segments: [
+          { x_cm: 0, y_cm: 0, length_cm: 400, width_cm: 300 },
+          { x_cm: 400, y_cm: 0, length_cm: 200, width_cm: 150 },
+        ],
+      });
+      const [line] = engine.computeEstimation(room, [
+        makeFloorItem([makeSkirting()]),
+      ]);
+      // Contour du L : 18 m (la boîte englobante 600 × 300), pas 24 m.
+      expect(line.theoretical_qty).toBeCloseTo(18, 3);
+    });
+
+    it('compte une barre de seuil par passage de porte, fenêtres ignorées', () => {
+      const room = makeRoom({
+        openings: [
+          { width_cm: 83, height_cm: 204, count: 2, type: 'door' },
+          { width_cm: 120, height_cm: 120, count: 3, type: 'window' },
+        ],
+      });
+      const [line] = engine.computeEstimation(room, [
+        makeFloorItem([makeThreshold()]),
+      ]);
+      expect(line.theoretical_qty).toBe(2);
+      expect(line.units_needed).toBe(2);
+    });
+
+    it('lève bruyamment quand une assiette déclarée rencontre ces drivers', () => {
+      const declared = {
+        declared_basis: { length_m: 4, height_m: 2.5, clad_faces: 2 },
+      };
+      expect(() =>
+        engine.computeEstimation(makeRoom(), [
+          makeFloorItem([makeSkirting()], declared),
+        ]),
+      ).toThrow(/périmètre au sol/);
+      expect(() =>
+        engine.computeEstimation(makeRoom(), [
+          makeFloorItem([makeThreshold()], declared),
+        ]),
+      ).toThrow(/passages de porte/);
+    });
+
+    it('borne les deux drivers avec CV-5 : périmètre monotone, portes constantes', () => {
+      const room = makeRoom({
+        openings: [{ width_cm: 83, height_cm: 204, count: 1, type: 'door' }],
+        length_cm_uncertainty: 10,
+        width_cm_uncertainty: 10,
+      });
+      const [skirting, threshold] = engine.computeEstimation(room, [
+        makeFloorItem([makeSkirting(), makeThreshold()]),
+      ]);
+
+      // Périmètre : 2 × (3,9 + 2,9) = 13,6 − 0,83 en bas, 2 × (4,1 + 3,1) =
+      // 14,4 − 0,83 en haut.
+      expect(skirting.adjusted_qty_low).toBeCloseTo(12.77, 3);
+      expect(skirting.adjusted_qty_high).toBeCloseTo(13.57, 3);
+      // Le nombre de portes ne bouge pas avec l'incertitude de mesure.
+      expect(threshold.adjusted_qty_low).toBe(1);
+      expect(threshold.adjusted_qty_high).toBe(1);
+    });
+  });
 });

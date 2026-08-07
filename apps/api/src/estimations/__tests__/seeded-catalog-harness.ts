@@ -231,6 +231,11 @@ export function materialsForWorkType(workTypeCode: string): MaterialInput[] {
         vapour_barrier: seedMaterial.vapour_barrier ?? null,
         // E1-8 : absent = aboutable, comme le défaut de la colonne.
         offcuts_reusable: seedMaterial.offcuts_reusable ?? true,
+        // E1-10 : deux autres décideurs de présence, exactement comme dans
+        // `loadMaterialInputs` — SEL et bande suivent l'exposition à l'eau,
+        // ragréage et primaire la planéité déclarée.
+        wet_room_system: seedMaterial.wet_room_system ?? null,
+        substrate_prep: seedMaterial.substrate_prep ?? null,
         role: link.role,
         waste_factors: seedMaterial.waste_factors.map((wf) => ({
           pose_type: wf.pose_type,
@@ -950,6 +955,8 @@ const DRIVER_LABELS: Record<MaterialQuantityDriver, string> = {
   clad_faces: 'parement (× faces)',
   frame_runner: 'lisses (trame)',
   frame_stud: 'montants (trame)',
+  floor_perimeter: 'périmètre au sol (portes déduites)',
+  door_count: 'passages de porte',
 };
 
 export function renderCaseInventory(): string {
@@ -970,7 +977,9 @@ export function renderCaseInventory(): string {
             mat.roll_spec
               ? `${mat.roll_spec.length_cm / 100} × ${mat.roll_spec.width_cm / 100} m (rendement non lu)`
               : 'aucun'
-          }${mat.vapour_barrier ? ` · pare-vapeur ${mat.vapour_barrier}` : ''}`,
+          }${mat.vapour_barrier ? ` · pare-vapeur ${mat.vapour_barrier}` : ''}${
+            mat.wet_room_system ? ` · étanchéité ${mat.wet_room_system}` : ''
+          }${mat.substrate_prep ? ` · préparation ${mat.substrate_prep}` : ''}`,
       ),
     ].join('\n');
   });
@@ -1038,8 +1047,8 @@ const caseLabel = (testCase: HarnessCase): string =>
   `${testCase.workType.code} · ${testCase.skillLevel} · ${testCase.poseType}`;
 
 /** Taux de consommation, tel que I3 le compare à son encadrement. */
-const rate = (value: number, unit: string): string =>
-  `${value.toFixed(3)} ${unit}/m²`;
+const rate = (value: number, unit: string, per: string = 'm²'): string =>
+  `${value.toFixed(3)} ${unit}/${per}`;
 
 /** Couches effectivement appliquées, telles que le moteur les résout. */
 const coatsFor = (params: Record<string, unknown>): number =>
@@ -1173,6 +1182,8 @@ function coatIndependenceViolations(
  * exactement l'information qu'on voudrait voir.
  */
 function consumptionRateViolations(
+  engine: EstimationEngine,
+  room: RoomData,
   lines: EstimationLineItem[],
   byId: Map<string, MaterialInput>,
   testCase: HarnessCase,
@@ -1181,6 +1192,17 @@ function consumptionRateViolations(
   const violations: string[] = [];
   const code = testCase.workType.code;
   const coats = coatsFor(paramsFor(config.paramsByWorkType, code));
+
+  // E1-10 : l'assiette de l'ouvrage, recalculée par le moteur — c'est elle qui
+  // sert de dénominateur aux bornes `driver_base` (plinthes, barres de seuil),
+  // pour lesquelles le m² d'ouvrage serait une grandeur géométrie-dépendante.
+  const workItem = workItemFor(
+    testCase,
+    'wi-1',
+    paramsFor(config.paramsByWorkType, code),
+    config.declaredBasisByWorkType,
+  );
+  const basis = engine.computeWorkBasis(room, workItem);
 
   for (const line of lines) {
     const material = byId.get(line.material_id)!;
@@ -1193,30 +1215,35 @@ function consumptionRateViolations(
       );
       continue;
     }
+    const perDriver = (bound.per ?? 'work_surface') === 'driver_base';
+    // Libellé du dénominateur : m² d'ouvrage, ou l'unité de l'assiette du
+    // driver (m de périmètre, passage de porte…).
+    const perLabel = perDriver ? 'assiette' : 'm²';
     if (bound.unit !== material.unit) {
       violations.push(
-        `[I3] ${code} : ${line.material_name} — encadrement déclaré en ${bound.unit}/m² ` +
+        `[I3] ${code} : ${line.material_name} — encadrement déclaré en ${bound.unit}/${perLabel} ` +
           `pour un matériau vendu en ${material.unit}`,
       );
       continue;
     }
-    if (line.surface_m2 <= 0) {
+    const base = perDriver
+      ? engine.resolveMeteringQuantity(basis, material, workItem)
+      : line.surface_m2;
+    if (base <= 0) {
       continue;
     }
 
     const observed =
-      line.theoretical_qty /
-      line.surface_m2 /
-      (material.applies_coats ? coats : 1);
+      line.theoretical_qty / base / (material.applies_coats ? coats : 1);
 
     if (
       observed < bound.min_per_m2 * (1 - config.rateTolerance) ||
       observed > bound.max_per_m2 * (1 + config.rateTolerance)
     ) {
       violations.push(
-        `[I3] ${code} : ${line.material_name} — ${rate(observed, material.unit)} consommés, ` +
-          `encadrement ${rate(bound.min_per_m2, material.unit)} à ${rate(bound.max_per_m2, material.unit)} ` +
-          `(${bound.basis})`,
+        `[I3] ${code} : ${line.material_name} — ${rate(observed, material.unit, perLabel)} consommés, ` +
+          `encadrement ${rate(bound.min_per_m2, material.unit, perLabel)} à ` +
+          `${rate(bound.max_per_m2, material.unit, perLabel)} (${bound.basis})`,
       );
     }
   }
@@ -1630,7 +1657,7 @@ export function invariantViolations(
     violations.push(
       ...coverageViolations(lines, exclusions, materials, byId, testCase),
       ...coatIndependenceViolations(engine, room, testCase, byId, config),
-      ...consumptionRateViolations(lines, byId, testCase, config),
+      ...consumptionRateViolations(engine, room, lines, byId, testCase, config),
       ...containerMinimalityViolations(lines, byId, testCase),
       ...fixedLengthCutViolations(engine, room, lines, byId, testCase, config),
     );
@@ -1815,9 +1842,19 @@ export function mutualisationReport(
 // Géométries de référence
 // ---------------------------------------------------------------------------
 
-/** Porte standard française, la seule ouverture de la chambre de référence. */
-const DOOR = { width_cm: 83, height_cm: 204, count: 1 };
-const WINDOW = { width_cm: 120, height_cm: 120, count: 1 };
+/**
+ * Porte standard française, la seule ouverture de la chambre de référence.
+ * E1-10 : le type est déclaré parce que deux assiettes en dépendent — sans
+ * lui, la fenêtre du séjour en L serait comptée porte (une barre de seuil en
+ * trop, 1,20 m de plinthe en moins).
+ */
+const DOOR = { width_cm: 83, height_cm: 204, count: 1, type: 'door' as const };
+const WINDOW = {
+  width_cm: 120,
+  height_cm: 120,
+  count: 1,
+  type: 'window' as const,
+};
 
 /**
  * Chambre 400 × 300 × 250 cm, une porte.

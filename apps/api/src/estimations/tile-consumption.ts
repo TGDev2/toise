@@ -68,6 +68,7 @@ export type { TileConsumptionModel };
 export const TILE_CONSUMPTION_MODELS: TileConsumptionModel[] = [
   'tile_adhesive',
   'tile_grout',
+  'tile_spacers',
 ];
 
 /** Géométrie d'un format de carreau, en millimètres. */
@@ -393,6 +394,27 @@ export function groutVolumeLitresPerM2(
   return ((L + l) / (L * l)) * e * jointWidthMm;
 }
 
+/**
+ * E1-10 — croisillons par m² : **un croisillon par intersection de joints**.
+ *
+ * Dans un calepinage droit, chaque sommet intérieur du quadrillage joint
+ * quatre carreaux et reçoit une croix ; le nombre de sommets par m² égale
+ * asymptotiquement le nombre de carreaux par m², soit `10 000 / (L_cm × l_cm)`
+ * — dérivation géométrique pure, du même statut définitionnel que la longueur
+ * de joint `(L + l) / (L × l)` ci-dessus. Aucun fabricant (Rubi, Raimondi,
+ * Taliaplast vérifiés en E1-7) ne publie de table de consommation : c'est
+ * cette dérivation, et elle seule, qui rend le croisillon chiffrable, et elle
+ * est écrite au registre comme telle.
+ *
+ * Insensible à la largeur de joint (le croisillon **fixe** la largeur, il ne
+ * la remplit pas) et au sens de pose (la diagonale ne change pas le nombre de
+ * carreaux sous un m²).
+ */
+export function spacersPerM2(geometry: TileGeometry): number {
+  const { length_mm: L, width_mm: l } = geometry;
+  return 10_000 / ((L / 10) * (l / 10));
+}
+
 // ---------------------------------------------------------------------------
 // Résolution des paramètres d'ouvrage
 // ---------------------------------------------------------------------------
@@ -451,6 +473,7 @@ const REFERENCE_GROUT_LITRES_M2 = groutVolumeLitresPerM2(
   REFERENCE_GEOMETRY,
   REFERENCE_GEOMETRY.default_joint_width_mm,
 );
+const REFERENCE_SPACERS_M2 = spacersPerM2(REFERENCE_GEOMETRY);
 
 /**
  * De combien la consommation de ce matériau s'écarte de celle qu'annonce son
@@ -471,6 +494,10 @@ export function tileConsumptionFactor(
       adhesiveRateKgPerM2(areaCm2(geometry), surfaceTarget) /
       REFERENCE_ADHESIVE_KG_M2
     );
+  }
+
+  if (model === 'tile_spacers') {
+    return spacersPerM2(geometry) / REFERENCE_SPACERS_M2;
   }
 
   return (

@@ -208,6 +208,10 @@ export class EstimationsService {
         vapour_barrier: m.vapour_barrier,
         // E1-8 : et celui-ci dit si l'achat se compte ou se divise.
         offcuts_reusable: m.offcuts_reusable,
+        // E1-10 : deux autres décideurs de présence — le SEL suit l'exposition
+        // à l'eau du local, le ragréage la planéité déclarée du support.
+        wet_room_system: m.wet_room_system,
+        substrate_prep: m.substrate_prep,
         role: l.role,
         waste_factors: overlayLearnedWasteFactors(
           m.waste_factors.map((wf) => ({
@@ -370,6 +374,8 @@ export class EstimationsService {
           width_cm: o.width_cm,
           height_cm: o.height_cm,
           count: o.count,
+          // E1-10 : la colonne est NOT NULL — ce chemin-là est exact.
+          type: o.type,
         })),
         segments: dimensions.segments_json ?? undefined,
         exclusions: (dimensions.exclusions_json ?? []).map((e) => ({
@@ -476,6 +482,8 @@ export class EstimationsService {
         width_cm: o.width_cm,
         height_cm: o.height_cm,
         count: o.count,
+        // E1-10 : optionnel côté public — absent, le moteur retient `door`.
+        type: o.type,
       })),
       segments: dto.segments?.map((s) => ({
         x_cm: s.x_cm,
@@ -695,6 +703,8 @@ export class EstimationsService {
           width_cm: o.width_cm,
           height_cm: o.height_cm,
           count: o.count,
+          // E1-10 : optionnel côté public — absent, le moteur retient `door`.
+          type: o.type,
         })),
         segments: room.segments?.map((s) => ({
           x_cm: s.x_cm,

@@ -333,11 +333,18 @@ export const workTypeMaterialLinksE13: WorkTypeMaterialLink[] = [
     display_order: 7,
   },
   {
+    /**
+     * E1-10 — passée d'alternative documentée à ligne obligatoire : le
+     * quantitatif Placostil 72/48 (39 dB) inclut la laine, et une cloison
+     * commandée sans elle n'atteint pas l'affaiblissement promis. Attribut
+     * FINAL après E1-10, comme le 30x30 d'E1-3 : la migration `…092` porte
+     * l'UPDATE pour les bases déjà seedées.
+     */
     work_type_code: 'drywall',
     material_name: 'Laine de verre 45mm',
     material_category: 'partition',
     role: 'consommable',
-    is_optional: true,
+    is_optional: false,
     display_order: 8,
   },
   {
@@ -367,8 +374,197 @@ export const workTypeMaterialLinksE13: WorkTypeMaterialLink[] = [
   },
 ];
 
+/**
+ * Delta E1-10 : la liste devient achetable. Les consommables qui bloquaient un
+ * chantier — croisillons, silicone périphérique, plinthes, barres de seuil,
+ * SEL, ragréage, primaire, bande résiliente — entrent au chiffrage, chacun au
+ * rendement sourcé ou définitionnel (`docs/SOURCES_CATALOGUE.md`). Inséré par
+ * `…092` sur les bases déjà migrées (sur base vierge, `…066` insère le tableau
+ * complet et ces INSERT sont des no-ops).
+ *
+ * Les matériaux marqués `wet_room_system` ou `substrate_prep` au catalogue
+ * sont liés `is_optional: false` mais **conditionnels** : la ligne n'existe
+ * que si la question de l'ouvrage la déclenche (`wet-room.ts`,
+ * `floor-prep.ts`) — et sort en exclusion motivée sinon.
+ */
+export const workTypeMaterialLinksE110: WorkTypeMaterialLink[] = [
+  // --- floor_tiling : carrelage sol intérieur ---
+  {
+    work_type_code: 'floor_tiling',
+    material_name: 'Croisillons 3mm (x200)',
+    material_category: 'tiling',
+    role: 'consommable',
+    is_optional: false,
+    display_order: 4,
+  },
+  {
+    work_type_code: 'floor_tiling',
+    material_name: 'Joint souple silicone',
+    material_category: 'tiling',
+    role: 'consommable',
+    is_optional: false,
+    display_order: 5,
+  },
+  {
+    work_type_code: 'floor_tiling',
+    material_name: 'Plinthe carrelage 8x30 cm',
+    material_category: 'tiling',
+    role: 'accessoire',
+    is_optional: false,
+    display_order: 6,
+  },
+  {
+    work_type_code: 'floor_tiling',
+    material_name: 'Ragréage autolissant',
+    material_category: 'tiling',
+    role: 'sous_couche',
+    is_optional: false,
+    display_order: 10,
+  },
+  {
+    work_type_code: 'floor_tiling',
+    material_name: "Primaire d'accrochage carrelage",
+    material_category: 'tiling',
+    role: 'sous_couche',
+    is_optional: false,
+    display_order: 11,
+  },
+  {
+    work_type_code: 'floor_tiling',
+    material_name: "SEL (Système d'Étanchéité Liquide)",
+    material_category: 'tiling',
+    role: 'sous_couche',
+    is_optional: false,
+    display_order: 12,
+  },
+  {
+    work_type_code: 'floor_tiling',
+    material_name: "Bande d'étanchéité 120mm",
+    material_category: 'tiling',
+    role: 'consommable',
+    is_optional: false,
+    display_order: 13,
+  },
+  {
+    work_type_code: 'floor_tiling',
+    material_name: 'Barre de seuil alu 93cm',
+    material_category: 'flooring',
+    role: 'accessoire',
+    is_optional: false,
+    display_order: 14,
+  },
+  {
+    work_type_code: 'floor_tiling',
+    material_name: 'Croisillons 5mm (x100)',
+    material_category: 'tiling',
+    role: 'consommable',
+    is_optional: true,
+    display_order: 15,
+  },
+  {
+    work_type_code: 'floor_tiling',
+    material_name: 'Natte de découplage',
+    material_category: 'tiling',
+    role: 'sous_couche',
+    is_optional: true,
+    display_order: 16,
+  },
+  // --- wall_tiling : faïence murale ---
+  {
+    work_type_code: 'wall_tiling',
+    material_name: 'Croisillons 3mm (x200)',
+    material_category: 'tiling',
+    role: 'consommable',
+    is_optional: false,
+    display_order: 4,
+  },
+  {
+    work_type_code: 'wall_tiling',
+    material_name: "SEL (Système d'Étanchéité Liquide)",
+    material_category: 'tiling',
+    role: 'sous_couche',
+    is_optional: false,
+    display_order: 9,
+  },
+  {
+    work_type_code: 'wall_tiling',
+    material_name: 'Croisillons 2mm (x200)',
+    material_category: 'tiling',
+    role: 'consommable',
+    is_optional: true,
+    display_order: 10,
+  },
+  // --- parquet_flooring : pose flottante ---
+  {
+    work_type_code: 'parquet_flooring',
+    material_name: 'Plinthe MDF 60mm 2.4m',
+    material_category: 'flooring',
+    role: 'accessoire',
+    is_optional: false,
+    display_order: 4,
+  },
+  {
+    work_type_code: 'parquet_flooring',
+    material_name: 'Barre de seuil alu 93cm',
+    material_category: 'flooring',
+    role: 'accessoire',
+    is_optional: false,
+    display_order: 5,
+  },
+  {
+    work_type_code: 'parquet_flooring',
+    material_name: 'Ragréage fibré sol',
+    material_category: 'flooring',
+    role: 'sous_couche',
+    is_optional: false,
+    display_order: 9,
+  },
+  {
+    work_type_code: 'parquet_flooring',
+    material_name: "Primaire d'accrochage sol",
+    material_category: 'flooring',
+    role: 'sous_couche',
+    is_optional: false,
+    display_order: 10,
+  },
+  {
+    work_type_code: 'parquet_flooring',
+    material_name: 'Plinthe chêne 70mm 2.4m',
+    material_category: 'flooring',
+    role: 'accessoire',
+    is_optional: true,
+    display_order: 11,
+  },
+  {
+    work_type_code: 'parquet_flooring',
+    material_name: 'Plinthe MDF 80mm 2.4m',
+    material_category: 'flooring',
+    role: 'accessoire',
+    is_optional: true,
+    display_order: 12,
+  },
+  {
+    work_type_code: 'parquet_flooring',
+    material_name: 'Barre de seuil alu 180cm',
+    material_category: 'flooring',
+    role: 'accessoire',
+    is_optional: true,
+    display_order: 13,
+  },
+  // --- drywall : cloison 72/48 simple peau ---
+  {
+    work_type_code: 'drywall',
+    material_name: 'Bande résiliente 50mm',
+    material_category: 'partition',
+    role: 'consommable',
+    is_optional: false,
+    display_order: 10,
+  },
+];
+
 /** Curation complète — importée par la migration `…066` et par les tests. */
 export const workTypeMaterialLinks: WorkTypeMaterialLink[] = [
   ...e12Links,
   ...workTypeMaterialLinksE13,
+  ...workTypeMaterialLinksE110,
 ];

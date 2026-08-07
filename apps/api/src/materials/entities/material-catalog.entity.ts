@@ -34,12 +34,28 @@ import { numericTransformer } from '../../common/transformers/numeric.transforme
  *
  * Les deux dernières ne dépendent **pas** du nombre de faces : une cloison
  * parementée deux faces n'a qu'une seule trame. C'est tout l'objet de ce champ.
+ *
+ * E1-10 ajoute deux assiettes qui ne sont ni une surface ni une trame :
+ *
+ *  - `floor_perimeter` : le linéaire du contour au sol de la pièce, **portes
+ *    déduites**, en mètres. Plinthes, joints périphériques, bandes de jonction
+ *    sol/mur — tout ce qui court le long des murs et s'interrompt aux passages.
+ *  - `door_count` : le nombre de passages de porte de la pièce. Barres de
+ *    seuil. `yield_per_unit` dit combien de passages une unité couvre (1 pour
+ *    une barre).
+ *
+ * Ces deux assiettes sont dérivées de la pièce : un ouvrage à assiette
+ * déclarée (cloison créée) ne les connaît pas, et un matériau qui s'y métré
+ * lié à un tel ouvrage fait échouer le chiffrage bruyamment — même règle que
+ * `frame_runner` sans `frame_spec`.
  */
 export type MaterialQuantityDriver =
   | 'work_surface'
   | 'clad_faces'
   | 'frame_runner'
-  | 'frame_stud';
+  | 'frame_stud'
+  | 'floor_perimeter'
+  | 'door_count';
 
 /**
  * E1-5 — loi qui fait varier la consommation d'un matériau avec la géométrie du
@@ -54,8 +70,14 @@ export type MaterialQuantityDriver =
  *  - `tile_grout` : mortier de jointoiement. La consommation suit le volume de
  *    joint sous un m², donc les dimensions du carreau, son épaisseur et la
  *    largeur de joint saisie.
+ *  - `tile_spacers` (E1-10) : croisillons. Un croisillon par intersection de
+ *    joints, soit autant que de carreaux par m² — un pur fait de calepinage,
+ *    insensible à la largeur de joint et au sens de pose.
  */
-export type TileConsumptionModel = 'tile_adhesive' | 'tile_grout';
+export type TileConsumptionModel =
+  | 'tile_adhesive'
+  | 'tile_grout'
+  | 'tile_spacers';
 
 /**
  * E1-8 — rôle d'un matériau vis-à-vis du pare-vapeur d'un sol posé en flottant.
@@ -78,6 +100,36 @@ export type TileConsumptionModel = 'tile_adhesive' | 'tile_grout';
  * pare-vapeur l'intègre sur tous les chantiers.
  */
 export type VapourBarrierRole = 'dedicated' | 'integrated';
+
+/**
+ * E1-10 — rôle d'un matériau dans le système d'étanchéité d'un local exposé à
+ * l'eau (NF DTU 52.2, locaux EB+). Même mécanique que `VapourBarrierRole` :
+ * la colonne dit le rôle du produit, la règle vit dans
+ * `estimations/wet-room.ts`, et la condition — l'exposition à l'eau du local —
+ * est une réponse de l'utilisateur (`custom_params.water_exposure`).
+ *
+ *  - `sel` : le Système d'Étanchéité Liquide lui-même, appliqué sur la surface
+ *    d'ouvrage avant carrelage.
+ *  - `sealing_band` : la bande de renfort marouflée dans la première couche le
+ *    long des jonctions sol/mur — elle suit le périmètre, pas la surface.
+ *  - `NULL` : sans rapport. Tout le reste du catalogue.
+ */
+export type WetRoomRole = 'sel' | 'sealing_band';
+
+/**
+ * E1-10 — rôle d'un matériau dans la préparation d'un sol dont la planéité est
+ * insuffisante (défauts > 5 mm sous la règle de 2 m, seuil des NF DTU 52.2 et
+ * 51.11). Même mécanique : la condition est une réponse de l'utilisateur
+ * (`custom_params.floor_flatness`), la règle vit dans
+ * `estimations/floor-prep.ts`.
+ *
+ *  - `leveling_compound` : le ragréage lui-même.
+ *  - `leveling_primer` : le primaire d'accrochage que les fiches de ragréage
+ *    prescrivent avant application. Il suit le ragréage : pas de ragréage,
+ *    pas de primaire.
+ *  - `NULL` : sans rapport. Tout le reste du catalogue.
+ */
+export type SubstratePrep = 'leveling_compound' | 'leveling_primer';
 
 export enum MaterialCategory {
   PAINTING = 'painting',
@@ -219,6 +271,25 @@ export class MaterialCatalog {
    */
   @Column({ type: 'varchar', length: 20, nullable: true })
   vapour_barrier!: VapourBarrierRole | null;
+
+  /**
+   * E1-10 — rôle de ce matériau dans le système d'étanchéité d'un local exposé
+   * à l'eau (cf. `WetRoomRole`). `NULL` (le défaut) pour tout le catalogue hors
+   * SEL et bandes de renfort. Deuxième colonne, après `vapour_barrier`, qui
+   * décide de la **présence** d'une ligne : un matériau marqué n'est chiffré
+   * que si le local est déclaré exposé à l'eau (`estimations/wet-room.ts`).
+   */
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  wet_room_system!: WetRoomRole | null;
+
+  /**
+   * E1-10 — rôle de ce matériau dans la préparation d'un sol non plan (cf.
+   * `SubstratePrep`). `NULL` (le défaut) pour tout le catalogue hors ragréages
+   * et primaires de ragréage. Un matériau marqué n'est chiffré que si la
+   * planéité déclarée l'exige (`estimations/floor-prep.ts`).
+   */
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  substrate_prep!: SubstratePrep | null;
 
   /**
    * E1-8 — les chutes de ce matériau se réutilisent-elles **bout à bout** ?

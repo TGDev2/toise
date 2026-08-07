@@ -7,11 +7,19 @@ rendement n'a pas pu être sourcé est **sorti du périmètre V1** (décision
 `retirer`, migration `…071`) — il reste au catalogue mais n'est plus servi par
 les listes des 7 ouvrages.
 
-**Périmètre V1 assumé après E1-7 : 35 matériaux liés (37 liaisons), dont
-21 obligatoires chiffrés automatiquement.** Les 14 matériaux retirés sont les
-outils purs et les consommables dont la grandeur fabricant n'est pas surfacique
-(linéaire ou non normée). Le reste du catalogue (208 entrées) n'est pas servi
-par la V1 et n'est pas couvert par ce registre.
+**Périmètre V1 après E1-10 : 54 matériaux liés (59 liaisons), dont
+37 liaisons obligatoires chiffrées automatiquement (32 matériaux distincts).**
+E1-7 avait retiré 14 matériaux — les outils purs, et les consommables dont la
+grandeur fabricant n'est pas surfacique. E1-10 réintègre les seconds : le
+linéaire et le comptage sont désormais des assiettes du moteur
+(`floor_perimeter`, `door_count`), et seuls restent retirés les outils et ce
+dont la grandeur n'est connue d'aucune donnée du modèle (cf.
+`docs/MATERIAUX_OUVRAGES.md`, règle E1-10). Six liaisons obligatoires sont
+**conditionnelles** : SEL, bande d'étanchéité, ragréages et primaires ne
+produisent une ligne que si la question de l'ouvrage les déclenche (sections
+« Déclenchement du SEL » et « Préparation du support » plus bas). Le reste du
+catalogue (~190 entrées) n'est pas servi par la V1 et n'est pas couvert par ce
+registre.
 
 **Sémantique** : `yield_per_unit` = quantité d'**assiette** couverte par unité
 d'achat (L, kg, m, m², sachet, boîte, seau). Le moteur calcule
@@ -29,6 +37,8 @@ rendement :
 | `clad_faces` | surface × nombre de faces à parementer | m² **de parement** par unité |
 | `frame_runner` | `runner_courses` × longueur | m de lisse par unité |
 | `frame_stud` | nombre de montants × hauteur | m de montant par unité |
+| `floor_perimeter` (E1-10) | contour au sol de la pièce, **portes déduites** | m de périmètre par unité |
+| `door_count` (E1-10) | nombre de passages de porte | passages de porte par unité |
 
 **Les huit lignes `partition` ci-dessous ont donc changé d'unité en E1-3
 (migration `…080`), pas de contenu.** Les fiches Placo® donnent leurs ratios
@@ -83,10 +93,12 @@ pas bougé.
   **E1-6 a retiré les papiers peints de cette liste** : ils sont vendus au
   rouleau et non au mètre carré, et un rouleau ne rend pas sa surface en mur
   couvert — il rend un nombre entier de lés.
-- Accès : `placo.fr` et `isover.fr` refusent les clients non-navigateur
-  (403) ; leurs documents ont été lus via une copie Wayback Machine
-  octet-à-octet de l'URL fabricant indiquée. Tous les autres domaines ont été
-  chargés en direct le jour de la consultation.
+- Accès : `placo.fr`, `isover.fr` et `knauf.fr` refusent les clients
+  non-navigateur (403) ; leurs documents ont été lus via une copie Wayback
+  Machine octet-à-octet de l'URL fabricant indiquée. `mapei.com` refuse tout
+  accès (403, y compris ses PDF) : **aucun chiffre Mapei n'est cité**. Les
+  domaines PRB, Cermix, Parexlanko, Sika et Quick-Step (E1-10) ont été chargés
+  en direct le jour de la consultation, comme tous les autres.
 
 ## Registre
 
@@ -112,9 +124,16 @@ pas bougé.
 | Mortier-colle grand format (C2S1) | tiling | 0.14 | surface d'ouvrage | Cermix CERMIFLEX (**C2S1 ET**), sol intérieur, carreau 1 200-2 200 cm² : « 7 (U9) » ; 2 200-3 600 cm² : « 8 (E10) » — c'est le format, pas la classe, qui fait la surconsommation | corriger (0.15 → 0.14) | https://www.cermix.com/wp-content/uploads/2020/02/FT_CERMIFLEX.pdf | 2026-08-07 |
 | Colle en pâte prête à l'emploi | tiling | 0.22 | surface d'ouvrage | Cermix CERMIFIX (D2ET), mur intérieur, carreau 500-1 200 cm² : « 4,5 (U6) » kg/m² en double encollage — la faïence 25×40 (1 000 cm²) tombe dans cette colonne | corriger (0.4 → 0.22) | https://www.cermix.com/wp-content/uploads/2020/02/FT_CERMIFIX.pdf | 2026-08-03 |
 | Joint fin 1-6mm | tiling | 5 | surface d'ouvrage | Cermix CERMIJOINT COLOR (CG2WA, 1-6 mm), cellule « carreau 45×45, joint 3 mm » : 0,2 kg/m² — et la formule de la même fiche, « 0,17 × ép(mm) × largeur de joint(mm) × (L + l)/(L × l) », vaut 0,204 kg/m² à cette géométrie avec une épaisseur de 9 mm | corriger (4 → 5) | https://www.cermix.com/wp-content/uploads/2020/02/FT_CERMIJOINT_COLOR.pdf | 2026-08-07 |
-| Joint souple silicone | tiling | — | surface d'ouvrage | Bostik S300 Bain & Cuisine : « 12 m environ de cordon de diamètre 5 mm » par cartouche 300 ml — grandeur linéaire, aucun fabricant ne publie de rendement en m² | retirer (grandeur fiche linéaire) | https://www.bostik.com/files/live/sites/shared_bostik/files/documents-brochures/France/Documents/TDS/FT%20BOSTIK_S300%20BAIN%20CUISINE%20CERAMIQUE.pdf | 2026-08-03 |
-| Croisillons 2mm (x200) | tiling | — | surface d'ouvrage | Sachet de 200 confirmé (Raimondi) mais aucune table de consommation par m² chez Rubi, Raimondi ni Taliaplast | retirer (non sourçable) | — | 2026-08-03 |
-| Croisillons 3mm (x200) | tiling | — | surface d'ouvrage | Idem croisillons 2 mm | retirer (non sourçable) | — | 2026-08-03 |
+| Joint souple silicone | tiling | 3 | périmètre au sol | Sika Sanisil, table « Consommation », cartouche 300 ml : « 10 / 10 / 3,0 » (largeur/profondeur du joint en mm, m de joint pour 300 ml) — la section la plus petite publiée ; la fiche ne publie pas de cordon de 5 mm, la valeur retenue est donc la plus défavorable, sens sûr. Le retrait E1-7 (« grandeur fiche linéaire ») est levé par l'assiette linéaire d'E1-10 : le joint périphérique suit le périmètre au sol, portes déduites (NF DTU 52.2) | ré-exprimer par m de joint périphérique (6 → 3) | https://fra.sika.com/dms/getdocument.get/4bf61a71-0ba4-45cb-95e6-0d7c3ab8cb48/sika_sanisil_.pdf | 2026-08-08 |
+| Croisillons 2mm (x200) | tiling | 40.5 | surface d'ouvrage | Aucune table fabricant (Rubi, Raimondi, Taliaplast vérifiés en E1-7 ; sachet de 200 confirmé chez Raimondi) — la quantité est une **dérivation géométrique** : un croisillon par intersection de joints, soit 10 000/(L × l) par m² (`estimations/tile-consumption.ts`, `spacersPerM2`, loi `tile_spacers`). Rendement à la géométrie de référence 45 × 45 : 200 × 2 025/10 000 = 40,5 m² par sachet | ré-exprimer à la géométrie de référence (définitionnel — dérivation géométrique, 1 → 40.5) | — | 2026-08-08 |
+| Croisillons 3mm (x200) | tiling | 40.5 | surface d'ouvrage | Idem croisillons 2 mm — même dérivation, même sachet de 200 | ré-exprimer à la géométrie de référence (définitionnel — dérivation géométrique, 1 → 40.5) | — | 2026-08-08 |
+| Croisillons 5mm (x100) | tiling | 20.25 | surface d'ouvrage | Idem, sachet de 100 : 100 × 2 025/10 000 = 20,25 m² à la référence | ré-exprimer à la géométrie de référence (définitionnel — dérivation géométrique, 1 → 20.25) | — | 2026-08-08 |
+| Plinthe carrelage 8x30 cm | tiling | 1 | périmètre au sol | Vendue et posée au mètre le long des murs : rendement définitionnel — un mètre de plinthe couvre un mètre de périmètre, portes déduites. Chutes portées par les facteurs de perte (réutilisables d'un mur à l'autre) | ré-exprimer par m de périmètre (définitionnel) | — | 2026-08-08 |
+| SEL (Système d'Étanchéité Liquide) | tiling | 0.3333 | surface d'ouvrage | PRB CEL CÉRAMIC : « Consommation du mélange Poudre + Résine en 2 couches : 2,5 à 3,5 kg/m². », « Densité du mélange : 1,50 ± 0,10. », « Kit de 32 kg. » ; corroboré Cermix CERMIPROOF ST : « 3 kg de mélange/m² pour les 2 couches. » Milieu retenu 3 kg/m² → 0,3333 m²/kg. L'unité passe du litre au kilo : les fiches publient en kg de mélange et les kits se pèsent — le litre seedé ne correspondait à aucun conditionnement réel (l'ancien 0,7 m²/L ≈ 1,43 L/m² × 1,5 ≈ 2,1 kg/m², sous la plage fiche) | ré-exprimer en kg de mélange (0.7 → 0.3333) | https://pim.prb.fr/PRB/Fiches%20Techniques/fr/ft_prb_cel_ceramic_fr_4_04_2024.pdf | 2026-08-08 |
+| Bande d'étanchéité 120mm | tiling | 1 | périmètre au sol | Marouflée en continu dans la première couche du SEL le long des jonctions sol/mur — PRB CEL CÉRAMIC : « Un renfort d'armature est obligatoire à chaque angle, liaison sol-mur, retombée et points singuliers. » ; Cermix CERMIPROOF ST : « Parties angulaires, relevés, huisseries : bande d'armature AR12 ». Un mètre de bande par mètre de jonction : définitionnel. Rouleau de 10 m (Cermix AR12) ; le rouleau de 50 m d'avant ce lot ne correspondait à aucune fiche et sort du conditionnement | ré-exprimer par m de jonction (définitionnel) | https://www.cermix.com/fr/produit/outillage/bande-darmature-ar12-associee-a-nos-systemes-detancheite/ | 2026-08-08 |
+| Primaire d'accrochage carrelage | tiling | 5 | surface d'ouvrage | PRB ACCROSOL PLUS : « CONSOMMATION — 150 à 300 g/m² selon support (porosité, rugosité). », « Jerricans de 5 kg … Jerricans de 1 kg », « Masse volumique apparente : 1,05 ± 0,1 t/m³ » ; corroboré weberprim RP : « 150 à 250 g/m² environ » (miroir media.adeo.com). 0,2 kg/m² retenu, milieu de plage → 5 m²/kg — la valeur d'avant ce lot à l'unité près, la densité 1,05 confondant litre et kilo | ré-exprimer par kg (5 m²/L → 5 m²/kg) | https://pim.prb.fr/PRB/Fiches%20Techniques/fr/(1)ft_prb_accrosol_plus_fr_18_04_2024.pdf | 2026-08-08 |
+| Ragréage autolissant | tiling | 0.2222 | surface d'ouvrage | PRB PLANIDUR PRO : « CONSOMMATION — 1,5 kg/m²/mm d'épaisseur. », « Épaisseur d'emploi : … locaux P3, rénovation : de 3 à 10 mm », « Sac papier de 25 kg » — à l'épaisseur retenue de 3 mm (le plancher de la plage rénovation) : 4,5 kg/m², soit 0,2222 m²/kg. Le 0,2 d'avant ce lot supposait 3,33 mm qu'aucune fiche ne nomme | corriger (0.2 → 0.2222) | https://pim.prb.fr/PRB/Fiches%20Techniques/fr/(1)ft_prb_planidur_pro_fr_4_04_2024.pdf | 2026-08-08 |
+| Natte de découplage | tiling | 1 | surface d'ouvrage | Vendue et posée au m² : rendement définitionnel. Liée en alternative documentée (`is_optional`) : supports fissurés et planchers bois, jamais chiffrée automatiquement | conserver (définitionnel) | — | 2026-08-08 |
 | Éponge de carreleur | tiling | — | surface d'ouvrage | Outil : pas de rendement exprimable en m²/unité | retirer (outil) | — | 2026-08-03 |
 | Peigne à colle 10mm | tiling | — | surface d'ouvrage | Outil : pas de rendement exprimable en m²/unité | retirer (outil) | — | 2026-08-03 |
 | Stratifié 8mm AC4 | flooring | 1 | surface d'ouvrage | Vendu et posé au m² : rendement définitionnel | conserver (définitionnel) | — | 2026-08-03 |
@@ -124,7 +143,14 @@ pas bougé.
 | Sous-couche 2mm avec pare-vapeur intégré | flooring | 1 | surface d'ouvrage | Quick-Step Basic Plus (QSUDLBP15), mousse polyéthylène 2 mm, rouleau 1,00 × 15 m : « combinée à un pare-vapeur (avec rabat et bande adhésive pour une pose facile) », « 15 m²/colis ». Posée bord à bord comme la sous-couche mousse : rendement définitionnel. **Ajoutée par E1-8** pour que `vapour_barrier = 'integrated'` ait un référent réel (`is_optional: true` — alternative documentée) | conserver (définitionnel) | https://boutique-parquet.com/qsudlbp15-quick-step-15m-sous-couche-basic-plus-pare-vapeur-integre.html | 2026-08-07 |
 | Film pare-vapeur PE | flooring | 0.8 | surface d'ouvrage | Wineo PE-Dampfbremse : lé 1,00 m, « > 20 cm Stoßüberlappung » ; Tarkett : « chevauchement d'au moins 200 mm » → (1,00 − 0,20)/1,00 = 0,80 | corriger (1 → 0.8) | https://www.wineo.de/content/Dokumente/Zubehoer/Technische%20Datenblaetter/DE/PE-Dampfbremse-02-2019.pdf | 2026-08-03 |
 | Ruban adhésif pare-vapeur | flooring | — | surface d'ouvrage | Aucune règle de consommation chiffrée en fiche (Quick-Step NETAPE50, Ursa UNI TAPE) ; Wineo : adhésivage non requis en conditions normales | retirer (non sourçable) | https://www.quick-step.fr/-/media/Imported%20Assets/Flooring/9/6/5/TDSAccNETAPE50SelfadhesiveTapeFRpdf49942.ashx?rev=867c7b1de3ff4881ace0453be4832f00&type=original&filename=Informations+techniques.pdf | 2026-08-03 |
-| Cale de dilatation (x40) | flooring | — | surface d'ouvrage | Quantité au périmètre de la pièce, pas à la surface : pas de rendement en m²/unité | retirer (grandeur non surfacique) | — | 2026-08-03 |
+| Cale de dilatation (x40) | flooring | — | surface d'ouvrage | Réexaminée par E1-10 : l'assiette linéaire existe désormais (`floor_perimeter`), mais la notice de pose Quick-Step, qui impose le jeu (« de 8 à 10 mm »), **ne publie aucune règle d'espacement des cales** — aucun « une cale tous les X cm » dans les 10 pages, ni dans les TDS plinthes et Incizo. Sans espacement sourcé, pas de rendement au mètre : la cale reste hors chiffrage plutôt que d'inventer un pas | retirer (non sourçable — aucun espacement publié) | https://www.quick-step.fr/-/media/Imported%20Assets/Flooring/6/9/9/QSInstallationLMPImpressivePatternsFRpdf109781.ashx?rev=8c25c26e13e941c3bd2917b4cee71d84&type=original&filename=Instructions+de+pose+Quick-Step+Sol+stratifi%C3%A9+Impressive+Patterns.pdf | 2026-08-08 |
+| Plinthe MDF 60mm 2.4m | flooring | 1 | périmètre au sol | Vendue et posée au mètre : définitionnel. Barre de 2,40 m confirmée par la TDS Quick-Step Plinthes : « QSSK(-) — Plinthe standard — 58mm x 12mm x 240cm — Quantité par emballage : 6 » (toutes les plinthes du fabricant sont en 240 cm) | ré-exprimer par m de périmètre (définitionnel) | https://www.quick-step.fr/-/media/imported%20assets/flooring/8/1/b/qstdsaccqsscotqsskqspskrqslpskrlaminateskirtingsfrpdf223337.ashx?rev=507cf6438b7b47b9b536106ce8c2ed7d&type=original&filename=Informations+techniques.pdf | 2026-08-08 |
+| Plinthe MDF 80mm 2.4m | flooring | 1 | périmètre au sol | Idem — alternative documentée (`is_optional`), même barre de 2,40 m | ré-exprimer par m de périmètre (définitionnel) | — | 2026-08-08 |
+| Plinthe chêne 70mm 2.4m | flooring | 1 | périmètre au sol | Idem — alternative documentée (`is_optional`), même barre de 2,40 m | ré-exprimer par m de périmètre (définitionnel) | — | 2026-08-08 |
+| Barre de seuil alu 93cm | flooring | 1 | passages de porte | Une barre par passage de porte : définitionnel. La largeur standard française (83 cm, la porte de la chambre de référence) tient dans les 93 cm ; un passage plus large relève de la barre de 180 cm (alternative documentée). Sort du forfait `complementary_materials` (règle E1-6 : dès qu'une quantité dépend de la géométrie, le produit relève du catalogue) | ré-exprimer par passage de porte (définitionnel) | — | 2026-08-08 |
+| Barre de seuil alu 180cm | flooring | 1 | passages de porte | Idem — alternative documentée (`is_optional`) pour les baies larges | ré-exprimer par passage de porte (définitionnel) | — | 2026-08-08 |
+| Ragréage fibré sol | flooring | 0.2222 | surface d'ouvrage | PRB PLANIFIBRE : « CONSOMMATION — 1,5 kg/m²/mm d'épaisseur. », « ÉPAISSEUR D'EMPLOI : Locaux P2, P3, P4 et P4S : de 3 à 30 mm. », « Sac papier de 25 kg. » — fibré requis sur planchers bois : « Planchers bois : ils seront rigides (sans flexion) et stables, conformes au DTU 51.3 ». À 3 mm : 4,5 kg/m², soit 0,2222 m²/kg | corriger (0.2 → 0.2222) | https://pim.prb.fr/PRB/Fiches%20Techniques/fr/ft_prb_planifibre_fr_5_12_2023.pdf | 2026-08-08 |
+| Primaire d'accrochage sol | flooring | 5 | surface d'ouvrage | PRB ACCROSOL PLUS — même fiche, même plage et même ré-expression que le primaire carrelage ci-dessus | ré-exprimer par kg (5 m²/L → 5 m²/kg) | https://pim.prb.fr/PRB/Fiches%20Techniques/fr/(1)ft_prb_accrosol_plus_fr_18_04_2024.pdf | 2026-08-08 |
 | Plaque BA13 standard 2.5x1.2m | partition | 0.96 | parement | Placo® Fiche Solution Placostil® 72/48 BA13 (1 m² d'ouvrage) : « Placoplatre® BA 13 — M2 — 2,10 » (deux faces simple peau) → 1,05 m² par m² de parement | ré-exprimer par m² de parement (0.48 → 0.96) | https://www.placo.fr/sites/mac3.placo.fr/files/files/forum/Maison_Cloison_Placostil_Ep_72_BA13_39dB.pdf | 2026-08-03 |
 | Plaque BA13 hydro 2.5x1.2m | partition | 0.96 | parement | Ratio du système standard (2,10 m²/m², deux faces) ; variante hydro confirmée à géométrie identique (Knauf KM 72/48 KH13 : « une plaque … par côté ») | ré-exprimer par m² de parement (0.48 → 0.96) | https://tools.knauf.fr/file/71742/download?token=vZzSxXQF | 2026-08-03 |
 | Rail R48 3m | partition | 1 | lisses | Placo® Fiche Solution 72/48 : « Rail Stil® R 48 — M — 0,90 » par m² de cloison — ratio valable à une hauteur donnée seulement ; depuis E1-3 la lisse est métrée sur le linéaire réel (2 × longueur), et un mètre de rail couvre un mètre de lisse | ré-exprimer par m de lisse (1.11 → 1) | https://www.placo.fr/sites/mac3.placo.fr/files/files/forum/Maison_Cloison_Placostil_Ep_72_BA13_39dB.pdf | 2026-08-03 |
@@ -133,7 +159,8 @@ pas bougé.
 | Bande à joint papier 23m | partition | 0.72 | parement | Placo® Fiche Solution 72/48 : « Bande PP grand Rouleau — M — 2,80 » par m² (deux faces ; joints, cueillies et angles inclus) → 1,40 m par m² de parement | ré-exprimer par m² de parement (0.36 → 0.72) | https://www.placo.fr/sites/mac3.placo.fr/files/files/forum/Maison_Cloison_Placostil_Ep_72_BA13_39dB.pdf | 2026-08-03 |
 | Enduit à joint prêt 7kg | partition | 2 | parement | Placo® Placomix® : « Consommation minimum 470 g/m² » de parement ; corroboré Siniat PRÉGY S PE (0,40-0,45 kg/m²). La valeur retenue, 0,50 kg par m² de parement, est celle qui reconduit exactement le 1 kg/m² de cloison seedé par E1-7 | ré-exprimer par m² de parement (1 → 2) | https://www.placo.fr/Produits/enduits-joint/placomixr-5kg | 2026-08-03 |
 | Enduit à joint poudre 5kg | partition | 3.04 | parement | Placo® Fiche Solution 72/48 : « Placojoint® PR4 25kg — KG — 0,66 » par m² de cloison (deux faces) → 0,33 kg par m² de parement | ré-exprimer par m² de parement (1.52 → 3.04) | https://www.placo.fr/sites/mac3.placo.fr/files/files/forum/Maison_Cloison_Placostil_Ep_72_BA13_39dB.pdf | 2026-08-03 |
-| Laine de verre 45mm | partition | 1 | surface d'ouvrage | Vendue au m² (Isover PAR PHONIC 45 mm, rouleau 0,6 × 13 m), posée entre montants sans recouvrement ; le quantitatif Placo compte 1,05 (chutes portées ici par les facteurs de perte) | conserver (définitionnel) | https://www.isover.fr/produits/laine-de-verre/par-phonic | 2026-08-03 |
+| Laine de verre 45mm | partition | 0.9524 | surface d'ouvrage | Placo® Fiche Solution Placostil® 72/48 39 dB : ligne isolant du quantitatif « M2 — 1,05 » par m² de cloison, l'isolant du système étant « Type d'isolant : Laine de verre », « Epaisseur d'isolant (mm) : 45 » (la ligne chiffrée porte le code GP00000163, son libellé est vide dans le PDF — la désignation vient de la description du système, même fiche). 1/1,05 = 0,9524. Une seule trame quel que soit le nombre de faces : la laine se pose **entre les montants**, d'où `work_surface` et non `clad_faces`. Passée d'alternative documentée à ligne obligatoire par E1-10 : le quantitatif du système l'inclut | corriger (1 → 0.9524) | https://www.placo.fr/sites/mac3.placo.fr/files/files/forum/Maison_Cloison_Placostil_Ep_72_BA13_39dB.pdf | 2026-08-08 |
+| Bande résiliente 50mm | partition | 1 | lisses | Knauf, « Accessoires pour cloisons - Bande résiliente » : « La bande résiliente (grise) se colle sous les rails », « LARGEUR : 30, 50, 70 et 95 mm », « LONGUEUR : 30 ml », « ÉPAISSEUR : 3 mm » — largeur 50 mm pour le rail de 48, rouleau de 30 m. Aucun ratio de consommation publié (règle de pose seule) : posée en course continue sous les lisses, un mètre de bande couvre un mètre de lisse — définitionnel, comme le rail. **Matériau ajouté au catalogue par E1-10** (`…091`) | conserver (définitionnel — un mètre de bande par mètre de lisse) | https://www.knauf.fr/solutions/produit/accessoires-pour-cloisons-bande-resiliente | 2026-08-08 |
 | Papier peint intissé uni | wall_covering | 1 | surface d'ouvrage | **E1-6 : `yield_per_unit` n'est plus lu.** Vendu au rouleau 10,05 × 0,53 m (`roll_length_cm` 1005, `roll_width_cm` 53) et débité en lés entiers ; la quantité vient de la découpe, pas d'un rendement au m². Bricoflor : « Un rouleau de papier peint de taille standard en Europe présente une longueur de 10,05 mètres. La largeur de lés est de 0,53 m » | ré-exprimer (compté en lés) | https://www.bricoflor.fr/blog/2020/02/14/calcul-rouleau-papier-peint-quelle-quantite-me-faut-il | 2026-08-07 |
 | Papier peint intissé à motif | wall_covering | 1 | surface d'ouvrage | Idem, plus le raccord de motif saisi (`pattern_repeat_cm`) qui allonge chaque lé ; facteur de chute « patterned » du catalogue inchangé | ré-exprimer (compté en lés) | https://www.bricoflor.fr/blog/2020/02/14/calcul-rouleau-papier-peint-quelle-quantite-me-faut-il | 2026-08-07 |
 | Papier peint vinyle expansé | wall_covering | 1 | surface d'ouvrage | Idem — même rouleau standard | ré-exprimer (compté en lés) | https://www.bricoflor.fr/blog/2020/02/14/calcul-rouleau-papier-peint-quelle-quantite-me-faut-il | 2026-08-07 |
@@ -647,10 +674,13 @@ matériaux ne sont plus liés à aucun ouvrage V1 depuis la migration `…071`.
 ### Accès aux sources
 
 Refus systématique des clients non-navigateur (HTTP 403) : Leroy Merlin,
-Point.P, ManoMano, Lapeyre, `placo.fr`, Knauf, Gerflor, `fr.weber`. Les valeurs
-Placo ont été lues via une copie Wayback Machine, la fiche Weber via le miroir
-distributeur `media.adeo.com`. **Aucun chiffre Leroy Merlin n'est cité** : ses
-pages ne sont ni accessibles ni archivées, et les pourcentages de son
+Point.P, ManoMano, Lapeyre, `placo.fr`, Knauf, Gerflor, `fr.weber`, et depuis
+E1-10 `mapei.com` (pages **et** PDF — aucun chiffre Mapei n'est cité). Les
+valeurs Placo et Knauf ont été lues via une copie Wayback Machine, la fiche
+Weber via le miroir distributeur `media.adeo.com`. PRB (`pim.prb.fr`), Cermix,
+Parexlanko, Sika (`fra.sika.com`) et Quick-Step répondent en direct — ce sont
+les sources principales d'E1-10. **Aucun chiffre Leroy Merlin n'est cité** :
+ses pages ne sont ni accessibles ni archivées, et les pourcentages de son
 calculateur vivent dans du JavaScript non récupérable.
 
 Deux valeurs vues en première lecture ont été **écartées après re-vérification
@@ -787,6 +817,150 @@ de référence du harnais, donc aucun instantané ne pouvait rien montrer. D'où
 l'invariant **I7** (`seeded-catalog-harness.ts`), qui recalcule le compte attendu
 depuis l'assiette de l'ouvrage et non depuis les champs de la ligne.
 
+## Assiettes linéaires et comptées (E1-10)
+
+E1-7 avait posé « pas de rendement surfacique, pas de ligne » et sorti du
+chiffrage tout ce qui se compte au mètre ou à l'unité — plinthes, barres de
+seuil, silicone, croisillons. La règle protégeait d'un catalogue non sourçable,
+mais elle rendait la liste inachetable : un artisan ne part pas au dépôt sans
+plinthes. E1-10 la remplace (`docs/MATERIAUX_OUVRAGES.md`, règle E1-10) : le
+linéaire et le comptage deviennent des **assiettes** du moteur, au même titre
+que la surface et la trame.
+
+**`floor_perimeter` — le périmètre au sol, portes déduites.** Calculé par
+`computeWorkBasis` : `unionPerimeterCm(segments)` (exact pour toute forme
+rectilinéaire — le séjour en L rend 18 m, pas la somme des rectangles) moins la
+largeur des ouvertures `type = 'door'`, clampé à ≥ 0, en mètres. Une plinthe ne
+traverse pas un passage de porte ; une fenêtre ne la troue pas. Monotone en
+chaque dimension de la pièce : les bornes CV-5 restent exactes.
+
+**`door_count` — le nombre de passages de porte.** Somme des `count` des
+ouvertures `type = 'door'`. Une barre de seuil par passage.
+
+**Le type d'ouverture atteint enfin le moteur.** `openings.type`
+(porte/fenêtre) existait en base et à l'écran mais n'était pas transmis ;
+E1-10 le câble (`RoomData`, `PublicOpeningDto`, mappers du service). Sur le
+chemin public, le champ est **optionnel** — aucun client existant ne casse — et
+son absence vaut `door` : l'ouverture unique typique d'une pièce est sa porte,
+et le sens de l'erreur résiduelle (une fenêtre comptée porte) coûte une barre
+de seuil en trop et quelques décimètres de plinthe en moins, jamais l'inverse
+silencieux.
+
+**Assiette déclarée = erreur bruyante.** Une cloison créée n'a ni contour au
+sol ni passages de porte : un matériau à driver linéaire lié à un ouvrage
+déclaré fait échouer le chiffrage avec le nom du matériau et de l'ouvrage —
+même règle que `frame_runner` sans `frame_spec`, jamais un zéro silencieux.
+
+**Encadrements `driver_base`.** Les bornes I3 de ces matériaux
+(`materials/consumption-bounds.data.ts`, champ `per: 'driver_base'`) sont
+exprimées **par unité d'assiette du driver** — m de plinthe par m de périmètre,
+barre par passage — et le harnais divise par l'assiette recalculée via
+`resolveMeteringQuantity`. Un rapport au m² d'ouvrage varierait du simple au
+triple avec la géométrie de la pièce : il serait soit tautologique sur la pièce
+d'épreuve, soit faux sur une autre.
+
+**Double achat assumé, écrit ici** : plinthes et barres de seuil sont liées à
+`floor_tiling` **et** `parquet_flooring`. Un projet qui pose les deux ouvrages
+dans la **même pièce** achèterait deux jeux — entrée dégénérée (deux sols dans
+une pièce) ; dans deux pièces différentes, deux jeux est le compte juste,
+chaque pièce ayant ses seuils et son périmètre.
+
+## Déclenchement du SEL (E1-10)
+
+Le NF DTU 52.2 impose une protection à l'eau sous carrelage dans les locaux
+très exposés (zones de douche, locaux EB+ privatifs) ; dans un séjour ou une
+cuisine, le SEL est un bidon acheté pour rien. La condition n'est ni une
+propriété du produit ni de l'ouvrage : c'est l'**exposition à l'eau du local**,
+et seul l'utilisateur la connaît. Le modèle de pièce n'a pas de type de local
+(le nom est un texte libre) : la question est donc portée par l'ouvrage, comme
+`subfloor_type` (E1-8).
+
+Même architecture en trois pièces que le pare-vapeur :
+
+| Quoi | Où | Valeurs |
+| --- | --- | --- |
+| La question | `work_types.contextual_questions`, clé `water_exposure`, sur `floor_tiling` et `wall_tiling`, requise | `dry` (défaut) · `wet_room` |
+| Le rôle produit | `materials_catalog.wet_room_system` | `sel` · `sealing_band` · `NULL` |
+| La règle | `estimations/wet-room.ts`, `resolveWetRoom` | exclusions et inclusions motivées, rendues à l'écran |
+
+**Le défaut est `dry`, et c'est une inversion assumée de la doctrine E1-8
+« défaut = sens sûr »** (arbitrage utilisateur du 2026-08-08). Pour le
+pare-vapeur, le sens sûr coûtait un rouleau sur les seuls parquets ; ici,
+« sûr = exposé » achèterait un kit de 32 kg et sa bande sur **tous** les
+carrelages non répondus du chemin public — chaque séjour, chaque cuisine.
+Le garde-fou est l'exclusion motivée : en local sec, la ligne SEL sort en
+exclusion **visible** (« Local déclaré sec : aucun système d'étanchéité
+liquide requis… ») — dans les deux sens, l'artisan voit que sa réponse a été
+lue. L'invariant I6 tient : les deux réponses changent les lignes.
+
+**Assiettes.** Le SEL suit la surface d'ouvrage **entière** (sol sur
+`floor_tiling`, murs nets sur `wall_tiling`) ; la bande d'étanchéité suit le
+périmètre au sol (jonction sol/mur), sur `floor_tiling` seulement — le linéaire
+des angles verticaux d'une paroi n'est connu d'aucune donnée du modèle, la
+bande murale reste donc hors chiffrage (écrit dans `MATERIAUX_OUVRAGES.md`).
+
+**Simplification V1, sens sûr** : le DTU n'exige le SEL que sur la zone
+exposée ; l'assiette retenue est la surface entière, réductible par les
+exclusions de zone (ENG-3, « zone douche uniquement »). L'écart résiduel
+achète trop, jamais trop peu. Une pièce carrelée sol et murs achète du SEL
+pour les deux assiettes, mutualisé en un seul compte de kits par
+`aggregatePurchases` — c'est le comportement correct d'une douche, pas un
+double achat.
+
+## Préparation du support (E1-10)
+
+Les NF DTU 52.2 (carrelage) et 51.11 (parquet flottant) tolèrent un support
+dont les défauts de planéité ne dépassent pas **5 mm sous la règle de 2 m** ;
+au-delà, ragréage. La planéité est un diagnostic que l'artisan fait réellement,
+à la règle, sur le chantier — donc une question, `floor_flatness`, sur
+`floor_tiling` et `parquet_flooring` (requise, `flat` par défaut — même
+arbitrage et même garde-fou d'exclusion motivée que `water_exposure`).
+
+| Quoi | Où | Valeurs |
+| --- | --- | --- |
+| La question | clé `floor_flatness`, `floor_tiling` + `parquet_flooring` | `flat` (défaut) · `uneven` |
+| Le rôle produit | `materials_catalog.substrate_prep` | `leveling_compound` · `leveling_primer` · `NULL` |
+| La règle | `estimations/floor-prep.ts`, `resolveFloorPrep` | même squelette que `wet-room.ts` |
+
+**Le primaire suit le ragréage — par la donnée produit, pas par le code.** Les
+fiches de ragréage prescrivent le primaire avant application (PRB : ACCROSOL
+prescrit selon support) ; les deux portent le même déclencheur et sortent
+ensemble, dans les deux sens. Le « primaire seul sur support fermé » (ancien
+carrelage sans ragréage) reste hors périmètre : ce diagnostic-là n'a pas de
+question honnête en V1 — le C2 flexible est précisément retenu pour adhérer
+aux supports existants.
+
+**Épaisseur retenue : 3 mm** — le plancher de la plage « locaux P3,
+rénovation : 3 à 10 mm » (PRB). C'est l'hypothèse qui donne 4,5 kg/m² aux deux
+ragréages ; un chantier plus creusé consomme plus, et la fourchette I3
+(4,2-5 kg/m²) n'encadre que l'hypothèse écrite, comme pour les colles E1-5.
+
+## Croisillons : dérivation géométrique (E1-10)
+
+Aucun fabricant ne publie de table de consommation de croisillons (Rubi,
+Raimondi, Taliaplast vérifiés en E1-7) — c'est ce qui les avait fait retirer.
+Ce qui les réintègre n'est pas une fiche, c'est une **dérivation géométrique du
+même statut que la longueur de joint** de la formule Cermix : dans un
+calepinage droit, chaque sommet intérieur du quadrillage joint quatre carreaux
+et reçoit une croix, et le nombre de sommets par m² égale asymptotiquement le
+nombre de carreaux par m², soit `10 000 / (L_cm × l_cm)`.
+
+La loi vit dans `estimations/tile-consumption.ts` (`spacersPerM2`, modèle
+`tile_spacers`), le rendement seedé est exprimé à la géométrie de référence
+(45 × 45 : 4,94 croisillons/m², donc 40,5 m² par sachet de 200) et le moteur
+dérive le rendement effectif du format posé — 25/m² en 20 × 20, 10/m² pour la
+faïence 25 × 40. Insensible à la largeur de joint (le croisillon **fixe** la
+largeur, il ne la remplit pas) et au sens de pose (la diagonale ne change pas
+le nombre de carreaux sous un m²). Décision de registre :
+`définitionnel — dérivation géométrique`, sans URL, et c'est écrit tel quel
+plutôt que maquillé en source.
+
+**Coupe V1 sur les tailles** : un seul SKU obligatoire par ouvrage — le 3 mm,
+joint recommandé du 45 × 45 comme du 25 × 40 — les 2 mm et 5 mm en
+alternatives documentées. Faire suivre le SKU à `joint_width_mm` serait un
+mécanisme nouveau (sélection de matériau par paramètre) que le moteur n'a
+pas ; la **quantité**, elle, est identique quel que soit le SKU.
+
 ## Temps unitaires de main-d'œuvre : statut (E2-3)
 
 `work_types.labor_minutes_per_m2` (migration `…072`) propose, par ouvrage, un
@@ -816,13 +990,17 @@ ligne de MO n'est proposée pour cet ouvrage plutôt que d'en inventer une à
 
 ## Réintégrer un matériau retiré
 
-Deux portes, toutes deux hors périmètre V1 (mise à jour de
-`docs/BACKLOG_V1.md` requise) :
+Deux portes (mise à jour de `docs/BACKLOG_V1.md` requise) :
 
-- **Rappel d'achat forfaitaire** : `complementary_materials` porte déjà des
-  quantités par défaut indépendantes de la surface (bac à peinture, profil de
-  finition, barre de seuil) — le mécanisme naturel pour « un jeu d'outils par
-  chantier ».
-- **Rendement sourcé** : si un fabricant publie un jour une table de
-  consommation au m² (croisillons par format, par exemple), ajouter la ligne
-  ici puis re-lier le matériau.
+- **Rappel d'achat forfaitaire** : `complementary_materials` porte des
+  quantités par défaut indépendantes de la géométrie — depuis E1-10, il ne
+  reste que **bac à peinture** et **profil de finition** (la barre de seuil en
+  est sortie, migration `…093` : sa quantité dépend du nombre de portes, donc
+  du catalogue, règle E1-6).
+- **Rendement sourcé ou définitionnel dans une assiette que le modèle
+  connaît** : surface, parement, trame, périmètre au sol, passages de porte,
+  géométrie du carreau (règle E1-10, `docs/MATERIAUX_OUVRAGES.md`). C'est la
+  porte qu'ont prise silicone, plinthes, seuils et croisillons. Ce qui reste
+  dehors y reste pour l'une de deux raisons, jamais par principe : grandeur
+  inconnue du modèle (cornières d'angle d'une cloison), ou rendement non
+  sourçable (espacement des cales de dilatation).

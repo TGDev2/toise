@@ -55,6 +55,51 @@ export interface SeedWorkType {
  * qui pèse plus que tout le reste sur le joint — un 20 × 20 à 5 mm en consomme
  * trois fois plus qu'un 60 × 60 à 2 mm.
  */
+/**
+ * E1-10 — l'exposition à l'eau du local, qui décide de la présence du SEL et
+ * de sa bande de jonction (`estimations/wet-room.ts`).
+ *
+ * Deuxième question du produit, après `subfloor_type`, dont la réponse fait
+ * apparaître ou disparaître des lignes. La première option est aussi la valeur
+ * que retient le moteur sans réponse — et ici ce n'est **pas** le sens sûr,
+ * contrairement à E1-8 : « sûr = exposé » achèterait un système d'étanchéité
+ * complet sur tous les carrelages non répondus du chemin public, chaque
+ * séjour, chaque cuisine. Le défaut est donc `dry`, l'inversion est assumée,
+ * arbitrée et consignée au registre ; le garde-fou est l'exclusion motivée
+ * visible à l'écran dans les deux sens.
+ */
+const waterExposureQuestion: ContextualQuestion = {
+  key: 'water_exposure',
+  type: 'select',
+  label_fr: "Exposition à l'eau du local",
+  options: [
+    { value: 'dry', label_fr: 'Pièce sèche (séjour, chambre, cuisine…)' },
+    { value: 'wet_room', label_fr: "Salle d'eau — douche ou baignoire" },
+  ],
+  required: true,
+};
+
+/**
+ * E1-10 — la planéité du support, qui décide de la présence du ragréage et de
+ * son primaire (`estimations/floor-prep.ts`). Le seuil est celui des NF DTU
+ * 52.2 et 51.11 : 5 mm sous la règle de 2 m — un diagnostic que l'artisan fait
+ * réellement, à la règle, sur le chantier. Même défaut « premier choix », même
+ * arbitrage et même garde-fou d'exclusion motivée que `water_exposure`.
+ */
+const floorFlatnessQuestion: ContextualQuestion = {
+  key: 'floor_flatness',
+  type: 'select',
+  label_fr: 'Planéité du support',
+  options: [
+    { value: 'flat', label_fr: 'Plan — au plus 5 mm sous la règle de 2 m' },
+    {
+      value: 'uneven',
+      label_fr: 'Défauts de plus de 5 mm — ragréage nécessaire',
+    },
+  ],
+  required: true,
+};
+
 const floorTilingQuestions: ContextualQuestion[] = [
   {
     key: 'tile_format',
@@ -107,6 +152,8 @@ const floorTilingQuestions: ContextualQuestion[] = [
     ],
     required: true,
   },
+  waterExposureQuestion,
+  floorFlatnessQuestion,
 ];
 
 /**
@@ -139,6 +186,9 @@ const wallTilingQuestions: ContextualQuestion[] = [
     ],
     required: true,
   },
+  // E1-10 : le SEL mural suit la même exposition que le SEL au sol — une
+  // douche carrelée l'est sur ses deux surfaces.
+  waterExposureQuestion,
 ];
 
 /**
@@ -191,6 +241,9 @@ const parquetFlooringQuestions: ContextualQuestion[] = [
     ],
     required: true,
   },
+  // E1-10 : le parquet flottant tolère les mêmes 5 mm/2 m que le carrelage
+  // (NF DTU 51.11) ; au-delà, ragréage fibré + primaire.
+  floorFlatnessQuestion,
 ];
 
 /**

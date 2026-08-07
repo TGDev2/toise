@@ -164,18 +164,21 @@ describe('Facteurs de perte — couverture du registre', () => {
      * Un test de couverture qui n'a rien parcouru est vert et inutile : le
      * compte est la preuve qu'il a travaillé (cf. le filtre mort d'E1-3 que
      * `harness-coverage.spec.ts` documente). Il est écrit en clair, et se
-     * recalcule à la main — poses × niveaux × matériaux liés :
+     * recalcule à la main — poses × niveaux × matériaux liés obligatoires,
+     * matériaux conditionnels d'E1-10 compris (SEL, bande, ragréages,
+     * primaires : la question décide de la ligne, pas de la présence au
+     * registre des pertes) :
      *
-     *   wall_painting      1 × 3 × 2 =  6
-     *   ceiling_painting   1 × 3 × 2 =  6
-     *   floor_tiling       2 × 3 × 3 = 18
-     *   wall_tiling        2 × 3 × 3 = 18
-     *   parquet_flooring   3 × 3 × 3 = 27
-     *   drywall            1 × 3 × 6 = 18
-     *   wall_covering      1 × 3 × 2 =  6
-     *                                 ---
-     *                                  99
+     *   wall_painting      1 × 3 ×  2 =  6
+     *   ceiling_painting   1 × 3 ×  2 =  6
+     *   floor_tiling       2 × 3 × 11 = 66
+     *   wall_tiling        2 × 3 ×  5 = 30
+     *   parquet_flooring   3 × 3 ×  7 = 63
+     *   drywall            1 × 3 ×  8 = 24
+     *   wall_covering      1 × 3 ×  2 =  6
+     *                                  ---
+     *                                  201
      */
-    expect(resolved).toBe(99);
+    expect(resolved).toBe(201);
   });
 });

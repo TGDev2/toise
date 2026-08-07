@@ -79,6 +79,28 @@ Joint fin 1-6mm  [floor_tiling] · 2 pièces · 4 contributions
    Séjour en L              wall_tiling           10.001 kg      2 1 × Sac 10 kg + 1 × Sac 5 kg
    mutualisé                                      23.627 kg      3 2 × Sac 10 kg + 1 × Sac 5 kg
    économie de mutualisation                                      2 contenants évités
+Croisillons 3mm (x200)  [floor_tiling] · 2 pièces · 4 contributions
+   Chambre rectangulaire    floor_tiling         0.326 unit      1 1 × Sachet 200 pcs
+   Chambre rectangulaire    wall_tiling          1.832 unit      2 2 × Sachet 200 pcs
+   Séjour en L              floor_tiling         0.407 unit      1 1 × Sachet 200 pcs
+   Séjour en L              wall_tiling          2.303 unit      3 3 × Sachet 200 pcs
+   mutualisé                                     4.868 unit      5 5 × Sachet 200 pcs
+   économie de mutualisation                                      2 contenants évités
+Joint souple silicone  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling         4.610 unit      5 5 × Cartouche 300 ml
+   Séjour en L              floor_tiling         6.010 unit      7 7 × Cartouche 300 ml
+   mutualisé                                    10.620 unit     11 11 × Cartouche 300 ml
+   économie de mutualisation                                      1 contenant évité
+Plinthe carrelage 8x30 cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling           14.487 m      5 5 × Lot de 10 (3 m)
+   Séjour en L              floor_tiling           18.887 m      7 7 × Lot de 10 (3 m)
+   mutualisé                                       33.374 m     12 12 × Lot de 10 (3 m)
+   économie de mutualisation                                      0 aucun contenant évité
+Barre de seuil alu 93cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling         1.000 unit      1 1 × Unité
+   Séjour en L              floor_tiling         1.000 unit      1 1 × Unité
+   mutualisé                                     2.000 unit      2 2 × Unité
+   économie de mutualisation                                      0 aucun contenant évité
 Faïence murale 25x40 cm  [wall_tiling] · 2 pièces · 2 contributions
    Chambre rectangulaire    wall_tiling           38.303 m2     39 39 × Boîte 1 m²
    Séjour en L              wall_tiling           48.147 m2     49 49 × Boîte 1 m²
@@ -90,7 +112,7 @@ Colle en pâte prête à l'emploi  [wall_tiling] · 2 pièces · 2 contributions
    mutualisé                                     358.783 kg     24 24 × Seau 15 kg
    économie de mutualisation                                      1 contenant évité
 
-total : 5 matériaux · 149 contenants pièce par pièce → 144 mutualisés
+total : 9 matériaux · 182 contenants pièce par pièce → 174 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) chantiers réalistes — niveau beginner peinture murale + plafond, deux pièces 1`] = `
@@ -141,6 +163,28 @@ Joint fin 1-6mm  [floor_tiling] · 2 pièces · 4 contributions
    Séjour en L              wall_tiling            9.715 kg      1 1 × Sac 10 kg
    mutualisé                                      22.952 kg      3 2 × Sac 10 kg + 1 × Sac 5 kg
    économie de mutualisation                                      1 contenant évité
+Croisillons 3mm (x200)  [floor_tiling] · 2 pièces · 4 contributions
+   Chambre rectangulaire    floor_tiling         0.302 unit      1 1 × Sachet 200 pcs
+   Chambre rectangulaire    wall_tiling          1.699 unit      2 2 × Sachet 200 pcs
+   Séjour en L              floor_tiling         0.378 unit      1 1 × Sachet 200 pcs
+   Séjour en L              wall_tiling          2.135 unit      3 3 × Sachet 200 pcs
+   mutualisé                                     4.514 unit      5 5 × Sachet 200 pcs
+   économie de mutualisation                                      2 contenants évités
+Joint souple silicone  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling         4.478 unit      5 5 × Cartouche 300 ml
+   Séjour en L              floor_tiling         5.838 unit      6 6 × Cartouche 300 ml
+   mutualisé                                    10.316 unit     11 11 × Cartouche 300 ml
+   économie de mutualisation                                      0 aucun contenant évité
+Plinthe carrelage 8x30 cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling           13.829 m      5 5 × Lot de 10 (3 m)
+   Séjour en L              floor_tiling           18.029 m      7 7 × Lot de 10 (3 m)
+   mutualisé                                       31.858 m     11 11 × Lot de 10 (3 m)
+   économie de mutualisation                                      1 contenant évité
+Barre de seuil alu 93cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling         1.000 unit      1 1 × Unité
+   Séjour en L              floor_tiling         1.000 unit      1 1 × Unité
+   mutualisé                                     2.000 unit      2 2 × Unité
+   économie de mutualisation                                      0 aucun contenant évité
 Faïence murale 25x40 cm  [wall_tiling] · 2 pièces · 2 contributions
    Chambre rectangulaire    wall_tiling           34.972 m2     35 35 × Boîte 1 m²
    Séjour en L              wall_tiling           43.960 m2     44 44 × Boîte 1 m²
@@ -152,7 +196,7 @@ Colle en pâte prête à l'emploi  [wall_tiling] · 2 pièces · 2 contributions
    mutualisé                                     348.532 kg     24 24 × Seau 15 kg
    économie de mutualisation                                      0 aucun contenant évité
 
-total : 5 matériaux · 136 contenants pièce par pièce → 133 mutualisés
+total : 9 matériaux · 168 contenants pièce par pièce → 162 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) chantiers réalistes — niveau expert peinture murale + plafond, deux pièces 1`] = `
@@ -203,6 +247,28 @@ Joint fin 1-6mm  [floor_tiling] · 2 pièces · 4 contributions
    Séjour en L              wall_tiling            9.810 kg      1 1 × Sac 10 kg
    mutualisé                                      23.177 kg      3 2 × Sac 10 kg + 1 × Sac 5 kg
    économie de mutualisation                                      1 contenant évité
+Croisillons 3mm (x200)  [floor_tiling] · 2 pièces · 4 contributions
+   Chambre rectangulaire    floor_tiling         0.311 unit      1 1 × Sachet 200 pcs
+   Chambre rectangulaire    wall_tiling          1.749 unit      2 2 × Sachet 200 pcs
+   Séjour en L              floor_tiling         0.389 unit      1 1 × Sachet 200 pcs
+   Séjour en L              wall_tiling          2.198 unit      3 3 × Sachet 200 pcs
+   mutualisé                                     4.647 unit      5 5 × Sachet 200 pcs
+   économie de mutualisation                                      2 contenants évités
+Joint souple silicone  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling         4.522 unit      5 5 × Cartouche 300 ml
+   Séjour en L              floor_tiling         5.895 unit      6 6 × Cartouche 300 ml
+   mutualisé                                    10.417 unit     11 11 × Cartouche 300 ml
+   économie de mutualisation                                      0 aucun contenant évité
+Plinthe carrelage 8x30 cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling           14.092 m      5 5 × Lot de 10 (3 m)
+   Séjour en L              floor_tiling           18.372 m      7 7 × Lot de 10 (3 m)
+   mutualisé                                       32.464 m     11 11 × Lot de 10 (3 m)
+   économie de mutualisation                                      1 contenant évité
+Barre de seuil alu 93cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling         1.000 unit      1 1 × Unité
+   Séjour en L              floor_tiling         1.000 unit      1 1 × Unité
+   mutualisé                                     2.000 unit      2 2 × Unité
+   économie de mutualisation                                      0 aucun contenant évité
 Faïence murale 25x40 cm  [wall_tiling] · 2 pièces · 2 contributions
    Chambre rectangulaire    wall_tiling           36.637 m2     37 37 × Boîte 1 m²
    Séjour en L              wall_tiling           46.053 m2     47 47 × Boîte 1 m²
@@ -214,7 +280,7 @@ Colle en pâte prête à l'emploi  [wall_tiling] · 2 pièces · 2 contributions
    mutualisé                                     351.949 kg     24 24 × Seau 15 kg
    économie de mutualisation                                      1 contenant évité
 
-total : 5 matériaux · 142 contenants pièce par pièce → 138 mutualisés
+total : 9 matériaux · 174 contenants pièce par pièce → 167 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) chantiers réalistes — niveau intermediate peinture murale + plafond, deux pièces 1`] = `
@@ -278,8 +344,18 @@ Enduit à joint prêt 7kg  [drywall] · 2 pièces · 2 contributions
    Séjour en L              drywall               11.200 kg      1 1 × Seau 20 kg
    mutualisé                                      22.400 kg      2 1 × Seau 20 kg + 1 × Seau 7 kg
    économie de mutualisation                                      0 aucun contenant évité
+Laine de verre 45mm  [drywall] · 2 pièces · 2 contributions
+   Chambre rectangulaire    drywall               11.760 m2      2 2 × Rouleau 9.6 m²
+   Séjour en L              drywall               11.760 m2      2 2 × Rouleau 9.6 m²
+   mutualisé                                      23.520 m2      3 3 × Rouleau 9.6 m²
+   économie de mutualisation                                      1 contenant évité
+Bande résiliente 50mm  [drywall] · 2 pièces · 2 contributions
+   Chambre rectangulaire    drywall                 8.960 m      1 1 × Rouleau 30 m
+   Séjour en L              drywall                 8.960 m      1 1 × Rouleau 30 m
+   mutualisé                                       17.920 m      1 1 × Rouleau 30 m
+   économie de mutualisation                                      1 contenant évité
 
-total : 6 matériaux · 46 contenants pièce par pièce → 44 mutualisés
+total : 8 matériaux · 52 contenants pièce par pièce → 48 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) drywall · expert · pose standard 1`] = `
@@ -317,8 +393,18 @@ Enduit à joint prêt 7kg  [drywall] · 2 pièces · 2 contributions
    Séjour en L              drywall               10.400 kg      1 1 × Seau 20 kg
    mutualisé                                      20.800 kg      2 1 × Seau 20 kg + 1 × Seau 7 kg
    économie de mutualisation                                      0 aucun contenant évité
+Laine de verre 45mm  [drywall] · 2 pièces · 2 contributions
+   Chambre rectangulaire    drywall               10.920 m2      2 2 × Rouleau 9.6 m²
+   Séjour en L              drywall               10.920 m2      2 2 × Rouleau 9.6 m²
+   mutualisé                                      21.840 m2      3 3 × Rouleau 9.6 m²
+   économie de mutualisation                                      1 contenant évité
+Bande résiliente 50mm  [drywall] · 2 pièces · 2 contributions
+   Chambre rectangulaire    drywall                 8.320 m      1 1 × Rouleau 30 m
+   Séjour en L              drywall                 8.320 m      1 1 × Rouleau 30 m
+   mutualisé                                       16.640 m      1 1 × Rouleau 30 m
+   économie de mutualisation                                      1 contenant évité
 
-total : 6 matériaux · 46 contenants pièce par pièce → 43 mutualisés
+total : 8 matériaux · 52 contenants pièce par pièce → 47 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) drywall · intermediate · pose standard 1`] = `
@@ -356,8 +442,18 @@ Enduit à joint prêt 7kg  [drywall] · 2 pièces · 2 contributions
    Séjour en L              drywall               10.800 kg      1 1 × Seau 20 kg
    mutualisé                                      21.600 kg      2 1 × Seau 20 kg + 1 × Seau 7 kg
    économie de mutualisation                                      0 aucun contenant évité
+Laine de verre 45mm  [drywall] · 2 pièces · 2 contributions
+   Chambre rectangulaire    drywall               11.340 m2      2 2 × Rouleau 9.6 m²
+   Séjour en L              drywall               11.340 m2      2 2 × Rouleau 9.6 m²
+   mutualisé                                      22.680 m2      3 3 × Rouleau 9.6 m²
+   économie de mutualisation                                      1 contenant évité
+Bande résiliente 50mm  [drywall] · 2 pièces · 2 contributions
+   Chambre rectangulaire    drywall                 8.640 m      1 1 × Rouleau 30 m
+   Séjour en L              drywall                 8.640 m      1 1 × Rouleau 30 m
+   mutualisé                                       17.280 m      1 1 × Rouleau 30 m
+   économie de mutualisation                                      1 contenant évité
 
-total : 6 matériaux · 46 contenants pièce par pièce → 43 mutualisés
+total : 8 matériaux · 52 contenants pièce par pièce → 47 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) floor_tiling · beginner · pose diagonal 1`] = `
@@ -380,8 +476,28 @@ Joint fin 1-6mm  [floor_tiling] · 2 pièces · 2 contributions
    Séjour en L              floor_tiling           3.150 kg      1 1 × Sac 5 kg
    mutualisé                                       5.670 kg      1 1 × Sac 10 kg
    économie de mutualisation                                      1 contenant évité
+Croisillons 3mm (x200)  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling         0.326 unit      1 1 × Sachet 200 pcs
+   Séjour en L              floor_tiling         0.407 unit      1 1 × Sachet 200 pcs
+   mutualisé                                     0.733 unit      1 1 × Sachet 200 pcs
+   économie de mutualisation                                      1 contenant évité
+Joint souple silicone  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling         4.610 unit      5 5 × Cartouche 300 ml
+   Séjour en L              floor_tiling         6.010 unit      7 7 × Cartouche 300 ml
+   mutualisé                                    10.620 unit     11 11 × Cartouche 300 ml
+   économie de mutualisation                                      1 contenant évité
+Plinthe carrelage 8x30 cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling           14.487 m      5 5 × Lot de 10 (3 m)
+   Séjour en L              floor_tiling           18.887 m      7 7 × Lot de 10 (3 m)
+   mutualisé                                       33.374 m     12 12 × Lot de 10 (3 m)
+   économie de mutualisation                                      0 aucun contenant évité
+Barre de seuil alu 93cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling         1.000 unit      1 1 × Unité
+   Séjour en L              floor_tiling         1.000 unit      1 1 × Unité
+   mutualisé                                     2.000 unit      2 2 × Unité
+   économie de mutualisation                                      0 aucun contenant évité
 
-total : 3 matériaux · 33 contenants pièce par pièce → 32 mutualisés
+total : 7 matériaux · 61 contenants pièce par pièce → 58 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) floor_tiling · beginner · pose straight 1`] = `
@@ -404,8 +520,28 @@ Joint fin 1-6mm  [floor_tiling] · 2 pièces · 2 contributions
    Séjour en L              floor_tiling           3.150 kg      1 1 × Sac 5 kg
    mutualisé                                       5.670 kg      1 1 × Sac 10 kg
    économie de mutualisation                                      1 contenant évité
+Croisillons 3mm (x200)  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling         0.326 unit      1 1 × Sachet 200 pcs
+   Séjour en L              floor_tiling         0.407 unit      1 1 × Sachet 200 pcs
+   mutualisé                                     0.733 unit      1 1 × Sachet 200 pcs
+   économie de mutualisation                                      1 contenant évité
+Joint souple silicone  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling         4.610 unit      5 5 × Cartouche 300 ml
+   Séjour en L              floor_tiling         6.010 unit      7 7 × Cartouche 300 ml
+   mutualisé                                    10.620 unit     11 11 × Cartouche 300 ml
+   économie de mutualisation                                      1 contenant évité
+Plinthe carrelage 8x30 cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling           14.487 m      5 5 × Lot de 10 (3 m)
+   Séjour en L              floor_tiling           18.887 m      7 7 × Lot de 10 (3 m)
+   mutualisé                                       33.374 m     12 12 × Lot de 10 (3 m)
+   économie de mutualisation                                      0 aucun contenant évité
+Barre de seuil alu 93cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling         1.000 unit      1 1 × Unité
+   Séjour en L              floor_tiling         1.000 unit      1 1 × Unité
+   mutualisé                                     2.000 unit      2 2 × Unité
+   économie de mutualisation                                      0 aucun contenant évité
 
-total : 3 matériaux · 33 contenants pièce par pièce → 31 mutualisés
+total : 7 matériaux · 61 contenants pièce par pièce → 57 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) floor_tiling · expert · pose diagonal 1`] = `
@@ -428,8 +564,28 @@ Joint fin 1-6mm  [floor_tiling] · 2 pièces · 2 contributions
    Séjour en L              floor_tiling           3.060 kg      1 1 × Sac 5 kg
    mutualisé                                       5.508 kg      1 1 × Sac 10 kg
    économie de mutualisation                                      1 contenant évité
+Croisillons 3mm (x200)  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling         0.302 unit      1 1 × Sachet 200 pcs
+   Séjour en L              floor_tiling         0.378 unit      1 1 × Sachet 200 pcs
+   mutualisé                                     0.680 unit      1 1 × Sachet 200 pcs
+   économie de mutualisation                                      1 contenant évité
+Joint souple silicone  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling         4.478 unit      5 5 × Cartouche 300 ml
+   Séjour en L              floor_tiling         5.838 unit      6 6 × Cartouche 300 ml
+   mutualisé                                    10.316 unit     11 11 × Cartouche 300 ml
+   économie de mutualisation                                      0 aucun contenant évité
+Plinthe carrelage 8x30 cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling           13.829 m      5 5 × Lot de 10 (3 m)
+   Séjour en L              floor_tiling           18.029 m      7 7 × Lot de 10 (3 m)
+   mutualisé                                       31.858 m     11 11 × Lot de 10 (3 m)
+   économie de mutualisation                                      1 contenant évité
+Barre de seuil alu 93cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling         1.000 unit      1 1 × Unité
+   Séjour en L              floor_tiling         1.000 unit      1 1 × Unité
+   mutualisé                                     2.000 unit      2 2 × Unité
+   économie de mutualisation                                      0 aucun contenant évité
 
-total : 3 matériaux · 31 contenants pièce par pièce → 29 mutualisés
+total : 7 matériaux · 58 contenants pièce par pièce → 54 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) floor_tiling · expert · pose straight 1`] = `
@@ -452,8 +608,28 @@ Joint fin 1-6mm  [floor_tiling] · 2 pièces · 2 contributions
    Séjour en L              floor_tiling           3.060 kg      1 1 × Sac 5 kg
    mutualisé                                       5.508 kg      1 1 × Sac 10 kg
    économie de mutualisation                                      1 contenant évité
+Croisillons 3mm (x200)  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling         0.302 unit      1 1 × Sachet 200 pcs
+   Séjour en L              floor_tiling         0.378 unit      1 1 × Sachet 200 pcs
+   mutualisé                                     0.680 unit      1 1 × Sachet 200 pcs
+   économie de mutualisation                                      1 contenant évité
+Joint souple silicone  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling         4.478 unit      5 5 × Cartouche 300 ml
+   Séjour en L              floor_tiling         5.838 unit      6 6 × Cartouche 300 ml
+   mutualisé                                    10.316 unit     11 11 × Cartouche 300 ml
+   économie de mutualisation                                      0 aucun contenant évité
+Plinthe carrelage 8x30 cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling           13.829 m      5 5 × Lot de 10 (3 m)
+   Séjour en L              floor_tiling           18.029 m      7 7 × Lot de 10 (3 m)
+   mutualisé                                       31.858 m     11 11 × Lot de 10 (3 m)
+   économie de mutualisation                                      1 contenant évité
+Barre de seuil alu 93cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling         1.000 unit      1 1 × Unité
+   Séjour en L              floor_tiling         1.000 unit      1 1 × Unité
+   mutualisé                                     2.000 unit      2 2 × Unité
+   économie de mutualisation                                      0 aucun contenant évité
 
-total : 3 matériaux · 31 contenants pièce par pièce → 28 mutualisés
+total : 7 matériaux · 58 contenants pièce par pièce → 53 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) floor_tiling · intermediate · pose diagonal 1`] = `
@@ -476,8 +652,28 @@ Joint fin 1-6mm  [floor_tiling] · 2 pièces · 2 contributions
    Séjour en L              floor_tiling           3.090 kg      1 1 × Sac 5 kg
    mutualisé                                       5.562 kg      1 1 × Sac 10 kg
    économie de mutualisation                                      1 contenant évité
+Croisillons 3mm (x200)  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling         0.311 unit      1 1 × Sachet 200 pcs
+   Séjour en L              floor_tiling         0.389 unit      1 1 × Sachet 200 pcs
+   mutualisé                                     0.700 unit      1 1 × Sachet 200 pcs
+   économie de mutualisation                                      1 contenant évité
+Joint souple silicone  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling         4.522 unit      5 5 × Cartouche 300 ml
+   Séjour en L              floor_tiling         5.895 unit      6 6 × Cartouche 300 ml
+   mutualisé                                    10.417 unit     11 11 × Cartouche 300 ml
+   économie de mutualisation                                      0 aucun contenant évité
+Plinthe carrelage 8x30 cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling           14.092 m      5 5 × Lot de 10 (3 m)
+   Séjour en L              floor_tiling           18.372 m      7 7 × Lot de 10 (3 m)
+   mutualisé                                       32.464 m     11 11 × Lot de 10 (3 m)
+   économie de mutualisation                                      1 contenant évité
+Barre de seuil alu 93cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling         1.000 unit      1 1 × Unité
+   Séjour en L              floor_tiling         1.000 unit      1 1 × Unité
+   mutualisé                                     2.000 unit      2 2 × Unité
+   économie de mutualisation                                      0 aucun contenant évité
 
-total : 3 matériaux · 33 contenants pièce par pièce → 30 mutualisés
+total : 7 matériaux · 60 contenants pièce par pièce → 55 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) floor_tiling · intermediate · pose straight 1`] = `
@@ -500,8 +696,28 @@ Joint fin 1-6mm  [floor_tiling] · 2 pièces · 2 contributions
    Séjour en L              floor_tiling           3.090 kg      1 1 × Sac 5 kg
    mutualisé                                       5.562 kg      1 1 × Sac 10 kg
    économie de mutualisation                                      1 contenant évité
+Croisillons 3mm (x200)  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling         0.311 unit      1 1 × Sachet 200 pcs
+   Séjour en L              floor_tiling         0.389 unit      1 1 × Sachet 200 pcs
+   mutualisé                                     0.700 unit      1 1 × Sachet 200 pcs
+   économie de mutualisation                                      1 contenant évité
+Joint souple silicone  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling         4.522 unit      5 5 × Cartouche 300 ml
+   Séjour en L              floor_tiling         5.895 unit      6 6 × Cartouche 300 ml
+   mutualisé                                    10.417 unit     11 11 × Cartouche 300 ml
+   économie de mutualisation                                      0 aucun contenant évité
+Plinthe carrelage 8x30 cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling           14.092 m      5 5 × Lot de 10 (3 m)
+   Séjour en L              floor_tiling           18.372 m      7 7 × Lot de 10 (3 m)
+   mutualisé                                       32.464 m     11 11 × Lot de 10 (3 m)
+   économie de mutualisation                                      1 contenant évité
+Barre de seuil alu 93cm  [floor_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    floor_tiling         1.000 unit      1 1 × Unité
+   Séjour en L              floor_tiling         1.000 unit      1 1 × Unité
+   mutualisé                                     2.000 unit      2 2 × Unité
+   économie de mutualisation                                      0 aucun contenant évité
 
-total : 3 matériaux · 31 contenants pièce par pièce → 29 mutualisés
+total : 7 matériaux · 58 contenants pièce par pièce → 54 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) parquet_flooring · beginner · pose diagonal 1`] = `
@@ -524,8 +740,18 @@ Film pare-vapeur PE  [parquet_flooring] · 2 pièces · 2 contributions
    Séjour en L              parquet_flooring      20.625 m2      2 2 × Rouleau 20 m²
    mutualisé                                      37.125 m2      2 2 × Rouleau 20 m²
    économie de mutualisation                                      1 contenant évité
+Plinthe MDF 60mm 2.4m  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring       14.487 m      7 7 × Barre 2.4 m
+   Séjour en L              parquet_flooring       18.887 m      8 8 × Barre 2.4 m
+   mutualisé                                       33.374 m     14 14 × Barre 2.4 m
+   économie de mutualisation                                      1 contenant évité
+Barre de seuil alu 93cm  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring     1.000 unit      1 1 × Unité
+   Séjour en L              parquet_flooring     1.000 unit      1 1 × Unité
+   mutualisé                                     2.000 unit      2 2 × Unité
+   économie de mutualisation                                      0 aucun contenant évité
 
-total : 3 matériaux · 20 contenants pièce par pièce → 18 mutualisés
+total : 5 matériaux · 37 contenants pièce par pièce → 34 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) parquet_flooring · beginner · pose herringbone 1`] = `
@@ -548,8 +774,18 @@ Film pare-vapeur PE  [parquet_flooring] · 2 pièces · 2 contributions
    Séjour en L              parquet_flooring      20.625 m2      2 2 × Rouleau 20 m²
    mutualisé                                      37.125 m2      2 2 × Rouleau 20 m²
    économie de mutualisation                                      1 contenant évité
+Plinthe MDF 60mm 2.4m  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring       14.487 m      7 7 × Barre 2.4 m
+   Séjour en L              parquet_flooring       18.887 m      8 8 × Barre 2.4 m
+   mutualisé                                       33.374 m     14 14 × Barre 2.4 m
+   économie de mutualisation                                      1 contenant évité
+Barre de seuil alu 93cm  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring     1.000 unit      1 1 × Unité
+   Séjour en L              parquet_flooring     1.000 unit      1 1 × Unité
+   mutualisé                                     2.000 unit      2 2 × Unité
+   économie de mutualisation                                      0 aucun contenant évité
 
-total : 3 matériaux · 21 contenants pièce par pièce → 18 mutualisés
+total : 5 matériaux · 38 contenants pièce par pièce → 34 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) parquet_flooring · beginner · pose straight 1`] = `
@@ -572,8 +808,18 @@ Film pare-vapeur PE  [parquet_flooring] · 2 pièces · 2 contributions
    Séjour en L              parquet_flooring      20.625 m2      2 2 × Rouleau 20 m²
    mutualisé                                      37.125 m2      2 2 × Rouleau 20 m²
    économie de mutualisation                                      1 contenant évité
+Plinthe MDF 60mm 2.4m  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring       14.487 m      7 7 × Barre 2.4 m
+   Séjour en L              parquet_flooring       18.887 m      8 8 × Barre 2.4 m
+   mutualisé                                       33.374 m     14 14 × Barre 2.4 m
+   économie de mutualisation                                      1 contenant évité
+Barre de seuil alu 93cm  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring     1.000 unit      1 1 × Unité
+   Séjour en L              parquet_flooring     1.000 unit      1 1 × Unité
+   mutualisé                                     2.000 unit      2 2 × Unité
+   économie de mutualisation                                      0 aucun contenant évité
 
-total : 3 matériaux · 19 contenants pièce par pièce → 16 mutualisés
+total : 5 matériaux · 36 contenants pièce par pièce → 32 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) parquet_flooring · expert · pose diagonal 1`] = `
@@ -596,8 +842,18 @@ Film pare-vapeur PE  [parquet_flooring] · 2 pièces · 2 contributions
    Séjour en L              parquet_flooring      19.688 m2      1 1 × Rouleau 20 m²
    mutualisé                                      35.438 m2      2 2 × Rouleau 20 m²
    économie de mutualisation                                      0 aucun contenant évité
+Plinthe MDF 60mm 2.4m  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring       13.829 m      6 6 × Barre 2.4 m
+   Séjour en L              parquet_flooring       18.029 m      8 8 × Barre 2.4 m
+   mutualisé                                       31.858 m     14 14 × Barre 2.4 m
+   économie de mutualisation                                      0 aucun contenant évité
+Barre de seuil alu 93cm  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring     1.000 unit      1 1 × Unité
+   Séjour en L              parquet_flooring     1.000 unit      1 1 × Unité
+   mutualisé                                     2.000 unit      2 2 × Unité
+   économie de mutualisation                                      0 aucun contenant évité
 
-total : 3 matériaux · 18 contenants pièce par pièce → 17 mutualisés
+total : 5 matériaux · 34 contenants pièce par pièce → 33 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) parquet_flooring · expert · pose herringbone 1`] = `
@@ -620,8 +876,18 @@ Film pare-vapeur PE  [parquet_flooring] · 2 pièces · 2 contributions
    Séjour en L              parquet_flooring      19.688 m2      1 1 × Rouleau 20 m²
    mutualisé                                      35.438 m2      2 2 × Rouleau 20 m²
    économie de mutualisation                                      0 aucun contenant évité
+Plinthe MDF 60mm 2.4m  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring       13.829 m      6 6 × Barre 2.4 m
+   Séjour en L              parquet_flooring       18.029 m      8 8 × Barre 2.4 m
+   mutualisé                                       31.858 m     14 14 × Barre 2.4 m
+   économie de mutualisation                                      0 aucun contenant évité
+Barre de seuil alu 93cm  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring     1.000 unit      1 1 × Unité
+   Séjour en L              parquet_flooring     1.000 unit      1 1 × Unité
+   mutualisé                                     2.000 unit      2 2 × Unité
+   économie de mutualisation                                      0 aucun contenant évité
 
-total : 3 matériaux · 19 contenants pièce par pièce → 18 mutualisés
+total : 5 matériaux · 35 contenants pièce par pièce → 34 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) parquet_flooring · expert · pose straight 1`] = `
@@ -644,8 +910,18 @@ Film pare-vapeur PE  [parquet_flooring] · 2 pièces · 2 contributions
    Séjour en L              parquet_flooring      19.688 m2      1 1 × Rouleau 20 m²
    mutualisé                                      35.438 m2      2 2 × Rouleau 20 m²
    économie de mutualisation                                      0 aucun contenant évité
+Plinthe MDF 60mm 2.4m  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring       13.829 m      6 6 × Barre 2.4 m
+   Séjour en L              parquet_flooring       18.029 m      8 8 × Barre 2.4 m
+   mutualisé                                       31.858 m     14 14 × Barre 2.4 m
+   économie de mutualisation                                      0 aucun contenant évité
+Barre de seuil alu 93cm  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring     1.000 unit      1 1 × Unité
+   Séjour en L              parquet_flooring     1.000 unit      1 1 × Unité
+   mutualisé                                     2.000 unit      2 2 × Unité
+   économie de mutualisation                                      0 aucun contenant évité
 
-total : 3 matériaux · 18 contenants pièce par pièce → 16 mutualisés
+total : 5 matériaux · 34 contenants pièce par pièce → 32 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) parquet_flooring · intermediate · pose diagonal 1`] = `
@@ -668,8 +944,18 @@ Film pare-vapeur PE  [parquet_flooring] · 2 pièces · 2 contributions
    Séjour en L              parquet_flooring      20.063 m2      2 2 × Rouleau 20 m²
    mutualisé                                      36.113 m2      2 2 × Rouleau 20 m²
    économie de mutualisation                                      1 contenant évité
+Plinthe MDF 60mm 2.4m  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring       14.092 m      6 6 × Barre 2.4 m
+   Séjour en L              parquet_flooring       18.372 m      8 8 × Barre 2.4 m
+   mutualisé                                       32.464 m     14 14 × Barre 2.4 m
+   économie de mutualisation                                      0 aucun contenant évité
+Barre de seuil alu 93cm  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring     1.000 unit      1 1 × Unité
+   Séjour en L              parquet_flooring     1.000 unit      1 1 × Unité
+   mutualisé                                     2.000 unit      2 2 × Unité
+   économie de mutualisation                                      0 aucun contenant évité
 
-total : 3 matériaux · 20 contenants pièce par pièce → 17 mutualisés
+total : 5 matériaux · 36 contenants pièce par pièce → 33 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) parquet_flooring · intermediate · pose herringbone 1`] = `
@@ -692,8 +978,18 @@ Film pare-vapeur PE  [parquet_flooring] · 2 pièces · 2 contributions
    Séjour en L              parquet_flooring      20.063 m2      2 2 × Rouleau 20 m²
    mutualisé                                      36.113 m2      2 2 × Rouleau 20 m²
    économie de mutualisation                                      1 contenant évité
+Plinthe MDF 60mm 2.4m  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring       14.092 m      6 6 × Barre 2.4 m
+   Séjour en L              parquet_flooring       18.372 m      8 8 × Barre 2.4 m
+   mutualisé                                       32.464 m     14 14 × Barre 2.4 m
+   économie de mutualisation                                      0 aucun contenant évité
+Barre de seuil alu 93cm  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring     1.000 unit      1 1 × Unité
+   Séjour en L              parquet_flooring     1.000 unit      1 1 × Unité
+   mutualisé                                     2.000 unit      2 2 × Unité
+   économie de mutualisation                                      0 aucun contenant évité
 
-total : 3 matériaux · 20 contenants pièce par pièce → 18 mutualisés
+total : 5 matériaux · 36 contenants pièce par pièce → 34 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) parquet_flooring · intermediate · pose straight 1`] = `
@@ -716,8 +1012,18 @@ Film pare-vapeur PE  [parquet_flooring] · 2 pièces · 2 contributions
    Séjour en L              parquet_flooring      20.063 m2      2 2 × Rouleau 20 m²
    mutualisé                                      36.113 m2      2 2 × Rouleau 20 m²
    économie de mutualisation                                      1 contenant évité
+Plinthe MDF 60mm 2.4m  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring       14.092 m      6 6 × Barre 2.4 m
+   Séjour en L              parquet_flooring       18.372 m      8 8 × Barre 2.4 m
+   mutualisé                                       32.464 m     14 14 × Barre 2.4 m
+   économie de mutualisation                                      0 aucun contenant évité
+Barre de seuil alu 93cm  [parquet_flooring] · 2 pièces · 2 contributions
+   Chambre rectangulaire    parquet_flooring     1.000 unit      1 1 × Unité
+   Séjour en L              parquet_flooring     1.000 unit      1 1 × Unité
+   mutualisé                                     2.000 unit      2 2 × Unité
+   économie de mutualisation                                      0 aucun contenant évité
 
-total : 3 matériaux · 19 contenants pièce par pièce → 16 mutualisés
+total : 5 matériaux · 35 contenants pièce par pièce → 32 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_covering · beginner · pose standard 1`] = `
@@ -854,8 +1160,13 @@ Joint fin 1-6mm  [wall_tiling] · 2 pièces · 2 contributions
    Séjour en L              wall_tiling           10.001 kg      2 1 × Sac 10 kg + 1 × Sac 5 kg
    mutualisé                                      17.957 kg      2 2 × Sac 10 kg
    économie de mutualisation                                      1 contenant évité
+Croisillons 3mm (x200)  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling          1.832 unit      2 2 × Sachet 200 pcs
+   Séjour en L              wall_tiling          2.303 unit      3 3 × Sachet 200 pcs
+   mutualisé                                     4.135 unit      5 5 × Sachet 200 pcs
+   économie de mutualisation                                      0 aucun contenant évité
 
-total : 3 matériaux · 119 contenants pièce par pièce → 117 mutualisés
+total : 4 matériaux · 124 contenants pièce par pièce → 122 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_tiling · beginner · pose straight 1`] = `
@@ -878,8 +1189,13 @@ Joint fin 1-6mm  [wall_tiling] · 2 pièces · 2 contributions
    Séjour en L              wall_tiling           10.001 kg      2 1 × Sac 10 kg + 1 × Sac 5 kg
    mutualisé                                      17.957 kg      2 2 × Sac 10 kg
    économie de mutualisation                                      1 contenant évité
+Croisillons 3mm (x200)  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling          1.832 unit      2 2 × Sachet 200 pcs
+   Séjour en L              wall_tiling          2.303 unit      3 3 × Sachet 200 pcs
+   mutualisé                                     4.135 unit      5 5 × Sachet 200 pcs
+   économie de mutualisation                                      0 aucun contenant évité
 
-total : 3 matériaux · 116 contenants pièce par pièce → 113 mutualisés
+total : 4 matériaux · 121 contenants pièce par pièce → 118 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_tiling · expert · pose diagonal 1`] = `
@@ -902,8 +1218,13 @@ Joint fin 1-6mm  [wall_tiling] · 2 pièces · 2 contributions
    Séjour en L              wall_tiling            9.715 kg      1 1 × Sac 10 kg
    mutualisé                                      17.444 kg      2 2 × Sac 10 kg
    économie de mutualisation                                      0 aucun contenant évité
+Croisillons 3mm (x200)  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling          1.699 unit      2 2 × Sachet 200 pcs
+   Séjour en L              wall_tiling          2.135 unit      3 3 × Sachet 200 pcs
+   mutualisé                                     3.834 unit      4 4 × Sachet 200 pcs
+   économie de mutualisation                                      1 contenant évité
 
-total : 3 matériaux · 110 contenants pièce par pièce → 109 mutualisés
+total : 4 matériaux · 115 contenants pièce par pièce → 113 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_tiling · expert · pose straight 1`] = `
@@ -926,8 +1247,13 @@ Joint fin 1-6mm  [wall_tiling] · 2 pièces · 2 contributions
    Séjour en L              wall_tiling            9.715 kg      1 1 × Sac 10 kg
    mutualisé                                      17.444 kg      2 2 × Sac 10 kg
    économie de mutualisation                                      0 aucun contenant évité
+Croisillons 3mm (x200)  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling          1.699 unit      2 2 × Sachet 200 pcs
+   Séjour en L              wall_tiling          2.135 unit      3 3 × Sachet 200 pcs
+   mutualisé                                     3.834 unit      4 4 × Sachet 200 pcs
+   économie de mutualisation                                      1 contenant évité
 
-total : 3 matériaux · 105 contenants pièce par pièce → 105 mutualisés
+total : 4 matériaux · 110 contenants pièce par pièce → 109 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_tiling · intermediate · pose diagonal 1`] = `
@@ -950,8 +1276,13 @@ Joint fin 1-6mm  [wall_tiling] · 2 pièces · 2 contributions
    Séjour en L              wall_tiling            9.810 kg      1 1 × Sac 10 kg
    mutualisé                                      17.615 kg      2 2 × Sac 10 kg
    économie de mutualisation                                      0 aucun contenant évité
+Croisillons 3mm (x200)  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling          1.749 unit      2 2 × Sachet 200 pcs
+   Séjour en L              wall_tiling          2.198 unit      3 3 × Sachet 200 pcs
+   mutualisé                                     3.947 unit      4 4 × Sachet 200 pcs
+   économie de mutualisation                                      1 contenant évité
 
-total : 3 matériaux · 115 contenants pièce par pièce → 113 mutualisés
+total : 4 matériaux · 120 contenants pièce par pièce → 117 mutualisés
 `;
 
 exports[`Harnais — projet à deux pièces (chambre + séjour en L) wall_tiling · intermediate · pose straight 1`] = `
@@ -974,6 +1305,11 @@ Joint fin 1-6mm  [wall_tiling] · 2 pièces · 2 contributions
    Séjour en L              wall_tiling            9.810 kg      1 1 × Sac 10 kg
    mutualisé                                      17.615 kg      2 2 × Sac 10 kg
    économie de mutualisation                                      0 aucun contenant évité
+Croisillons 3mm (x200)  [wall_tiling] · 2 pièces · 2 contributions
+   Chambre rectangulaire    wall_tiling          1.749 unit      2 2 × Sachet 200 pcs
+   Séjour en L              wall_tiling          2.198 unit      3 3 × Sachet 200 pcs
+   mutualisé                                     3.947 unit      4 4 × Sachet 200 pcs
+   économie de mutualisation                                      1 contenant évité
 
-total : 3 matériaux · 111 contenants pièce par pièce → 109 mutualisés
+total : 4 matériaux · 116 contenants pièce par pièce → 113 mutualisés
 `;

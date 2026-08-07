@@ -18,11 +18,15 @@ import type {
   MaterialQuantityDriver,
   TileConsumptionModel,
   VapourBarrierRole,
+  WetRoomRole,
+  SubstratePrep,
 } from '../materials/entities/material-catalog.entity';
 import type { FrameSpec } from '../projects/entities/work-type.entity';
 import { tileConsumptionFactor } from './tile-consumption';
 import { computeStripCut, RollSpec, StripCut } from './wallpaper-strips';
 import { resolveVapourBarrier } from './vapour-barrier';
+import { resolveWetRoom } from './wet-room';
+import { resolveFloorPrep } from './floor-prep';
 import { computePieceCut, PieceCut, PieceDemand } from './piece-cutting';
 import type { MaterialExclusion } from './entities/estimation-result.entity';
 
@@ -30,6 +34,8 @@ export type {
   MaterialQuantityDriver,
   TileConsumptionModel,
   VapourBarrierRole,
+  WetRoomRole,
+  SubstratePrep,
   FrameSpec,
 };
 export type { RollSpec, StripCut };
@@ -43,7 +49,22 @@ export interface RoomData {
   length_cm: number;
   width_cm: number;
   height_cm: number;
-  openings: { width_cm: number; height_cm: number; count: number }[];
+  /**
+   * E1-10 — `type` distingue les portes des fenêtres, parce que deux assiettes
+   * en dépendent : le périmètre au sol déduit les passages de porte (une
+   * plinthe ne traverse pas une porte) et `door_count` les compte (une barre
+   * de seuil par passage). Absent = `'door'` : seul le chemin public sans
+   * authentification peut omettre le type, l'ouverture unique typique d'une
+   * pièce est sa porte, et le sens de l'erreur résiduelle — une fenêtre
+   * comptée porte — coûte une barre de seuil en trop et quelques décimètres de
+   * plinthe en moins, jamais l'inverse silencieux.
+   */
+  openings: {
+    width_cm: number;
+    height_cm: number;
+    count: number;
+    type?: 'door' | 'window';
+  }[];
   /**
    * Décomposition en rectangles d'une pièce non rectangulaire (L, T, U…).
    * Absent ou vide → la pièce est un simple rectangle `length_cm × width_cm`.
@@ -179,6 +200,20 @@ export interface MaterialInput {
    * décompose en pièces — sinon le moteur lève.
    */
   offcuts_reusable?: boolean;
+  /**
+   * E1-10 — rôle vis-à-vis du système d'étanchéité d'un local exposé à l'eau
+   * (`materials_catalog.wet_room_system`). Absent = aucun, comme le défaut de
+   * la colonne. Un matériau marqué n'est chiffré que si le local est déclaré
+   * salle d'eau — cf. `wet-room.ts`.
+   */
+  wet_room_system?: WetRoomRole | null;
+  /**
+   * E1-10 — rôle vis-à-vis de la préparation d'un sol non plan
+   * (`materials_catalog.substrate_prep`). Absent = aucun, comme le défaut de
+   * la colonne. Un matériau marqué n'est chiffré que si la planéité déclarée
+   * l'exige — cf. `floor-prep.ts`.
+   */
+  substrate_prep?: SubstratePrep | null;
   waste_factors: WasteFactorInput[];
   packagings: PackagingInput[];
 }
@@ -255,6 +290,23 @@ export interface WorkBasis {
    * sans que le moteur ait à retrouver la pièce.
    */
   wall_height_cm: number;
+  /**
+   * E1-10 — linéaire du contour au sol de la pièce, **portes déduites**, en
+   * mètres, clampé à ≥ 0. Plinthes, joints périphériques, bandes de jonction
+   * sol/mur. Le périmètre vient de `unionPerimeterCm` (exact pour toute forme
+   * rectilinéaire), la déduction des seules ouvertures `type = 'door'`.
+   *
+   * `null` quand l'ouvrage déclare son assiette : une cloison créée n'a pas de
+   * contour au sol, et un matériau qui s'y métré doit échouer bruyamment
+   * plutôt que recevoir un zéro silencieux — cf. `meteringBase`.
+   */
+  floor_perimeter_m: number | null;
+  /**
+   * E1-10 — nombre de passages de porte de la pièce (somme des `count` des
+   * ouvertures `type = 'door'`). Barres de seuil. `null` en assiette déclarée,
+   * pour la même raison que `floor_perimeter_m`.
+   */
+  door_count: number | null;
 }
 
 /**
@@ -722,6 +774,33 @@ export class EstimationEngine {
     );
   }
 
+  /** Ouvertures de type porte — le défaut d'un `type` absent (E1-10). */
+  private doorOpenings(room: RoomData) {
+    return room.openings.filter((o) => (o.type ?? 'door') === 'door');
+  }
+
+  /**
+   * E1-10 — le linéaire de contour au sol, portes déduites, en mètres.
+   *
+   * Monotone croissant en chaque dimension de la pièce (le périmètre l'est,
+   * la déduction des portes est constante, `max(0, …)` préserve le sens) :
+   * les bornes CV-5 restent exactes en rejouant ce calcul sur les pièces
+   * basse et haute.
+   */
+  private floorPerimeterM(room: RoomData): number {
+    const doorWidthCm = this.doorOpenings(room).reduce(
+      (sum, o) => sum + o.width_cm * o.count,
+      0,
+    );
+    const perimeterCm = unionPerimeterCm(this.resolveSegments(room));
+    return Math.max(0, perimeterCm - doorWidthCm) / 100;
+  }
+
+  /** E1-10 — le nombre de passages de porte de la pièce. */
+  private doorCount(room: RoomData): number {
+    return this.doorOpenings(room).reduce((sum, o) => sum + o.count, 0);
+  }
+
   private excludedAreaCm2(room: RoomData, surfaceTarget: string): number {
     return (room.exclusions ?? [])
       .filter((e) => e.surface_target === surfaceTarget)
@@ -880,6 +959,10 @@ export class EstimationEngine {
             ? unionWallRunsCm(this.resolveSegments(room))
             : null,
         wall_height_cm: room.height_cm,
+        // E1-10 : calculées quel que soit `surface_target` — le joint
+        // périphérique d'un carrelage mural suit le même contour au sol.
+        floor_perimeter_m: this.floorPerimeterM(room),
+        door_count: this.doorCount(room),
       };
     }
 
@@ -901,6 +984,10 @@ export class EstimationEngine {
         () => declared.length_m * 100,
       ),
       wall_height_cm: declared.height_m * 100,
+      // E1-10 : une cloison créée n'a ni contour au sol ni passages de porte.
+      // `null` et non 0 : un matériau qui s'y métré doit échouer bruyamment.
+      floor_perimeter_m: null,
+      door_count: null,
     };
   }
 
@@ -945,10 +1032,48 @@ export class EstimationEngine {
           },
         };
       }
+      case 'floor_perimeter': {
+        if (basis.floor_perimeter_m === null) {
+          throw new Error(
+            `Le matériau « ${material.name} » se métre sur le périmètre au ` +
+              `sol (quantity_driver = floor_perimeter), mais l'ouvrage ` +
+              `« ${workItem.work_type_code} » déclare son assiette : une ` +
+              `cloison créée n'a pas de contour au sol.`,
+          );
+        }
+        return { quantity: basis.floor_perimeter_m };
+      }
+      case 'door_count': {
+        if (basis.door_count === null) {
+          throw new Error(
+            `Le matériau « ${material.name} » se compte aux passages de ` +
+              `porte (quantity_driver = door_count), mais l'ouvrage ` +
+              `« ${workItem.work_type_code} » déclare son assiette : une ` +
+              `cloison créée n'a pas de passages de porte.`,
+          );
+        }
+        return { quantity: basis.door_count };
+      }
       case 'work_surface':
       default:
         return { quantity: basis.work_surface_m2 };
     }
+  }
+
+  /**
+   * E1-10 — l'assiette d'un matériau, dans l'unité de son `yield_per_unit`,
+   * exposée pour l'encadrement de consommation (I3). Une borne `driver_base`
+   * se vérifie en divisant la quantité par **cette** grandeur — la même que
+   * celle du chiffrage, recalculée par le même code : une borne « mètres de
+   * plinthe par m² de sol » varierait du simple au triple avec la géométrie
+   * de la pièce, celle-ci ne varie pas.
+   */
+  resolveMeteringQuantity(
+    basis: WorkBasis,
+    material: MaterialInput,
+    workItem: WorkItemInput,
+  ): number {
+    return this.meteringBase(basis, material, workItem).quantity;
   }
 
   resolveWasteFactor(
@@ -1328,7 +1453,18 @@ export class EstimationEngine {
         wi.materials,
         wi.custom_params,
       );
-      for (const excluded of vapourBarrier.excluded) {
+      // E1-10 : mêmes règles de présence pour l'étanchéité du local et la
+      // préparation du support, chaînées sur ce que la précédente a retenu.
+      // L'ordre est indifférent (aucun matériau ne porte deux marquages) ;
+      // il suit la chronologie des lots pour rester lisible.
+      const wetRoom = resolveWetRoom(vapourBarrier.kept, wi.custom_params);
+      const floorPrep = resolveFloorPrep(wetRoom.kept, wi.custom_params);
+
+      for (const excluded of [
+        ...vapourBarrier.excluded,
+        ...wetRoom.excluded,
+        ...floorPrep.excluded,
+      ]) {
         exclusions.push({
           work_item_id: wi.id,
           work_type_code: wi.work_type_code,
@@ -1340,7 +1476,13 @@ export class EstimationEngine {
         });
       }
 
-      for (const mat of vapourBarrier.kept) {
+      const inclusionReasons = new Map([
+        ...vapourBarrier.inclusionReasonByMaterialId,
+        ...wetRoom.inclusionReasonByMaterialId,
+        ...floorPrep.inclusionReasonByMaterialId,
+      ]);
+
+      for (const mat of floorPrep.kept) {
         const wasteFactor = this.resolveWasteFactor(
           mat.waste_factors,
           poseType,
@@ -1443,11 +1585,8 @@ export class EstimationEngine {
                 pieces_per_bar: cut.pieces_per_bar,
               }
             : {}),
-          ...(vapourBarrier.inclusionReasonByMaterialId.has(mat.id)
-            ? {
-                inclusion_reason_fr:
-                  vapourBarrier.inclusionReasonByMaterialId.get(mat.id)!,
-              }
+          ...(inclusionReasons.has(mat.id)
+            ? { inclusion_reason_fr: inclusionReasons.get(mat.id)! }
             : {}),
           ...(coats !== undefined ? { number_of_coats: coats } : {}),
           ...(excludedSurfaceM2 > 0

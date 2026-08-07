@@ -16,6 +16,8 @@ import {
 import { SkillLevel } from '../../projects/entities/project-work-item.entity';
 import { ExclusionType } from '../../projects/entities/room-dimensions.entity';
 import { SUBFLOOR_TYPES } from '../vapour-barrier';
+import { WATER_EXPOSURES } from '../wet-room';
+import { FLOOR_FLATNESS_VALUES } from '../floor-prep';
 
 export const PUBLIC_WORK_TYPE_CODES = [
   'wall_painting',
@@ -40,6 +42,15 @@ export class PublicOpeningDto {
   @Min(1)
   @Max(20)
   count!: number;
+
+  /**
+   * E1-10 — porte ou fenêtre. Optionnel pour ne casser aucun client existant ;
+   * absent, le moteur retient `door` (le sens et sa justification vivent sur
+   * `RoomData.openings`, `estimation-engine.ts`).
+   */
+  @IsOptional()
+  @IsIn(['door', 'window'])
+  type?: 'door' | 'window';
 }
 
 /**
@@ -130,6 +141,23 @@ export class PublicCustomParamsDto {
   @IsOptional()
   @IsIn([...SUBFLOOR_TYPES])
   subfloor_type?: string;
+
+  /**
+   * E1-10 — l'exposition à l'eau du local, qui décide de la présence du SEL.
+   * Liste importée de `estimations/wet-room.ts`, même règle que
+   * `subfloor_type`.
+   */
+  @IsOptional()
+  @IsIn([...WATER_EXPOSURES])
+  water_exposure?: string;
+
+  /**
+   * E1-10 — la planéité du support, qui décide de la présence du ragréage et
+   * de son primaire. Liste importée de `estimations/floor-prep.ts`.
+   */
+  @IsOptional()
+  @IsIn([...FLOOR_FLATNESS_VALUES])
+  floor_flatness?: string;
 }
 
 export class PublicEstimateRequestDto {

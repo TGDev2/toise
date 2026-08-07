@@ -5,6 +5,7 @@ import {
   requiresDoubleButtering,
   resolveJointWidthMm,
   resolveTileGeometry,
+  spacersPerM2,
   tileAreaCm2,
   tileConsumptionFactor,
   TILE_FORMATS,
@@ -412,5 +413,79 @@ describe('Moteur — le format du carreau change les quantités', () => {
         materials: [],
       }),
     ).toBe(tile.yield_per_unit);
+  });
+});
+
+describe('Croisillons — un par intersection, autant que de carreaux (E1-10)', () => {
+  /**
+   * La loi est une dérivation géométrique pure — aucun fabricant ne publie de
+   * table de consommation (Rubi, Raimondi, Taliaplast vérifiés en E1-7). Un
+   * croisillon par sommet intérieur du quadrillage : 10 000/(L × l) par m².
+   */
+  it.each([
+    ['20x20', 25],
+    ['30x30', 11.111111],
+    ['45x45', 4.938272],
+    ['60x60', 2.777778],
+    ['30x60', 5.555556],
+    ['25x40', 10],
+  ])('%s → %s croisillons/m²', (format, expected) => {
+    expect(spacersPerM2(TILE_FORMATS[format])).toBeCloseTo(expected, 5);
+  });
+
+  it('vaut exactement 1 sur la géométrie de référence (45 × 45 au sol)', () => {
+    expect(
+      tileConsumptionFactor('tile_spacers', { tile_format: '45x45' }, 'floor'),
+    ).toBe(1);
+    expect(tileConsumptionFactor('tile_spacers', {}, 'floor')).toBe(1);
+  });
+
+  it('suit le seul format — ni la largeur de joint, ni le sens de pose', () => {
+    const reference = tileConsumptionFactor(
+      'tile_spacers',
+      { tile_format: '30x30' },
+      'floor',
+    );
+    expect(
+      tileConsumptionFactor(
+        'tile_spacers',
+        { tile_format: '30x30', joint_width_mm: '8' },
+        'floor',
+      ),
+    ).toBe(reference);
+    expect(
+      tileConsumptionFactor(
+        'tile_spacers',
+        { tile_format: '30x30', laying_pattern: 'diagonal' },
+        'floor',
+      ),
+    ).toBe(reference);
+  });
+
+  /**
+   * Le sachet de 200 couvre 40,5 m² au 45 × 45 (200 × 2 025 / 10 000) et
+   * 20 m² à la faïence murale 25 × 40 (200 / 10). C'est le rendement effectif
+   * que le moteur sert, et celui que le registre annonce.
+   */
+  it('rend 40,5 m²/sachet au sol de référence et 20 m²/sachet au mur', () => {
+    const spacers = materialFromSeed('Croisillons 3mm (x200)');
+    expect(spacers.consumption_model).toBe('tile_spacers');
+    const workItem = (surfaceTarget: string) => ({
+      id: 'wi-1',
+      work_type_code: 'floor_tiling',
+      work_type_label: 'Carrelage',
+      category: 'tiling',
+      surface_target: surfaceTarget,
+      skill_level: 'intermediate',
+      custom_params: {},
+      materials: [],
+    });
+    expect(
+      engine.resolveEffectiveYield(spacers, workItem('floor')),
+    ).toBeCloseTo(40.5, 6);
+    expect(engine.resolveEffectiveYield(spacers, workItem('wall'))).toBeCloseTo(
+      20,
+      6,
+    );
   });
 });

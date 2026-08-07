@@ -131,6 +131,36 @@ describe('Harnais — ce que les invariants attrapent', () => {
     ]);
   });
 
+  /**
+   * I3 — une borne `driver_base` (E1-10) violée. Le taux est rapporté à
+   * l'assiette du driver — le périmètre pour une plinthe — et non au m²
+   * d'ouvrage : c'est la plomberie `resolveMeteringQuantity` du harnais qu'on
+   * voit rouge ici, pas seulement la comparaison d'intervalle.
+   */
+  it('I3 rapporte une borne driver_base à l’assiette du driver, pas au m²', () => {
+    const bounds = new Map(consumptionBoundByMaterialKey);
+    const skirting = bounds.get('tiling:Plinthe carrelage 8x30 cm')!;
+    expect(skirting.per).toBe('driver_base');
+    bounds.set('tiling:Plinthe carrelage 8x30 cm', {
+      ...skirting,
+      min_per_m2: 2,
+      max_per_m2: 2,
+    });
+
+    const violations = invariantViolations(engine, ROOM, { bounds }).filter(
+      (v) => v.startsWith('[I3] floor_tiling : Plinthe'),
+    );
+
+    // 1 m de plinthe par m de périmètre — l'identité, quel que soit le m² de
+    // la pièce. Si le taux était rapporté au m² d'ouvrage, il vaudrait ~1,1
+    // sur la chambre de référence et dépendrait de la géométrie.
+    expect(violations).toEqual([
+      '[I3] floor_tiling : Plinthe carrelage 8x30 cm — 1.000 m/assiette consommés, ' +
+        'encadrement 2.000 m/assiette à 2.000 m/assiette ' +
+        `(${skirting.basis})`,
+    ]);
+  });
+
   /** I3 — un matériau lié sans encadrement déclaré n'est pas un silence. */
   it('I3 signale un matériau sans encadrement plutôt que de le sauter', () => {
     const violations = invariantViolations(engine, ROOM, {

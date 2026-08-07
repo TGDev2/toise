@@ -12,6 +12,8 @@ import {
   MaterialQuantityDriver,
   TileConsumptionModel,
   VapourBarrierRole,
+  WetRoomRole,
+  SubstratePrep,
 } from './entities/material-catalog.entity';
 
 export interface SeedMaterial {
@@ -87,6 +89,19 @@ export interface SeedMaterial {
    * la chute mesurée prend la place.
    */
   offcuts_reusable?: boolean;
+  /**
+   * E1-10 — rôle dans le système d'étanchéité d'un local exposé à l'eau.
+   * Absent = aucun, comme le défaut `NULL` de la colonne. Un matériau marqué
+   * n'est chiffré que si le local est déclaré salle d'eau
+   * (`estimations/wet-room.ts`).
+   */
+  wet_room_system?: WetRoomRole;
+  /**
+   * E1-10 — rôle dans la préparation d'un sol non plan. Absent = aucun. Un
+   * matériau marqué n'est chiffré que si la planéité déclarée l'exige
+   * (`estimations/floor-prep.ts`).
+   */
+  substrate_prep?: SubstratePrep;
   packagings: { label: string; quantity_per_unit: number; unit: string }[];
   waste_factors: {
     pose_type: string;
@@ -256,6 +271,22 @@ const partitionWaste = (): SeedMaterial['waste_factors'] => [
  * une ligne par (pose, niveau) : un trou lèverait `MissingWasteFactorError`.
  */
 const measuredOffcutWaste = (): SeedMaterial['waste_factors'] => [
+  { pose_type: 'standard', skill_level: 'beginner', factor_percent: 0 },
+  { pose_type: 'standard', skill_level: 'intermediate', factor_percent: 0 },
+  { pose_type: 'standard', skill_level: 'expert', factor_percent: 0 },
+];
+
+/**
+ * E1-10 — ce qui se **compte à l'unité** : barres de seuil.
+ *
+ * Une barre par passage de porte, ni coupe ni gâchée : un pourcentage de perte
+ * n'a pas de sens sur une unité comptée — 10 % sur une barre en achèteraient
+ * deux par arrondi au contenant. Mêmes trois zéros que `measuredOffcutWaste`,
+ * sous un nom distinct parce que la raison est distincte : là-bas la chute est
+ * mesurée, ici il n'y a pas de chute du tout. I5 (le niveau ne fait jamais
+ * acheter plus) tient par égalité, comme pour les montants.
+ */
+const countedUnitWaste = (): SeedMaterial['waste_factors'] => [
   { pose_type: 'standard', skill_level: 'beginner', factor_percent: 0 },
   { pose_type: 'standard', skill_level: 'intermediate', factor_percent: 0 },
   { pose_type: 'standard', skill_level: 'expert', factor_percent: 0 },
@@ -1048,18 +1079,33 @@ export const tilingMaterials: SeedMaterial[] = [
     name: 'Joint souple silicone',
     category: 'tiling',
     unit: 'unit',
-    yield_per_unit: 6,
+    // E1-10 — réintégré : la fiche Sika Sanisil publie un métrage de cordon
+    // par cartouche de 300 ml, jamais un rendement au m². C'est le cas d'école
+    // de l'assiette linéaire : 3,0 m de joint 10 × 10 mm par cartouche (la
+    // section la plus défavorable publiée), sur le périmètre au sol portes
+    // déduites — le joint périphérique du NF DTU 52.2.
+    yield_per_unit: 3,
+    quantity_driver: 'floor_perimeter',
     packagings: [
       { label: 'Cartouche 300 ml', quantity_per_unit: 1, unit: 'unit' },
     ],
     waste_factors: dosedWaste(),
   },
   // Accessories
+  //
+  // E1-10 — croisillons : un croisillon par intersection de joints, soit
+  // autant que de carreaux sous un m² (`estimations/tile-consumption.ts`,
+  // `spacersPerM2`). Le rendement est exprimé à la géométrie de référence du
+  // modèle (45 × 45 : 4,94 croisillons/m²) : un sachet de 200 couvre
+  // 200 × 2 025 / 10 000 = 40,5 m². Dérivation géométrique définitionnelle —
+  // aucun fabricant (Rubi, Raimondi, Taliaplast vérifiés en E1-7) ne publie de
+  // table de consommation, et c'est écrit tel quel au registre.
   {
     name: 'Croisillons 2mm (x200)',
     category: 'tiling',
     unit: 'unit',
-    yield_per_unit: 1,
+    yield_per_unit: 40.5,
+    consumption_model: 'tile_spacers',
     packagings: [
       { label: 'Sachet 200 pcs', quantity_per_unit: 1, unit: 'unit' },
     ],
@@ -1069,7 +1115,8 @@ export const tilingMaterials: SeedMaterial[] = [
     name: 'Croisillons 3mm (x200)',
     category: 'tiling',
     unit: 'unit',
-    yield_per_unit: 1,
+    yield_per_unit: 40.5,
+    consumption_model: 'tile_spacers',
     packagings: [
       { label: 'Sachet 200 pcs', quantity_per_unit: 1, unit: 'unit' },
     ],
@@ -1079,7 +1126,8 @@ export const tilingMaterials: SeedMaterial[] = [
     name: 'Croisillons 5mm (x100)',
     category: 'tiling',
     unit: 'unit',
-    yield_per_unit: 1,
+    yield_per_unit: 20.25,
+    consumption_model: 'tile_spacers',
     packagings: [
       { label: 'Sachet 100 pcs', quantity_per_unit: 1, unit: 'unit' },
     ],
@@ -1137,23 +1185,30 @@ export const tilingMaterials: SeedMaterial[] = [
   {
     name: "SEL (Système d'Étanchéité Liquide)",
     category: 'tiling',
-    unit: 'L',
-    yield_per_unit: 0.7,
-    packagings: [
-      { label: 'Bidon 6 L', quantity_per_unit: 6, unit: 'L' },
-      { label: 'Bidon 12 L', quantity_per_unit: 12, unit: 'L' },
-    ],
+    // E1-10 — ré-exprimé en kg de mélange : les fiches SEL sous carrelage
+    // (PRB CEL CÉRAMIC, Cermix CERMIPROOF ST) publient leur consommation en
+    // kg/m² de mélange pour les 2 couches, et se vendent en kit poudre +
+    // résine pesé en kg — le litre d'avant ce lot ne correspondait à aucun
+    // conditionnement réel. PRB : « 2,5 à 3,5 kg/m² » ; milieu retenu
+    // 3 kg/m², soit 0,3333 m²/kg. Kit de 32 kg (PRB CEL CÉRAMIC).
+    unit: 'kg',
+    yield_per_unit: 0.3333,
+    wet_room_system: 'sel',
+    packagings: [{ label: 'Kit 32 kg', quantity_per_unit: 32, unit: 'kg' }],
     waste_factors: dosedWaste(),
   },
   {
     name: "Bande d'étanchéité 120mm",
     category: 'tiling',
     unit: 'm',
+    // E1-10 — un mètre de bande couvre un mètre de jonction sol/mur : le
+    // périmètre au sol, portes déduites. Rouleau de 10 m (Cermix AR12, la
+    // bande d'armature des systèmes SEL Cermix) ; le rouleau de 50 m d'avant
+    // ce lot ne correspondait à aucune fiche et sort du conditionnement.
     yield_per_unit: 1,
-    packagings: [
-      { label: 'Rouleau 10 m', quantity_per_unit: 10, unit: 'm' },
-      { label: 'Rouleau 50 m', quantity_per_unit: 50, unit: 'm' },
-    ],
+    quantity_driver: 'floor_perimeter',
+    wet_room_system: 'sealing_band',
+    packagings: [{ label: 'Rouleau 10 m', quantity_per_unit: 10, unit: 'm' }],
     waste_factors: cutAncillaryWaste(),
   },
   {
@@ -1198,7 +1253,11 @@ export const tilingMaterials: SeedMaterial[] = [
     name: 'Plinthe carrelage 8x30 cm',
     category: 'tiling',
     unit: 'm',
+    // E1-10 — vendue et posée au mètre le long des murs : périmètre au sol,
+    // portes déduites. Les chutes de coupe restent portées par le forfait
+    // (`cutAncillaryWaste`) : les morceaux se réutilisent d'un mur à l'autre.
     yield_per_unit: 1,
+    quantity_driver: 'floor_perimeter',
     packagings: [{ label: 'Lot de 10 (3 m)', quantity_per_unit: 3, unit: 'm' }],
     waste_factors: cutAncillaryWaste(),
   },
@@ -1216,11 +1275,17 @@ export const tilingMaterials: SeedMaterial[] = [
   {
     name: "Primaire d'accrochage carrelage",
     category: 'tiling',
-    unit: 'L',
+    // E1-10 — ré-exprimé en kg : les fiches primaire (PRB ACCROSOL PLUS,
+    // weberprim RP) publient 150 à 300 g/m² et se vendent en jerricans pesés.
+    // 0,2 kg/m² retenu, milieu de la plage PRB → 5 m²/kg, la valeur d'avant
+    // ce lot à l'unité près (densité PRB 1,05 : le litre et le kilo se
+    // confondaient).
+    unit: 'kg',
     yield_per_unit: 5,
+    substrate_prep: 'leveling_primer',
     packagings: [
-      { label: 'Bidon 1 L', quantity_per_unit: 1, unit: 'L' },
-      { label: 'Bidon 5 L', quantity_per_unit: 5, unit: 'L' },
+      { label: 'Jerrican 1 kg', quantity_per_unit: 1, unit: 'kg' },
+      { label: 'Jerrican 5 kg', quantity_per_unit: 5, unit: 'kg' },
     ],
     waste_factors: dosedWaste(),
   },
@@ -1228,7 +1293,12 @@ export const tilingMaterials: SeedMaterial[] = [
     name: 'Ragréage autolissant',
     category: 'tiling',
     unit: 'kg',
-    yield_per_unit: 0.2,
+    // E1-10 — 1,5 kg/m²/mm (PRB PLANIDUR PRO), à l'épaisseur de 3 mm retenue
+    // au registre (plancher de la plage « locaux P3, rénovation : 3 à 10 mm »)
+    // : 4,5 kg/m², soit 0,2222 m²/kg. Le 0,2 d'avant ce lot supposait une
+    // épaisseur de 3,33 mm qu'aucune fiche ne nomme.
+    yield_per_unit: 0.2222,
+    substrate_prep: 'leveling_compound',
     packagings: [{ label: 'Sac 25 kg', quantity_per_unit: 25, unit: 'kg' }],
     waste_factors: dosedWaste(),
   },
@@ -1510,10 +1580,15 @@ export const flooringMaterials: SeedMaterial[] = [
   },
   // Skirting & transitions
   {
+    // E1-10 — plinthes : vendues et posées au mètre le long des murs, donc au
+    // périmètre au sol portes déduites. Barre de 2,40 m — la longueur du
+    // commerce, confirmée par la TDS Quick-Step Plinthes (toutes les barres à
+    // 240 cm). Chutes réutilisables d'un mur à l'autre : forfait de coupe.
     name: 'Plinthe MDF 60mm 2.4m',
     category: 'flooring',
     unit: 'm',
     yield_per_unit: 1,
+    quantity_driver: 'floor_perimeter',
     packagings: [{ label: 'Barre 2.4 m', quantity_per_unit: 2.4, unit: 'm' }],
     waste_factors: cutAncillaryWaste(),
   },
@@ -1522,6 +1597,7 @@ export const flooringMaterials: SeedMaterial[] = [
     category: 'flooring',
     unit: 'm',
     yield_per_unit: 1,
+    quantity_driver: 'floor_perimeter',
     packagings: [{ label: 'Barre 2.4 m', quantity_per_unit: 2.4, unit: 'm' }],
     waste_factors: cutAncillaryWaste(),
   },
@@ -1530,24 +1606,30 @@ export const flooringMaterials: SeedMaterial[] = [
     category: 'flooring',
     unit: 'm',
     yield_per_unit: 1,
+    quantity_driver: 'floor_perimeter',
     packagings: [{ label: 'Barre 2.4 m', quantity_per_unit: 2.4, unit: 'm' }],
     waste_factors: cutAncillaryWaste(),
   },
   {
+    // E1-10 — une barre par passage de porte (largeur standard 83 cm ≤ 93 cm).
+    // La perte est à 0/0/0 : une barre se compte, elle ne se gâche pas au
+    // pourcentage — 10 % sur une barre en achèteraient deux par arrondi.
     name: 'Barre de seuil alu 93cm',
     category: 'flooring',
     unit: 'unit',
     yield_per_unit: 1,
+    quantity_driver: 'door_count',
     packagings: [{ label: 'Unité', quantity_per_unit: 1, unit: 'unit' }],
-    waste_factors: accessoryWaste(),
+    waste_factors: countedUnitWaste(),
   },
   {
     name: 'Barre de seuil alu 180cm',
     category: 'flooring',
     unit: 'unit',
     yield_per_unit: 1,
+    quantity_driver: 'door_count',
     packagings: [{ label: 'Unité', quantity_per_unit: 1, unit: 'unit' }],
-    waste_factors: accessoryWaste(),
+    waste_factors: countedUnitWaste(),
   },
   {
     name: 'Profilé de jonction 2.7m',
@@ -1676,18 +1758,24 @@ export const flooringMaterials: SeedMaterial[] = [
     name: 'Ragréage fibré sol',
     category: 'flooring',
     unit: 'kg',
-    yield_per_unit: 0.2,
+    // E1-10 — 1,5 kg/m²/mm (PRB PLANIFIBRE, planchers bois DTU 51.3), à
+    // l'épaisseur de 3 mm retenue au registre : 4,5 kg/m², soit 0,2222 m²/kg.
+    yield_per_unit: 0.2222,
+    substrate_prep: 'leveling_compound',
     packagings: [{ label: 'Sac 25 kg', quantity_per_unit: 25, unit: 'kg' }],
     waste_factors: dosedWaste(),
   },
   {
     name: "Primaire d'accrochage sol",
     category: 'flooring',
-    unit: 'L',
+    // E1-10 — même ré-expression en kg que le primaire carrelage : fiches en
+    // g/m², jerricans pesés (PRB ACCROSOL PLUS).
+    unit: 'kg',
     yield_per_unit: 5,
+    substrate_prep: 'leveling_primer',
     packagings: [
-      { label: 'Bidon 1 L', quantity_per_unit: 1, unit: 'L' },
-      { label: 'Bidon 5 L', quantity_per_unit: 5, unit: 'L' },
+      { label: 'Jerrican 1 kg', quantity_per_unit: 1, unit: 'kg' },
+      { label: 'Jerrican 5 kg', quantity_per_unit: 5, unit: 'kg' },
     ],
     waste_factors: dosedWaste(),
   },
@@ -1856,10 +1944,29 @@ export const partitionMaterials: SeedMaterial[] = [
     name: 'Laine de verre 45mm',
     category: 'partition',
     unit: 'm2',
-    yield_per_unit: 1,
+    // E1-10 — la fiche solution Placostil 72/48 compte 1,05 m² d'isolant par
+    // m² de cloison (ligne « M2 — 1,05 » du quantitatif, isolant « Laine de
+    // verre, 45 mm ») : 1/1,05 = 0,9524. Une seule trame quel que soit le
+    // nombre de faces : la laine se pose entre les montants, pas sur chaque
+    // parement — d'où `work_surface` et non `clad_faces`.
+    yield_per_unit: 0.9524,
     packagings: [
       { label: 'Rouleau 9.6 m²', quantity_per_unit: 9.6, unit: 'm2' },
     ],
+    waste_factors: partitionWaste(),
+  },
+  {
+    // E1-10 — bande résiliente : collée sous les rails (« La bande résiliente
+    // (grise) se colle sous les rails », Knauf, Accessoires pour cloisons),
+    // en course continue et aboutable — exactement l'assiette du rail. Un
+    // mètre de bande couvre un mètre de lisse : identité, comme le rail.
+    // Largeur 50 mm pour le rail de 48, rouleau de 30 ml (Knauf).
+    name: 'Bande résiliente 50mm',
+    category: 'partition',
+    unit: 'm',
+    yield_per_unit: 1,
+    quantity_driver: 'frame_runner',
+    packagings: [{ label: 'Rouleau 30 m', quantity_per_unit: 30, unit: 'm' }],
     waste_factors: partitionWaste(),
   },
   {

@@ -26,11 +26,13 @@
  * par couche (vérifié, cf. registre) : les deux grandeurs sont donc bien
  * homogènes.
  *
- * Périmètre : les 19 matériaux distincts portés par les 21 liaisons
+ * Périmètre : les 32 matériaux distincts portés par les 37 liaisons
  * **obligatoires** de `work-type-materials.data.ts` — ceux que le moteur
- * chiffre. Un matériau lié sans borne déclarée ici n'est pas ignoré par le
- * harnais : il en sort une violation. Lier un matériau sans sourcer sa
- * consommation est donc une action visible, pas un oubli silencieux.
+ * chiffre, y compris les matériaux conditionnels d'E1-10 (SEL, ragréages,
+ * primaires), qui produisent une ligne dès que leur question les déclenche.
+ * Un matériau lié sans borne déclarée ici n'est pas ignoré par le harnais :
+ * il en sort une violation. Lier un matériau sans sourcer sa consommation est
+ * donc une action visible, pas un oubli silencieux.
  *
  * **E1-5 — ce que ces bornes ne couvrent pas, et où c'est couvert.** Depuis que
  * le format du carreau pilote la colle et le joint
@@ -57,6 +59,20 @@ export interface ConsumptionBound {
   max_per_m2: number;
   /** La phrase de fiche technique dont l'écart est tiré. */
   basis: string;
+  /**
+   * E1-10 — grandeur au dénominateur du taux. `work_surface` (défaut, toutes
+   * les bornes d'avant ce lot) : le m² d'ouvrage, même pour les matériaux de
+   * trame — le ratio trame/surface est stable à la géométrie d'épreuve du
+   * harnais, et c'est ce que les fiches quantitatives Placo expriment.
+   *
+   * `driver_base` : l'assiette du `quantity_driver` du matériau, recalculée
+   * par le moteur (`resolveMeteringQuantity`). C'est la seule forme honnête
+   * pour les assiettes linéaires et comptées d'E1-10 : le rapport
+   * périmètre/surface varie du simple au triple avec la géométrie de la
+   * pièce — une borne « m de plinthe par m² de sol » serait soit tautologique
+   * sur la pièce d'épreuve, soit fausse sur une autre.
+   */
+  per?: 'work_surface' | 'driver_base';
 }
 
 /**
@@ -79,6 +95,29 @@ const laidPerSquareMetre = (
   min_per_m2: 1,
   max_per_m2: 1,
   basis,
+});
+
+/**
+ * E1-10 — rendement **identitaire sur l'assiette de son driver** : un mètre de
+ * plinthe couvre un mètre de périmètre, une barre de seuil un passage de
+ * porte, un mètre de bande un mètre de lisse. Le pendant de
+ * `laidPerSquareMetre` pour les assiettes linéaires et comptées — point, pas
+ * intervalle, et au dénominateur de l'assiette (`per: 'driver_base'`) parce
+ * qu'un rapport au m² d'ouvrage varierait avec la géométrie de la pièce.
+ */
+const laidPerDriverUnit = (
+  material_category: string,
+  material_name: string,
+  unit: string,
+  basis: string,
+): ConsumptionBound => ({
+  material_category,
+  material_name,
+  unit,
+  min_per_m2: 1,
+  max_per_m2: 1,
+  basis,
+  per: 'driver_base',
 });
 
 export const consumptionBounds: ConsumptionBound[] = [
@@ -159,6 +198,75 @@ export const consumptionBounds: ConsumptionBound[] = [
   ),
   {
     material_category: 'tiling',
+    material_name: 'Croisillons 3mm (x200)',
+    unit: 'unit',
+    // Dérivation géométrique : un croisillon par intersection de joints, soit
+    // 10 000/(L×l) par m². Aux deux géométries par défaut du registre —
+    // sol 45 × 45 (4,94/m²) et mur 25 × 40 (10/m²) — en sachets de 200 :
+    // 0,0247 à 0,05 sachet/m². Le reste de la courbe (20 × 20 : 0,125) est
+    // éprouvé format par format dans `tile-consumption.spec.ts`.
+    min_per_m2: 0.024,
+    max_per_m2: 0.051,
+    basis:
+      'Dérivation géométrique (spacersPerM2, tile-consumption.ts) : 10 000/(45×45) = 4,94/m² au sol, 10 000/(25×40) = 10/m² au mur, en sachets de 200 (Raimondi, sachet de 200 confirmé)',
+  },
+  {
+    material_category: 'tiling',
+    material_name: 'Joint souple silicone',
+    unit: 'unit',
+    // Table Sika Sanisil, cartouche 300 ml : 3,0 m de joint 10 × 10 mm à
+    // 1,5 m de joint 20 × 10 mm — soit 0,33 à 0,67 cartouche par mètre de
+    // joint périphérique.
+    min_per_m2: 0.33,
+    max_per_m2: 0.67,
+    basis:
+      'Sika Sanisil, table « Consommation » : « 10 / 10 / 3,0 » à « 20 / 10 / 1,5 » (largeur/profondeur mm, m de joint pour 300 ml)',
+    per: 'driver_base',
+  },
+  laidPerDriverUnit(
+    'tiling',
+    'Plinthe carrelage 8x30 cm',
+    'm',
+    'Vendue et posée au mètre le long du périmètre : rendement définitionnel',
+  ),
+  {
+    material_category: 'tiling',
+    material_name: 'Ragréage autolissant',
+    unit: 'kg',
+    // 1,5 à 1,6 kg/m²/mm selon fabricant, à l'épaisseur de 3 mm retenue au
+    // registre (plancher de la plage PRB « locaux P3, rénovation : 3-10 mm »).
+    min_per_m2: 4.2,
+    max_per_m2: 5,
+    basis:
+      "PRB PLANIDUR PRO : « 1,5 kg/m²/mm d'épaisseur », épaisseur retenue 3 mm ; Parexlanko 176 SOL 4000 : 1,5 kg/m²/mm",
+  },
+  {
+    material_category: 'tiling',
+    material_name: "Primaire d'accrochage carrelage",
+    unit: 'kg',
+    min_per_m2: 0.15,
+    max_per_m2: 0.3,
+    basis:
+      'PRB ACCROSOL PLUS : « 150 à 300 g/m² selon support (porosité, rugosité) » ; weberprim RP : « 150 à 250 g/m² environ »',
+  },
+  {
+    material_category: 'tiling',
+    material_name: "SEL (Système d'Étanchéité Liquide)",
+    unit: 'kg',
+    // Consommation du système complet, 2 couches comprises.
+    min_per_m2: 2.5,
+    max_per_m2: 3.5,
+    basis:
+      'PRB CEL CÉRAMIC : « Consommation du mélange Poudre + Résine en 2 couches : 2,5 à 3,5 kg/m² » ; Cermix CERMIPROOF ST : « 3 kg de mélange/m² pour les 2 couches »',
+  },
+  laidPerDriverUnit(
+    'tiling',
+    "Bande d'étanchéité 120mm",
+    'm',
+    'Marouflée en continu dans la première couche le long des jonctions sol/mur (Cermix CERMIPROOF ST, PRB CEL CÉRAMIC) : un mètre de bande par mètre de jonction',
+  ),
+  {
+    material_category: 'tiling',
     material_name: "Colle en pâte prête à l'emploi",
     unit: 'kg',
     // 3 à 5,5 kg/m² : simple encollage au peigne 6 mm à double encollage.
@@ -179,6 +287,36 @@ export const consumptionBounds: ConsumptionBound[] = [
     'Sous-couche mousse 3mm',
     'Quick-Step : « les bandes doivent être parfaitement adjacentes » — pose bord à bord, sans recouvrement',
   ),
+  laidPerDriverUnit(
+    'flooring',
+    'Plinthe MDF 60mm 2.4m',
+    'm',
+    'Vendue et posée au mètre le long du périmètre (TDS Quick-Step Plinthes : barres de 240 cm) : rendement définitionnel',
+  ),
+  laidPerDriverUnit(
+    'flooring',
+    'Barre de seuil alu 93cm',
+    'unit',
+    'Une barre par passage de porte (largeur standard 83 cm ≤ 93 cm) : rendement définitionnel',
+  ),
+  {
+    material_category: 'flooring',
+    material_name: 'Ragréage fibré sol',
+    unit: 'kg',
+    min_per_m2: 4.2,
+    max_per_m2: 5,
+    basis:
+      "PRB PLANIFIBRE : « 1,5 kg/m²/mm d'épaisseur », plage 3 à 30 mm, épaisseur retenue 3 mm ; Parexlanko 184 SOLFIBRÉ ~1,6 kg/m²/mm",
+  },
+  {
+    material_category: 'flooring',
+    material_name: "Primaire d'accrochage sol",
+    unit: 'kg',
+    min_per_m2: 0.15,
+    max_per_m2: 0.3,
+    basis:
+      'PRB ACCROSOL PLUS : « 150 à 300 g/m² selon support (porosité, rugosité) »',
+  },
   {
     material_category: 'flooring',
     material_name: 'Film pare-vapeur PE',
@@ -240,6 +378,27 @@ export const consumptionBounds: ConsumptionBound[] = [
     max_per_m2: 3.4,
     basis:
       'Placo® Fiche Solution 72/48 : « Bande PP grand Rouleau — M — 2,80 » par m², joints, cueillies et angles inclus',
+  },
+  {
+    material_category: 'partition',
+    material_name: 'Laine de verre 45mm',
+    unit: 'm2',
+    // Point et non intervalle : la fiche quantitative donne une valeur unique,
+    // et les chutes de découpe sont portées par les facteurs de perte.
+    min_per_m2: 1.05,
+    max_per_m2: 1.05,
+    basis:
+      'Placo® Fiche Solution Placostil® 72/48 BA13 39 dB : ligne isolant « M2 — 1,05 » par m² de cloison, isolant « Laine de verre, 45 mm »',
+  },
+  {
+    material_category: 'partition',
+    material_name: 'Bande résiliente 50mm',
+    unit: 'm',
+    min_per_m2: 1,
+    max_per_m2: 1,
+    basis:
+      'Knauf, Accessoires pour cloisons — Bande résiliente : « se colle sous les rails », en course continue — un mètre de bande par mètre de lisse, aucun ratio fabricant publié (règle de pose seule)',
+    per: 'driver_base',
   },
   {
     material_category: 'partition',

@@ -53,8 +53,10 @@ Montant M48 2.7m                consommable     0 % exact                  20.00
 Vis placo 25mm (x500)           consommable    10 % exact                0.485 unit      1 1 × Boîte 500 pcs
 Bande à joint papier 23m        consommable    12 % exact                  31.111 m      2 2 × Rouleau 23 m
 Enduit à joint prêt 7kg         consommable    12 % exact                 11.200 kg      1 1 × Seau 20 kg
+Laine de verre 45mm             consommable    12 % exact                 11.760 m2      2 2 × Rouleau 9.6 m²
+Bande résiliente 50mm           consommable    12 % exact                   8.960 m      1 1 × Rouleau 30 m
 
-total : 6 lignes · 23 contenants
+total : 8 lignes · 26 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 drywall · expert · pose standard 1`] = `
@@ -71,8 +73,10 @@ Montant M48 2.7m                consommable     0 % exact                  20.00
 Vis placo 25mm (x500)           consommable     2 % exact                0.449 unit      1 1 × Boîte 500 pcs
 Bande à joint papier 23m        consommable     4 % exact                  28.889 m      2 2 × Rouleau 23 m
 Enduit à joint prêt 7kg         consommable     4 % exact                 10.400 kg      1 1 × Seau 20 kg
+Laine de verre 45mm             consommable     4 % exact                 10.920 m2      2 2 × Rouleau 9.6 m²
+Bande résiliente 50mm           consommable     4 % exact                   8.320 m      1 1 × Rouleau 30 m
 
-total : 6 lignes · 23 contenants
+total : 8 lignes · 26 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 drywall · intermediate · pose standard 1`] = `
@@ -89,8 +93,10 @@ Montant M48 2.7m                consommable     0 % exact                  20.00
 Vis placo 25mm (x500)           consommable     5 % exact                0.463 unit      1 1 × Boîte 500 pcs
 Bande à joint papier 23m        consommable     8 % exact                  30.000 m      2 2 × Rouleau 23 m
 Enduit à joint prêt 7kg         consommable     8 % exact                 10.800 kg      1 1 × Seau 20 kg
+Laine de verre 45mm             consommable     8 % exact                 11.340 m2      2 2 × Rouleau 9.6 m²
+Bande résiliente 50mm           consommable     8 % exact                   8.640 m      1 1 × Rouleau 30 m
 
-total : 6 lignes · 23 contenants
+total : 8 lignes · 26 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 floor_tiling · beginner · pose diagonal 1`] = `
@@ -103,8 +109,17 @@ matériau                        rôle          perte origine   couches   qté a
 Carrelage sol 45x45 cm          principal      20 % exact                 14.400 m2     10 10 × Boîte 1.5 m²
 Mortier-colle flexible (C2)     consommable     5 % pose unique             90.000 kg      4 4 × Sac 25 kg
 Joint fin 1-6mm                 consommable     5 % pose unique              2.520 kg      1 1 × Sac 5 kg
+Croisillons 3mm (x200)          consommable    10 % pose unique            0.326 unit      1 1 × Sachet 200 pcs
+Joint souple silicone           consommable     5 % pose unique            4.610 unit      5 5 × Cartouche 300 ml
+Plinthe carrelage 8x30 cm       accessoire     10 % pose unique              14.487 m      5 5 × Lot de 10 (3 m)
+Barre de seuil alu 93cm         accessoire      0 % pose unique            1.000 unit      1 1 × Unité
 
-total : 3 lignes · 15 contenants
+écarté  : SEL (Système d'Étanchéité Liquide) — Local déclaré sec : aucun système d'étanchéité liquide requis (SEL réservé aux salles d'eau, NF DTU 52.2).
+écarté  : Bande d'étanchéité 120mm — Local déclaré sec : aucun système d'étanchéité liquide requis (SEL réservé aux salles d'eau, NF DTU 52.2).
+écarté  : Ragréage autolissant — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+écarté  : Primaire d'accrochage carrelage — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+
+total : 7 lignes · 27 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 floor_tiling · beginner · pose straight 1`] = `
@@ -117,8 +132,17 @@ matériau                        rôle          perte origine   couches   qté a
 Carrelage sol 45x45 cm          principal      15 % exact                 13.800 m2     10 8 × Boîte 1.5 m² + 2 × Boîte 1 m²
 Mortier-colle flexible (C2)     consommable     5 % pose unique             90.000 kg      4 4 × Sac 25 kg
 Joint fin 1-6mm                 consommable     5 % pose unique              2.520 kg      1 1 × Sac 5 kg
+Croisillons 3mm (x200)          consommable    10 % pose unique            0.326 unit      1 1 × Sachet 200 pcs
+Joint souple silicone           consommable     5 % pose unique            4.610 unit      5 5 × Cartouche 300 ml
+Plinthe carrelage 8x30 cm       accessoire     10 % pose unique              14.487 m      5 5 × Lot de 10 (3 m)
+Barre de seuil alu 93cm         accessoire      0 % pose unique            1.000 unit      1 1 × Unité
 
-total : 3 lignes · 15 contenants
+écarté  : SEL (Système d'Étanchéité Liquide) — Local déclaré sec : aucun système d'étanchéité liquide requis (SEL réservé aux salles d'eau, NF DTU 52.2).
+écarté  : Bande d'étanchéité 120mm — Local déclaré sec : aucun système d'étanchéité liquide requis (SEL réservé aux salles d'eau, NF DTU 52.2).
+écarté  : Ragréage autolissant — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+écarté  : Primaire d'accrochage carrelage — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+
+total : 7 lignes · 27 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 floor_tiling · expert · pose diagonal 1`] = `
@@ -131,8 +155,17 @@ matériau                        rôle          perte origine   couches   qté a
 Carrelage sol 45x45 cm          principal      10 % exact                 13.200 m2      9 9 × Boîte 1.5 m²
 Mortier-colle flexible (C2)     consommable     2 % pose unique             87.429 kg      4 4 × Sac 25 kg
 Joint fin 1-6mm                 consommable     2 % pose unique              2.448 kg      1 1 × Sac 5 kg
+Croisillons 3mm (x200)          consommable     2 % pose unique            0.302 unit      1 1 × Sachet 200 pcs
+Joint souple silicone           consommable     2 % pose unique            4.478 unit      5 5 × Cartouche 300 ml
+Plinthe carrelage 8x30 cm       accessoire      5 % pose unique              13.829 m      5 5 × Lot de 10 (3 m)
+Barre de seuil alu 93cm         accessoire      0 % pose unique            1.000 unit      1 1 × Unité
 
-total : 3 lignes · 14 contenants
+écarté  : SEL (Système d'Étanchéité Liquide) — Local déclaré sec : aucun système d'étanchéité liquide requis (SEL réservé aux salles d'eau, NF DTU 52.2).
+écarté  : Bande d'étanchéité 120mm — Local déclaré sec : aucun système d'étanchéité liquide requis (SEL réservé aux salles d'eau, NF DTU 52.2).
+écarté  : Ragréage autolissant — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+écarté  : Primaire d'accrochage carrelage — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+
+total : 7 lignes · 26 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 floor_tiling · expert · pose straight 1`] = `
@@ -145,8 +178,17 @@ matériau                        rôle          perte origine   couches   qté a
 Carrelage sol 45x45 cm          principal       5 % exact                 12.600 m2      9 9 × Boîte 1.5 m²
 Mortier-colle flexible (C2)     consommable     2 % pose unique             87.429 kg      4 4 × Sac 25 kg
 Joint fin 1-6mm                 consommable     2 % pose unique              2.448 kg      1 1 × Sac 5 kg
+Croisillons 3mm (x200)          consommable     2 % pose unique            0.302 unit      1 1 × Sachet 200 pcs
+Joint souple silicone           consommable     2 % pose unique            4.478 unit      5 5 × Cartouche 300 ml
+Plinthe carrelage 8x30 cm       accessoire      5 % pose unique              13.829 m      5 5 × Lot de 10 (3 m)
+Barre de seuil alu 93cm         accessoire      0 % pose unique            1.000 unit      1 1 × Unité
 
-total : 3 lignes · 14 contenants
+écarté  : SEL (Système d'Étanchéité Liquide) — Local déclaré sec : aucun système d'étanchéité liquide requis (SEL réservé aux salles d'eau, NF DTU 52.2).
+écarté  : Bande d'étanchéité 120mm — Local déclaré sec : aucun système d'étanchéité liquide requis (SEL réservé aux salles d'eau, NF DTU 52.2).
+écarté  : Ragréage autolissant — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+écarté  : Primaire d'accrochage carrelage — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+
+total : 7 lignes · 26 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 floor_tiling · intermediate · pose diagonal 1`] = `
@@ -159,8 +201,17 @@ matériau                        rôle          perte origine   couches   qté a
 Carrelage sol 45x45 cm          principal      15 % exact                 13.800 m2     10 8 × Boîte 1.5 m² + 2 × Boîte 1 m²
 Mortier-colle flexible (C2)     consommable     3 % pose unique             88.286 kg      4 4 × Sac 25 kg
 Joint fin 1-6mm                 consommable     3 % pose unique              2.472 kg      1 1 × Sac 5 kg
+Croisillons 3mm (x200)          consommable     5 % pose unique            0.311 unit      1 1 × Sachet 200 pcs
+Joint souple silicone           consommable     3 % pose unique            4.522 unit      5 5 × Cartouche 300 ml
+Plinthe carrelage 8x30 cm       accessoire      7 % pose unique              14.092 m      5 5 × Lot de 10 (3 m)
+Barre de seuil alu 93cm         accessoire      0 % pose unique            1.000 unit      1 1 × Unité
 
-total : 3 lignes · 15 contenants
+écarté  : SEL (Système d'Étanchéité Liquide) — Local déclaré sec : aucun système d'étanchéité liquide requis (SEL réservé aux salles d'eau, NF DTU 52.2).
+écarté  : Bande d'étanchéité 120mm — Local déclaré sec : aucun système d'étanchéité liquide requis (SEL réservé aux salles d'eau, NF DTU 52.2).
+écarté  : Ragréage autolissant — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+écarté  : Primaire d'accrochage carrelage — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+
+total : 7 lignes · 27 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 floor_tiling · intermediate · pose straight 1`] = `
@@ -173,8 +224,17 @@ matériau                        rôle          perte origine   couches   qté a
 Carrelage sol 45x45 cm          principal      10 % exact                 13.200 m2      9 9 × Boîte 1.5 m²
 Mortier-colle flexible (C2)     consommable     3 % pose unique             88.286 kg      4 4 × Sac 25 kg
 Joint fin 1-6mm                 consommable     3 % pose unique              2.472 kg      1 1 × Sac 5 kg
+Croisillons 3mm (x200)          consommable     5 % pose unique            0.311 unit      1 1 × Sachet 200 pcs
+Joint souple silicone           consommable     3 % pose unique            4.522 unit      5 5 × Cartouche 300 ml
+Plinthe carrelage 8x30 cm       accessoire      7 % pose unique              14.092 m      5 5 × Lot de 10 (3 m)
+Barre de seuil alu 93cm         accessoire      0 % pose unique            1.000 unit      1 1 × Unité
 
-total : 3 lignes · 14 contenants
+écarté  : SEL (Système d'Étanchéité Liquide) — Local déclaré sec : aucun système d'étanchéité liquide requis (SEL réservé aux salles d'eau, NF DTU 52.2).
+écarté  : Bande d'étanchéité 120mm — Local déclaré sec : aucun système d'étanchéité liquide requis (SEL réservé aux salles d'eau, NF DTU 52.2).
+écarté  : Ragréage autolissant — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+écarté  : Primaire d'accrochage carrelage — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+
+total : 7 lignes · 26 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 parquet_flooring · beginner · pose diagonal 1`] = `
@@ -187,8 +247,13 @@ matériau                        rôle          perte origine   couches   qté a
 Stratifié 8mm AC4               principal      20 % exact                 14.400 m2      6 6 × Paquet 2.49 m²
 Sous-couche mousse 3mm          sous_couche    10 % pose unique             13.200 m2      1 1 × Rouleau 15 m²
 Film pare-vapeur PE             sous_couche    10 % pose unique             16.500 m2      1 1 × Rouleau 20 m²
+Plinthe MDF 60mm 2.4m           accessoire     10 % pose unique              14.487 m      7 7 × Barre 2.4 m
+Barre de seuil alu 93cm         accessoire      0 % pose unique            1.000 unit      1 1 × Unité
 
-total : 3 lignes · 8 contenants
+écarté  : Ragréage fibré sol — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+écarté  : Primaire d'accrochage sol — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+
+total : 5 lignes · 16 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 parquet_flooring · beginner · pose herringbone 1`] = `
@@ -201,8 +266,13 @@ matériau                        rôle          perte origine   couches   qté a
 Stratifié 8mm AC4               principal      25 % exact                 15.000 m2      7 7 × Paquet 2.49 m²
 Sous-couche mousse 3mm          sous_couche    10 % pose unique             13.200 m2      1 1 × Rouleau 15 m²
 Film pare-vapeur PE             sous_couche    10 % pose unique             16.500 m2      1 1 × Rouleau 20 m²
+Plinthe MDF 60mm 2.4m           accessoire     10 % pose unique              14.487 m      7 7 × Barre 2.4 m
+Barre de seuil alu 93cm         accessoire      0 % pose unique            1.000 unit      1 1 × Unité
 
-total : 3 lignes · 9 contenants
+écarté  : Ragréage fibré sol — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+écarté  : Primaire d'accrochage sol — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+
+total : 5 lignes · 17 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 parquet_flooring · beginner · pose straight 1`] = `
@@ -215,8 +285,13 @@ matériau                        rôle          perte origine   couches   qté a
 Stratifié 8mm AC4               principal      10 % exact                 13.200 m2      6 6 × Paquet 2.49 m²
 Sous-couche mousse 3mm          sous_couche    10 % pose unique             13.200 m2      1 1 × Rouleau 15 m²
 Film pare-vapeur PE             sous_couche    10 % pose unique             16.500 m2      1 1 × Rouleau 20 m²
+Plinthe MDF 60mm 2.4m           accessoire     10 % pose unique              14.487 m      7 7 × Barre 2.4 m
+Barre de seuil alu 93cm         accessoire      0 % pose unique            1.000 unit      1 1 × Unité
 
-total : 3 lignes · 8 contenants
+écarté  : Ragréage fibré sol — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+écarté  : Primaire d'accrochage sol — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+
+total : 5 lignes · 16 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 parquet_flooring · expert · pose diagonal 1`] = `
@@ -229,8 +304,13 @@ matériau                        rôle          perte origine   couches   qté a
 Stratifié 8mm AC4               principal      15 % exact                 13.800 m2      6 6 × Paquet 2.49 m²
 Sous-couche mousse 3mm          sous_couche     5 % pose unique             12.600 m2      1 1 × Rouleau 15 m²
 Film pare-vapeur PE             sous_couche     5 % pose unique             15.750 m2      1 1 × Rouleau 20 m²
+Plinthe MDF 60mm 2.4m           accessoire      5 % pose unique              13.829 m      6 6 × Barre 2.4 m
+Barre de seuil alu 93cm         accessoire      0 % pose unique            1.000 unit      1 1 × Unité
 
-total : 3 lignes · 8 contenants
+écarté  : Ragréage fibré sol — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+écarté  : Primaire d'accrochage sol — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+
+total : 5 lignes · 15 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 parquet_flooring · expert · pose herringbone 1`] = `
@@ -243,8 +323,13 @@ matériau                        rôle          perte origine   couches   qté a
 Stratifié 8mm AC4               principal      20 % exact                 14.400 m2      6 6 × Paquet 2.49 m²
 Sous-couche mousse 3mm          sous_couche     5 % pose unique             12.600 m2      1 1 × Rouleau 15 m²
 Film pare-vapeur PE             sous_couche     5 % pose unique             15.750 m2      1 1 × Rouleau 20 m²
+Plinthe MDF 60mm 2.4m           accessoire      5 % pose unique              13.829 m      6 6 × Barre 2.4 m
+Barre de seuil alu 93cm         accessoire      0 % pose unique            1.000 unit      1 1 × Unité
 
-total : 3 lignes · 8 contenants
+écarté  : Ragréage fibré sol — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+écarté  : Primaire d'accrochage sol — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+
+total : 5 lignes · 15 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 parquet_flooring · expert · pose straight 1`] = `
@@ -257,8 +342,13 @@ matériau                        rôle          perte origine   couches   qté a
 Stratifié 8mm AC4               principal       5 % exact                 12.600 m2      6 6 × Paquet 2.49 m²
 Sous-couche mousse 3mm          sous_couche     5 % pose unique             12.600 m2      1 1 × Rouleau 15 m²
 Film pare-vapeur PE             sous_couche     5 % pose unique             15.750 m2      1 1 × Rouleau 20 m²
+Plinthe MDF 60mm 2.4m           accessoire      5 % pose unique              13.829 m      6 6 × Barre 2.4 m
+Barre de seuil alu 93cm         accessoire      0 % pose unique            1.000 unit      1 1 × Unité
 
-total : 3 lignes · 8 contenants
+écarté  : Ragréage fibré sol — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+écarté  : Primaire d'accrochage sol — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+
+total : 5 lignes · 15 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 parquet_flooring · intermediate · pose diagonal 1`] = `
@@ -271,8 +361,13 @@ matériau                        rôle          perte origine   couches   qté a
 Stratifié 8mm AC4               principal      17 % exact                 14.040 m2      6 6 × Paquet 2.49 m²
 Sous-couche mousse 3mm          sous_couche     7 % pose unique             12.840 m2      1 1 × Rouleau 15 m²
 Film pare-vapeur PE             sous_couche     7 % pose unique             16.050 m2      1 1 × Rouleau 20 m²
+Plinthe MDF 60mm 2.4m           accessoire      7 % pose unique              14.092 m      6 6 × Barre 2.4 m
+Barre de seuil alu 93cm         accessoire      0 % pose unique            1.000 unit      1 1 × Unité
 
-total : 3 lignes · 8 contenants
+écarté  : Ragréage fibré sol — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+écarté  : Primaire d'accrochage sol — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+
+total : 5 lignes · 15 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 parquet_flooring · intermediate · pose herringbone 1`] = `
@@ -285,8 +380,13 @@ matériau                        rôle          perte origine   couches   qté a
 Stratifié 8mm AC4               principal      22 % exact                 14.640 m2      6 6 × Paquet 2.49 m²
 Sous-couche mousse 3mm          sous_couche     7 % pose unique             12.840 m2      1 1 × Rouleau 15 m²
 Film pare-vapeur PE             sous_couche     7 % pose unique             16.050 m2      1 1 × Rouleau 20 m²
+Plinthe MDF 60mm 2.4m           accessoire      7 % pose unique              14.092 m      6 6 × Barre 2.4 m
+Barre de seuil alu 93cm         accessoire      0 % pose unique            1.000 unit      1 1 × Unité
 
-total : 3 lignes · 8 contenants
+écarté  : Ragréage fibré sol — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+écarté  : Primaire d'accrochage sol — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+
+total : 5 lignes · 15 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 parquet_flooring · intermediate · pose straight 1`] = `
@@ -299,8 +399,13 @@ matériau                        rôle          perte origine   couches   qté a
 Stratifié 8mm AC4               principal       7 % exact                 12.840 m2      6 6 × Paquet 2.49 m²
 Sous-couche mousse 3mm          sous_couche     7 % pose unique             12.840 m2      1 1 × Rouleau 15 m²
 Film pare-vapeur PE             sous_couche     7 % pose unique             16.050 m2      1 1 × Rouleau 20 m²
+Plinthe MDF 60mm 2.4m           accessoire      7 % pose unique              14.092 m      6 6 × Barre 2.4 m
+Barre de seuil alu 93cm         accessoire      0 % pose unique            1.000 unit      1 1 × Unité
 
-total : 3 lignes · 8 contenants
+écarté  : Ragréage fibré sol — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+écarté  : Primaire d'accrochage sol — Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires.
+
+total : 5 lignes · 15 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_covering · beginner · pose standard 1`] = `
@@ -391,8 +496,11 @@ matériau                        rôle          perte origine   couches   qté a
 Faïence murale 25x40 cm         principal      20 % exact                 39.968 m2     40 40 × Boîte 1 m²
 Colle en pâte prête à l'emploi  consommable     5 % pose unique            158.964 kg     11 11 × Seau 15 kg
 Joint fin 1-6mm                 consommable     5 % pose unique              7.956 kg      1 1 × Sac 10 kg
+Croisillons 3mm (x200)          consommable    10 % pose unique            1.832 unit      2 2 × Sachet 200 pcs
 
-total : 3 lignes · 52 contenants
+écarté  : SEL (Système d'Étanchéité Liquide) — Local déclaré sec : aucun système d'étanchéité liquide requis (SEL réservé aux salles d'eau, NF DTU 52.2).
+
+total : 4 lignes · 54 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_tiling · beginner · pose straight 1`] = `
@@ -405,8 +513,11 @@ matériau                        rôle          perte origine   couches   qté a
 Faïence murale 25x40 cm         principal      15 % exact                 38.303 m2     39 39 × Boîte 1 m²
 Colle en pâte prête à l'emploi  consommable     5 % pose unique            158.964 kg     11 11 × Seau 15 kg
 Joint fin 1-6mm                 consommable     5 % pose unique              7.956 kg      1 1 × Sac 10 kg
+Croisillons 3mm (x200)          consommable    10 % pose unique            1.832 unit      2 2 × Sachet 200 pcs
 
-total : 3 lignes · 51 contenants
+écarté  : SEL (Système d'Étanchéité Liquide) — Local déclaré sec : aucun système d'étanchéité liquide requis (SEL réservé aux salles d'eau, NF DTU 52.2).
+
+total : 4 lignes · 53 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_tiling · expert · pose diagonal 1`] = `
@@ -419,8 +530,11 @@ matériau                        rôle          perte origine   couches   qté a
 Faïence murale 25x40 cm         principal      10 % exact                 36.637 m2     37 37 × Boîte 1 m²
 Colle en pâte prête à l'emploi  consommable     2 % pose unique            154.422 kg     11 10 × Seau 15 kg + 1 × Seau 7 kg
 Joint fin 1-6mm                 consommable     2 % pose unique              7.729 kg      1 1 × Sac 10 kg
+Croisillons 3mm (x200)          consommable     2 % pose unique            1.699 unit      2 2 × Sachet 200 pcs
 
-total : 3 lignes · 49 contenants
+écarté  : SEL (Système d'Étanchéité Liquide) — Local déclaré sec : aucun système d'étanchéité liquide requis (SEL réservé aux salles d'eau, NF DTU 52.2).
+
+total : 4 lignes · 51 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_tiling · expert · pose straight 1`] = `
@@ -433,8 +547,11 @@ matériau                        rôle          perte origine   couches   qté a
 Faïence murale 25x40 cm         principal       5 % exact                 34.972 m2     35 35 × Boîte 1 m²
 Colle en pâte prête à l'emploi  consommable     2 % pose unique            154.422 kg     11 10 × Seau 15 kg + 1 × Seau 7 kg
 Joint fin 1-6mm                 consommable     2 % pose unique              7.729 kg      1 1 × Sac 10 kg
+Croisillons 3mm (x200)          consommable     2 % pose unique            1.699 unit      2 2 × Sachet 200 pcs
 
-total : 3 lignes · 47 contenants
+écarté  : SEL (Système d'Étanchéité Liquide) — Local déclaré sec : aucun système d'étanchéité liquide requis (SEL réservé aux salles d'eau, NF DTU 52.2).
+
+total : 4 lignes · 49 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_tiling · intermediate · pose diagonal 1`] = `
@@ -447,8 +564,11 @@ matériau                        rôle          perte origine   couches   qté a
 Faïence murale 25x40 cm         principal      15 % exact                 38.303 m2     39 39 × Boîte 1 m²
 Colle en pâte prête à l'emploi  consommable     3 % pose unique            155.936 kg     11 10 × Seau 15 kg + 1 × Seau 7 kg
 Joint fin 1-6mm                 consommable     3 % pose unique              7.805 kg      1 1 × Sac 10 kg
+Croisillons 3mm (x200)          consommable     5 % pose unique            1.749 unit      2 2 × Sachet 200 pcs
 
-total : 3 lignes · 51 contenants
+écarté  : SEL (Système d'Étanchéité Liquide) — Local déclaré sec : aucun système d'étanchéité liquide requis (SEL réservé aux salles d'eau, NF DTU 52.2).
+
+total : 4 lignes · 53 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_tiling · intermediate · pose straight 1`] = `
@@ -461,6 +581,9 @@ matériau                        rôle          perte origine   couches   qté a
 Faïence murale 25x40 cm         principal      10 % exact                 36.637 m2     37 37 × Boîte 1 m²
 Colle en pâte prête à l'emploi  consommable     3 % pose unique            155.936 kg     11 10 × Seau 15 kg + 1 × Seau 7 kg
 Joint fin 1-6mm                 consommable     3 % pose unique              7.805 kg      1 1 × Sac 10 kg
+Croisillons 3mm (x200)          consommable     5 % pose unique            1.749 unit      2 2 × Sachet 200 pcs
 
-total : 3 lignes · 49 contenants
+écarté  : SEL (Système d'Étanchéité Liquide) — Local déclaré sec : aucun système d'étanchéité liquide requis (SEL réservé aux salles d'eau, NF DTU 52.2).
+
+total : 4 lignes · 51 contenants
 `;
