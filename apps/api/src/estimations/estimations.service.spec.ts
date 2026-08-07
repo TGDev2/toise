@@ -35,6 +35,7 @@ const mockWorkType: WorkType = {
   label_fr: 'Peinture murale',
   category: 'painting',
   surface_target: 'wall',
+  quantity_basis: 'room_surface',
   waste_factor_base: 1.1,
   contextual_questions: [],
   display_order: 1,

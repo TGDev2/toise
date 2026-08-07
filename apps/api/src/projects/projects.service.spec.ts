@@ -132,6 +132,7 @@ const mockWorkType: WorkTypeEntity = {
   label_fr: 'Peinture murale',
   category: 'painting',
   surface_target: 'wall',
+  quantity_basis: 'room_surface',
   waste_factor_base: 1.1,
   contextual_questions: [],
   display_order: 1,
@@ -146,6 +147,7 @@ const mockFloorTilingWorkType: WorkTypeEntity = {
   label_fr: 'Carrelage sol',
   category: 'tiling',
   surface_target: 'floor',
+  quantity_basis: 'room_surface',
   waste_factor_base: 1.1,
   contextual_questions: [
     {
@@ -175,6 +177,9 @@ const mockWorkItem: ProjectWorkItem = {
   work_type_id: 'wt-wall-painting',
   skill_level: SkillLevel.BEGINNER,
   custom_params: {},
+  declared_length_m: null,
+  declared_height_m: null,
+  declared_clad_faces: null,
   created_at: new Date('2026-03-27T00:00:00.000Z'),
   updated_at: new Date('2026-03-27T00:00:00.000Z'),
   room: null as never,
@@ -971,6 +976,9 @@ describe('ProjectsService', () => {
         work_type_id: 'wt-wall-painting',
         skill_level: SkillLevel.BEGINNER,
         custom_params: {},
+        declared_length_m: null,
+        declared_height_m: null,
+        declared_clad_faces: null,
       });
       expect(workItemsRepoMock.save).toHaveBeenCalled();
       expect(result).toEqual([mockWorkItem]);

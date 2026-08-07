@@ -24,6 +24,16 @@ export interface SeedWorkType {
   waste_factor_base: number;
   contextual_questions: ContextualQuestion[];
   display_order: number;
+  /**
+   * E1-2 — comment la quantité d'ouvrage se détermine. `room_surface` : dérivée
+   * de la géométrie de la pièce via `surface_target` (tous les ouvrages de
+   * recouvrement, comportement inchangé). `declared` : saisie par l'utilisateur
+   * (linéaire, hauteur, faces à parementer — `project_work_items.declared_*`),
+   * pour un ouvrage qu'on **crée** plutôt qu'on ne recouvre. Orthogonal à
+   * `surface_target`, que le moteur continue de lire tel quel tant que E1-3
+   * n'a pas câblé la lecture de ce champ.
+   */
+  quantity_basis: 'room_surface' | 'declared';
 }
 
 /**
@@ -65,6 +75,7 @@ export const seedWorkTypes: SeedWorkType[] = [
     waste_factor_base: 1.1,
     contextual_questions: [],
     display_order: 1,
+    quantity_basis: 'room_surface',
   },
   {
     code: 'ceiling_painting',
@@ -74,6 +85,7 @@ export const seedWorkTypes: SeedWorkType[] = [
     waste_factor_base: 1.1,
     contextual_questions: [],
     display_order: 2,
+    quantity_basis: 'room_surface',
   },
   {
     code: 'floor_tiling',
@@ -83,6 +95,7 @@ export const seedWorkTypes: SeedWorkType[] = [
     waste_factor_base: 1.1,
     contextual_questions: floorTilingQuestions,
     display_order: 3,
+    quantity_basis: 'room_surface',
   },
   {
     code: 'wall_tiling',
@@ -92,6 +105,7 @@ export const seedWorkTypes: SeedWorkType[] = [
     waste_factor_base: 1.1,
     contextual_questions: [],
     display_order: 4,
+    quantity_basis: 'room_surface',
   },
   {
     // Libellés sans accent : tels qu'insérés par la migration `…003`.
@@ -102,6 +116,7 @@ export const seedWorkTypes: SeedWorkType[] = [
     waste_factor_base: 1.1,
     contextual_questions: [],
     display_order: 5,
+    quantity_basis: 'room_surface',
   },
   {
     code: 'drywall',
@@ -111,6 +126,11 @@ export const seedWorkTypes: SeedWorkType[] = [
     waste_factor_base: 1.05,
     contextual_questions: [],
     display_order: 6,
+    // E1-2 : ouvrage qu'on crée, pas qu'on recouvre — assiette saisie
+    // (`project_work_items.declared_length_m/height_m/clad_faces`), câblée
+    // dans le moteur par E1-3. `surface_target` reste 'wall' et continue de
+    // ne servir à rien tant que cette lecture n'existe pas.
+    quantity_basis: 'declared',
   },
   {
     code: 'wall_covering',
@@ -120,5 +140,6 @@ export const seedWorkTypes: SeedWorkType[] = [
     waste_factor_base: 1.1,
     contextual_questions: [],
     display_order: 7,
+    quantity_basis: 'room_surface',
   },
 ];

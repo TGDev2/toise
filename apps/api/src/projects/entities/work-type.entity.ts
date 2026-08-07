@@ -37,6 +37,15 @@ export class WorkType {
   @Column({ type: 'varchar', length: 20 })
   surface_target!: string;
 
+  /**
+   * E1-2 — `room_surface` : quantité dérivée de `surface_target` et de la
+   * géométrie de la pièce (comportement inchangé). `declared` : quantité
+   * saisie par l'utilisateur sur l'ouvrage (`project_work_items.declared_*`).
+   * Orthogonal à `surface_target`, pas encore lu par le moteur (E1-3).
+   */
+  @Column({ type: 'varchar', length: 20, default: 'room_surface' })
+  quantity_basis!: string;
+
   @Column({
     type: 'numeric',
     precision: 4,

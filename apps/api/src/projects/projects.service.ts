@@ -723,6 +723,24 @@ export class ProjectsService {
           );
         }
       }
+
+      // E1-2 : un ouvrage à assiette saisie (drywall aujourd'hui) exige son
+      // linéaire, sa hauteur et son nombre de faces — mêmes gabarit et
+      // sévérité que les questions contextuelles requises ci-dessus.
+      if (workType.quantity_basis === 'declared') {
+        const declaredFields: Array<[string, unknown]> = [
+          ['declared_length_m', item.declared_length_m],
+          ['declared_height_m', item.declared_height_m],
+          ['declared_clad_faces', item.declared_clad_faces],
+        ];
+        for (const [field, value] of declaredFields) {
+          if (value === undefined || value === null) {
+            throw new BadRequestException(
+              `Missing required parameter "${field}" for work type "${workType.code}"`,
+            );
+          }
+        }
+      }
     }
 
     // Delete existing work items for this room
@@ -735,6 +753,9 @@ export class ProjectsService {
         work_type_id: item.work_type_id,
         skill_level: item.skill_level,
         custom_params: item.custom_params ?? {},
+        declared_length_m: item.declared_length_m ?? null,
+        declared_height_m: item.declared_height_m ?? null,
+        declared_clad_faces: item.declared_clad_faces ?? null,
       }),
     );
 

@@ -481,10 +481,14 @@ export class ProjectsController {
         label_fr: item.work_type.label_fr,
         category: item.work_type.category,
         surface_target: item.work_type.surface_target,
+        quantity_basis: item.work_type.quantity_basis,
         contextual_questions: item.work_type.contextual_questions,
       },
       skill_level: item.skill_level,
       custom_params: item.custom_params,
+      declared_length_m: item.declared_length_m,
+      declared_height_m: item.declared_height_m,
+      declared_clad_faces: item.declared_clad_faces,
     }));
   }
 
@@ -508,10 +512,14 @@ export class ProjectsController {
         label_fr: item.work_type.label_fr,
         category: item.work_type.category,
         surface_target: item.work_type.surface_target,
+        quantity_basis: item.work_type.quantity_basis,
         contextual_questions: item.work_type.contextual_questions,
       },
       skill_level: item.skill_level,
       custom_params: item.custom_params,
+      declared_length_m: item.declared_length_m,
+      declared_height_m: item.declared_height_m,
+      declared_clad_faces: item.declared_clad_faces,
     }));
   }
 
@@ -644,10 +652,14 @@ export class ProjectsController {
           label_fr: wi.work_type.label_fr,
           category: wi.work_type.category,
           surface_target: wi.work_type.surface_target,
+          quantity_basis: wi.work_type.quantity_basis,
           contextual_questions: wi.work_type.contextual_questions,
         },
         skill_level: wi.skill_level,
         custom_params: wi.custom_params,
+        declared_length_m: wi.declared_length_m,
+        declared_height_m: wi.declared_height_m,
+        declared_clad_faces: wi.declared_clad_faces,
       })),
     };
   }
