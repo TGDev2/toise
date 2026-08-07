@@ -57,6 +57,28 @@ export type MaterialQuantityDriver =
  */
 export type TileConsumptionModel = 'tile_adhesive' | 'tile_grout';
 
+/**
+ * E1-8 — rôle d'un matériau vis-à-vis du pare-vapeur d'un sol posé en flottant.
+ *
+ * Une seule colonne pour deux faits, parce qu'ils sont exclusifs et qu'un
+ * matériau ne peut pas être les deux : deux booléens autoriseraient l'état
+ * « film dédié qui intègre un pare-vapeur », qui ne veut rien dire, et il
+ * faudrait alors écrire quelque part qu'il est interdit.
+ *
+ *  - `dedicated` : ce matériau **est** le pare-vapeur — un film nu, sans autre
+ *    fonction. C'est le seul rôle qui rende un matériau **conditionnel** : il
+ *    n'est chiffré que si l'ouvrage en a besoin et qu'aucun autre ne le fournit.
+ *  - `integrated` : ce matériau en **porte** un — une sous-couche à pare-vapeur
+ *    intégré. Il satisfait le besoin, donc il rend le film dédié inutile.
+ *  - `NULL` : sans rapport. Tout le reste du catalogue.
+ *
+ * Portée par le matériau et non par la liaison ouvrage → matériau, pour la même
+ * raison qu'`applies_coats`, `quantity_driver` et `consumption_model` : c'est
+ * une propriété du produit, pas de son emploi. Une sous-couche qui intègre un
+ * pare-vapeur l'intègre sur tous les chantiers.
+ */
+export type VapourBarrierRole = 'dedicated' | 'integrated';
+
 export enum MaterialCategory {
   PAINTING = 'painting',
   TILING = 'tiling',
@@ -184,6 +206,41 @@ export class MaterialCatalog {
     transformer: numericTransformer,
   })
   roll_length_cm!: number | null;
+
+  /**
+   * E1-8 — rôle de ce matériau vis-à-vis du pare-vapeur (cf.
+   * `VapourBarrierRole`). `NULL` (le défaut) pour tout le catalogue hors films
+   * pare-vapeur et sous-couches à pare-vapeur intégré.
+   *
+   * C'est la première colonne du catalogue qui décide de la **présence** d'une
+   * ligne et non de sa quantité. La règle qu'elle porte vit dans
+   * `estimations/vapour-barrier.ts` ; l'entité n'en connaît que le rôle, comme
+   * pour `consumption_model`.
+   */
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  vapour_barrier!: VapourBarrierRole | null;
+
+  /**
+   * E1-8 — les chutes de ce matériau se réutilisent-elles **bout à bout** ?
+   *
+   * `true` (le défaut) : le matériau est **aboutable**. Ce qui reste d'une barre
+   * se raboute au début de la suivante, donc le besoin est un linéaire continu
+   * et l'achat en est la division par la longueur de barre. C'est le cas des
+   * rails, posés en course continue au sol et au plafond.
+   *
+   * `false` : le matériau est **découpé à longueur**, et la chute est perdue.
+   * Sous un plafond de 2,50 m, une barre de montant de 2,70 m donne **un**
+   * montant, pas 1,08 : les 0,20 m qui restent ne se ressoudent pas. Le juste
+   * compte est alors un nombre de **pièces**, pas un linéaire — et le moteur
+   * cesse de diviser (`estimations/piece-cutting.ts`).
+   *
+   * Conséquence sur la perte, écrite ici parce qu'elle surprend : un matériau
+   * non aboutable a sa chute **mesurée** et non estimée, donc il ne porte plus
+   * de forfait de coupe. Lui en ajouter un compterait deux fois la même chute —
+   * le double comptage qu'E1-7 a retiré aux mortiers-colle.
+   */
+  @Column({ type: 'boolean', default: true })
+  offcuts_reusable!: boolean;
 
   @Column({ type: 'boolean', default: true })
   is_active!: boolean;

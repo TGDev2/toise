@@ -151,7 +151,10 @@ export default function EstimatePage() {
                 {estimation.total_items} matériau{estimation.total_items > 1 ? 'x' : ''}
               </span>
             </div>
-            <EstimationResults items={estimation.items} />
+            <EstimationResults
+              items={estimation.items}
+              exclusions={estimation.exclusions_json}
+            />
           </>
         ) : null}
       </section>

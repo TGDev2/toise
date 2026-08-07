@@ -125,9 +125,48 @@ describe('Cloison sèche — créer une cloison de 4 ml dans une chambre 400 × 
     // travée : 7 + 1. Deux lisses, haute et basse, sur 4 ml.
     expect(basis.frame).toEqual({
       stud_count: 8,
+      // E1-8 : la longueur d'**un** montant, portée explicitement. C'est elle
+      // qui décide combien de montants tiennent dans une barre de 2,70 m — un
+      // seul, ici, et c'est tout l'objet du comptage en pièces.
+      stud_piece_length_m: 2.5,
       stud_length_m: 20,
       runner_length_m: 8,
     });
+  });
+
+  /**
+   * E1-8 — huit emplacements, huit barres.
+   *
+   * Une barre de 2,70 m ne donne qu'un montant de 2,50 m : les 0,20 m qui
+   * restent ne se raboutent sur rien. Le moteur en achetait 9 — il divisait
+   * 22,400 m (20 m de trame plus 12 % de forfait de coupe) par 2,70, comme si
+   * les chutes se ressoudaient bout à bout.
+   *
+   * La fourchette 15–25 ml du test ci-dessus accepte les deux réponses : elle
+   * était écrite pour attraper un doublement d'ossature, pas une barre. C'est
+   * pourquoi cette assertion-ci est exacte et non encadrée.
+   */
+  it('achète une barre de montant par emplacement, pas une division', () => {
+    const line = lineFor('Montant M48 2.7m');
+
+    expect({
+      pieces: line.pieces_needed,
+      parBarre: line.pieces_per_bar,
+      barres: line.units_needed,
+    }).toEqual({ pieces: 8, parBarre: 1, barres: 8 });
+  });
+
+  /**
+   * Le rail, lui, n'a pas bougé : posé en course continue au sol et au plafond,
+   * deux bouts de barre s'aboutent. C'est ce contraste, dans le même ouvrage et
+   * sur la même trame, qui dit que la propriété est **du matériau**.
+   */
+  it('laisse les rails comptés au linéaire', () => {
+    const line = lineFor('Rail R48 3m');
+
+    expect(line.pieces_needed).toBeUndefined();
+    // 2 lisses × 4 m = 8 m, plus 8 % : 8,640 m en barres de 3 m → 3.
+    expect(line.units_needed).toBe(3);
   });
 
   /**

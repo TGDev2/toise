@@ -165,6 +165,32 @@ const parquetFlooringQuestions: ContextualQuestion[] = [
     ],
     required: true,
   },
+  {
+    /**
+     * E1-8 — la nature du support, qui décide de la présence du pare-vapeur.
+     *
+     * C'est la première question du produit dont la réponse fait **apparaître ou
+     * disparaître une ligne** au lieu d'en changer la quantité. Le NF DTU 51.11
+     * ne réserve le film qu'aux supports minéraux ; sur plancher bois, il était
+     * acheté pour rien — un rouleau de 20 m² sur chaque chantier.
+     *
+     * Requise, comme le calepinage et pour la même raison : la réponse vaut un
+     * rouleau entier, et personne ne peut la deviner à la place de l'artisan.
+     * L'ordre des options est celui de `SUBFLOOR_TYPES`
+     * (`estimations/vapour-barrier.ts`), dont la première est aussi la valeur
+     * que retient le moteur sans réponse — et c'est ici le sens sûr : sans
+     * réponse, on suppose le support qui exige le film.
+     */
+    key: 'subfloor_type',
+    type: 'select',
+    label_fr: 'Nature du support',
+    options: [
+      { value: 'concrete_screed', label_fr: 'Béton ou chape' },
+      { value: 'wood_floor', label_fr: 'Plancher bois' },
+      { value: 'existing_covering', label_fr: 'Ancien revêtement' },
+    ],
+    required: true,
+  },
 ];
 
 /**

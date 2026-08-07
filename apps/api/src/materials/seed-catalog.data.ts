@@ -11,6 +11,7 @@
 import {
   MaterialQuantityDriver,
   TileConsumptionModel,
+  VapourBarrierRole,
 } from './entities/material-catalog.entity';
 
 export interface SeedMaterial {
@@ -65,6 +66,27 @@ export interface SeedMaterial {
    */
   roll_width_cm?: number;
   roll_length_cm?: number;
+  /**
+   * E1-8 — rôle vis-à-vis du pare-vapeur d'un sol posé en flottant. Absent =
+   * aucun, comme le défaut `NULL` de la colonne : le matériau n'a rien à voir
+   * avec la question.
+   *
+   * `dedicated` est le **seul** attribut du catalogue qui rende un matériau
+   * conditionnel : le film n'est chiffré que si le support l'exige et qu'aucune
+   * sous-couche `integrated` ne le fournit déjà
+   * (`estimations/vapour-barrier.ts`).
+   */
+  vapour_barrier?: VapourBarrierRole;
+  /**
+   * E1-8 — les chutes se réutilisent-elles bout à bout ? Absent = `true`, comme
+   * le défaut de la colonne : un matériau est aboutable sauf s'il déclare le
+   * contraire, et tout le catalogue l'était avant ce lot.
+   *
+   * `false` réserve le matériau au comptage en **pièces**
+   * (`estimations/piece-cutting.ts`) et lui retire son forfait de coupe, dont
+   * la chute mesurée prend la place.
+   */
+  offcuts_reusable?: boolean;
   packagings: { label: string; quantity_per_unit: number; unit: string }[];
   waste_factors: {
     pose_type: string;
@@ -208,6 +230,35 @@ const partitionWaste = (): SeedMaterial['waste_factors'] => [
   { pose_type: 'standard', skill_level: 'beginner', factor_percent: 12 },
   { pose_type: 'standard', skill_level: 'intermediate', factor_percent: 8 },
   { pose_type: 'standard', skill_level: 'expert', factor_percent: 4 },
+];
+
+/**
+ * E1-8 — ce qui se **découpe à longueur** : la chute est mesurée, pas estimée.
+ *
+ * Montants et fourrures se coupent à la hauteur de l'ouvrage, et ce qui reste
+ * de la barre ne se raboute pas. Le moteur compte donc des pièces
+ * (`materials_catalog.offcuts_reusable = false`,
+ * `estimations/piece-cutting.ts`) et **connaît** la chute exactement : sous
+ * 2,50 m de plafond, 0,20 m par barre de 2,70 m, soit 7,4 %.
+ *
+ * Leur ajouter les 12/8/4 % de `partitionWaste()` compterait donc deux fois la
+ * même chute. C'est la décision d'E1-7 sur les mortiers-colle, appliquée à
+ * l'autre bout du catalogue : *une chute déjà calculée ne se réestime pas.*
+ *
+ * **Ce que ce 0 % ne couvre pas, écrit noir sur blanc** : la casse — la barre
+ * pliée au transport, le montant recoupé trop court. Aucune fiche ni aucun
+ * guide consulté ne la chiffre, et le sens de l'écart n'est pas le sens sûr.
+ * C'est pour cela que la valeur est ici, visible et discutable, plutôt qu'une
+ * condition dans le moteur qui sauterait la résolution : le jour où une source
+ * chiffrera la casse d'ossature, il n'y aura qu'à remplacer ces trois zéros.
+ *
+ * Les trois niveaux sont écrits malgré l'égalité, parce que le registre exige
+ * une ligne par (pose, niveau) : un trou lèverait `MissingWasteFactorError`.
+ */
+const measuredOffcutWaste = (): SeedMaterial['waste_factors'] => [
+  { pose_type: 'standard', skill_level: 'beginner', factor_percent: 0 },
+  { pose_type: 'standard', skill_level: 'intermediate', factor_percent: 0 },
+  { pose_type: 'standard', skill_level: 'expert', factor_percent: 0 },
 ];
 
 /**
@@ -1426,7 +1477,35 @@ export const flooringMaterials: SeedMaterial[] = [
     category: 'flooring',
     unit: 'm2',
     yield_per_unit: 0.8,
+    // E1-8 — le film nu : sa seule fonction est le pare-vapeur, donc sa
+    // présence dans un chiffrage est conditionnelle. Le rendement de 0,8 (soit
+    // 1,25 m² de film par m² de sol) reste juste : il porte le recouvrement de
+    // 20 cm entre lés, qui existe dès lors que le film est posé.
+    vapour_barrier: 'dedicated',
     packagings: [{ label: 'Rouleau 20 m²', quantity_per_unit: 20, unit: 'm2' }],
+    waste_factors: cutAncillaryWaste(),
+  },
+  {
+    /**
+     * E1-8 — la sous-couche qui dispense du film.
+     *
+     * Elle entre au catalogue pour que `vapour_barrier: 'integrated'` ait un
+     * référent réel, et non une colonne que rien ne déclare : E1-7 a retiré la
+     * pose en chevrons du carrelage précisément parce qu'une donnée que
+     * personne ne peut atteindre ne vaut pas mieux qu'une donnée absente.
+     *
+     * Référence sourcée : Quick-Step Basic Plus (QSUDLBP15), mousse
+     * polyéthylène 2 mm, rouleau de 1,00 × 15 m, « combinée à un pare-vapeur
+     * (avec rabat et bande adhésive pour une pose facile) » — même fabricant
+     * que la sous-couche mousse déjà sourcée au registre. Pose bord à bord,
+     * comme elle : rendement de 1.
+     */
+    name: 'Sous-couche 2mm avec pare-vapeur intégré',
+    category: 'flooring',
+    unit: 'm2',
+    yield_per_unit: 1,
+    vapour_barrier: 'integrated',
+    packagings: [{ label: 'Rouleau 15 m²', quantity_per_unit: 15, unit: 'm2' }],
     waste_factors: cutAncillaryWaste(),
   },
   // Skirting & transitions
@@ -1745,8 +1824,12 @@ export const partitionMaterials: SeedMaterial[] = [
     // hauteur (`work_types.frame_spec`).
     yield_per_unit: 1,
     quantity_driver: 'frame_stud',
+    // E1-8 : un montant est coupé à la hauteur de la cloison, et la chute ne se
+    // raboute pas. Une barre = un montant tant que la hauteur dépasse la moitié
+    // de la barre, ce qui est le cas de tout plafond habitable.
+    offcuts_reusable: false,
     packagings: [{ label: 'Barre 2.7 m', quantity_per_unit: 2.7, unit: 'm' }],
-    waste_factors: partitionWaste(),
+    waste_factors: measuredOffcutWaste(),
   },
   {
     name: 'Montant M70 2.7m',
@@ -1754,8 +1837,9 @@ export const partitionMaterials: SeedMaterial[] = [
     unit: 'm',
     yield_per_unit: 1,
     quantity_driver: 'frame_stud',
+    offcuts_reusable: false,
     packagings: [{ label: 'Barre 2.7 m', quantity_per_unit: 2.7, unit: 'm' }],
-    waste_factors: partitionWaste(),
+    waste_factors: measuredOffcutWaste(),
   },
   {
     name: 'Montant M90 2.7m',
@@ -1763,8 +1847,9 @@ export const partitionMaterials: SeedMaterial[] = [
     unit: 'm',
     yield_per_unit: 1,
     quantity_driver: 'frame_stud',
+    offcuts_reusable: false,
     packagings: [{ label: 'Barre 2.7 m', quantity_per_unit: 2.7, unit: 'm' }],
-    waste_factors: partitionWaste(),
+    waste_factors: measuredOffcutWaste(),
   },
   // Insulation
   {
@@ -1953,10 +2038,11 @@ export const partitionMaterials: SeedMaterial[] = [
     unit: 'm',
     yield_per_unit: 1,
     // Une fourrure est un montant de doublage : posée à l'entraxe, sur la
-    // hauteur. Même assiette que les montants.
+    // hauteur. Même assiette que les montants — et même découpe à longueur.
     quantity_driver: 'frame_stud',
+    offcuts_reusable: false,
     packagings: [{ label: 'Barre 3 m', quantity_per_unit: 3, unit: 'm' }],
-    waste_factors: partitionWaste(),
+    waste_factors: measuredOffcutWaste(),
   },
   {
     name: 'Suspente',

@@ -80,7 +80,7 @@ export interface CalculatorParamOption {
 }
 
 export interface CalculatorParam {
-  key: 'number_of_coats' | 'tile_format' | 'laying_pattern';
+  key: 'number_of_coats' | 'tile_format' | 'laying_pattern' | 'subfloor_type';
   label: string;
   options: CalculatorParamOption[];
   defaultValue: string;
@@ -294,6 +294,29 @@ const CALCULATORS: Record<CalculatorSlug, CalculatorConfig> = {
         code: 'parquet_flooring',
         label: 'Parquet / stratifié',
         draftWorkType: 'flooring',
+        params: [
+          {
+            /**
+             * E1-8 — la nature du support décide de la présence du film
+             * pare-vapeur, que le calculateur ajoutait jusqu'ici sur tous les
+             * chantiers : un rouleau de 20 m² compté même sur un plancher bois,
+             * où le NF DTU 51.11 n'en demande aucun.
+             *
+             * L'ordre des options est celui de `SUBFLOOR_TYPES` côté API, dont
+             * la première est aussi la valeur retenue sans réponse — d'où le
+             * même `defaultValue` ici : l'écran et le calcul disent la même
+             * chose.
+             */
+            key: 'subfloor_type',
+            label: 'Nature du support',
+            options: [
+              { value: 'concrete_screed', label: 'Béton ou chape' },
+              { value: 'wood_floor', label: 'Plancher bois' },
+              { value: 'existing_covering', label: 'Ancien revêtement' },
+            ],
+            defaultValue: 'concrete_screed',
+          },
+        ],
       },
     ],
     differentiators: [

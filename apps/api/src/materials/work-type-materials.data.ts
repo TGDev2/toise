@@ -249,6 +249,25 @@ export const workTypeMaterialLinksE13: WorkTypeMaterialLink[] = [
     display_order: 3,
   },
   {
+    /**
+     * E1-8 — l'alternative qui dispense du film pare-vapeur.
+     *
+     * `is_optional: true`, donc jamais chiffrée automatiquement : c'est une
+     * alternative documentée, comme les trois parquets ci-dessous. Le moteur
+     * sait déjà l'écarter — `resolveVapourBarrier` retire le film dès qu'un
+     * matériau `integrated` est présent — mais tant que le tunnel ne laisse pas
+     * l'artisan choisir sa sous-couche, c'est la nature du support qui pilote
+     * seule la ligne dans l'application. Le jour où ce choix existera, la règle
+     * est déjà là et n'aura pas à être écrite dans l'urgence.
+     */
+    work_type_code: 'parquet_flooring',
+    material_name: 'Sous-couche 2mm avec pare-vapeur intégré',
+    material_category: 'flooring',
+    role: 'sous_couche',
+    is_optional: true,
+    display_order: 8,
+  },
+  {
     work_type_code: 'parquet_flooring',
     material_name: 'Parquet contrecollé chêne 14mm',
     material_category: 'flooring',

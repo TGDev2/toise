@@ -53,6 +53,30 @@ export interface EstimationLineItem {
    */
   packaging_breakdown?: PackagingUnitsLine[];
   pose_type: string;
+  /**
+   * E1-8 — pourquoi cette ligne est là, quand sa présence même est le résultat
+   * d'une condition. Renseignée aujourd'hui sur le seul film pare-vapeur : sa
+   * jumelle est `MaterialExclusion.reason_fr`, qui dit pourquoi une ligne n'y
+   * est pas. Absente sur tout matériau inconditionnel, c'est-à-dire sur tout le
+   * reste du catalogue.
+   */
+  inclusion_reason_fr?: string;
+  /**
+   * E1-8 — pièces à découper, pour un matériau dont les chutes ne se
+   * réutilisent pas (`materials_catalog.offcuts_reusable = false`). Absent sur
+   * tout matériau aboutable, c'est-à-dire tout le catalogue hors montants et
+   * fourrures.
+   *
+   * Sa présence dit que `units_needed` vient d'un **comptage** et non d'une
+   * division : la mutualisation multi-pièces doit alors sommer des pièces, pas
+   * des mètres — sommer les linéaires puis diviser réintroduirait exactement le
+   * défaut corrigé (deux cloisons de 8 emplacements donneraient 15 barres).
+   */
+  pieces_needed?: number;
+  /** Longueur d'une pièce, en mètres. Va avec `pieces_needed`. */
+  piece_length_m?: number;
+  /** Pièces qu'une barre du format retenu donne. Va avec `pieces_needed`. */
+  pieces_per_bar?: number;
   number_of_coats?: number;
   /** Aire déduite via les exclusions manuelles (ENG-3). Absent/0 → aucune. */
   excluded_surface_m2?: number;
@@ -70,6 +94,33 @@ export interface EstimationLineItem {
   adjusted_qty_high?: number;
   units_needed_low?: number;
   units_needed_high?: number;
+}
+
+/**
+ * E1-8 — un matériau **lié à l'ouvrage mais non chiffré**, et le motif.
+ *
+ * Il n'y en avait aucun avant ce lot : tout matériau lié produisait une ligne,
+ * au point que le harnais en faisait un invariant (`[I0]`, « autant de lignes
+ * que de matériaux liés »). Le pare-vapeur casse cette égalité pour une bonne
+ * raison — sur un plancher bois, il n'a pas lieu d'être — et l'égalité devient
+ * « lignes + exclusions = matériaux liés ».
+ *
+ * Le motif est **codé et rédigé**. Le code sert aux tests et à un éventuel
+ * filtrage ; la phrase va à l'écran telle quelle, parce que la traduire côté web
+ * écrirait la règle une seconde fois, dans une seconde langue de programme, avec
+ * une seconde occasion de diverger.
+ */
+export interface MaterialExclusion {
+  work_item_id: string;
+  work_type_code: string;
+  work_type_label: string;
+  material_id: string;
+  material_name: string;
+  reason_code: string;
+  reason_fr: string;
+  /** Pièce d'origine (ENG-2). Absent → estimation mono-pièce. */
+  room_id?: string;
+  room_name?: string;
 }
 
 /**
@@ -137,6 +188,15 @@ export class EstimationResult {
    */
   @Column({ type: 'jsonb', nullable: true, default: null })
   aggregated_json!: AggregatedMaterialLine[] | null;
+
+  /**
+   * E1-8 — matériaux liés que l'ouvrage n'a pas demandés, avec leur motif.
+   * `null` pour les estimations antérieures à ce lot ; un tableau vide pour un
+   * chiffrage où rien n'a été écarté. La nuance compte à l'écran : « aucune
+   * exclusion » et « on ne sait pas » ne se disent pas de la même façon.
+   */
+  @Column({ type: 'jsonb', nullable: true, default: null })
+  exclusions_json!: MaterialExclusion[] | null;
 
   @Column({ type: 'integer', default: 0 })
   total_items!: number;

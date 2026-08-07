@@ -17,12 +17,21 @@ import { POSE_UNIQUE, resolveLayingPose } from './pose-types';
 import type {
   MaterialQuantityDriver,
   TileConsumptionModel,
+  VapourBarrierRole,
 } from '../materials/entities/material-catalog.entity';
 import type { FrameSpec } from '../projects/entities/work-type.entity';
 import { tileConsumptionFactor } from './tile-consumption';
 import { computeStripCut, RollSpec, StripCut } from './wallpaper-strips';
+import { resolveVapourBarrier } from './vapour-barrier';
+import { computePieceCut, PieceCut, PieceDemand } from './piece-cutting';
+import type { MaterialExclusion } from './entities/estimation-result.entity';
 
-export type { MaterialQuantityDriver, TileConsumptionModel, FrameSpec };
+export type {
+  MaterialQuantityDriver,
+  TileConsumptionModel,
+  VapourBarrierRole,
+  FrameSpec,
+};
 export type { RollSpec, StripCut };
 
 export interface SurfaceExclusionInput {
@@ -131,6 +140,28 @@ export interface MaterialInput {
    * grandeurs qu'aucun rendement au mètre carré ne peut porter.
    */
   roll_spec?: RollSpec | null;
+  /**
+   * E1-8 — rôle vis-à-vis du pare-vapeur (`materials_catalog.vapour_barrier`).
+   * Absent = aucun, comme le défaut de la colonne.
+   *
+   * C'est le seul attribut de matériau qui décide de la **présence** d'une
+   * ligne et non de sa quantité : un matériau `dedicated` n'est chiffré que si
+   * l'ouvrage a besoin d'un pare-vapeur et qu'aucun matériau `integrated` ne
+   * l'apporte déjà — cf. `vapour-barrier.ts`.
+   */
+  vapour_barrier?: VapourBarrierRole | null;
+  /**
+   * E1-8 — les chutes de ce matériau se réutilisent-elles bout à bout
+   * (`materials_catalog.offcuts_reusable`) ? Absent = `true`, comme le défaut
+   * de la colonne : un appel qui ne renseigne pas l'attribut se compte au
+   * linéaire, exactement comme avant E1-8.
+   *
+   * `false` **remplace** la division par la longueur de barre par un comptage
+   * de pièces (`piece-cutting.ts`), au même titre que `roll_spec` remplace
+   * `yield_per_unit`. Le matériau doit alors se métrer sur une assiette qui se
+   * décompose en pièces — sinon le moteur lève.
+   */
+  offcuts_reusable?: boolean;
   waste_factors: WasteFactorInput[];
   packagings: PackagingInput[];
 }
@@ -155,7 +186,16 @@ export interface DeclaredWorkBasis {
 export interface FrameQuantities {
   /** `ceil(longueur / entraxe) + 1 + montants déclarés`. */
   stud_count: number;
-  /** `stud_count × hauteur`, en mètres. */
+  /**
+   * E1-8 — longueur d'**un** montant, en mètres : la hauteur de l'ouvrage.
+   *
+   * Portée explicitement plutôt que redivisée depuis `stud_length_m`, parce
+   * qu'elle décide d'un achat : c'est elle qui dit combien de montants tiennent
+   * dans une barre. Une grandeur qui décide d'un achat se lit, elle ne se
+   * reconstitue pas.
+   */
+  stud_piece_length_m: number;
+  /** `stud_count × stud_piece_length_m`, en mètres. */
   stud_length_m: number;
   /** `runner_courses × longueur`, en mètres. */
   runner_length_m: number;
@@ -200,6 +240,17 @@ export interface WorkBasis {
   wall_height_cm: number;
 }
 
+/**
+ * L'assiette d'un matériau donné, dans l'unité de son `yield_per_unit`, et —
+ * quand l'ouvrage la connaît — sa **décomposition en pièces identiques**
+ * (E1-8). C'est cette décomposition, et elle seule, qui permet à un matériau
+ * non aboutable de se compter au lieu de se diviser.
+ */
+interface MeteringBase {
+  quantity: number;
+  pieces?: PieceDemand;
+}
+
 export interface WorkItemInput {
   id: string;
   work_type_code: string;
@@ -232,6 +283,15 @@ export interface WorkItemInput {
   frame_spec?: FrameSpec | null;
   custom_params: Record<string, unknown>;
   materials: MaterialInput[];
+}
+
+/**
+ * E1-8 — ce qu'un chiffrage produit vraiment : des lignes, **et** la liste
+ * motivée des matériaux liés qu'il n'a pas demandés.
+ */
+export interface EstimationOutcome {
+  items: EstimationLineItem[];
+  exclusions: MaterialExclusion[];
 }
 
 export interface ResolvedWasteFactor {
@@ -625,6 +685,7 @@ export class EstimationEngine {
 
     return {
       stud_count: studCount,
+      stud_piece_length_m: basis.height_m,
       stud_length_m: studCount * basis.height_m,
       runner_length_m: Number(frameSpec.runner_courses) * basis.length_m,
     };
@@ -700,12 +761,12 @@ export class EstimationEngine {
     basis: WorkBasis,
     material: MaterialInput,
     workItem: WorkItemInput,
-  ): number {
+  ): MeteringBase {
     const driver = material.quantity_driver ?? 'work_surface';
 
     switch (driver) {
       case 'clad_faces':
-        return basis.clad_surface_m2;
+        return { quantity: basis.clad_surface_m2 };
       case 'frame_runner':
       case 'frame_stud': {
         if (!basis.frame) {
@@ -715,13 +776,23 @@ export class EstimationEngine {
               `« ${workItem.work_type_code} » ne déclare pas de frame_spec.`,
           );
         }
-        return driver === 'frame_runner'
-          ? basis.frame.runner_length_m
-          : basis.frame.stud_length_m;
+        if (driver === 'frame_runner') {
+          return { quantity: basis.frame.runner_length_m };
+        }
+        // E1-8 : la seule assiette du catalogue qui se décompose en pièces
+        // identiques. Un montant par emplacement, tous de la hauteur de
+        // l'ouvrage — c'est ce qui permet de compter au lieu de diviser.
+        return {
+          quantity: basis.frame.stud_length_m,
+          pieces: {
+            count: basis.frame.stud_count,
+            length_m: basis.frame.stud_piece_length_m,
+          },
+        };
       }
       case 'work_surface':
       default:
-        return basis.work_surface_m2;
+        return { quantity: basis.work_surface_m2 };
     }
   }
 
@@ -837,12 +908,36 @@ export class EstimationEngine {
     workItem: WorkItemInput,
     effectiveYield: number,
     appliesCoats: boolean,
-  ): { qty: number; coats?: number } {
+  ): { qty: number; coats?: number; cut?: PieceCut } {
     if (material.roll_spec) {
       return { qty: this.resolveStripCut(basis, material, workItem).paper_m2 };
     }
+
+    const meteringBase = this.meteringBase(basis, material, workItem);
+
+    // E1-8 — un matériau découpé à longueur ne se divise pas, il se compte.
+    if (material.offcuts_reusable === false) {
+      if (!meteringBase.pieces) {
+        throw new Error(
+          `Le matériau « ${material.name} » se découpe à longueur ` +
+            `(offcuts_reusable = false), mais l'ouvrage ` +
+            `« ${workItem.work_type_code} » ne décompose pas son assiette en ` +
+            `pièces : aucune longueur de pièce n'est connue.`,
+        );
+      }
+      const cut = computePieceCut(
+        material.name,
+        meteringBase.pieces,
+        material.packagings,
+      );
+      // La quantité théorique reste le linéaire **posé** — celui que le
+      // chantier consomme, et celui sur lequel l'encadrement de consommation
+      // (I3) est exprimé. Ce qui change est l'achat, pas le besoin.
+      return { qty: cut.pieces * cut.piece_length_m, cut };
+    }
+
     return this.computeTheoreticalQty(
-      this.meteringBase(basis, material, workItem),
+      meteringBase.quantity,
       effectiveYield,
       workItem.custom_params,
       appliesCoats,
@@ -951,6 +1046,57 @@ export class EstimationEngine {
     };
   }
 
+  /**
+   * L'achat d'un matériau découpé à longueur (E1-8), dans la forme que le reste
+   * du moteur attend d'un conditionnement.
+   *
+   * Le facteur de perte s'applique au **nombre de barres**, pas au linéaire :
+   * sur un matériau non aboutable, ce qu'un poseur maladroit gâche est une
+   * barre, jamais un demi-mètre. À 0 % — la valeur du catalogue, la chute étant
+   * déjà mesurée — le compte est exactement celui des pièces.
+   */
+  /**
+   * L'achat mutualisé d'un matériau découpé à longueur (E1-8) : les pièces de
+   * toutes les pièces du projet se découpent dans le même stock de barres.
+   *
+   * C'est ici que la mutualisation gagne réellement quelque chose sur ces
+   * matériaux : deux cloisons demandant chacune 5 pièces de 0,90 m prennent
+   * 4 barres séparément (2 × 2) et 4 mutualisées (10 ÷ 3) — et 7 pièces plus 8
+   * en prennent 5 séparément (3 + 3) contre 5 mutualisées. Jamais plus, comme
+   * pour les conditionnements : `ceil(Σ) ≤ Σ ceil`.
+   */
+  private aggregatePieceCut(
+    pieceLines: EstimationLineItem[],
+    first: EstimationLineItem,
+    packagings: PackagingInput[],
+  ): SelectedPackaging {
+    const cut = computePieceCut(
+      first.material_name,
+      {
+        count: pieceLines.reduce((sum, l) => sum + (l.pieces_needed ?? 0), 0),
+        length_m: first.piece_length_m!,
+      },
+      packagings,
+    );
+    // Le facteur de perte a déjà été appliqué ligne à ligne ; le réappliquer
+    // ici le compterait deux fois. À 0 % au catalogue la question ne se pose
+    // pas, mais un facteur appris la poserait.
+    return this.pieceCutPackaging(cut, 0);
+  }
+
+  private pieceCutPackaging(
+    cut: PieceCut,
+    wastePercent: number,
+  ): SelectedPackaging {
+    const bars = Math.ceil(cut.bars * (1 + wastePercent / 100));
+    return {
+      label: cut.label,
+      qty_per_unit: cut.bar_length_m,
+      units_needed: bars,
+      breakdown: bars > 0 ? [{ label: cut.label, units: bars }] : [],
+    };
+  }
+
   computeGrossSurface(room: RoomData, surfaceTarget: string): number {
     const segments = this.resolveSegments(room);
     switch (surfaceTarget) {
@@ -963,11 +1109,26 @@ export class EstimationEngine {
     }
   }
 
-  computeEstimation(
+  /**
+   * Le chiffrage d'une pièce, **et ce qui n'y figure pas**.
+   *
+   * E1-8 introduit la première raison pour qu'un matériau lié ne produise
+   * aucune ligne : un film pare-vapeur sur un support qui n'en demande pas. Une
+   * ligne absente sans explication est indiscernable d'un matériau oublié — le
+   * harnais lui-même comptait « autant de lignes que de matériaux liés » (I0).
+   * Les exclusions sortent donc **avec** les lignes, motivées, et voyagent
+   * jusqu'à l'écran.
+   *
+   * `computeEstimation` reste la porte d'entrée de tous les appelants qui n'en
+   * ont pas besoin, et n'a pas changé de signature : une quinzaine de sites
+   * d'appel n'ont pas à être réécrits pour un champ dont trois se servent.
+   */
+  computeEstimationDetailed(
     room: RoomData,
     workItems: WorkItemInput[],
-  ): EstimationLineItem[] {
+  ): EstimationOutcome {
     const items: EstimationLineItem[] = [];
+    const exclusions: MaterialExclusion[] = [];
 
     for (const wi of workItems) {
       const basis = this.computeWorkBasis(room, wi);
@@ -993,7 +1154,27 @@ export class EstimationEngine {
       // carreau et faisait tomber la résolution sur un défaut générique.
       const poseType = resolveLayingPose(wi.work_type_code, wi.custom_params);
 
-      for (const mat of wi.materials) {
+      // E1-8 : quels matériaux cet ouvrage demande **réellement**, compte tenu
+      // de ses conditions de mise en œuvre. Résolu par ouvrage et avant la
+      // boucle, comme la pose : un film pare-vapeur n'est pas « une quantité
+      // nulle », c'est une ligne qui n'a pas lieu d'être.
+      const vapourBarrier = resolveVapourBarrier(
+        wi.materials,
+        wi.custom_params,
+      );
+      for (const excluded of vapourBarrier.excluded) {
+        exclusions.push({
+          work_item_id: wi.id,
+          work_type_code: wi.work_type_code,
+          work_type_label: wi.work_type_label,
+          material_id: excluded.material.id,
+          material_name: excluded.material.name,
+          reason_code: excluded.reason,
+          reason_fr: excluded.reason_fr,
+        });
+      }
+
+      for (const mat of vapourBarrier.kept) {
         const wasteFactor = this.resolveWasteFactor(
           mat.waste_factors,
           poseType,
@@ -1007,17 +1188,23 @@ export class EstimationEngine {
         // chaque borne laisserait la porte ouverte à trois réponses.
         const effectiveYield = this.resolveEffectiveYield(mat, wi);
 
-        const { qty: theoreticalQty, coats } = this.materialQty(
-          basis,
-          mat,
-          wi,
-          effectiveYield,
-          appliesCoats,
-        );
+        const {
+          qty: theoreticalQty,
+          coats,
+          cut,
+        } = this.materialQty(basis, mat, wi, effectiveYield, appliesCoats);
 
         const adjustedQty = theoreticalQty * (1 + wasteFactor.percent / 100);
 
-        const packaging = this.selectBestPackaging(adjustedQty, mat.packagings);
+        // E1-8 : sur un matériau découpé à longueur, l'achat vient du compte de
+        // pièces et non du solveur de conditionnements — diviser une quantité
+        // continue par la longueur de barre est précisément le défaut corrigé.
+        // Le facteur de perte, lui, s'applique encore : à 0 % au catalogue il
+        // ne change rien, mais un facteur **appris** (DATA-3) sur les achats
+        // réels resterait lu, et achèterait des barres entières.
+        const packaging = cut
+          ? this.pieceCutPackaging(cut, wasteFactor.percent)
+          : this.selectBestPackaging(adjustedQty, mat.packagings);
 
         // CV-5 : mêmes calculs aux bornes basse/haute de la surface, quand
         // la pièce porte une incertitude de mesure connue.
@@ -1083,6 +1270,19 @@ export class EstimationEngine {
             ? { packaging_breakdown: packaging.breakdown }
             : {}),
           pose_type: poseType,
+          ...(cut
+            ? {
+                pieces_needed: cut.pieces,
+                piece_length_m: cut.piece_length_m,
+                pieces_per_bar: cut.pieces_per_bar,
+              }
+            : {}),
+          ...(vapourBarrier.inclusionReasonByMaterialId.has(mat.id)
+            ? {
+                inclusion_reason_fr:
+                  vapourBarrier.inclusionReasonByMaterialId.get(mat.id)!,
+              }
+            : {}),
           ...(coats !== undefined ? { number_of_coats: coats } : {}),
           ...(excludedSurfaceM2 > 0
             ? {
@@ -1095,7 +1295,14 @@ export class EstimationEngine {
       }
     }
 
-    return items;
+    return { items, exclusions };
+  }
+
+  computeEstimation(
+    room: RoomData,
+    workItems: WorkItemInput[],
+  ): EstimationLineItem[] {
+    return this.computeEstimationDetailed(room, workItems).items;
   }
 
   /**
@@ -1159,7 +1366,24 @@ export class EstimationEngine {
         },
       ];
 
-      const packaging = this.selectBestPackaging(totalAdjustedQty, packagings);
+      // E1-8 — un matériau découpé à longueur mutualise ses **pièces**, pas ses
+      // mètres. Sommer les linéaires puis diviser par la barre réintroduirait
+      // le défaut exactement là où il est le plus difficile à voir : deux
+      // cloisons de 8 emplacements demandent 16 barres, et la somme des
+      // linéaires (2 × 20 m ÷ 2,70) en donnerait 15.
+      //
+      // Les pièces ne se somment que si elles ont **la même longueur** : deux
+      // cloisons de hauteurs différentes ne se découpent pas dans les mêmes
+      // barres, et leurs achats restent alors séparés — c'est le sens sûr.
+      const pieceLines = group.filter((l) => l.pieces_needed !== undefined);
+      const uniformPieces =
+        pieceLines.length === group.length &&
+        pieceLines.length > 0 &&
+        new Set(pieceLines.map((l) => l.piece_length_m)).size === 1;
+
+      const packaging = uniformPieces
+        ? this.aggregatePieceCut(pieceLines, first, packagings)
+        : this.selectBestPackaging(totalAdjustedQty, packagings);
 
       const distinctRooms = new Set(
         contributions

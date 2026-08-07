@@ -12,7 +12,10 @@ import { usePublicAnalytics } from '@/hooks/useAnalytics';
 import { apiPost, apiPut } from '@/lib/api';
 import type { CalculatorConfig, CalculatorVariant } from '@/lib/calculators';
 import { getErrorMessage } from '@/lib/errors';
-import type { EstimationLineItem } from '@/lib/estimation-types';
+import type {
+  EstimationLineItem,
+  MaterialExclusion,
+} from '@/lib/estimation-types';
 import {
   readGuestDrafts,
   writeGuestDrafts,
@@ -30,6 +33,8 @@ interface PublicEstimateResponse {
   skill_level: string;
   total_items: number;
   items: EstimationLineItem[];
+  /** E1-8 — matériaux que l'ouvrage ne demande pas, avec leur motif. */
+  exclusions: MaterialExclusion[];
 }
 
 interface SavedDimensions {
@@ -106,6 +111,7 @@ export function PublicCalculator({ config }: PublicCalculatorProps) {
     defaultParamValues(config.variants[0]),
   );
   const [items, setItems] = useState<EstimationLineItem[] | null>(null);
+  const [exclusions, setExclusions] = useState<MaterialExclusion[]>([]);
   const [savedDims, setSavedDims] = useState<SavedDimensions | null>(null);
   const [isComputing, setIsComputing] = useState(false);
   const [isSavingProject, setIsSavingProject] = useState(false);
@@ -151,6 +157,7 @@ export function PublicCalculator({ config }: PublicCalculatorProps) {
         buildEstimateBasePayload(dims, variant, skillLevel, paramValues),
       );
       setItems(response.items);
+      setExclusions(response.exclusions ?? []);
       setSavedDims(dims);
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Impossible de calculer l’estimation'));
@@ -335,7 +342,7 @@ export function PublicCalculator({ config }: PublicCalculatorProps) {
             </p>
           </div>
 
-          <EstimationResults items={items} />
+          <EstimationResults items={items} exclusions={exclusions} />
 
           <div className="rounded-2xl border border-[var(--accent)]/30 bg-white p-6 text-center">
             <h3 className="text-lg font-semibold text-stone-950">

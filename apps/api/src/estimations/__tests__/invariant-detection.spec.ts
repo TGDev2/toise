@@ -16,7 +16,7 @@ import {
 } from './seeded-catalog-harness';
 
 /**
- * Ce que les six invariants attrapent réellement.
+ * Ce que les sept invariants attrapent réellement.
  *
  * Un garde-fou qu'on n'a jamais vu échouer ne garde rien : c'est la maladie que
  * ce harnais existe pour soigner, et il n'en est pas exempt. Le dépôt en a déjà
@@ -256,6 +256,103 @@ describe('Harnais — ce que les invariants attrapent', () => {
           'les 2 valeurs (240, 270) donnent les mêmes quantités à tous les niveaux : ' +
           'Peinture acrylique mate 6.964 L, Sous-couche universelle 3.830 L',
       ]);
+    });
+  });
+
+  /**
+   * I7 — la division d'un linéaire là où il faut compter des pièces. Le défaut
+   * remis ici **est** celui d'avant E1-8, à la ligne près : la quantité ajustée
+   * divisée par la longueur de barre, comme si les chutes se raboutaient.
+   *
+   * Il est rejoué sur une cloison de 17,40 m sous 2,30 m de plafond, et non sur
+   * la cloison de référence du harnais : sous 2,50 m au niveau intermédiaire,
+   * `2,50 × 1,08 = 2,70` tombe exactement sur la barre et le défaut est
+   * invisible. Un invariant qu'on n'éprouve que là où le défaut se cache ne
+   * prouve rien — c'est la maladie que ce fichier existe pour soigner.
+   */
+  describe('I7 — la division d’un linéaire au lieu d’un comptage de pièces', () => {
+    /**
+     * Le catalogue d'avant E1-8, restitué au montant : aboutable, et portant le
+     * forfait de coupe de la plâtrerie. Les deux vont ensemble — c'est ce couple
+     * qui produisait les 28 barres, la division seule en donnerait 26.
+     */
+    const asJointableWithFlatWaste = (
+      workItems: Parameters<EstimationEngine['computeEstimationDetailed']>[1],
+    ) =>
+      workItems.map((wi) => ({
+        ...wi,
+        materials: wi.materials.map((mat) =>
+          mat.offcuts_reusable === false
+            ? {
+                ...mat,
+                offcuts_reusable: true,
+                waste_factors: [
+                  {
+                    pose_type: 'standard',
+                    skill_level: 'beginner',
+                    factor_percent: 12,
+                  },
+                  {
+                    pose_type: 'standard',
+                    skill_level: 'intermediate',
+                    factor_percent: 8,
+                  },
+                  {
+                    pose_type: 'standard',
+                    skill_level: 'expert',
+                    factor_percent: 4,
+                  },
+                ],
+              }
+            : mat,
+        ),
+      }));
+
+    /**
+     * Le moteur d'avant E1-8. La substitution porte sur
+     * `computeEstimationDetailed`, seul vrai point d'entrée depuis ce lot :
+     * remplacer `computeEstimation`, qui n'en est qu'un raccourci, laisserait le
+     * harnais lire les lignes du moteur corrigé et l'invariant serait vert sans
+     * rien avoir éprouvé.
+     */
+    class DividingLinear extends EstimationEngine {
+      computeEstimationDetailed(
+        ...args: Parameters<EstimationEngine['computeEstimationDetailed']>
+      ): ReturnType<EstimationEngine['computeEstimationDetailed']> {
+        return super.computeEstimationDetailed(
+          args[0],
+          asJointableWithFlatWaste(args[1]),
+        );
+      }
+    }
+
+    const PARTITION_17M = {
+      drywall: { length_m: 17.4, height_m: 2.3, clad_faces: 2 },
+    };
+
+    it('nomme le matériau, les barres achetées et celles qu’il faut', () => {
+      const violations = invariantViolations(new DividingLinear(), ROOM, {
+        cases: [caseFor('drywall', SkillLevel.INTERMEDIATE, POSE_UNIQUE_CASE)],
+        declaredBasisByWorkType: PARTITION_17M,
+      }).filter((v) => v.startsWith('[I7]'));
+
+      expect(violations).toEqual([
+        '[I7] drywall · intermediate · standard : Montant M48 2.7m — ' +
+          '28 barres de 2.700 m achetées pour 30 pièces de 2.300 m ' +
+          '(1 par barre, 30 barres nécessaires)',
+      ]);
+    });
+
+    /** Et il est muet sur le moteur corrigé, sur la même cloison. */
+    it('reste silencieux sur le moteur qui compte', () => {
+      expect(
+        invariantViolations(engine, ROOM, {
+          cases: [
+            caseFor('drywall', SkillLevel.INTERMEDIATE, POSE_UNIQUE_CASE),
+          ],
+          declaredBasisByWorkType: PARTITION_17M,
+        }).filter((v) => v.startsWith('[I7]')),
+      ).toEqual([]);
     });
   });
 });

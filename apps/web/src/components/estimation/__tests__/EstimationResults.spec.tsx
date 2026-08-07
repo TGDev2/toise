@@ -257,4 +257,113 @@ describe('EstimationResults', () => {
       ),
     ).toBeInTheDocument();
   });
+
+  /**
+   * E1-8 — ce qui n'est pas chiffré doit se lire.
+   *
+   * Une ligne absente sans explication est indiscernable d'un matériau oublié :
+   * l'artisan qui cherche son pare-vapeur et ne le trouve pas ne peut pas
+   * savoir si le moteur a lu sa réponse ou s'il a perdu une ligne.
+   */
+  describe('E1-8 — la raison d’une ligne qui apparaît ou disparaît', () => {
+    const exclusion = {
+      work_item_id: 'wi-1',
+      work_type_code: 'wall_painting',
+      work_type_label: 'Peinture murale',
+      material_id: 'mat-film',
+      material_name: 'Film pare-vapeur PE',
+      reason_code: 'subfloor_does_not_require',
+      reason_fr:
+        'Support plancher bois : aucun pare-vapeur nécessaire (NF DTU 51.11, exigé sur support minéral).',
+    };
+
+    it('nomme le matériau écarté et son motif, dans la section de son ouvrage', () => {
+      render(
+        <EstimationResults items={[makeLineItem()]} exclusions={[exclusion]} />,
+      );
+
+      expect(screen.getByText('Film pare-vapeur PE')).toBeInTheDocument();
+      expect(
+        screen.getByText(/Support plancher bois : aucun pare-vapeur nécessaire/),
+      ).toBeInTheDocument();
+    });
+
+    /**
+     * Un projet à trois pièces sur plancher bois écarte trois fois le même film
+     * pour la même raison. Le répéter n'apprend rien et noie la liste d'achat.
+     */
+    it('ne répète pas le même motif pour le même matériau', () => {
+      render(
+        <EstimationResults
+          items={[makeLineItem()]}
+          exclusions={[
+            { ...exclusion, room_id: 'r1', room_name: 'Chambre' },
+            { ...exclusion, room_id: 'r2', room_name: 'Séjour' },
+          ]}
+        />,
+      );
+
+      expect(screen.getAllByText('Film pare-vapeur PE')).toHaveLength(1);
+    });
+
+    /**
+     * Une estimation d'avant E1-8 ne porte aucune exclusion. On n'affiche alors
+     * rien — plutôt que d'affirmer que rien n'a été écarté, ce qu'on ne sait
+     * pas.
+     */
+    it('n’affiche rien sur une estimation antérieure au lot', () => {
+      render(<EstimationResults items={[makeLineItem()]} exclusions={null} />);
+
+      expect(screen.queryByText(/Non nécessaire/)).not.toBeInTheDocument();
+    });
+
+    it('dit pourquoi une ligne conditionnelle est là', () => {
+      render(
+        <EstimationResults
+          items={[
+            makeLineItem({
+              inclusion_reason_fr:
+                'Support béton ou chape et sous-couche sans pare-vapeur intégré : le film est nécessaire (NF DTU 51.11).',
+            }),
+          ]}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /Détail du calcul/ }));
+
+      expect(
+        screen.getByText(/le film est nécessaire \(NF DTU 51\.11\)/),
+      ).toBeInTheDocument();
+    });
+
+    /**
+     * Sur un matériau découpé à longueur, 30 barres pour 69 m ne se déduit pas
+     * de la quantité affichée. Sans cette ligne, le détail se lit comme une
+     * division — exactement ce que le lot corrige.
+     */
+    it('explique le comptage en pièces d’un matériau non aboutable', () => {
+      render(
+        <EstimationResults
+          items={[
+            makeLineItem({
+              material_name: 'Montant M48 2.7m',
+              material_unit: 'm',
+              pieces_needed: 30,
+              piece_length_m: 2.3,
+              pieces_per_bar: 1,
+              units_needed: 30,
+            }),
+          ]}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /Détail du calcul/ }));
+
+      expect(
+        screen.getByText(
+          /Découpe à longueur : 30 pièces de 2.3 m, 1 par barre — les chutes ne se réutilisent pas/,
+        ),
+      ).toBeInTheDocument();
+    });
+  });
 });

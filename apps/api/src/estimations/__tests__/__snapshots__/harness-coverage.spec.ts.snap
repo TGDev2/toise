@@ -28,7 +28,7 @@ parquet_flooring · Parquet ou stratifie · flooring · surface floor
   poses : straight, diagonal, herringbone · niveaux : beginner, intermediate, expert · 9 cas
   - Stratifié 8mm AC4               principal    m2    rendement 1 · couches non · assiette surface d'ouvrage · loi aucune · rouleau aucun
   - Sous-couche mousse 3mm          sous_couche  m2    rendement 1 · couches non · assiette surface d'ouvrage · loi aucune · rouleau aucun
-  - Film pare-vapeur PE             sous_couche  m2    rendement 0.8 · couches non · assiette surface d'ouvrage · loi aucune · rouleau aucun
+  - Film pare-vapeur PE             sous_couche  m2    rendement 0.8 · couches non · assiette surface d'ouvrage · loi aucune · rouleau aucun · pare-vapeur dedicated
 drywall · Cloison seche · partition · surface wall
   assiette : declared · trame : entraxe 0.6 m, 0 montants déclarés, 2 lisses
   poses : standard · niveaux : beginner, intermediate, expert · 3 cas

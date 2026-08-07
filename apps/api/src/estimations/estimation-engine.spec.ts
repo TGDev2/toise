@@ -1486,6 +1486,9 @@ describe('EstimationEngine', () => {
       // ceil(4,00 / 0,60) + 1 = 7 + 1 = 8. Deux lisses sur 4,00 m = 8,00 ml.
       expect(basis.frame).toEqual({
         stud_count: 8,
+        // E1-8 : la longueur d'un montant, portée explicitement parce qu'elle
+        // décide d'un achat — combien de montants tiennent dans une barre.
+        stud_piece_length_m: 2.5,
         stud_length_m: 20,
         runner_length_m: 8,
       });

@@ -11,6 +11,7 @@ import {
   AggregatedMaterialLine,
   EstimationLineItem,
   EstimationResult,
+  MaterialExclusion,
 } from './entities/estimation-result.entity';
 import { EmailCapture } from './entities/email-capture.entity';
 import { LearnedWasteFactor } from '../materials/entities/learned-waste-factor.entity';
@@ -59,6 +60,12 @@ export interface PublicEstimateResponse {
   skill_level: string;
   total_items: number;
   items: EstimationLineItem[];
+  /**
+   * E1-8 — matériaux que l'ouvrage ne demande pas, avec leur motif. Vide plutôt
+   * qu'absent : « rien d'écarté » est une réponse, et l'écran l'affiche
+   * différemment de « on ne sait pas ».
+   */
+  exclusions: MaterialExclusion[];
 }
 
 export interface PublicEstimateEmailResponse {
@@ -89,6 +96,12 @@ export interface PublicQuoteCheckResponse {
   status: QuoteCoherenceStatus;
   /** Ce que la pièce demande, pour recouper les lignes matériaux du devis. */
   items: EstimationLineItem[];
+  /**
+   * E1-8 — et ce qu'elle **ne** demande pas. Un devis qui facture un
+   * pare-vapeur sur un plancher bois est un écart que la seule comparaison de
+   * surfaces ne peut pas voir.
+   */
+  exclusions: MaterialExclusion[];
 }
 
 /** Réponse de l'API publique (PLAT-5) : lignes détaillées + achats mutualisés. */
@@ -97,6 +110,8 @@ export interface ApiEstimateResponse {
   total_items: number;
   items: EstimationLineItem[];
   aggregated: AggregatedMaterialLine[];
+  /** E1-8 — matériaux liés que l'ouvrage ne demande pas, avec leur motif. */
+  exclusions: MaterialExclusion[];
 }
 
 @Injectable()
@@ -188,6 +203,11 @@ export class EstimationsService {
                 length_cm: Number(m.roll_length_cm),
               }
             : null,
+        // E1-8 : et celui-ci ne dit rien de la quantité — il dit si la ligne a
+        // lieu d'être. Un film pare-vapeur sur un plancher bois n'en a pas.
+        vapour_barrier: m.vapour_barrier,
+        // E1-8 : et celui-ci dit si l'achat se compte ou se divise.
+        offcuts_reusable: m.offcuts_reusable,
         role: l.role,
         waste_factors: overlayLearnedWasteFactors(
           m.waste_factors.map((wf) => ({
@@ -336,6 +356,7 @@ export class EstimationsService {
     };
 
     const granularLines: EstimationLineItem[] = [];
+    const granularExclusions: MaterialExclusion[] = [];
     const packagingByMaterialId = new Map<string, PackagingInput[]>();
     let firstSkillLevel: SkillLevel | undefined;
 
@@ -387,10 +408,23 @@ export class EstimationsService {
         );
       }
 
-      const lines = this.engine.computeEstimation(roomData, workItemInputs);
-      for (const line of lines) {
+      const { items, exclusions } = this.engine.computeEstimationDetailed(
+        roomData,
+        workItemInputs,
+      );
+      for (const line of items) {
         granularLines.push({
           ...line,
+          room_id: room.id,
+          room_name: room.name,
+        });
+      }
+      // Même geste que pour les lignes : la pièce est attachée **après** le
+      // moteur, qui ne la connaît pas. Un motif d'exclusion sans pièce serait
+      // illisible sur un projet à plusieurs pièces aux supports différents.
+      for (const exclusion of exclusions) {
+        granularExclusions.push({
+          ...exclusion,
           room_id: room.id,
           room_name: room.name,
         });
@@ -408,6 +442,7 @@ export class EstimationsService {
         skillLevelOverride || firstSkillLevel || SkillLevel.INTERMEDIATE,
       items_json: granularLines,
       aggregated_json: aggregated,
+      exclusions_json: granularExclusions,
       total_items: granularLines.length,
     });
 
@@ -491,7 +526,9 @@ export class EstimationsService {
       materials: await this.loadMaterialInputs(workType),
     });
 
-    const items = this.engine.computeEstimation(room, [workItemInput]);
+    const { items, exclusions } = this.engine.computeEstimationDetailed(room, [
+      workItemInput,
+    ]);
 
     return {
       work_type_code: workType.code,
@@ -499,6 +536,7 @@ export class EstimationsService {
       skill_level: skillLevel,
       total_items: items.length,
       items,
+      exclusions,
     };
   }
 
@@ -587,6 +625,7 @@ export class EstimationsService {
       reference,
       status: classifyDeclared(impliedPercent, reference),
       items: estimate.items,
+      exclusions: estimate.exclusions,
     };
   }
 
@@ -641,6 +680,7 @@ export class EstimationsService {
 
     const defaultSkillLevel = dto.skill_level ?? SkillLevel.INTERMEDIATE;
     const granularLines: EstimationLineItem[] = [];
+    const granularExclusions: MaterialExclusion[] = [];
     const packagingByMaterialId = new Map<string, PackagingInput[]>();
 
     for (const [index, room] of dto.rooms.entries()) {
@@ -688,11 +728,19 @@ export class EstimationsService {
         );
       }
 
-      for (const line of this.engine.computeEstimation(
+      const { items, exclusions } = this.engine.computeEstimationDetailed(
         roomData,
         workItemInputs,
-      )) {
+      );
+      for (const line of items) {
         granularLines.push({ ...line, room_id: roomId, room_name: roomName });
+      }
+      for (const exclusion of exclusions) {
+        granularExclusions.push({
+          ...exclusion,
+          room_id: roomId,
+          room_name: roomName,
+        });
       }
     }
 
@@ -704,6 +752,7 @@ export class EstimationsService {
         granularLines,
         packagingByMaterialId,
       ),
+      exclusions: granularExclusions,
     };
   }
 

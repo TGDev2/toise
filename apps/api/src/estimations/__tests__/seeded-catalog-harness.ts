@@ -1,6 +1,7 @@
 import {
   AggregatedMaterialLine,
   EstimationLineItem,
+  MaterialExclusion,
   PackagingUnitsLine,
 } from '../entities/estimation-result.entity';
 import {
@@ -50,7 +51,7 @@ import { seedWorkTypes, SeedWorkType } from '../../projects/work-types.data';
  * instantanés sans qu'on ait à penser à mettre le harnais à jour.
  *
  * ---------------------------------------------------------------------------
- * LES SIX INVARIANTS MÉTIER (`invariantViolations`)
+ * LES SEPT INVARIANTS MÉTIER (`invariantViolations`)
  * ---------------------------------------------------------------------------
  *
  * Les instantanés ne suffisent pas, et il faut le dire précisément : un
@@ -117,10 +118,23 @@ import { seedWorkTypes, SeedWorkType } from '../../projects/work-types.data';
  * garde-fou. Il garde désormais les trois questions du carrelage sol — dont
  * `joint_width_mm`, ajoutée par le même lot.
  *
+ * **I7 — un matériau découpé à longueur achète une pièce entière par
+ * emplacement.**
+ * D'où il vient : E1-8. L'ossature était métrée en mètres puis divisée par la
+ * longueur de barre, comme si les chutes se raboutaient — vrai d'un rail, faux
+ * d'un montant. Ce qui rend cet invariant indispensable plutôt qu'agréable :
+ * l'écart **change de signe** avec la géométrie. Sous 2,50 m de plafond au
+ * niveau intermédiaire, `2,50 × 1,08 = 2,70` tombe exactement sur la barre et
+ * le compte était juste par coïncidence — or c'est la configuration de
+ * référence du harnais, donc aucun instantané ne pouvait rien montrer. Le
+ * compte attendu est recalculé depuis l'assiette de l'ouvrage, jamais depuis
+ * les champs de la ligne.
+ *
  * Chaque violation nomme l'ouvrage, le matériau et les deux valeurs comparées,
- * et porte son numéro d'invariant en préfixe — `[I0]` étant réservé aux deux
- * gardes structurels antérieurs (un ouvrage chiffre ses matériaux liés, ni plus
- * ni moins, et en garde un principal). Elles sont **renvoyées en clair** plutôt
+ * et porte son numéro d'invariant en préfixe — `[I0]` étant réservé aux gardes
+ * structurels antérieurs (un ouvrage chiffre ses matériaux liés, ni plus ni
+ * moins — E1-8 y ajoute « à ses exclusions motivées près » — et en garde un
+ * principal). Elles sont **renvoyées en clair** plutôt
  * qu'asserties une par une : la suite dit alors *tout* ce qui a cassé, pas le
  * premier cas venu.
  *
@@ -204,6 +218,11 @@ export function materialsForWorkType(workTypeCode: string): MaterialInput[] {
                 length_cm: seedMaterial.roll_length_cm,
               }
             : null,
+        // E1-8 : et celui-ci ne décide pas d'une quantité mais de la présence
+        // même de la ligne, exactement comme dans `loadMaterialInputs`.
+        vapour_barrier: seedMaterial.vapour_barrier ?? null,
+        // E1-8 : absent = aboutable, comme le défaut de la colonne.
+        offcuts_reusable: seedMaterial.offcuts_reusable ?? true,
         role: link.role,
         waste_factors: seedMaterial.waste_factors.map((wf) => ({
           pose_type: wf.pose_type,
@@ -298,7 +317,7 @@ export const defaultPoseFor = (workTypeCode: string): string =>
  * C'est le point d'entrée des configurations à venir — assiette de cloison,
  * hauteur sous plafond, raccord de papier peint — et la raison pour laquelle
  * elles n'exigeront pas de réécrire ce fichier : une entrée dans ce dictionnaire
- * traverse `workItemFor`, donc les instantanés **et** les six invariants.
+ * traverse `workItemFor`, donc les instantanés **et** les sept invariants.
  */
 export type ParamsByWorkType = Record<string, Record<string, unknown>>;
 
@@ -641,7 +660,16 @@ const lineCells = (
   line.number_of_coats === undefined ? '' : String(line.number_of_coats),
   qty(line.adjusted_qty, line.material_unit),
   String(line.units_needed),
-  purchaseCell(line),
+  // E1-8 : sur un matériau découpé à longueur, le nombre de barres ne se déduit
+  // pas de la quantité affichée — 20,000 m en barres de 2,70 m « devrait »
+  // faire 8 barres par hasard ici, et 28 au lieu de 30 ailleurs. La
+  // décomposition est donc écrite, faute de quoi l'instantané se relit comme
+  // une division et masque exactement ce que ce lot corrige.
+  line.pieces_needed === undefined
+    ? purchaseCell(line)
+    : `${purchaseCell(line)} · ${line.pieces_needed} pièces de ${metres(
+        line.piece_length_m!,
+      )}, ${line.pieces_per_bar} par barre`,
 ];
 
 /** Chiffrage d'un cas sur une pièce, rendu en table relisible. */
@@ -657,7 +685,10 @@ export function renderRoomCase(
     'wi-1',
     paramsFor(paramsByWorkType, testCase.workType.code),
   );
-  const lines = engine.computeEstimation(harnessRoom.room, [workItem]);
+  const { items: lines, exclusions } = engine.computeEstimationDetailed(
+    harnessRoom.room,
+    [workItem],
+  );
   const basis = engine.computeWorkBasis(harnessRoom.room, workItem);
   const first = lines[0];
 
@@ -676,6 +707,18 @@ export function renderRoomCase(
         lineCells(line, byId.get(line.material_id)!, testCase.skillLevel),
       ),
     ),
+    // E1-8 : une ligne qui disparaît doit se **lire** dans l'instantané. Sans
+    // ce bloc, retirer un matériau par erreur produirait un instantané plus
+    // court et parfaitement plausible — exactement le genre de régression qu'un
+    // `jest -u` distrait bénit.
+    ...(exclusions.length > 0
+      ? [
+          '',
+          ...exclusions.map(
+            (e) => `écarté  : ${e.material_name} — ${e.reason_fr}`,
+          ),
+        ]
+      : []),
     '',
     `total : ${lines.length} lignes · ${lines.reduce((sum, l) => sum + l.units_needed, 0)} contenants`,
   ].join('\n');
@@ -901,7 +944,7 @@ export function renderCaseInventory(): string {
             mat.roll_spec
               ? `${mat.roll_spec.length_cm / 100} × ${mat.roll_spec.width_cm / 100} m (rendement non lu)`
               : 'aucun'
-          }`,
+          }${mat.vapour_barrier ? ` · pare-vapeur ${mat.vapour_barrier}` : ''}`,
       ),
     ].join('\n');
   });
@@ -989,6 +1032,7 @@ const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
  */
 function coverageViolations(
   lines: EstimationLineItem[],
+  exclusions: MaterialExclusion[],
   materials: MaterialInput[],
   byId: Map<string, MaterialInput>,
   testCase: HarnessCase,
@@ -996,10 +1040,25 @@ function coverageViolations(
   const violations: string[] = [];
   const label = caseLabel(testCase);
 
-  if (lines.length !== materials.length) {
+  // E1-8 : l'égalité « une ligne par matériau lié » devient « lignes +
+  // exclusions = matériaux liés ». Elle reste aussi serrée qu'avant — un
+  // matériau ne peut pas disparaître sans qu'une exclusion motivée le remplace,
+  // ce qui est précisément ce qui distingue une condition métier d'un oubli.
+  if (lines.length + exclusions.length !== materials.length) {
     violations.push(
-      `[I0] ${label} : ${lines.length} lignes chiffrées pour ${materials.length} matériaux liés`,
+      `[I0] ${label} : ${lines.length} lignes chiffrées et ${exclusions.length} exclusions ` +
+        `pour ${materials.length} matériaux liés`,
     );
+  }
+  // Une exclusion sans motif rédigé est une ligne qui disparaît en silence :
+  // c'est le défaut d'origine, déplacé d'un cran.
+  for (const exclusion of exclusions) {
+    if (!exclusion.reason_fr || !exclusion.reason_code) {
+      violations.push(
+        `[I0] ${label} : ${exclusion.material_name} écarté sans motif ` +
+          `(code « ${exclusion.reason_code} », phrase « ${exclusion.reason_fr} »)`,
+      );
+    }
   }
   if (!materials.some((mat) => mat.role === 'principal')) {
     violations.push(`[I0] ${label} : aucun matériau principal lié`);
@@ -1225,6 +1284,91 @@ function fewerContainersFor(
     : null;
 }
 
+/**
+ * I7 — un matériau découpé à longueur achète assez de barres pour que **chaque
+ * pièce se coupe entière**.
+ *
+ * D'où il vient : E1-8. Le moteur métrait l'ossature en mètres puis divisait par
+ * la longueur de barre, comme si les chutes se raboutaient. Pour 30 montants de
+ * 2,30 m dans des barres de 2,70 m, il achetait 28 barres au lieu de 30.
+ *
+ * Ce qui rend cet invariant nécessaire, et pas seulement agréable : le défaut
+ * **change de signe** avec la géométrie. Sous 2,50 m au niveau intermédiaire,
+ * `2,50 × 1,08 = 2,70` tombe exactement sur la barre et le compte était juste
+ * par coïncidence — un instantané de cette configuration-là n'aurait rien
+ * montré, et c'est justement la configuration de référence du harnais. Seule
+ * une propriété peut attraper cela.
+ *
+ * Le compte attendu est recalculé **depuis l'assiette de l'ouvrage** et non
+ * depuis les champs de la ligne : vérifier `pieces_needed` contre lui-même ne
+ * prouverait que la cohérence du moteur avec lui-même. `stud_count` vient de
+ * `computeWorkBasis`, `piece_length_m` de la hauteur déclarée, la longueur de
+ * barre du catalogue — trois grandeurs qu'aucune des deux implémentations ne
+ * partage.
+ */
+function fixedLengthCutViolations(
+  engine: EstimationEngine,
+  room: RoomData,
+  lines: EstimationLineItem[],
+  byId: Map<string, MaterialInput>,
+  testCase: HarnessCase,
+  config: HarnessConfig,
+): string[] {
+  const violations: string[] = [];
+  const label = caseLabel(testCase);
+
+  const nonJointable = lines.filter(
+    (line) => byId.get(line.material_id)?.offcuts_reusable === false,
+  );
+  if (nonJointable.length === 0) {
+    return violations;
+  }
+
+  const basis = engine.computeWorkBasis(
+    room,
+    workItemFor(
+      testCase,
+      'wi-1',
+      paramsFor(config.paramsByWorkType, testCase.workType.code),
+      config.declaredBasisByWorkType,
+    ),
+  );
+
+  for (const line of nonJointable) {
+    const material = byId.get(line.material_id)!;
+
+    // Seule assiette décomposable en pièces à ce jour. Un matériau non
+    // aboutable métré autrement est un trou de conception, pas un écart de
+    // quantité : il se signale, il ne se contourne pas.
+    if (material.quantity_driver !== 'frame_stud' || !basis.frame) {
+      violations.push(
+        `[I7] ${label} : ${line.material_name} — découpé à longueur mais métré ` +
+          `sur « ${DRIVER_LABELS[material.quantity_driver ?? 'work_surface']} », ` +
+          `qui ne se décompose pas en pièces`,
+      );
+      continue;
+    }
+
+    const pieces = basis.frame.stud_count;
+    const pieceLength = basis.frame.stud_piece_length_m;
+    const barLength = Math.max(
+      ...material.packagings.map((p) => p.quantity_per_unit),
+    );
+    const perBar = Math.floor(barLength / pieceLength);
+    const expected = perBar >= 1 ? Math.ceil(pieces / perBar) : Infinity;
+
+    if (line.units_needed < expected) {
+      violations.push(
+        `[I7] ${label} : ${line.material_name} — ${line.units_needed} barres de ` +
+          `${metres(barLength)} achetées pour ${pieces} pièces de ` +
+          `${metres(pieceLength)} (${perBar} par barre, ${expected} barres nécessaires)`,
+      );
+    }
+  }
+
+  return violations;
+}
+
 /** I4 — aucun panachage ne fait mieux en contenants sans acheter plus. */
 function containerMinimalityViolations(
   lines: EstimationLineItem[],
@@ -1370,12 +1514,20 @@ function requiredQuestionViolations(
     const [reference, ...alternatives] = values;
     const changesSomething = cases.some((testCase) => {
       const before = answeredWith(testCase, question.key, reference);
-      return alternatives.some((value) =>
-        [...answeredWith(testCase, question.key, value)].some(
+      return alternatives.some((value) => {
+        const after = answeredWith(testCase, question.key, value);
+        // E1-8 : une réponse peut faire **disparaître** une ligne — le
+        // pare-vapeur sur un plancher bois. Comparer les seules lignes
+        // communes laisserait alors l'invariant vert sans rien avoir vu, la
+        // question passant pour inerte alors qu'elle vaut un rouleau entier.
+        if (after.size !== before.size) {
+          return true;
+        }
+        return [...after].some(
           ([materialId, line]) =>
             line.adjusted_qty !== before.get(materialId)?.adjusted_qty,
-        ),
-      );
+        );
+      });
     });
 
     if (!changesSomething) {
@@ -1415,7 +1567,7 @@ const groupCases = (
 };
 
 /**
- * Les six invariants, sur une pièce.
+ * Les sept invariants, sur une pièce.
  *
  * Le résultat est dédoublonné en conservant l'ordre de première apparition :
  * le taux de consommation d'I3 ne dépend ni du niveau ni de la pose, et son
@@ -1434,20 +1586,24 @@ export function invariantViolations(
   for (const testCase of config.cases) {
     const materials = materialsForWorkType(testCase.workType.code);
     const byId = new Map(materials.map((mat) => [mat.id, mat]));
-    const lines = engine.computeEstimation(room, [
-      workItemFor(
-        testCase,
-        'wi-1',
-        paramsFor(config.paramsByWorkType, testCase.workType.code),
-        config.declaredBasisByWorkType,
-      ),
-    ]);
+    const { items: lines, exclusions } = engine.computeEstimationDetailed(
+      room,
+      [
+        workItemFor(
+          testCase,
+          'wi-1',
+          paramsFor(config.paramsByWorkType, testCase.workType.code),
+          config.declaredBasisByWorkType,
+        ),
+      ],
+    );
 
     violations.push(
-      ...coverageViolations(lines, materials, byId, testCase),
+      ...coverageViolations(lines, exclusions, materials, byId, testCase),
       ...coatIndependenceViolations(engine, room, testCase, byId, config),
       ...consumptionRateViolations(lines, byId, testCase, config),
       ...containerMinimalityViolations(lines, byId, testCase),
+      ...fixedLengthCutViolations(engine, room, lines, byId, testCase, config),
     );
   }
 
@@ -1488,7 +1644,7 @@ export function invariantViolations(
  * commentaire d'alors annonçait que le jour où le format du carreau pilotera le
  * chiffrage, quelqu'un devrait **supprimer** ces préfixes plutôt que les mettre
  * à jour. C'est fait, et la liste vidée ne laissait plus qu'une indirection
- * qui ne filtrait rien : les suites affirment désormais que les six invariants
+ * qui ne filtrait rien : les suites affirment désormais que les sept invariants
  * passent, sans exception ni note de bas de page.
  *
  * Le jour où un défaut devra de nouveau être porté sciemment, le rétablir est

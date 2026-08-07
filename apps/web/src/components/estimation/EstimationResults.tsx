@@ -1,12 +1,21 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import type { EstimationLineItem } from '@/lib/estimation-types';
+import type {
+  EstimationLineItem,
+  MaterialExclusion,
+} from '@/lib/estimation-types';
 import { formatPurchase, isMixedPackaging } from '@/lib/packaging';
 import { WorkTypeSection } from './WorkTypeSection';
 
 interface EstimationResultsProps {
   items: EstimationLineItem[];
+  /**
+   * E1-8 — matériaux que le chantier ne demande pas, avec leur motif. Absent
+   * sur une estimation antérieure à ce lot : on n'affiche alors rien, plutôt
+   * que d'affirmer que rien n'a été écarté.
+   */
+  exclusions?: MaterialExclusion[] | null;
 }
 
 function formatQty(qty: number, unit: string): string {
@@ -23,7 +32,29 @@ interface WorkTypeGroup {
   items: EstimationLineItem[];
 }
 
-export function EstimationResults({ items }: EstimationResultsProps) {
+export function EstimationResults({
+  items,
+  exclusions,
+}: EstimationResultsProps) {
+  /**
+   * Les exclusions du même ouvrage, dédoublonnées par matériau et par motif :
+   * un projet à trois pièces sur plancher bois écarterait trois fois le même
+   * film pour la même raison, et le répéter n'apprendrait rien.
+   */
+  const exclusionsByWorkType = useMemo(() => {
+    const map = new Map<string, MaterialExclusion[]>();
+    const seen = new Set<string>();
+    for (const exclusion of exclusions ?? []) {
+      const key = `${exclusion.work_type_code}|${exclusion.material_id}|${exclusion.reason_code}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const group = map.get(exclusion.work_type_code);
+      if (group) group.push(exclusion);
+      else map.set(exclusion.work_type_code, [exclusion]);
+    }
+    return map;
+  }, [exclusions]);
+
   const grouped = useMemo(() => {
     const map = new Map<string, WorkTypeGroup>();
     for (const item of items) {
@@ -98,6 +129,26 @@ export function EstimationResults({ items }: EstimationResultsProps) {
           onToggle={() => toggleSection(group.code)}
         >
           <div className="space-y-3">
+            {/*
+              E1-8 — ce que le chantier ne demande pas, et pourquoi. En tête de
+              section plutôt qu'en note de bas de page : un artisan qui cherche
+              son pare-vapeur doit trouver la réponse là où il l'attendait, pas
+              plus bas.
+            */}
+            {(exclusionsByWorkType.get(group.code) ?? []).map((exclusion) => (
+              <div
+                key={`${exclusion.material_id}-${exclusion.reason_code}`}
+                className="rounded-2xl border border-stone-200 bg-stone-50 px-5 py-4"
+              >
+                <p className="font-medium text-stone-500 line-through decoration-stone-300">
+                  {exclusion.material_name}
+                </p>
+                <p className="mt-1 text-xs text-stone-500">
+                  Non nécessaire — {exclusion.reason_fr}
+                </p>
+              </div>
+            ))}
+
             {group.items.map((item, idx) => {
               const detailKey = `${item.material_id}-${idx}`;
               const isDetailOpen = openDetails.has(detailKey);
@@ -174,6 +225,19 @@ export function EstimationResults({ items }: EstimationResultsProps) {
                   >
                     <div style={{ overflow: 'hidden' }}>
                       <ol className="mt-3 space-y-1.5 border-t border-stone-100 pt-3 text-xs text-stone-500">
+                        {/*
+                          E1-8 — pourquoi cette ligne est là. Elle n'apparaît
+                          que sur les matériaux dont la présence est
+                          conditionnelle : la ligne qui apparaît doit dire
+                          pourquoi autant que celle qui disparaît, sans quoi
+                          l'artisan ne peut pas vérifier que sa réponse a été
+                          lue.
+                        */}
+                        {item.inclusion_reason_fr && (
+                          <li className="text-stone-600">
+                            {item.inclusion_reason_fr}
+                          </li>
+                        )}
                         <li>Surface brute : {grossSurface} m²</li>
                         {excludedSurface > 0 && (
                           <li>
@@ -209,6 +273,20 @@ export function EstimationResults({ items }: EstimationResultsProps) {
                           Quantité ajustée (après perte) :{' '}
                           {formatQty(item.adjusted_qty, item.material_unit)}
                         </li>
+                        {/*
+                          E1-8 — sur un matériau découpé à longueur, le nombre
+                          de barres ne se déduit pas de la quantité affichée :
+                          il vient d'un comptage de pièces. L'écrire évite la
+                          question « pourquoi 30 barres pour 69 m ? », dont la
+                          réponse est justement ce que ce lot corrige.
+                        */}
+                        {item.pieces_needed != null && (
+                          <li>
+                            Découpe à longueur : {item.pieces_needed} pièces de{' '}
+                            {item.piece_length_m} m, {item.pieces_per_bar} par
+                            barre — les chutes ne se réutilisent pas
+                          </li>
+                        )}
                         <li>
                           Conditionnement retenu :{' '}
                           {formatPurchase(

@@ -15,6 +15,7 @@ import {
 } from 'class-validator';
 import { SkillLevel } from '../../projects/entities/project-work-item.entity';
 import { ExclusionType } from '../../projects/entities/room-dimensions.entity';
+import { SUBFLOOR_TYPES } from '../vapour-barrier';
 
 export const PUBLIC_WORK_TYPE_CODES = [
   'wall_painting',
@@ -117,6 +118,18 @@ export class PublicCustomParamsDto {
   @IsOptional()
   @IsIn(['straight', 'diagonal', 'herringbone'])
   laying_pattern?: string;
+
+  /**
+   * E1-8 — la nature du support, qui décide de la présence du pare-vapeur.
+   *
+   * La liste est **importée** et non recopiée : c'est le même vocabulaire que
+   * celui qui chiffre (`estimations/vapour-barrier.ts`) et que celui qu'affiche
+   * la question de l'ouvrage. Une troisième copie ici finirait par accepter une
+   * valeur que le moteur ne connaît pas, ou refuser une qu'il connaît.
+   */
+  @IsOptional()
+  @IsIn([...SUBFLOOR_TYPES])
+  subfloor_type?: string;
 }
 
 export class PublicEstimateRequestDto {

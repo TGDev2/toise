@@ -121,6 +121,7 @@ pas bougé.
 | Stratifié 12mm AC5 | flooring | 1 | surface d'ouvrage | Vendu et posé au m² : rendement définitionnel | conserver (définitionnel) | — | 2026-08-03 |
 | Parquet contrecollé chêne 14mm | flooring | 1 | surface d'ouvrage | Vendu et posé au m² : rendement définitionnel | conserver (définitionnel) | — | 2026-08-03 |
 | Sous-couche mousse 3mm | flooring | 1 | surface d'ouvrage | Quick-Step (FT Basic Plus + FT NETAPE50) : pose bord à bord sans chevauchement (« les bandes … doivent être parfaitement adjacentes ») ; « 1 rouleau = 15 m² » = sa surface | conserver (définitionnel) | https://www.quick-step.fr/-/media/Imported%20Assets/Flooring/9/6/5/TDSAccNETAPE50SelfadhesiveTapeFRpdf49942.ashx?rev=867c7b1de3ff4881ace0453be4832f00&type=original&filename=Informations+techniques.pdf | 2026-08-03 |
+| Sous-couche 2mm avec pare-vapeur intégré | flooring | 1 | surface d'ouvrage | Quick-Step Basic Plus (QSUDLBP15), mousse polyéthylène 2 mm, rouleau 1,00 × 15 m : « combinée à un pare-vapeur (avec rabat et bande adhésive pour une pose facile) », « 15 m²/colis ». Posée bord à bord comme la sous-couche mousse : rendement définitionnel. **Ajoutée par E1-8** pour que `vapour_barrier = 'integrated'` ait un référent réel (`is_optional: true` — alternative documentée) | conserver (définitionnel) | https://boutique-parquet.com/qsudlbp15-quick-step-15m-sous-couche-basic-plus-pare-vapeur-integre.html | 2026-08-07 |
 | Film pare-vapeur PE | flooring | 0.8 | surface d'ouvrage | Wineo PE-Dampfbremse : lé 1,00 m, « > 20 cm Stoßüberlappung » ; Tarkett : « chevauchement d'au moins 200 mm » → (1,00 − 0,20)/1,00 = 0,80 | corriger (1 → 0.8) | https://www.wineo.de/content/Dokumente/Zubehoer/Technische%20Datenblaetter/DE/PE-Dampfbremse-02-2019.pdf | 2026-08-03 |
 | Ruban adhésif pare-vapeur | flooring | — | surface d'ouvrage | Aucune règle de consommation chiffrée en fiche (Quick-Step NETAPE50, Ursa UNI TAPE) ; Wineo : adhésivage non requis en conditions normales | retirer (non sourçable) | https://www.quick-step.fr/-/media/Imported%20Assets/Flooring/9/6/5/TDSAccNETAPE50SelfadhesiveTapeFRpdf49942.ashx?rev=867c7b1de3ff4881ace0453be4832f00&type=original&filename=Informations+techniques.pdf | 2026-08-03 |
 | Cale de dilatation (x40) | flooring | — | surface d'ouvrage | Quantité au périmètre de la pièce, pas à la surface : pas de rendement en m²/unité | retirer (grandeur non surfacique) | — | 2026-08-03 |
@@ -658,6 +659,133 @@ absente de la page, et un « Coefficient de chute NF DTU 53.2 » dont
 l'attribution normative est inventée. Les contenus de `macalculatriceenligne`,
 `tropical-woods` (trois valeurs différentes sur trois pages du même site) et des
 fermes de contenu généralistes ne sont cités nulle part ici.
+
+## Déclenchement du pare-vapeur (E1-8)
+
+Le film pare-vapeur du parquet flottant était lié en `is_optional: false` : il
+était donc chiffré sur **tous** les chantiers. Le rendement était juste — 0,8,
+soit 1,25 m² de film par m² de sol, qui porte le recouvrement de 20 cm entre
+lés, cf. la ligne `Film pare-vapeur PE` du registre — mais le déclenchement était
+faux.
+
+### La règle, et sa source
+
+> « Dans le cas de supports à base de liants hydrauliques ou de supports minéraux
+> ou dans le cas de l'utilisation d'un plancher chauffant, un film pare-vapeur
+> doit être mis en œuvre. »
+>
+> — NF DTU 51.11 (pose flottante des parquets), cité par
+> [Batirama](https://www.batirama.com/article/2277-nf-dtu-51.11-parquets-flottants.html),
+> consulté le 2026-08-07.
+
+Le même texte énumère les supports admis : « les supports à base de liants
+hydrauliques ou de sulfate de calcium », « les planchers en bois ou panneaux à
+base de bois ». D'où les trois valeurs de la question `subfloor_type`
+(`projects/work-types.data.ts`) : **béton ou chape**, **plancher bois**, **ancien
+revêtement**. Seule la première exige le film.
+
+### Deux conditions, deux endroits
+
+| Information | Où elle vit | Pourquoi là |
+|---|---|---|
+| Nature du support | `work_types.contextual_questions` → `subfloor_type` | C'est une propriété du **chantier**, que seul l'artisan connaît |
+| Pare-vapeur intégré | `materials_catalog.vapour_barrier = 'integrated'` | C'est une propriété du **produit** : une sous-couche qui en intègre un l'intègre partout |
+
+Le film lui-même porte `vapour_barrier = 'dedicated'` : c'est la seule valeur du
+catalogue qui rende un matériau **conditionnel**. La règle
+(`estimations/vapour-barrier.ts`) tient en une phrase : *un film dédié est
+chiffré si le support l'exige et qu'aucun matériau `integrated` ne le fournit
+déjà.* Poser les deux enfermerait l'humidité entre deux films.
+
+Sans réponse, le moteur retient **béton ou chape** — la première option de la
+question, comme partout depuis E1-6, et ici le sens sûr : c'est celle qui exige
+le film.
+
+### Le référent de `integrated`
+
+`Sous-couche 2mm avec pare-vapeur intégré` entre au catalogue avec ce lot, en
+alternative documentée (`is_optional: true`). Sans elle, `integrated` serait une
+valeur que rien ne déclare — exactement la donnée inatteignable qu'E1-7 a retirée
+du carrelage en chevrons. Source au registre ci-dessus : Quick-Step Basic Plus,
+même fabricant que la sous-couche mousse déjà sourcée.
+
+**Portée réelle en V1, écrite noir sur blanc** : le tunnel ne laisse pas encore
+l'artisan choisir sa sous-couche, et une liaison `is_optional` n'est jamais
+chiffrée d'office. Dans l'application, c'est donc la **nature du support** qui
+pilote seule la ligne ; la seconde condition est lue par le moteur, éprouvée par
+`estimations/vapour-barrier.spec.ts`, et atteignable dès qu'un choix de
+sous-couche existera.
+
+### Réserve : le plancher chauffant
+
+Le DTU en fait un **troisième** déclencheur, indépendant du support. Le produit
+ne pose la question nulle part — ni au parquet, ni au carrelage — et l'ajouter
+dépassait la demande de ce lot. Conséquence assumée et non couverte : sur un
+plancher chauffant posé sur plancher bois, le moteur conclut « pas de film
+nécessaire » là où le DTU en exige un. **Le sens de l'écart n'est pas le sens
+sûr** ; c'est écrit ici pour ne pas être redécouvert.
+
+## Découpe à longueur : aboutables et non aboutables (E1-8)
+
+Le moteur métrait l'ossature en mètres linéaires puis divisait par la longueur de
+barre. C'est le bon calcul pour un **rail**, posé en course continue au sol et au
+plafond : deux bouts de barre s'aboutent et rien ne se perd. C'est le mauvais
+pour un **montant**, coupé à la hauteur de la cloison, dont la chute ne va nulle
+part.
+
+`materials_catalog.offcuts_reusable` porte la distinction. `false` réserve le
+matériau au comptage en pièces (`estimations/piece-cutting.ts`) :
+`barres = ceil(pièces / floor(longueur de barre / longueur de pièce))`.
+
+### Qui est concerné, et qui ne l'est pas
+
+| Matériau | Aboutable ? | Traité | Pourquoi |
+|---|---|---|---|
+| `Montant M48/M70/M90 2.7m` | **non** | oui | Coupé à la hauteur ; l'ouvrage déclare cette hauteur (`frame_spec`), donc le moteur connaît la longueur de pièce |
+| `Fourrure F530 3m` | **non** | oui | Montant de doublage : même découpe, même assiette `frame_stud` |
+| `Rail R48/R70/R90 3m` | oui | — | Course continue, les bouts se raboutent |
+| `Bande à joint`, `Bande armée`, `Calicot` | oui | — | Vendus au rouleau, débités en continu |
+| `Plinthe MDF 60/80`, `Plinthe chêne`, `Plinthe carrelage` | oui | — | Un mur long se plinthe en plusieurs longueurs abouties ; la chute repart sur le mur suivant |
+| `Profilé de finition`, `Profilé d'angle`, `Baguette PVC`, `Cornière`, `Listel`, `Profilé de jonction`, `Profil de départ lambris` | **non**, en principe | **non** | Coupés à la hauteur d'un angle ou à la largeur d'une baie, chute perdue. Mais **aucun ouvrage ne déclare leur géométrie de pièce** : le moteur ne saurait pas combien de pièces ni de quelle longueur. Les marquer non aboutables les ferait lever. Ils restent `true` — et ce tableau dit pourquoi |
+
+La conclusion est donc précise : la règle vaut partout où le métier découpe à
+longueur, et n'est **applicable** que là où l'ouvrage dit la longueur de la
+pièce. Aujourd'hui c'est la trame, et elle seule. Le jour où un ouvrage déclarera
+le nombre d'angles d'une pièce ou la largeur d'une baie, les profilés basculeront
+sans que le moteur bouge.
+
+### Le facteur de perte de ces matériaux passe à 0 %
+
+Ce n'est pas un renoncement, c'est la conséquence. La chute d'un montant est
+désormais **mesurée** — `barres × longueur de barre − pièces × longueur de
+pièce`, soit 0,20 m par barre sous 2,50 m de plafond, 7,4 % — et lui ajouter les
+12/8/4 % de `partitionWaste()` la compterait deux fois. C'est mot pour mot
+l'arbitrage d'E1-7 sur les mortiers-colle, dont la consommation suivait la
+surface *achetée* du carrelage au lieu de sa surface *nette* :
+**une chute déjà calculée ne se réestime pas.**
+
+La valeur vit dans le catalogue (`measuredOffcutWaste()`), visible et
+discutable, plutôt que dans une condition du moteur qui sauterait la résolution.
+
+**Ce que ce 0 % ne couvre pas** : la **casse** — la barre pliée au transport, le
+montant recoupé trop court. Aucune fiche ni aucun guide consulté ne la chiffre.
+**Le sens de l'écart n'est pas le sens sûr** : le jour où une source la chiffrera,
+il n'y aura que trois lignes à remplacer.
+
+### L'écart change de signe, et c'est ce qui le rendait invisible
+
+L'ancien calcul valait `hauteur × (1 + perte)` contre la longueur de barre :
+
+| Cloison | Avant | Après | Écart |
+|---|---|---|---|
+| 4,00 m sous 2,50 m, intermédiaire | 9 barres (22,400 m ÷ 2,70) | **8** | −1, sur-achat corrigé |
+| 17,40 m sous 2,30 m, intermédiaire | 28 barres (74,520 m ÷ 2,70) | **30** | +2, sous-achat corrigé |
+
+Sous 2,50 m au niveau intermédiaire, `2,50 × 1,08 = 2,70` tombe **exactement**
+sur la barre : le compte était juste par coïncidence — et c'est la configuration
+de référence du harnais, donc aucun instantané ne pouvait rien montrer. D'où
+l'invariant **I7** (`seeded-catalog-harness.ts`), qui recalcule le compte attendu
+depuis l'assiette de l'ouvrage et non depuis les champs de la ligne.
 
 ## Temps unitaires de main-d'œuvre : statut (E2-3)
 
