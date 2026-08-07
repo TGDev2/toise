@@ -10,6 +10,7 @@ import {
   unionPerimeterCm,
   unionWallRunsCm,
 } from './room-geometry';
+import { POSE_UNIQUE, resolveLayingPose } from './pose-types';
 // Types seuls : aucune dépendance d'exécution du moteur vers TypeORM. Ils sont
 // importés plutôt que redéclarés parce qu'ils décident de quantités — deux
 // définitions qui divergeraient produiraient un chiffrage faux sans rien casser.
@@ -235,6 +236,13 @@ export interface WorkItemInput {
 
 export interface ResolvedWasteFactor {
   percent: number;
+  /**
+   * `'default'` n'est **plus produit** depuis E1-7 : la résolution lève au lieu
+   * de retomber sur une valeur générique. La valeur reste dans l'union parce que
+   * `estimation_results` en contient des lignes historiques, que l'écran doit
+   * continuer à savoir afficher (`EstimationResults.tsx` en fait un badge). La
+   * retirer ferait mentir la relecture d'un chiffrage d'avant ce lot.
+   */
   source: 'catalog' | 'default' | 'learned';
 }
 
@@ -256,7 +264,6 @@ export interface SelectedPackaging {
 }
 
 const CM2_TO_M2 = 10_000;
-export const DEFAULT_WASTE_PERCENT = 10;
 /**
  * Couches appliquées quand `custom_params.number_of_coats` est absent. Exporté
  * parce que le harnais de non-régression doit diviser une quantité par le
@@ -402,15 +409,52 @@ const composePackagingLabel = (breakdown: PackagingUnits[]): string =>
         .join(' + ');
 
 /**
- * Résolution du facteur de perte : exact (pose, niveau) → pose `standard` du
- * même niveau → défaut générique. Exportée comme fonction pure car DATA-3 doit
- * résoudre la **même** valeur de référence hors du moteur (calcul des facteurs
- * appris) : la dupliquer laisserait les deux logiques diverger en silence.
+ * Aucune ligne de perte ne couvre ce couple (pose, niveau).
+ *
+ * E1-7 — c'est une **panne de données**, et elle se dit. Le repli générique
+ * qu'elle remplace rendait la même situation indiscernable d'un chiffrage
+ * normal : le carrelage mural et le revêtement mural étaient chiffrés à 10 %
+ * quel que soit le niveau de compétence, sans qu'aucun écran, aucun journal ni
+ * aucun test ne puisse le voir. Un catalogue incomplet doit coûter une erreur
+ * bruyante, pas un chiffre plausible.
+ */
+export class MissingWasteFactorError extends Error {
+  constructor(
+    readonly materialName: string,
+    readonly poseType: string,
+    readonly skillLevel: string,
+  ) {
+    super(
+      `Aucun facteur de perte au catalogue pour « ${materialName} » ` +
+        `en pose ${poseType}, niveau ${skillLevel}`,
+    );
+    this.name = 'MissingWasteFactorError';
+  }
+}
+
+/**
+ * Résolution du facteur de perte : pose exacte, ou pose unique du même niveau.
+ * **Aucun troisième temps** — ce qui n'est pas au catalogue lève (E1-7).
+ *
+ * Pourquoi deux temps et non un seul. La pose est une propriété de l'**ouvrage**
+ * (« ce carrelage est posé en diagonale ») tandis que le vocabulaire des poses
+ * est une propriété du **matériau** : un carreau distingue la pose droite de la
+ * diagonale, le mortier-colle sous ce carreau n'en sait rien et n'a pas à le
+ * savoir — sa consommation suit la surface nette. Le second temps sert donc les
+ * matériaux **sans variante de pose**, et eux seuls : le catalogue interdit
+ * qu'un matériau déclare `standard` **et** une pose variante, et
+ * `waste-factor-coverage.spec.ts` (propriété W1) le vérifie sur les 208 entrées
+ * seedées. Ce n'est plus un repli, c'est une règle de vocabulaire.
+ *
+ * Exportée comme fonction pure car DATA-3 doit résoudre la **même** valeur de
+ * référence hors du moteur (calcul des facteurs appris) : la dupliquer
+ * laisserait les deux logiques diverger en silence.
  */
 export function resolveWasteFactor(
   wasteFactors: WasteFactorInput[],
   poseType: string,
   skillLevel: string,
+  materialName = 'matériau sans nom',
 ): ResolvedWasteFactor {
   const exact = wasteFactors.find(
     (wf) => wf.pose_type === poseType && wf.skill_level === skillLevel,
@@ -422,17 +466,17 @@ export function resolveWasteFactor(
     };
   }
 
-  const standard = wasteFactors.find(
-    (wf) => wf.pose_type === 'standard' && wf.skill_level === skillLevel,
+  const unique = wasteFactors.find(
+    (wf) => wf.pose_type === POSE_UNIQUE && wf.skill_level === skillLevel,
   );
-  if (standard) {
+  if (unique) {
     return {
-      percent: Number(standard.factor_percent),
-      source: standard.source ?? 'catalog',
+      percent: Number(unique.factor_percent),
+      source: unique.source ?? 'catalog',
     };
   }
 
-  return { percent: DEFAULT_WASTE_PERCENT, source: 'default' };
+  throw new MissingWasteFactorError(materialName, poseType, skillLevel);
 }
 
 @Injectable()
@@ -685,8 +729,9 @@ export class EstimationEngine {
     wasteFactors: WasteFactorInput[],
     poseType: string,
     skillLevel: string,
+    materialName?: string,
   ): ResolvedWasteFactor {
-    return resolveWasteFactor(wasteFactors, poseType, skillLevel);
+    return resolveWasteFactor(wasteFactors, poseType, skillLevel, materialName);
   }
 
   /**
@@ -941,14 +986,19 @@ export class EstimationEngine {
           }
         : null;
 
-      const poseType =
-        (wi.custom_params.laying_pattern as string) || 'standard';
+      // E1-7 : la pose est résolue **par ouvrage**, jamais devinée matériau par
+      // matériau. Un ouvrage qui ne déclare pas son calepinage reçoit celui que
+      // `pose-types.ts` retient pour lui — une pose que ses matériaux
+      // connaissent — et non le mot `standard`, qui ne voulait rien dire pour un
+      // carreau et faisait tomber la résolution sur un défaut générique.
+      const poseType = resolveLayingPose(wi.work_type_code, wi.custom_params);
 
       for (const mat of wi.materials) {
         const wasteFactor = this.resolveWasteFactor(
           mat.waste_factors,
           poseType,
           wi.skill_level,
+          mat.name,
         );
 
         const appliesCoats = mat.applies_coats ?? false;

@@ -6,6 +6,7 @@ import {
   MaterialInput,
   PackagingInput,
   WasteFactorInput,
+  MissingWasteFactorError,
 } from './estimation-engine';
 import { EstimationLineItem } from './entities/estimation-result.entity';
 
@@ -224,26 +225,49 @@ describe('EstimationEngine', () => {
       expect(result).toEqual({ percent: 10, source: 'catalog' });
     });
 
-    it('should fallback to standard pose_type when exact match not found', () => {
+    /**
+     * E1-7 — un matériau **sans variante de pose** est chiffré sur sa pose
+     * unique, quelle que soit la pose de l'ouvrage. C'est le cas du mortier-colle
+     * sous un carreau posé en diagonale : le calepinage ne change pas ce que la
+     * colle couvre. Ce n'est plus un repli, c'est la règle de vocabulaire que
+     * `waste-factor-coverage.spec.ts` (W1) rend vraie sur tout le catalogue.
+     */
+    it('sert la pose unique d’un matériau qui n’a pas de variante', () => {
       const result = engine.resolveWasteFactor(
         makePaintWasteFactors(),
-        'unknown_pose',
+        'diagonal',
         'beginner',
       );
       expect(result).toEqual({ percent: 15, source: 'catalog' });
     });
 
-    it('should return default 10% when no match at all', () => {
-      const result = engine.resolveWasteFactor([], 'standard', 'beginner');
-      expect(result).toEqual({ percent: 10, source: 'default' });
+    /**
+     * E1-7 — le cœur du lot. Avant, ces deux appels rendaient `10 %` avec
+     * `source: 'default'`, et ce chiffre était impossible à distinguer d'un
+     * chiffrage normal : c'est ce qui a permis au carrelage mural et au
+     * revêtement mural d'ignorer le niveau de compétence pendant toute la V1.
+     */
+    it('lève quand aucune ligne ne couvre le matériau', () => {
+      expect(() =>
+        engine.resolveWasteFactor([], 'standard', 'beginner', 'Carrelage X'),
+      ).toThrow(MissingWasteFactorError);
     });
 
-    it('should return default when skill level not in catalog', () => {
+    it('lève quand le niveau manque, en nommant matériau, pose et niveau', () => {
       const factors: WasteFactorInput[] = [
         { pose_type: 'standard', skill_level: 'expert', factor_percent: 5 },
       ];
-      const result = engine.resolveWasteFactor(factors, 'standard', 'beginner');
-      expect(result).toEqual({ percent: 10, source: 'default' });
+      expect(() =>
+        engine.resolveWasteFactor(
+          factors,
+          'standard',
+          'beginner',
+          'Faïence murale 25x40 cm',
+        ),
+      ).toThrow(
+        'Aucun facteur de perte au catalogue pour « Faïence murale 25x40 cm » ' +
+          'en pose standard, niveau beginner',
+      );
     });
 
     it('should handle numeric strings from TypeORM', () => {
@@ -851,8 +875,13 @@ describe('EstimationEngine', () => {
       expect(intermediate.adjusted_qty).toBeGreaterThan(expert.adjusted_qty);
     });
 
-    // AC5: Default waste when material not covered
-    it('should apply default 10% waste when no waste factors in catalog', () => {
+    /**
+     * E1-7 — un matériau non couvert fait **échouer le chiffrage**, il ne le
+     * rend pas plausible. Le test qu'il remplace exigeait l'inverse (« applique
+     * 10 % par défaut ») : il gravait le défaut au lieu de le garder, exactement
+     * comme le test « minimise le surplus » d'E1-5 (leçon 20).
+     */
+    it('fait échouer le chiffrage d’un matériau absent du registre', () => {
       const room = makeRoom();
 
       const workItems: WorkItemInput[] = [
@@ -868,9 +897,9 @@ describe('EstimationEngine', () => {
         },
       ];
 
-      const items = engine.computeEstimation(room, workItems);
-      expect(items[0].waste_factor_percent).toBe(10);
-      expect(items[0].waste_factor_source).toBe('default');
+      expect(() => engine.computeEstimation(room, workItems)).toThrow(
+        MissingWasteFactorError,
+      );
     });
 
     // Ceiling painting = floor area

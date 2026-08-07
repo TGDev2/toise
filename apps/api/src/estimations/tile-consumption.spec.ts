@@ -42,9 +42,26 @@ const materialFromSeed = (name: string): MaterialInput => {
     unit: seed.unit,
     yield_per_unit: seed.yield_per_unit,
     consumption_model: seed.consumption_model ?? null,
-    // Pose implicite : 10 % de perte, comme tout ouvrage dont l'utilisateur ne
-    // choisit pas le calepinage.
-    waste_factors: [],
+    /*
+     * E1-7 — les facteurs de perte **du catalogue**, et non un tableau vide.
+     *
+     * Ce fichier envoyait `[]` et commentait « pose implicite : 10 % de perte ».
+     * C'était vrai, et c'était le défaut : les 10 % venaient du repli générique
+     * de `resolveWasteFactor`, pas d'une ligne du catalogue. Le test s'appuyait
+     * donc sur le comportement qu'E1-7 supprime, et ses quantités attendues
+     * étaient calibrées dessus — un tableau vide lève désormais.
+     *
+     * Avec les vraies lignes, la colle et le joint portent `dosedWaste()` : 3 %
+     * au niveau intermédiaire, et la même valeur quelle que soit la pose, parce
+     * qu'ils se dosent sur la surface nette. Les quantités ci-dessous baissent
+     * donc de 10 % à 3 % de marge — c'est le sac de colle en trop que la pose
+     * diagonale faisait acheter.
+     */
+    waste_factors: seed.waste_factors.map((wf) => ({
+      pose_type: wf.pose_type,
+      skill_level: wf.skill_level,
+      factor_percent: wf.factor_percent,
+    })),
     packagings: seed.packagings,
   };
 };
@@ -308,16 +325,22 @@ describe('Résolution du format et de la largeur de joint', () => {
 
 describe('Moteur — le format du carreau change les quantités', () => {
   /**
-   * 12 m² de sol, pose implicite (10 % de perte), joint recommandé pour le
-   * format. Colle : `12 / (0,14 / facteur) × 1,1`. Joint : `12 / (5 / facteur)
-   * × 1,1`.
+   * 12 m² de sol, pose non déclarée (donc pose droite), niveau intermédiaire,
+   * joint recommandé pour le format. Colle : `12 / (0,14 / facteur) × 1,03`.
+   * Joint : `12 / (5 / facteur) × 1,03`.
+   *
+   * E1-7 — le multiplicateur était `× 1,1` avant ce lot : les 10 % du repli
+   * générique, que ce fichier obtenait en n'envoyant aucun facteur de perte.
+   * Il vaut `× 1,03`, la ligne réelle du catalogue pour un produit **dosé** au
+   * niveau intermédiaire. Les cinq quantités baissent donc de 6,4 % à format
+   * égal, sans qu'aucune consommation au m² n'ait bougé.
    */
   it.each([
-    ['20x20', 60.612, 8.8],
-    ['30x30', 80.816, 3.52],
-    ['45x45', 94.286, 2.64],
-    ['30x60', 94.286, 2.97],
-    ['60x60', 107.755, 1.467],
+    ['20x20', 56.755, 8.24],
+    ['30x30', 75.673, 3.296],
+    ['45x45', 88.286, 2.472],
+    ['30x60', 88.286, 2.781],
+    ['60x60', 100.898, 1.3736],
   ])('%s → %s kg de colle et %s kg de joint', (format, colle, joint) => {
     const quantities = quantitiesFor({ tile_format: format });
     expect(quantities.get('Mortier-colle flexible (C2)')).toBeCloseTo(colle, 2);

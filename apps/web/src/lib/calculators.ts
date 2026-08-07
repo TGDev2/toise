@@ -229,9 +229,26 @@ const CALCULATORS: Record<CalculatorSlug, CalculatorConfig> = {
         ],
       },
       {
+        // E1-7 — la faïence murale se pose droite ou en diagonale exactement
+        // comme le carrelage sol, et son catalogue sème les deux poses depuis
+        // toujours. La variante n'offrait aucun paramètre : le calculateur
+        // rendait donc le même chiffre pour les deux poses, et le curseur de
+        // niveau était sans effet. Une question, deux options, le même bloc
+        // qu'au-dessus.
         code: 'wall_tiling',
         label: 'Mur',
         draftWorkType: 'tiling',
+        params: [
+          {
+            key: 'laying_pattern',
+            label: 'Type de pose',
+            options: [
+              { value: 'straight', label: 'Pose droite' },
+              { value: 'diagonal', label: 'Pose diagonale' },
+            ],
+            defaultValue: 'straight',
+          },
+        ],
       },
     ],
     differentiators: [

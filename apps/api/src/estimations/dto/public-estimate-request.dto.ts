@@ -105,8 +105,17 @@ export class PublicCustomParamsDto {
   @IsIn(['20x20', '30x30', '45x45', '60x60', '30x60'])
   tile_format?: string;
 
+  /**
+   * E1-7 — `herringbone` rejoint la liste avec la pose en chevrons du parquet.
+   *
+   * Cette validation ne connaît pas l'ouvrage : elle dit quelles poses existent
+   * dans le produit, pas lesquelles vont ensemble. C'est `resolveLayingPose`
+   * qui refuse un couple impossible — des chevrons sur un carrelage — et il
+   * répond 400, pas 500 : la demande est mal formée, elle n'est pas le symptôme
+   * d'un catalogue troué.
+   */
   @IsOptional()
-  @IsIn(['straight', 'diagonal'])
+  @IsIn(['straight', 'diagonal', 'herringbone'])
   laying_pattern?: string;
 }
 

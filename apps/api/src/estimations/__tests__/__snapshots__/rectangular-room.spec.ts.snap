@@ -3,7 +3,7 @@
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 ceiling_painting · beginner · pose standard 1`] = `
 pièce   : Chambre rectangulaire
 ouvrage : Peinture plafond (ceiling_painting) · surface ceiling
-niveau  : beginner · pose : standard (implicite)
+niveau  : beginner · pose : standard (non déclarée)
 surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
@@ -16,7 +16,7 @@ total : 2 lignes · 3 contenants
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 ceiling_painting · expert · pose standard 1`] = `
 pièce   : Chambre rectangulaire
 ouvrage : Peinture plafond (ceiling_painting) · surface ceiling
-niveau  : expert · pose : standard (implicite)
+niveau  : expert · pose : standard (non déclarée)
 surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
@@ -29,7 +29,7 @@ total : 2 lignes · 3 contenants
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 ceiling_painting · intermediate · pose standard 1`] = `
 pièce   : Chambre rectangulaire
 ouvrage : Peinture plafond (ceiling_painting) · surface ceiling
-niveau  : intermediate · pose : standard (implicite)
+niveau  : intermediate · pose : standard (non déclarée)
 surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
@@ -42,7 +42,7 @@ total : 2 lignes · 3 contenants
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 drywall · beginner · pose standard 1`] = `
 pièce   : Chambre rectangulaire
 ouvrage : Cloison seche (drywall) · assiette déclarée
-niveau  : beginner · pose : standard (implicite)
+niveau  : beginner · pose : standard (non déclarée)
 assiette: 4.000 m × 2.500 m × 2 face(s) → ouvrage 10.000 m² · parement 20.000 m²
 trame   : entraxe 0.60 m · 8 montants (dont 0 déclarés) × 2.500 m = 20.000 m · 2 lisses × 4.000 m = 8.000 m
 
@@ -60,7 +60,7 @@ total : 6 lignes · 24 contenants
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 drywall · expert · pose standard 1`] = `
 pièce   : Chambre rectangulaire
 ouvrage : Cloison seche (drywall) · assiette déclarée
-niveau  : expert · pose : standard (implicite)
+niveau  : expert · pose : standard (non déclarée)
 assiette: 4.000 m × 2.500 m × 2 face(s) → ouvrage 10.000 m² · parement 20.000 m²
 trame   : entraxe 0.60 m · 8 montants (dont 0 déclarés) × 2.500 m = 20.000 m · 2 lisses × 4.000 m = 8.000 m
 
@@ -78,7 +78,7 @@ total : 6 lignes · 23 contenants
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 drywall · intermediate · pose standard 1`] = `
 pièce   : Chambre rectangulaire
 ouvrage : Cloison seche (drywall) · assiette déclarée
-niveau  : intermediate · pose : standard (implicite)
+niveau  : intermediate · pose : standard (non déclarée)
 assiette: 4.000 m × 2.500 m × 2 face(s) → ouvrage 10.000 m² · parement 20.000 m²
 trame   : entraxe 0.60 m · 8 montants (dont 0 déclarés) × 2.500 m = 20.000 m · 2 lisses × 4.000 m = 8.000 m
 
@@ -101,36 +101,22 @@ surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Carrelage sol 45x45 cm          principal      20 % exact                 14.400 m2     10 9 × Boîte 1.5 m² + 1 × Boîte 1 m²
-Mortier-colle flexible (C2)     consommable    20 % exact                102.857 kg      5 5 × Sac 25 kg
-Joint fin 1-6mm                 consommable    20 % exact                  2.880 kg      1 1 × Sac 5 kg
+Mortier-colle flexible (C2)     consommable     5 % pose unique             90.000 kg      4 4 × Sac 25 kg
+Joint fin 1-6mm                 consommable     5 % pose unique              2.520 kg      1 1 × Sac 5 kg
 
-total : 3 lignes · 16 contenants
-`;
-
-exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 floor_tiling · beginner · pose standard 1`] = `
-pièce   : Chambre rectangulaire
-ouvrage : Carrelage sol (floor_tiling) · surface floor
-niveau  : beginner · pose : standard (implicite)
-surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
-
-matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Carrelage sol 45x45 cm          principal      10 % défaut                13.200 m2      9 9 × Boîte 1.5 m²
-Mortier-colle flexible (C2)     consommable    10 % défaut                94.286 kg      4 4 × Sac 25 kg
-Joint fin 1-6mm                 consommable    10 % défaut                 2.640 kg      1 1 × Sac 5 kg
-
-total : 3 lignes · 14 contenants
+total : 3 lignes · 15 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 floor_tiling · beginner · pose straight 1`] = `
 pièce   : Chambre rectangulaire
 ouvrage : Carrelage sol (floor_tiling) · surface floor
-niveau  : beginner · pose : straight
+niveau  : beginner · pose : straight (non déclarée)
 surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Carrelage sol 45x45 cm          principal      15 % exact                 13.800 m2     10 8 × Boîte 1.5 m² + 2 × Boîte 1 m²
-Mortier-colle flexible (C2)     consommable    15 % exact                 98.571 kg      4 4 × Sac 25 kg
-Joint fin 1-6mm                 consommable    15 % exact                  2.760 kg      1 1 × Sac 5 kg
+Mortier-colle flexible (C2)     consommable     5 % pose unique             90.000 kg      4 4 × Sac 25 kg
+Joint fin 1-6mm                 consommable     5 % pose unique              2.520 kg      1 1 × Sac 5 kg
 
 total : 3 lignes · 15 contenants
 `;
@@ -143,22 +129,8 @@ surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Carrelage sol 45x45 cm          principal      10 % exact                 13.200 m2      9 9 × Boîte 1.5 m²
-Mortier-colle flexible (C2)     consommable    10 % exact                 94.286 kg      4 4 × Sac 25 kg
-Joint fin 1-6mm                 consommable    10 % exact                  2.640 kg      1 1 × Sac 5 kg
-
-total : 3 lignes · 14 contenants
-`;
-
-exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 floor_tiling · expert · pose standard 1`] = `
-pièce   : Chambre rectangulaire
-ouvrage : Carrelage sol (floor_tiling) · surface floor
-niveau  : expert · pose : standard (implicite)
-surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
-
-matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Carrelage sol 45x45 cm          principal      10 % défaut                13.200 m2      9 9 × Boîte 1.5 m²
-Mortier-colle flexible (C2)     consommable    10 % défaut                94.286 kg      4 4 × Sac 25 kg
-Joint fin 1-6mm                 consommable    10 % défaut                 2.640 kg      1 1 × Sac 5 kg
+Mortier-colle flexible (C2)     consommable     2 % pose unique             87.429 kg      4 4 × Sac 25 kg
+Joint fin 1-6mm                 consommable     2 % pose unique              2.448 kg      1 1 × Sac 5 kg
 
 total : 3 lignes · 14 contenants
 `;
@@ -166,13 +138,13 @@ total : 3 lignes · 14 contenants
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 floor_tiling · expert · pose straight 1`] = `
 pièce   : Chambre rectangulaire
 ouvrage : Carrelage sol (floor_tiling) · surface floor
-niveau  : expert · pose : straight
+niveau  : expert · pose : straight (non déclarée)
 surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Carrelage sol 45x45 cm          principal       5 % exact                 12.600 m2      9 8 × Boîte 1.5 m² + 1 × Boîte 1 m²
-Mortier-colle flexible (C2)     consommable     5 % exact                 90.000 kg      4 4 × Sac 25 kg
-Joint fin 1-6mm                 consommable     5 % exact                  2.520 kg      1 1 × Sac 5 kg
+Mortier-colle flexible (C2)     consommable     2 % pose unique             87.429 kg      4 4 × Sac 25 kg
+Joint fin 1-6mm                 consommable     2 % pose unique              2.448 kg      1 1 × Sac 5 kg
 
 total : 3 lignes · 14 contenants
 `;
@@ -185,36 +157,22 @@ surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Carrelage sol 45x45 cm          principal      15 % exact                 13.800 m2     10 8 × Boîte 1.5 m² + 2 × Boîte 1 m²
-Mortier-colle flexible (C2)     consommable    15 % exact                 98.571 kg      4 4 × Sac 25 kg
-Joint fin 1-6mm                 consommable    15 % exact                  2.760 kg      1 1 × Sac 5 kg
+Mortier-colle flexible (C2)     consommable     3 % pose unique             88.286 kg      4 4 × Sac 25 kg
+Joint fin 1-6mm                 consommable     3 % pose unique              2.472 kg      1 1 × Sac 5 kg
 
 total : 3 lignes · 15 contenants
-`;
-
-exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 floor_tiling · intermediate · pose standard 1`] = `
-pièce   : Chambre rectangulaire
-ouvrage : Carrelage sol (floor_tiling) · surface floor
-niveau  : intermediate · pose : standard (implicite)
-surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
-
-matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Carrelage sol 45x45 cm          principal      10 % défaut                13.200 m2      9 9 × Boîte 1.5 m²
-Mortier-colle flexible (C2)     consommable    10 % défaut                94.286 kg      4 4 × Sac 25 kg
-Joint fin 1-6mm                 consommable    10 % défaut                 2.640 kg      1 1 × Sac 5 kg
-
-total : 3 lignes · 14 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 floor_tiling · intermediate · pose straight 1`] = `
 pièce   : Chambre rectangulaire
 ouvrage : Carrelage sol (floor_tiling) · surface floor
-niveau  : intermediate · pose : straight
+niveau  : intermediate · pose : straight (non déclarée)
 surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Carrelage sol 45x45 cm          principal      10 % exact                 13.200 m2      9 9 × Boîte 1.5 m²
-Mortier-colle flexible (C2)     consommable    10 % exact                 94.286 kg      4 4 × Sac 25 kg
-Joint fin 1-6mm                 consommable    10 % exact                  2.640 kg      1 1 × Sac 5 kg
+Mortier-colle flexible (C2)     consommable     3 % pose unique             88.286 kg      4 4 × Sac 25 kg
+Joint fin 1-6mm                 consommable     3 % pose unique              2.472 kg      1 1 × Sac 5 kg
 
 total : 3 lignes · 14 contenants
 `;
@@ -226,23 +184,37 @@ niveau  : beginner · pose : diagonal
 surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Stratifié 8mm AC4               principal      15 % exact                 13.800 m2      6 6 × Paquet 2.49 m²
-Sous-couche mousse 3mm          sous_couche    10 % repli std             13.200 m2      1 1 × Rouleau 15 m²
-Film pare-vapeur PE             sous_couche    10 % repli std             16.500 m2      1 1 × Rouleau 20 m²
+Stratifié 8mm AC4               principal      20 % exact                 14.400 m2      6 6 × Paquet 2.49 m²
+Sous-couche mousse 3mm          sous_couche    10 % pose unique             13.200 m2      1 1 × Rouleau 15 m²
+Film pare-vapeur PE             sous_couche    10 % pose unique             16.500 m2      1 1 × Rouleau 20 m²
 
 total : 3 lignes · 8 contenants
 `;
 
-exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 parquet_flooring · beginner · pose standard 1`] = `
+exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 parquet_flooring · beginner · pose herringbone 1`] = `
 pièce   : Chambre rectangulaire
 ouvrage : Parquet ou stratifie (parquet_flooring) · surface floor
-niveau  : beginner · pose : standard (implicite)
+niveau  : beginner · pose : herringbone
+surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
+
+matériau                        rôle          perte origine   couches   qté ajustée unités achat
+Stratifié 8mm AC4               principal      25 % exact                 15.000 m2      7 7 × Paquet 2.49 m²
+Sous-couche mousse 3mm          sous_couche    10 % pose unique             13.200 m2      1 1 × Rouleau 15 m²
+Film pare-vapeur PE             sous_couche    10 % pose unique             16.500 m2      1 1 × Rouleau 20 m²
+
+total : 3 lignes · 9 contenants
+`;
+
+exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 parquet_flooring · beginner · pose straight 1`] = `
+pièce   : Chambre rectangulaire
+ouvrage : Parquet ou stratifie (parquet_flooring) · surface floor
+niveau  : beginner · pose : straight (non déclarée)
 surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Stratifié 8mm AC4               principal      10 % exact                 13.200 m2      6 6 × Paquet 2.49 m²
-Sous-couche mousse 3mm          sous_couche    10 % exact                 13.200 m2      1 1 × Rouleau 15 m²
-Film pare-vapeur PE             sous_couche    10 % exact                 16.500 m2      1 1 × Rouleau 20 m²
+Sous-couche mousse 3mm          sous_couche    10 % pose unique             13.200 m2      1 1 × Rouleau 15 m²
+Film pare-vapeur PE             sous_couche    10 % pose unique             16.500 m2      1 1 × Rouleau 20 m²
 
 total : 3 lignes · 8 contenants
 `;
@@ -254,23 +226,37 @@ niveau  : expert · pose : diagonal
 surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Stratifié 8mm AC4               principal       7 % exact                 12.840 m2      6 6 × Paquet 2.49 m²
-Sous-couche mousse 3mm          sous_couche     5 % repli std             12.600 m2      1 1 × Rouleau 15 m²
-Film pare-vapeur PE             sous_couche     5 % repli std             15.750 m2      1 1 × Rouleau 20 m²
+Stratifié 8mm AC4               principal      15 % exact                 13.800 m2      6 6 × Paquet 2.49 m²
+Sous-couche mousse 3mm          sous_couche     5 % pose unique             12.600 m2      1 1 × Rouleau 15 m²
+Film pare-vapeur PE             sous_couche     5 % pose unique             15.750 m2      1 1 × Rouleau 20 m²
 
 total : 3 lignes · 8 contenants
 `;
 
-exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 parquet_flooring · expert · pose standard 1`] = `
+exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 parquet_flooring · expert · pose herringbone 1`] = `
 pièce   : Chambre rectangulaire
 ouvrage : Parquet ou stratifie (parquet_flooring) · surface floor
-niveau  : expert · pose : standard (implicite)
+niveau  : expert · pose : herringbone
+surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
+
+matériau                        rôle          perte origine   couches   qté ajustée unités achat
+Stratifié 8mm AC4               principal      20 % exact                 14.400 m2      6 6 × Paquet 2.49 m²
+Sous-couche mousse 3mm          sous_couche     5 % pose unique             12.600 m2      1 1 × Rouleau 15 m²
+Film pare-vapeur PE             sous_couche     5 % pose unique             15.750 m2      1 1 × Rouleau 20 m²
+
+total : 3 lignes · 8 contenants
+`;
+
+exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 parquet_flooring · expert · pose straight 1`] = `
+pièce   : Chambre rectangulaire
+ouvrage : Parquet ou stratifie (parquet_flooring) · surface floor
+niveau  : expert · pose : straight (non déclarée)
 surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Stratifié 8mm AC4               principal       5 % exact                 12.600 m2      6 6 × Paquet 2.49 m²
-Sous-couche mousse 3mm          sous_couche     5 % exact                 12.600 m2      1 1 × Rouleau 15 m²
-Film pare-vapeur PE             sous_couche     5 % exact                 15.750 m2      1 1 × Rouleau 20 m²
+Sous-couche mousse 3mm          sous_couche     5 % pose unique             12.600 m2      1 1 × Rouleau 15 m²
+Film pare-vapeur PE             sous_couche     5 % pose unique             15.750 m2      1 1 × Rouleau 20 m²
 
 total : 3 lignes · 8 contenants
 `;
@@ -282,88 +268,63 @@ niveau  : intermediate · pose : diagonal
 surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Stratifié 8mm AC4               principal      10 % exact                 13.200 m2      6 6 × Paquet 2.49 m²
-Sous-couche mousse 3mm          sous_couche     7 % repli std             12.840 m2      1 1 × Rouleau 15 m²
-Film pare-vapeur PE             sous_couche     7 % repli std             16.050 m2      1 1 × Rouleau 20 m²
+Stratifié 8mm AC4               principal      17 % exact                 14.040 m2      6 6 × Paquet 2.49 m²
+Sous-couche mousse 3mm          sous_couche     7 % pose unique             12.840 m2      1 1 × Rouleau 15 m²
+Film pare-vapeur PE             sous_couche     7 % pose unique             16.050 m2      1 1 × Rouleau 20 m²
 
 total : 3 lignes · 8 contenants
 `;
 
-exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 parquet_flooring · intermediate · pose standard 1`] = `
+exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 parquet_flooring · intermediate · pose herringbone 1`] = `
 pièce   : Chambre rectangulaire
 ouvrage : Parquet ou stratifie (parquet_flooring) · surface floor
-niveau  : intermediate · pose : standard (implicite)
+niveau  : intermediate · pose : herringbone
+surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
+
+matériau                        rôle          perte origine   couches   qté ajustée unités achat
+Stratifié 8mm AC4               principal      22 % exact                 14.640 m2      6 6 × Paquet 2.49 m²
+Sous-couche mousse 3mm          sous_couche     7 % pose unique             12.840 m2      1 1 × Rouleau 15 m²
+Film pare-vapeur PE             sous_couche     7 % pose unique             16.050 m2      1 1 × Rouleau 20 m²
+
+total : 3 lignes · 8 contenants
+`;
+
+exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 parquet_flooring · intermediate · pose straight 1`] = `
+pièce   : Chambre rectangulaire
+ouvrage : Parquet ou stratifie (parquet_flooring) · surface floor
+niveau  : intermediate · pose : straight (non déclarée)
 surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Stratifié 8mm AC4               principal       7 % exact                 12.840 m2      6 6 × Paquet 2.49 m²
-Sous-couche mousse 3mm          sous_couche     7 % exact                 12.840 m2      1 1 × Rouleau 15 m²
-Film pare-vapeur PE             sous_couche     7 % exact                 16.050 m2      1 1 × Rouleau 20 m²
+Sous-couche mousse 3mm          sous_couche     7 % pose unique             12.840 m2      1 1 × Rouleau 15 m²
+Film pare-vapeur PE             sous_couche     7 % pose unique             16.050 m2      1 1 × Rouleau 20 m²
 
 total : 3 lignes · 8 contenants
-`;
-
-exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_covering · beginner · pose plain 1`] = `
-pièce   : Chambre rectangulaire
-ouvrage : Revetement mural (wall_covering) · surface wall
-niveau  : beginner · pose : plain
-surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
-
-matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Papier peint intissé uni        principal      10 % exact                 54.685 m2     11 11 × Rouleau 10.05m x 0.53m (5.33 m²)
-Colle papier peint intissé      consommable    10 % exact                  4.580 kg      1 1 × Seau 5 kg
-
-total : 2 lignes · 12 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_covering · beginner · pose standard 1`] = `
 pièce   : Chambre rectangulaire
 ouvrage : Revetement mural (wall_covering) · surface wall
-niveau  : beginner · pose : standard (implicite)
+niveau  : beginner · pose : standard (non déclarée)
 surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Papier peint intissé uni        principal      10 % défaut                54.685 m2     11 11 × Rouleau 10.05m x 0.53m (5.33 m²)
-Colle papier peint intissé      consommable    10 % défaut                 4.580 kg      1 1 × Seau 5 kg
+Papier peint intissé uni        principal      15 % exact                 57.171 m2     11 11 × Rouleau 10.05m x 0.53m (5.33 m²)
+Colle papier peint intissé      consommable     5 % exact                  4.372 kg      1 1 × Seau 5 kg
 
 total : 2 lignes · 12 contenants
-`;
-
-exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_covering · expert · pose plain 1`] = `
-pièce   : Chambre rectangulaire
-ouvrage : Revetement mural (wall_covering) · surface wall
-niveau  : expert · pose : plain
-surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
-
-matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Papier peint intissé uni        principal       3 % exact                 51.205 m2     10 10 × Rouleau 10.05m x 0.53m (5.33 m²)
-Colle papier peint intissé      consommable     3 % exact                  4.288 kg      1 1 × Seau 5 kg
-
-total : 2 lignes · 11 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_covering · expert · pose standard 1`] = `
 pièce   : Chambre rectangulaire
 ouvrage : Revetement mural (wall_covering) · surface wall
-niveau  : expert · pose : standard (implicite)
+niveau  : expert · pose : standard (non déclarée)
 surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Papier peint intissé uni        principal      10 % défaut                54.685 m2     11 11 × Rouleau 10.05m x 0.53m (5.33 m²)
-Colle papier peint intissé      consommable    10 % défaut                 4.580 kg      1 1 × Seau 5 kg
-
-total : 2 lignes · 12 contenants
-`;
-
-exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_covering · intermediate · pose plain 1`] = `
-pièce   : Chambre rectangulaire
-ouvrage : Revetement mural (wall_covering) · surface wall
-niveau  : intermediate · pose : plain
-surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
-
-matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Papier peint intissé uni        principal       7 % exact                 53.194 m2     10 10 × Rouleau 10.05m x 0.53m (5.33 m²)
-Colle papier peint intissé      consommable     7 % exact                  4.455 kg      1 1 × Seau 5 kg
+Papier peint intissé uni        principal       3 % exact                 51.205 m2     10 10 × Rouleau 10.05m x 0.53m (5.33 m²)
+Colle papier peint intissé      consommable     2 % exact                  4.247 kg      1 1 × Seau 5 kg
 
 total : 2 lignes · 11 contenants
 `;
@@ -371,12 +332,12 @@ total : 2 lignes · 11 contenants
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_covering · intermediate · pose standard 1`] = `
 pièce   : Chambre rectangulaire
 ouvrage : Revetement mural (wall_covering) · surface wall
-niveau  : intermediate · pose : standard (implicite)
+niveau  : intermediate · pose : standard (non déclarée)
 surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Papier peint intissé uni        principal      10 % défaut                54.685 m2     11 11 × Rouleau 10.05m x 0.53m (5.33 m²)
-Colle papier peint intissé      consommable    10 % défaut                 4.580 kg      1 1 × Seau 5 kg
+Papier peint intissé uni        principal       8 % exact                 53.691 m2     11 11 × Rouleau 10.05m x 0.53m (5.33 m²)
+Colle papier peint intissé      consommable     3 % exact                  4.288 kg      1 1 × Seau 5 kg
 
 total : 2 lignes · 12 contenants
 `;
@@ -384,7 +345,7 @@ total : 2 lignes · 12 contenants
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_painting · beginner · pose standard 1`] = `
 pièce   : Chambre rectangulaire
 ouvrage : Peinture murale (wall_painting) · surface wall
-niveau  : beginner · pose : standard (implicite)
+niveau  : beginner · pose : standard (non déclarée)
 surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
@@ -397,7 +358,7 @@ total : 2 lignes · 3 contenants
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_painting · expert · pose standard 1`] = `
 pièce   : Chambre rectangulaire
 ouvrage : Peinture murale (wall_painting) · surface wall
-niveau  : expert · pose : standard (implicite)
+niveau  : expert · pose : standard (non déclarée)
 surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
@@ -410,7 +371,7 @@ total : 2 lignes · 5 contenants
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_painting · intermediate · pose standard 1`] = `
 pièce   : Chambre rectangulaire
 ouvrage : Peinture murale (wall_painting) · surface wall
-niveau  : intermediate · pose : standard (implicite)
+niveau  : intermediate · pose : standard (non déclarée)
 surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
@@ -428,38 +389,24 @@ surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Faïence murale 25x40 cm         principal      20 % exact                 39.968 m2     40 40 × Boîte 1 m²
-Colle en pâte prête à l'emploi  consommable    20 % exact                181.673 kg     13 12 × Seau 15 kg + 1 × Seau 7 kg
-Joint fin 1-6mm                 consommable    20 % exact                  9.093 kg      1 1 × Sac 10 kg
+Colle en pâte prête à l'emploi  consommable     5 % pose unique            158.964 kg     11 11 × Seau 15 kg
+Joint fin 1-6mm                 consommable     5 % pose unique              7.956 kg      1 1 × Sac 10 kg
 
-total : 3 lignes · 54 contenants
-`;
-
-exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_tiling · beginner · pose standard 1`] = `
-pièce   : Chambre rectangulaire
-ouvrage : Carrelage mural (wall_tiling) · surface wall
-niveau  : beginner · pose : standard (implicite)
-surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
-
-matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Faïence murale 25x40 cm         principal      10 % défaut                36.637 m2     37 37 × Boîte 1 m²
-Colle en pâte prête à l'emploi  consommable    10 % défaut               166.534 kg     12 11 × Seau 15 kg + 1 × Seau 7 kg
-Joint fin 1-6mm                 consommable    10 % défaut                 8.335 kg      1 1 × Sac 10 kg
-
-total : 3 lignes · 50 contenants
+total : 3 lignes · 52 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_tiling · beginner · pose straight 1`] = `
 pièce   : Chambre rectangulaire
 ouvrage : Carrelage mural (wall_tiling) · surface wall
-niveau  : beginner · pose : straight
+niveau  : beginner · pose : straight (non déclarée)
 surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Faïence murale 25x40 cm         principal      15 % exact                 38.303 m2     39 39 × Boîte 1 m²
-Colle en pâte prête à l'emploi  consommable    15 % exact                174.104 kg     12 12 × Seau 15 kg
-Joint fin 1-6mm                 consommable    15 % exact                  8.714 kg      1 1 × Sac 10 kg
+Colle en pâte prête à l'emploi  consommable     5 % pose unique            158.964 kg     11 11 × Seau 15 kg
+Joint fin 1-6mm                 consommable     5 % pose unique              7.956 kg      1 1 × Sac 10 kg
 
-total : 3 lignes · 52 contenants
+total : 3 lignes · 51 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_tiling · expert · pose diagonal 1`] = `
@@ -470,36 +417,22 @@ surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Faïence murale 25x40 cm         principal      10 % exact                 36.637 m2     37 37 × Boîte 1 m²
-Colle en pâte prête à l'emploi  consommable    10 % exact                166.534 kg     12 11 × Seau 15 kg + 1 × Seau 7 kg
-Joint fin 1-6mm                 consommable    10 % exact                  8.335 kg      1 1 × Sac 10 kg
+Colle en pâte prête à l'emploi  consommable     2 % pose unique            154.422 kg     11 10 × Seau 15 kg + 1 × Seau 7 kg
+Joint fin 1-6mm                 consommable     2 % pose unique              7.729 kg      1 1 × Sac 10 kg
 
-total : 3 lignes · 50 contenants
-`;
-
-exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_tiling · expert · pose standard 1`] = `
-pièce   : Chambre rectangulaire
-ouvrage : Carrelage mural (wall_tiling) · surface wall
-niveau  : expert · pose : standard (implicite)
-surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
-
-matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Faïence murale 25x40 cm         principal      10 % défaut                36.637 m2     37 37 × Boîte 1 m²
-Colle en pâte prête à l'emploi  consommable    10 % défaut               166.534 kg     12 11 × Seau 15 kg + 1 × Seau 7 kg
-Joint fin 1-6mm                 consommable    10 % défaut                 8.335 kg      1 1 × Sac 10 kg
-
-total : 3 lignes · 50 contenants
+total : 3 lignes · 49 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_tiling · expert · pose straight 1`] = `
 pièce   : Chambre rectangulaire
 ouvrage : Carrelage mural (wall_tiling) · surface wall
-niveau  : expert · pose : straight
+niveau  : expert · pose : straight (non déclarée)
 surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Faïence murale 25x40 cm         principal       5 % exact                 34.972 m2     35 35 × Boîte 1 m²
-Colle en pâte prête à l'emploi  consommable     5 % exact                158.964 kg     11 11 × Seau 15 kg
-Joint fin 1-6mm                 consommable     5 % exact                  7.956 kg      1 1 × Sac 10 kg
+Colle en pâte prête à l'emploi  consommable     2 % pose unique            154.422 kg     11 10 × Seau 15 kg + 1 × Seau 7 kg
+Joint fin 1-6mm                 consommable     2 % pose unique              7.729 kg      1 1 × Sac 10 kg
 
 total : 3 lignes · 47 contenants
 `;
@@ -512,36 +445,22 @@ surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Faïence murale 25x40 cm         principal      15 % exact                 38.303 m2     39 39 × Boîte 1 m²
-Colle en pâte prête à l'emploi  consommable    15 % exact                174.104 kg     12 12 × Seau 15 kg
-Joint fin 1-6mm                 consommable    15 % exact                  8.714 kg      1 1 × Sac 10 kg
+Colle en pâte prête à l'emploi  consommable     3 % pose unique            155.936 kg     11 10 × Seau 15 kg + 1 × Seau 7 kg
+Joint fin 1-6mm                 consommable     3 % pose unique              7.805 kg      1 1 × Sac 10 kg
 
-total : 3 lignes · 52 contenants
-`;
-
-exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_tiling · intermediate · pose standard 1`] = `
-pièce   : Chambre rectangulaire
-ouvrage : Carrelage mural (wall_tiling) · surface wall
-niveau  : intermediate · pose : standard (implicite)
-surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
-
-matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Faïence murale 25x40 cm         principal      10 % défaut                36.637 m2     37 37 × Boîte 1 m²
-Colle en pâte prête à l'emploi  consommable    10 % défaut               166.534 kg     12 11 × Seau 15 kg + 1 × Seau 7 kg
-Joint fin 1-6mm                 consommable    10 % défaut                 8.335 kg      1 1 × Sac 10 kg
-
-total : 3 lignes · 50 contenants
+total : 3 lignes · 51 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_tiling · intermediate · pose straight 1`] = `
 pièce   : Chambre rectangulaire
 ouvrage : Carrelage mural (wall_tiling) · surface wall
-niveau  : intermediate · pose : straight
+niveau  : intermediate · pose : straight (non déclarée)
 surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
 Faïence murale 25x40 cm         principal      10 % exact                 36.637 m2     37 37 × Boîte 1 m²
-Colle en pâte prête à l'emploi  consommable    10 % exact                166.534 kg     12 11 × Seau 15 kg + 1 × Seau 7 kg
-Joint fin 1-6mm                 consommable    10 % exact                  8.335 kg      1 1 × Sac 10 kg
+Colle en pâte prête à l'emploi  consommable     3 % pose unique            155.936 kg     11 10 × Seau 15 kg + 1 × Seau 7 kg
+Joint fin 1-6mm                 consommable     3 % pose unique              7.805 kg      1 1 × Sac 10 kg
 
-total : 3 lignes · 50 contenants
+total : 3 lignes · 49 contenants
 `;

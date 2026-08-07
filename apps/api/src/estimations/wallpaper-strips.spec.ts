@@ -372,8 +372,24 @@ describe('wallpaper-strips — un rouleau ne rend pas sa surface', () => {
         paperLine({ ...RECTANGULAR_ROOM.room, height_cm: heightCm })
           .units_needed;
 
-      // Perte implicite de 10 % comprise : la découpe pure donne 7 · 10 · 10.
-      expect([240, 250, 260].map(rolls)).toEqual([8, 11, 11]);
+      /*
+       * Découpe pure : 7 · 10 · 10 rouleaux. Le reste est la marge du niveau
+       * débutant.
+       *
+       * E1-7 — elle valait 10 %, et ces 10 % venaient du **repli générique** :
+       * `wall_covering` ne déclarait que les poses `plain` et `patterned`, que
+       * l'ouvrage ne demandait pas, donc aucune ligne ne correspondait. Elle
+       * vaut désormais 15 %, une ligne réelle du catalogue, calée sur la seule
+       * source qui chiffre ce cas — « un poseur novice doit prévoir 15 à 20 %
+       * de papier supplémentaire afin de compenser les erreurs de découpe ou
+       * les faux départs » (Bricomarché), au-dessus d'un calcul qui tient déjà
+       * compte du raccord. D'où le 9 à 2,40 m.
+       *
+       * Le mouvement qui compte est à l'autre bout du curseur : un expert passe
+       * de 11 à 10 rouleaux sur cette même chambre, parce qu'il touche enfin ses
+       * 3 % au lieu des 10 % génériques.
+       */
+      expect([240, 250, 260].map(rolls)).toEqual([9, 11, 11]);
     });
 
     it('fait bouger l’achat avec le raccord de motif', () => {

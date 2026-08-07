@@ -56,8 +56,13 @@ const mockMaterial = {
   applies_coats: true,
   is_active: true,
   is_eco: false,
+  // E1-7 : les trois niveaux, parce que le moteur ne comble plus les trous.
+  // Un catalogue partiel ne rend plus 10 % en silence, il lève — un fixture
+  // partiel doit donc être complété plutôt que subi.
   waste_factors: [
+    { pose_type: 'standard', skill_level: 'beginner', factor_percent: 15 },
     { pose_type: 'standard', skill_level: 'intermediate', factor_percent: 5 },
+    { pose_type: 'standard', skill_level: 'expert', factor_percent: 2 },
   ],
   packagings: [
     { label: 'Pot 10 L', quantity_per_unit: 10, unit: 'L' },
@@ -474,12 +479,27 @@ describe('EstimationsService.checkQuotePublic', () => {
     expect(result.implied_waste_percent).toBe(5.7);
   });
 
-  it('flags a bracket that is only the generic default', async () => {
-    // Le carrelage n'a aucune ligne `standard` au catalogue : un ouvrage sans
-    // pose déclarée (wall_tiling, qui ne pose pas la question) retombe sur le
-    // défaut générique de 10 %. La référence doit le **dire**, sinon la page
-    // présenterait un défaut comme une fourchette de pose — c'est ce qui rend
-    // « pas de référence » et « référence » distinguables à l'écran.
+  /**
+   * E1-7 — ce test décrivait le défaut, pas la règle.
+   *
+   * Il énonçait : « le carrelage n'a aucune ligne `standard` au catalogue, donc
+   * `wall_tiling`, qui ne pose pas la question, retombe sur le défaut générique
+   * de 10 % ». C'était vrai, et c'était précisément le défaut — le niveau de
+   * compétence n'avait plus aucun effet sur le carrelage mural. Le carrelage
+   * mural demande désormais sa pose, et sa fourchette est celle de cette pose.
+   *
+   * Ce qui reste vrai, et que ce test garde : un ouvrage **sans aucun matériau
+   * chiffrable** n'a pas de fourchette à opposer au devis, et la page doit le
+   * dire au lieu de présenter un défaut comme une référence (leçon 13).
+   */
+  it('annonce l’absence de référence quand l’ouvrage n’a aucun matériau', async () => {
+    // `mockResolvedValue` et non `…Once` : `checkQuotePublic` charge les
+    // matériaux **deux fois** — une pour chiffrer, une pour la fourchette. Une
+    // valeur à usage unique serait consommée par le premier appel et le second
+    // retrouverait le catalogue (corollaire de la leçon 27). Le `beforeEach`
+    // rétablit le défaut pour les tests suivants.
+    workTypeMaterialsRepoMock.find.mockResolvedValue([]);
+
     const result = await service.checkQuotePublic(
       makeQuoteCheckDto({ custom_params: {} }),
     );

@@ -43,8 +43,10 @@ export interface SeedWorkType {
 
 /**
  * Les questions contextuelles du carrelage sol : le format, la largeur de joint
- * et le type de pose. Le revêtement mural porte les siennes plus bas (E1-6) ;
- * les cinq autres ouvrages n'en portent aucune.
+ * et le type de pose. Le carrelage mural et le parquet portent la leur plus bas
+ * (E1-7), le revêtement mural les siennes (E1-6) ; les trois ouvrages restants
+ * — les deux peintures et la cloison sèche — n'en portent aucune, et n'ont pas
+ * de variante de pose au catalogue.
  *
  * E1-5 — `tile_format` pilote enfin quelque chose : la consommation de colle
  * (par le peigne que le format impose et par le double encollage que le NF DTU
@@ -102,6 +104,64 @@ const floorTilingQuestions: ContextualQuestion[] = [
     options: [
       { value: 'straight', label_fr: 'Pose droite' },
       { value: 'diagonal', label_fr: 'Pose diagonale' },
+    ],
+    required: true,
+  },
+];
+
+/**
+ * E1-7 — le calepinage, là où il change la coupe.
+ *
+ * Le carrelage mural et le parquet **seedaient** des poses distinctes sur leurs
+ * matériaux et ne demandaient rien : la pose transmise au moteur valait
+ * `standard`, qu'aucun de ces matériaux ne déclare. Le carrelage mural tombait
+ * donc sur les 10 % génériques quel que soit le niveau — le curseur de
+ * compétence n'y faisait rien — et la pose diagonale du parquet n'était
+ * atteignable par aucun chemin utilisateur.
+ *
+ * Ces deux questions ferment les deux trous d'un coup : elles rendent la pose
+ * **déclarable**, et elles rendent vrai l'invariant qui interdit désormais
+ * qu'un ouvrage transmette une pose que ses matériaux ne connaissent pas
+ * (`estimations/__tests__/waste-factor-coverage.spec.ts`, propriété W2).
+ *
+ * Requises, comme celle du carrelage sol : entre une pose droite et une pose
+ * diagonale, l'écart de perte va de 5 à 10 points — c'est un carton de carreaux
+ * ou un paquet de lames, pas un détail qu'on devine à la place de l'artisan.
+ */
+const wallTilingQuestions: ContextualQuestion[] = [
+  {
+    key: 'laying_pattern',
+    type: 'select',
+    label_fr: 'Type de pose',
+    options: [
+      { value: 'straight', label_fr: 'Pose droite' },
+      { value: 'diagonal', label_fr: 'Pose diagonale' },
+    ],
+    required: true,
+  },
+];
+
+/**
+ * Le parquet porte une **troisième** pose que le carrelage n'a pas : les
+ * chevrons (bâtons rompus, point de Hongrie). Elle est ajoutée par E1-7 parce
+ * que sans elle un chantier en chevrons était chiffré comme une diagonale, à
+ * 15 % là où la profession compte 15 à 20 % — un sous-achat sur la pose qui
+ * pardonne le moins, puisqu'une lame manquante ne se remplace pas par une lame
+ * d'un autre bain.
+ *
+ * Elle n'a **pas** d'équivalent au carrelage : aucune des sources consultées ne
+ * chiffre la chute d'un carrelage en chevrons, et inventer la valeur pour
+ * offrir l'option recréerait la donnée inatteignable que ce lot supprime.
+ */
+const parquetFlooringQuestions: ContextualQuestion[] = [
+  {
+    key: 'laying_pattern',
+    type: 'select',
+    label_fr: 'Type de pose',
+    options: [
+      { value: 'straight', label_fr: 'Pose droite' },
+      { value: 'diagonal', label_fr: 'Pose diagonale' },
+      { value: 'herringbone', label_fr: 'Chevrons ou point de Hongrie' },
     ],
     required: true,
   },
@@ -214,7 +274,7 @@ export const seedWorkTypes: SeedWorkType[] = [
     category: 'tiling',
     surface_target: 'wall',
     waste_factor_base: 1.1,
-    contextual_questions: [],
+    contextual_questions: wallTilingQuestions,
     display_order: 4,
     quantity_basis: 'room_surface',
     frame_spec: null,
@@ -226,7 +286,7 @@ export const seedWorkTypes: SeedWorkType[] = [
     category: 'flooring',
     surface_target: 'floor',
     waste_factor_base: 1.1,
-    contextual_questions: [],
+    contextual_questions: parquetFlooringQuestions,
     display_order: 5,
     quantity_basis: 'room_surface',
     frame_spec: null,

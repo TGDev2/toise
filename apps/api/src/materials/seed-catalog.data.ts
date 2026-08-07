@@ -95,40 +95,115 @@ const accessoryWaste = (): SeedMaterial['waste_factors'] => [
   { pose_type: 'standard', skill_level: 'expert', factor_percent: 2 },
 ];
 
-const tileStraightWaste = (): SeedMaterial['waste_factors'] => [
+/**
+ * E1-7 — la perte de coupe d'un carrelage : elle dépend du calepinage.
+ *
+ * Fourchettes métier (registre) : pose droite 5 à 10 %, pose diagonale 10 à
+ * 15 %. Le niveau **expert** prend le bas de la fourchette, l'**intermédiaire**
+ * le haut ; le **débutant** reçoit une marge au-delà, qu'aucune source ne
+ * chiffre parce qu'aucune ne s'adresse à lui. Valeurs inchangées par E1-7 :
+ * elles étaient déjà cohérentes avec la profession — ce qui était faux, c'est
+ * la liste des matériaux qui les portaient.
+ */
+const tileCoveringWaste = (): SeedMaterial['waste_factors'] => [
   { pose_type: 'straight', skill_level: 'beginner', factor_percent: 15 },
   { pose_type: 'straight', skill_level: 'intermediate', factor_percent: 10 },
   { pose_type: 'straight', skill_level: 'expert', factor_percent: 5 },
-];
-
-const tileDiagonalWaste = (): SeedMaterial['waste_factors'] => [
   { pose_type: 'diagonal', skill_level: 'beginner', factor_percent: 20 },
   { pose_type: 'diagonal', skill_level: 'intermediate', factor_percent: 15 },
   { pose_type: 'diagonal', skill_level: 'expert', factor_percent: 10 },
 ];
 
-const tileWaste = (): SeedMaterial['waste_factors'] => [
-  ...tileStraightWaste(),
-  ...tileDiagonalWaste(),
+/**
+ * E1-7 — la perte de coupe d'un sol posé en lames.
+ *
+ * `straight` remplace le `standard` d'avant ce lot, à valeurs identiques : la
+ * pose droite d'un parquet porte enfin le nom que le métier lui donne, et celui
+ * que l'écran propose. Sans ce renommage, choisir « pose droite » ne trouvait
+ * aucune ligne et retombait sur `standard` — un repli qui donnait le bon
+ * chiffre pour la mauvaise raison, et masquait le trou d'à côté.
+ *
+ * `diagonal` était **fausse** : 15/10/7 pour une pose que la profession chiffre
+ * de 10 à 20 %, avec 15 % comme règle courante. Un expert achetait 7 % de marge
+ * pour une coupe qui en demande le double — un sous-achat qui ne se découvre
+ * qu'à la dernière rangée, quand le bain de teinte n'est plus disponible.
+ *
+ * `herringbone` (chevrons, point de Hongrie) est **ajoutée** par E1-7 : sans
+ * elle, un chantier en chevrons était chiffré comme une diagonale. Fourchette
+ * professionnelle relevée : 12 à 20 %. Les valeurs retenues siègent au **haut**
+ * de cette fourchette, délibérément : dans un calepinage à motif, une lame
+ * manquante ne se rattrape pas avec une lame d'un autre lot.
+ */
+const floorCoveringWaste = (): SeedMaterial['waste_factors'] => [
+  { pose_type: 'straight', skill_level: 'beginner', factor_percent: 10 },
+  { pose_type: 'straight', skill_level: 'intermediate', factor_percent: 7 },
+  { pose_type: 'straight', skill_level: 'expert', factor_percent: 5 },
+  { pose_type: 'diagonal', skill_level: 'beginner', factor_percent: 20 },
+  { pose_type: 'diagonal', skill_level: 'intermediate', factor_percent: 17 },
+  { pose_type: 'diagonal', skill_level: 'expert', factor_percent: 15 },
+  { pose_type: 'herringbone', skill_level: 'beginner', factor_percent: 25 },
+  { pose_type: 'herringbone', skill_level: 'intermediate', factor_percent: 22 },
+  { pose_type: 'herringbone', skill_level: 'expert', factor_percent: 20 },
 ];
 
-const floorStandardWaste = (): SeedMaterial['waste_factors'] => [
+/**
+ * E1-7 — ce qui se **découpe** sans dépendre du calepinage.
+ *
+ * Sous-couches, films, nattes de découplage, bandes d'étanchéité, plinthes et
+ * profilés : ils se coupent, donc ils ont une chute, mais elle suit la forme de
+ * la pièce et non le motif du revêtement. Leur donner les poses du revêtement
+ * ferait varier une chute qui ne varie pas — c'est ce que faisait le catalogue
+ * avant ce lot, où une natte de découplage coûtait 5 points de plus parce que
+ * les carreaux au-dessus étaient posés en diagonale.
+ *
+ * Valeurs reprises de l'ancien `floorStandardWaste()`, où elles étaient déjà
+ * celles de cette famille.
+ */
+const cutAncillaryWaste = (): SeedMaterial['waste_factors'] => [
   { pose_type: 'standard', skill_level: 'beginner', factor_percent: 10 },
   { pose_type: 'standard', skill_level: 'intermediate', factor_percent: 7 },
   { pose_type: 'standard', skill_level: 'expert', factor_percent: 5 },
 ];
 
-const floorDiagonalWaste = (): SeedMaterial['waste_factors'] => [
-  { pose_type: 'diagonal', skill_level: 'beginner', factor_percent: 15 },
-  { pose_type: 'diagonal', skill_level: 'intermediate', factor_percent: 10 },
-  { pose_type: 'diagonal', skill_level: 'expert', factor_percent: 7 },
+/**
+ * E1-7 — ce qui se **dose** : mortiers-colles, colles, joints, primaires,
+ * ragréages, SEL.
+ *
+ * Le point de métier qui commande ce jeu de valeurs : **une chute de carreau
+ * est reposée ailleurs**. Le morceau coupé pour border un mur est collé sur sa
+ * propre surface, et cette surface est déjà comptée. La colle suit donc la
+ * surface **nette** à couvrir, jamais la surface **achetée**. Lui appliquer la
+ * perte de coupe du carreau était un double comptage : en pose diagonale
+ * débutante, 20 % sur 7,14 kg/m² faisaient acheter un sac de 25 kg pour rien.
+ *
+ * Ce qui reste, et que ces valeurs représentent, est la **gâchée perdue** —
+ * fond de seau, mortier tiré trop tôt, peigne trop chargé. Aucune fiche
+ * fabricant ni aucun guide consulté ne la chiffre : les fiches donnent une
+ * consommation « à titre indicatif » et renvoient la variation au peigne et au
+ * double encollage, que le moteur modélise déjà depuis E1-5
+ * (`estimations/tile-consumption.ts`). Ces trois valeurs sont donc une marge de
+ * prudence assumée, volontairement placée **sous** toutes les échelles de chute
+ * du catalogue, et non une donnée sourcée. C'est écrit tel quel au registre.
+ */
+const dosedWaste = (): SeedMaterial['waste_factors'] => [
+  { pose_type: 'standard', skill_level: 'beginner', factor_percent: 5 },
+  { pose_type: 'standard', skill_level: 'intermediate', factor_percent: 3 },
+  { pose_type: 'standard', skill_level: 'expert', factor_percent: 2 },
 ];
 
-const floorWaste = (): SeedMaterial['waste_factors'] => [
-  ...floorStandardWaste(),
-  ...floorDiagonalWaste(),
-];
-
+/**
+ * Plâtrerie. Une cloison n'a pas de calepinage à déclarer : pose unique.
+ *
+ * **Réserve connue, non traitée par E1-7** : les rendements de parement seedés
+ * viennent du quantitatif Placo® « pour réaliser 1 m² de cloison » (2,1 m²/m²
+ * à deux faces), dans lequel la profession loge déjà environ 5 % de chute — le
+ * SNIP l'écrit noir sur blanc pour le même quantitatif (« coefficient de perte
+ * pris à 5 % »). Ces 12/8/4 s'ajoutent donc à une marge déjà présente. Corriger
+ * demande de réexprimer les rendements en géométrie pure, ce qui touche le
+ * registre des rendements et les encadrements de consommation : c'est le
+ * périmètre d'E1-8, pas celui-ci. Le sens de l'écart est le sens sûr (on achète
+ * un peu trop), et il est écrit ici pour ne pas être redécouvert.
+ */
 const partitionWaste = (): SeedMaterial['waste_factors'] => [
   { pose_type: 'standard', skill_level: 'beginner', factor_percent: 12 },
   { pose_type: 'standard', skill_level: 'intermediate', factor_percent: 8 },
@@ -162,21 +237,39 @@ const standardWallpaperRoll = (): Pick<
   ],
 });
 
-const wallCoveringPlainWaste = (): SeedMaterial['waste_factors'] => [
-  { pose_type: 'plain', skill_level: 'beginner', factor_percent: 10 },
-  { pose_type: 'plain', skill_level: 'intermediate', factor_percent: 7 },
-  { pose_type: 'plain', skill_level: 'expert', factor_percent: 3 },
-];
-
-const wallCoveringPatternedWaste = (): SeedMaterial['waste_factors'] => [
-  { pose_type: 'patterned', skill_level: 'beginner', factor_percent: 18 },
-  { pose_type: 'patterned', skill_level: 'intermediate', factor_percent: 12 },
-  { pose_type: 'patterned', skill_level: 'expert', factor_percent: 7 },
-];
-
-const wallCoveringWaste = (): SeedMaterial['waste_factors'] => [
-  ...wallCoveringPlainWaste(),
-  ...wallCoveringPatternedWaste(),
+/**
+ * E1-7 — ce qui reste à perdre sur un papier peint **une fois les lés comptés**.
+ *
+ * Avant ce lot, ce catalogue distinguait deux poses, `plain` et `patterned`, à
+ * 10/7/3 et 18/12/7. Deux raisons de les supprimer, et pas seulement de les
+ * compléter :
+ *
+ * 1. **Elles produisaient l'incohérence exacte que le lot corrige.** Aucun
+ *    ouvrage ne demandait la pose : le moteur transmettait `standard`, que ni
+ *    l'une ni l'autre ne déclarait, et les trois niveaux tombaient sur les 10 %
+ *    génériques. Répondre « uni » *baissait* la perte de 10 à 3 % — préciser
+ *    améliorait le résultat, ce qui ne décrit aucun chantier.
+ * 2. **La chute de raccord est désormais comptée géométriquement.** Depuis E1-6,
+ *    `estimations/wallpaper-strips.ts` allonge chaque lé de la hauteur du
+ *    raccord et arrondit au lé entier, pan par pan — c'est la méthode que le
+ *    NF DTU 59.4 §6.6.5 prescrit, et c'est la chute que `patterned` représentait
+ *    forfaitairement. Garder les deux, c'était compter le motif deux fois.
+ *
+ * Ce qui subsiste ne dépend donc plus du papier mais du **poseur** : le lé
+ * gâché, le faux départ, la coupe ratée. C'est exactement ce que Bricomarché
+ * chiffre pour un débutant — « un poseur novice doit effectivement prévoir 15 à
+ * 20 % de papier supplémentaire afin de compenser les erreurs de découpe ou les
+ * faux départs », au-dessus d'un calcul qui tient déjà compte du raccord. Les
+ * 3 % de l'expert sont la valeur `plain` d'avant ce lot, conservée : un lé gâché
+ * sur une trentaine.
+ *
+ * Pose unique, donc, et l'ouvrage ne pose aucune question de calepinage : le
+ * seul paramètre qui comptait, le raccord, est déjà demandé et déjà lu.
+ */
+const wallpaperStripWaste = (): SeedMaterial['waste_factors'] => [
+  { pose_type: 'standard', skill_level: 'beginner', factor_percent: 15 },
+  { pose_type: 'standard', skill_level: 'intermediate', factor_percent: 8 },
+  { pose_type: 'standard', skill_level: 'expert', factor_percent: 3 },
 ];
 
 // ---------------------------------------------------------------------------
@@ -683,7 +776,7 @@ export const tilingMaterials: SeedMaterial[] = [
       { label: 'Boîte 1 m²', quantity_per_unit: 1, unit: 'm2' },
       { label: 'Boîte 1.5 m²', quantity_per_unit: 1.5, unit: 'm2' },
     ],
-    waste_factors: tileWaste(),
+    waste_factors: tileCoveringWaste(),
   },
   {
     name: 'Carrelage sol 30x30 cm',
@@ -694,7 +787,7 @@ export const tilingMaterials: SeedMaterial[] = [
       { label: 'Boîte 1 m²', quantity_per_unit: 1, unit: 'm2' },
       { label: 'Boîte 1.5 m²', quantity_per_unit: 1.5, unit: 'm2' },
     ],
-    waste_factors: tileWaste(),
+    waste_factors: tileCoveringWaste(),
   },
   {
     name: 'Carrelage sol 45x45 cm',
@@ -705,7 +798,7 @@ export const tilingMaterials: SeedMaterial[] = [
       { label: 'Boîte 1 m²', quantity_per_unit: 1, unit: 'm2' },
       { label: 'Boîte 1.5 m²', quantity_per_unit: 1.5, unit: 'm2' },
     ],
-    waste_factors: tileWaste(),
+    waste_factors: tileCoveringWaste(),
   },
   {
     name: 'Carrelage sol 60x60 cm',
@@ -716,7 +809,7 @@ export const tilingMaterials: SeedMaterial[] = [
       { label: 'Boîte 1.08 m²', quantity_per_unit: 1.08, unit: 'm2' },
       { label: 'Boîte 1.44 m²', quantity_per_unit: 1.44, unit: 'm2' },
     ],
-    waste_factors: tileWaste(),
+    waste_factors: tileCoveringWaste(),
   },
   {
     name: 'Carrelage sol 30x60 cm',
@@ -727,7 +820,7 @@ export const tilingMaterials: SeedMaterial[] = [
       { label: 'Boîte 1.08 m²', quantity_per_unit: 1.08, unit: 'm2' },
       { label: 'Boîte 1.44 m²', quantity_per_unit: 1.44, unit: 'm2' },
     ],
-    waste_factors: tileWaste(),
+    waste_factors: tileCoveringWaste(),
   },
   // Wall tiles
   {
@@ -736,7 +829,7 @@ export const tilingMaterials: SeedMaterial[] = [
     unit: 'm2',
     yield_per_unit: 1,
     packagings: [{ label: 'Boîte 1 m²', quantity_per_unit: 1, unit: 'm2' }],
-    waste_factors: tileWaste(),
+    waste_factors: tileCoveringWaste(),
   },
   {
     name: 'Carrelage mural 15x15 cm',
@@ -744,7 +837,7 @@ export const tilingMaterials: SeedMaterial[] = [
     unit: 'm2',
     yield_per_unit: 1,
     packagings: [{ label: 'Boîte 1 m²', quantity_per_unit: 1, unit: 'm2' }],
-    waste_factors: tileWaste(),
+    waste_factors: tileCoveringWaste(),
   },
   {
     name: 'Carrelage mural 20x20 cm',
@@ -752,7 +845,7 @@ export const tilingMaterials: SeedMaterial[] = [
     unit: 'm2',
     yield_per_unit: 1,
     packagings: [{ label: 'Boîte 1 m²', quantity_per_unit: 1, unit: 'm2' }],
-    waste_factors: tileWaste(),
+    waste_factors: tileCoveringWaste(),
   },
   {
     name: 'Carrelage mural 20x40 cm',
@@ -760,7 +853,7 @@ export const tilingMaterials: SeedMaterial[] = [
     unit: 'm2',
     yield_per_unit: 1,
     packagings: [{ label: 'Boîte 1 m²', quantity_per_unit: 1, unit: 'm2' }],
-    waste_factors: tileWaste(),
+    waste_factors: tileCoveringWaste(),
   },
   {
     name: 'Carrelage mural 30x60 cm',
@@ -770,7 +863,7 @@ export const tilingMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Boîte 1.08 m²', quantity_per_unit: 1.08, unit: 'm2' },
     ],
-    waste_factors: tileWaste(),
+    waste_factors: tileCoveringWaste(),
   },
   {
     name: 'Mosaïque 30x30 cm',
@@ -780,7 +873,7 @@ export const tilingMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Plaque 0.09 m²', quantity_per_unit: 0.09, unit: 'm2' },
     ],
-    waste_factors: tileWaste(),
+    waste_factors: tileCoveringWaste(),
   },
   {
     name: 'Faïence murale 25x40 cm',
@@ -788,7 +881,7 @@ export const tilingMaterials: SeedMaterial[] = [
     unit: 'm2',
     yield_per_unit: 1,
     packagings: [{ label: 'Boîte 1 m²', quantity_per_unit: 1, unit: 'm2' }],
-    waste_factors: tileWaste(),
+    waste_factors: tileCoveringWaste(),
   },
   // Adhesives
   //
@@ -812,7 +905,7 @@ export const tilingMaterials: SeedMaterial[] = [
     yield_per_unit: 0.14,
     consumption_model: 'tile_adhesive',
     packagings: [{ label: 'Sac 25 kg', quantity_per_unit: 25, unit: 'kg' }],
-    waste_factors: tileWaste(),
+    waste_factors: dosedWaste(),
   },
   {
     name: 'Mortier-colle flexible (C2)',
@@ -821,7 +914,7 @@ export const tilingMaterials: SeedMaterial[] = [
     yield_per_unit: 0.14,
     consumption_model: 'tile_adhesive',
     packagings: [{ label: 'Sac 25 kg', quantity_per_unit: 25, unit: 'kg' }],
-    waste_factors: tileWaste(),
+    waste_factors: dosedWaste(),
   },
   {
     name: 'Mortier-colle rapide (C2F)',
@@ -830,7 +923,7 @@ export const tilingMaterials: SeedMaterial[] = [
     yield_per_unit: 0.14,
     consumption_model: 'tile_adhesive',
     packagings: [{ label: 'Sac 25 kg', quantity_per_unit: 25, unit: 'kg' }],
-    waste_factors: tileWaste(),
+    waste_factors: dosedWaste(),
   },
   {
     name: 'Mortier-colle grand format (C2S1)',
@@ -839,7 +932,7 @@ export const tilingMaterials: SeedMaterial[] = [
     yield_per_unit: 0.14,
     consumption_model: 'tile_adhesive',
     packagings: [{ label: 'Sac 25 kg', quantity_per_unit: 25, unit: 'kg' }],
-    waste_factors: tileWaste(),
+    waste_factors: dosedWaste(),
   },
   {
     name: "Colle en pâte prête à l'emploi",
@@ -850,7 +943,7 @@ export const tilingMaterials: SeedMaterial[] = [
       { label: 'Seau 7 kg', quantity_per_unit: 7, unit: 'kg' },
       { label: 'Seau 15 kg', quantity_per_unit: 15, unit: 'kg' },
     ],
-    waste_factors: tileWaste(),
+    waste_factors: dosedWaste(),
   },
   // Grout
   //
@@ -876,7 +969,7 @@ export const tilingMaterials: SeedMaterial[] = [
       { label: 'Sac 5 kg', quantity_per_unit: 5, unit: 'kg' },
       { label: 'Sac 10 kg', quantity_per_unit: 10, unit: 'kg' },
     ],
-    waste_factors: tileWaste(),
+    waste_factors: dosedWaste(),
   },
   {
     name: 'Joint large 5-20mm',
@@ -887,7 +980,7 @@ export const tilingMaterials: SeedMaterial[] = [
       { label: 'Sac 5 kg', quantity_per_unit: 5, unit: 'kg' },
       { label: 'Sac 10 kg', quantity_per_unit: 10, unit: 'kg' },
     ],
-    waste_factors: tileWaste(),
+    waste_factors: dosedWaste(),
   },
   {
     name: 'Joint époxy',
@@ -898,7 +991,7 @@ export const tilingMaterials: SeedMaterial[] = [
       { label: 'Seau 2.5 kg', quantity_per_unit: 2.5, unit: 'kg' },
       { label: 'Seau 5 kg', quantity_per_unit: 5, unit: 'kg' },
     ],
-    waste_factors: tileWaste(),
+    waste_factors: dosedWaste(),
   },
   {
     name: 'Joint souple silicone',
@@ -908,7 +1001,7 @@ export const tilingMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Cartouche 300 ml', quantity_per_unit: 1, unit: 'unit' },
     ],
-    waste_factors: tileWaste(),
+    waste_factors: dosedWaste(),
   },
   // Accessories
   {
@@ -999,7 +1092,7 @@ export const tilingMaterials: SeedMaterial[] = [
       { label: 'Bidon 6 L', quantity_per_unit: 6, unit: 'L' },
       { label: 'Bidon 12 L', quantity_per_unit: 12, unit: 'L' },
     ],
-    waste_factors: tileWaste(),
+    waste_factors: dosedWaste(),
   },
   {
     name: "Bande d'étanchéité 120mm",
@@ -1010,7 +1103,7 @@ export const tilingMaterials: SeedMaterial[] = [
       { label: 'Rouleau 10 m', quantity_per_unit: 10, unit: 'm' },
       { label: 'Rouleau 50 m', quantity_per_unit: 50, unit: 'm' },
     ],
-    waste_factors: tileWaste(),
+    waste_factors: cutAncillaryWaste(),
   },
   {
     name: 'Natte de découplage',
@@ -1021,7 +1114,7 @@ export const tilingMaterials: SeedMaterial[] = [
       { label: 'Rouleau 5 m²', quantity_per_unit: 5, unit: 'm2' },
       { label: 'Rouleau 30 m²', quantity_per_unit: 30, unit: 'm2' },
     ],
-    waste_factors: tileWaste(),
+    waste_factors: cutAncillaryWaste(),
   },
   // More tiling
   {
@@ -1030,7 +1123,7 @@ export const tilingMaterials: SeedMaterial[] = [
     unit: 'm2',
     yield_per_unit: 1,
     packagings: [{ label: 'Boîte 1.2 m²', quantity_per_unit: 1.2, unit: 'm2' }],
-    waste_factors: tileWaste(),
+    waste_factors: tileCoveringWaste(),
   },
   {
     name: 'Carrelage imitation pierre 60x60 cm',
@@ -1040,7 +1133,7 @@ export const tilingMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Boîte 1.08 m²', quantity_per_unit: 1.08, unit: 'm2' },
     ],
-    waste_factors: tileWaste(),
+    waste_factors: tileCoveringWaste(),
   },
   {
     name: 'Carrelage extérieur antidérapant 30x30 cm',
@@ -1048,7 +1141,7 @@ export const tilingMaterials: SeedMaterial[] = [
     unit: 'm2',
     yield_per_unit: 1,
     packagings: [{ label: 'Boîte 1 m²', quantity_per_unit: 1, unit: 'm2' }],
-    waste_factors: tileWaste(),
+    waste_factors: tileCoveringWaste(),
   },
   {
     name: 'Plinthe carrelage 8x30 cm',
@@ -1056,7 +1149,7 @@ export const tilingMaterials: SeedMaterial[] = [
     unit: 'm',
     yield_per_unit: 1,
     packagings: [{ label: 'Lot de 10 (3 m)', quantity_per_unit: 3, unit: 'm' }],
-    waste_factors: tileWaste(),
+    waste_factors: cutAncillaryWaste(),
   },
   {
     name: 'Carrelage hexagonal 20cm',
@@ -1066,7 +1159,7 @@ export const tilingMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Boîte 0.98 m²', quantity_per_unit: 0.98, unit: 'm2' },
     ],
-    waste_factors: tileWaste(),
+    waste_factors: tileCoveringWaste(),
   },
   // Extra tiling
   {
@@ -1078,7 +1171,7 @@ export const tilingMaterials: SeedMaterial[] = [
       { label: 'Bidon 1 L', quantity_per_unit: 1, unit: 'L' },
       { label: 'Bidon 5 L', quantity_per_unit: 5, unit: 'L' },
     ],
-    waste_factors: tileWaste(),
+    waste_factors: dosedWaste(),
   },
   {
     name: 'Ragréage autolissant',
@@ -1086,7 +1179,7 @@ export const tilingMaterials: SeedMaterial[] = [
     unit: 'kg',
     yield_per_unit: 0.2,
     packagings: [{ label: 'Sac 25 kg', quantity_per_unit: 25, unit: 'kg' }],
-    waste_factors: tileWaste(),
+    waste_factors: dosedWaste(),
   },
   {
     name: 'Carrelage sol 80x80 cm',
@@ -1096,7 +1189,7 @@ export const tilingMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Boîte 1.28 m²', quantity_per_unit: 1.28, unit: 'm2' },
     ],
-    waste_factors: tileWaste(),
+    waste_factors: tileCoveringWaste(),
   },
   {
     name: 'Carrelage métro 7.5x15 cm',
@@ -1104,7 +1197,7 @@ export const tilingMaterials: SeedMaterial[] = [
     unit: 'm2',
     yield_per_unit: 1,
     packagings: [{ label: 'Boîte 1 m²', quantity_per_unit: 1, unit: 'm2' }],
-    waste_factors: tileWaste(),
+    waste_factors: tileCoveringWaste(),
   },
   {
     name: 'Croisillons auto-nivelants (x100)',
@@ -1146,7 +1239,7 @@ export const tilingMaterials: SeedMaterial[] = [
     unit: 'm2',
     yield_per_unit: 1,
     packagings: [{ label: 'Boîte 1 m²', quantity_per_unit: 1, unit: 'm2' }],
-    waste_factors: tileWaste(),
+    waste_factors: tileCoveringWaste(),
   },
   {
     name: 'Mortier de ragréage extérieur',
@@ -1154,7 +1247,7 @@ export const tilingMaterials: SeedMaterial[] = [
     unit: 'kg',
     yield_per_unit: 0.2,
     packagings: [{ label: 'Sac 25 kg', quantity_per_unit: 25, unit: 'kg' }],
-    waste_factors: tileWaste(),
+    waste_factors: dosedWaste(),
   },
 ];
 
@@ -1171,7 +1264,7 @@ export const flooringMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Paquet 2.47 m²', quantity_per_unit: 2.47, unit: 'm2' },
     ],
-    waste_factors: floorWaste(),
+    waste_factors: floorCoveringWaste(),
   },
   {
     name: 'Stratifié 8mm AC4',
@@ -1181,7 +1274,7 @@ export const flooringMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Paquet 2.49 m²', quantity_per_unit: 2.49, unit: 'm2' },
     ],
-    waste_factors: floorWaste(),
+    waste_factors: floorCoveringWaste(),
   },
   {
     name: 'Stratifié 10mm AC4',
@@ -1191,7 +1284,7 @@ export const flooringMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Paquet 2.22 m²', quantity_per_unit: 2.22, unit: 'm2' },
     ],
-    waste_factors: floorWaste(),
+    waste_factors: floorCoveringWaste(),
   },
   {
     name: 'Stratifié 12mm AC5',
@@ -1201,7 +1294,7 @@ export const flooringMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Paquet 1.48 m²', quantity_per_unit: 1.48, unit: 'm2' },
     ],
-    waste_factors: floorWaste(),
+    waste_factors: floorCoveringWaste(),
   },
   // Engineered parquet
   {
@@ -1212,7 +1305,7 @@ export const flooringMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Paquet 1.58 m²', quantity_per_unit: 1.58, unit: 'm2' },
     ],
-    waste_factors: floorWaste(),
+    waste_factors: floorCoveringWaste(),
   },
   {
     name: 'Parquet contrecollé chêne 10mm',
@@ -1222,7 +1315,7 @@ export const flooringMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Paquet 2.03 m²', quantity_per_unit: 2.03, unit: 'm2' },
     ],
-    waste_factors: floorWaste(),
+    waste_factors: floorCoveringWaste(),
   },
   {
     name: 'Parquet massif chêne 22mm',
@@ -1232,7 +1325,7 @@ export const flooringMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Paquet 1.17 m²', quantity_per_unit: 1.17, unit: 'm2' },
     ],
-    waste_factors: floorWaste(),
+    waste_factors: floorCoveringWaste(),
   },
   {
     name: 'Parquet bambou 15mm',
@@ -1242,7 +1335,7 @@ export const flooringMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Paquet 1.83 m²', quantity_per_unit: 1.83, unit: 'm2' },
     ],
-    waste_factors: floorWaste(),
+    waste_factors: floorCoveringWaste(),
   },
   // Vinyl / LVT
   {
@@ -1253,7 +1346,7 @@ export const flooringMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Paquet 2.12 m²', quantity_per_unit: 2.12, unit: 'm2' },
     ],
-    waste_factors: floorWaste(),
+    waste_factors: floorCoveringWaste(),
   },
   {
     name: 'Lame vinyle clipsable 5mm SPC',
@@ -1263,7 +1356,7 @@ export const flooringMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Paquet 2.22 m²', quantity_per_unit: 2.22, unit: 'm2' },
     ],
-    waste_factors: floorWaste(),
+    waste_factors: floorCoveringWaste(),
   },
   {
     name: 'Lame vinyle à coller 2.5mm',
@@ -1273,7 +1366,7 @@ export const flooringMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Paquet 3.34 m²', quantity_per_unit: 3.34, unit: 'm2' },
     ],
-    waste_factors: floorWaste(),
+    waste_factors: floorCoveringWaste(),
   },
   {
     name: 'Dalle vinyle 60x60 cm',
@@ -1283,7 +1376,7 @@ export const flooringMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Boîte 2.16 m²', quantity_per_unit: 2.16, unit: 'm2' },
     ],
-    waste_factors: floorWaste(),
+    waste_factors: floorCoveringWaste(),
   },
   {
     name: 'Sol PVC en rouleau',
@@ -1293,7 +1386,7 @@ export const flooringMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Rouleau (au m²)', quantity_per_unit: 1, unit: 'm2' },
     ],
-    waste_factors: floorWaste(),
+    waste_factors: floorCoveringWaste(),
   },
   // Underlay
   {
@@ -1302,7 +1395,7 @@ export const flooringMaterials: SeedMaterial[] = [
     unit: 'm2',
     yield_per_unit: 1,
     packagings: [{ label: 'Rouleau 15 m²', quantity_per_unit: 15, unit: 'm2' }],
-    waste_factors: floorStandardWaste(),
+    waste_factors: cutAncillaryWaste(),
   },
   {
     name: 'Sous-couche mousse 3mm',
@@ -1310,7 +1403,7 @@ export const flooringMaterials: SeedMaterial[] = [
     unit: 'm2',
     yield_per_unit: 1,
     packagings: [{ label: 'Rouleau 15 m²', quantity_per_unit: 15, unit: 'm2' }],
-    waste_factors: floorStandardWaste(),
+    waste_factors: cutAncillaryWaste(),
   },
   {
     name: 'Sous-couche liège 2mm',
@@ -1318,7 +1411,7 @@ export const flooringMaterials: SeedMaterial[] = [
     unit: 'm2',
     yield_per_unit: 1,
     packagings: [{ label: 'Rouleau 10 m²', quantity_per_unit: 10, unit: 'm2' }],
-    waste_factors: floorStandardWaste(),
+    waste_factors: cutAncillaryWaste(),
   },
   {
     name: 'Sous-couche acoustique 5mm',
@@ -1326,7 +1419,7 @@ export const flooringMaterials: SeedMaterial[] = [
     unit: 'm2',
     yield_per_unit: 1,
     packagings: [{ label: 'Rouleau 10 m²', quantity_per_unit: 10, unit: 'm2' }],
-    waste_factors: floorStandardWaste(),
+    waste_factors: cutAncillaryWaste(),
   },
   {
     name: 'Film pare-vapeur PE',
@@ -1334,7 +1427,7 @@ export const flooringMaterials: SeedMaterial[] = [
     unit: 'm2',
     yield_per_unit: 0.8,
     packagings: [{ label: 'Rouleau 20 m²', quantity_per_unit: 20, unit: 'm2' }],
-    waste_factors: floorStandardWaste(),
+    waste_factors: cutAncillaryWaste(),
   },
   // Skirting & transitions
   {
@@ -1343,7 +1436,7 @@ export const flooringMaterials: SeedMaterial[] = [
     unit: 'm',
     yield_per_unit: 1,
     packagings: [{ label: 'Barre 2.4 m', quantity_per_unit: 2.4, unit: 'm' }],
-    waste_factors: floorStandardWaste(),
+    waste_factors: cutAncillaryWaste(),
   },
   {
     name: 'Plinthe MDF 80mm 2.4m',
@@ -1351,7 +1444,7 @@ export const flooringMaterials: SeedMaterial[] = [
     unit: 'm',
     yield_per_unit: 1,
     packagings: [{ label: 'Barre 2.4 m', quantity_per_unit: 2.4, unit: 'm' }],
-    waste_factors: floorStandardWaste(),
+    waste_factors: cutAncillaryWaste(),
   },
   {
     name: 'Plinthe chêne 70mm 2.4m',
@@ -1359,7 +1452,7 @@ export const flooringMaterials: SeedMaterial[] = [
     unit: 'm',
     yield_per_unit: 1,
     packagings: [{ label: 'Barre 2.4 m', quantity_per_unit: 2.4, unit: 'm' }],
-    waste_factors: floorStandardWaste(),
+    waste_factors: cutAncillaryWaste(),
   },
   {
     name: 'Barre de seuil alu 93cm',
@@ -1383,7 +1476,7 @@ export const flooringMaterials: SeedMaterial[] = [
     unit: 'm',
     yield_per_unit: 1,
     packagings: [{ label: 'Barre 2.7 m', quantity_per_unit: 2.7, unit: 'm' }],
-    waste_factors: floorStandardWaste(),
+    waste_factors: cutAncillaryWaste(),
   },
   {
     name: 'Coins de plinthe',
@@ -1413,7 +1506,7 @@ export const flooringMaterials: SeedMaterial[] = [
       { label: 'Seau 7 kg', quantity_per_unit: 7, unit: 'kg' },
       { label: 'Seau 15 kg', quantity_per_unit: 15, unit: 'kg' },
     ],
-    waste_factors: floorStandardWaste(),
+    waste_factors: dosedWaste(),
   },
   {
     name: 'Kit de pose stratifié (cale+tire-lame+maillet)',
@@ -1432,7 +1525,7 @@ export const flooringMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Paquet 1.36 m²', quantity_per_unit: 1.36, unit: 'm2' },
     ],
-    waste_factors: floorWaste(),
+    waste_factors: floorCoveringWaste(),
   },
   {
     name: 'Sous-couche fibre de bois 5mm',
@@ -1440,7 +1533,7 @@ export const flooringMaterials: SeedMaterial[] = [
     unit: 'm2',
     yield_per_unit: 1,
     packagings: [{ label: 'Paquet 7 m²', quantity_per_unit: 7, unit: 'm2' }],
-    waste_factors: floorStandardWaste(),
+    waste_factors: cutAncillaryWaste(),
   },
   {
     name: 'Ruban adhésif pare-vapeur',
@@ -1460,7 +1553,7 @@ export const flooringMaterials: SeedMaterial[] = [
       { label: 'Seau 6 kg', quantity_per_unit: 6, unit: 'kg' },
       { label: 'Seau 12 kg', quantity_per_unit: 12, unit: 'kg' },
     ],
-    waste_factors: floorStandardWaste(),
+    waste_factors: dosedWaste(),
   },
   {
     name: 'Moquette aiguilletée',
@@ -1470,7 +1563,7 @@ export const flooringMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Rouleau (au m²)', quantity_per_unit: 1, unit: 'm2' },
     ],
-    waste_factors: floorWaste(),
+    waste_factors: floorCoveringWaste(),
   },
   {
     name: 'Jonc de mer',
@@ -1480,7 +1573,7 @@ export const flooringMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Rouleau (au m²)', quantity_per_unit: 1, unit: 'm2' },
     ],
-    waste_factors: floorWaste(),
+    waste_factors: floorCoveringWaste(),
   },
   {
     name: 'Sisal naturel',
@@ -1490,7 +1583,7 @@ export const flooringMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Rouleau (au m²)', quantity_per_unit: 1, unit: 'm2' },
     ],
-    waste_factors: floorWaste(),
+    waste_factors: floorCoveringWaste(),
   },
   {
     name: 'Bande de seuil adhésive',
@@ -1506,7 +1599,7 @@ export const flooringMaterials: SeedMaterial[] = [
     unit: 'kg',
     yield_per_unit: 0.2,
     packagings: [{ label: 'Sac 25 kg', quantity_per_unit: 25, unit: 'kg' }],
-    waste_factors: floorStandardWaste(),
+    waste_factors: dosedWaste(),
   },
   {
     name: "Primaire d'accrochage sol",
@@ -1517,7 +1610,7 @@ export const flooringMaterials: SeedMaterial[] = [
       { label: 'Bidon 1 L', quantity_per_unit: 1, unit: 'L' },
       { label: 'Bidon 5 L', quantity_per_unit: 5, unit: 'L' },
     ],
-    waste_factors: floorStandardWaste(),
+    waste_factors: dosedWaste(),
   },
   {
     name: 'Lame PVC adhésive',
@@ -1527,7 +1620,7 @@ export const flooringMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Paquet 2.08 m²', quantity_per_unit: 2.08, unit: 'm2' },
     ],
-    waste_factors: floorWaste(),
+    waste_factors: floorCoveringWaste(),
   },
   {
     name: 'Cale de dilatation (x40)',
@@ -1901,7 +1994,7 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     // colonne. Cf. `roll_width_cm` sur `materials_catalog`.
     yield_per_unit: 1,
     ...standardWallpaperRoll(),
-    waste_factors: wallCoveringPlainWaste(),
+    waste_factors: wallpaperStripWaste(),
   },
   {
     name: 'Papier peint intissé à motif',
@@ -1909,7 +2002,7 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     unit: 'm2',
     yield_per_unit: 1,
     ...standardWallpaperRoll(),
-    waste_factors: wallCoveringWaste(),
+    waste_factors: wallpaperStripWaste(),
   },
   {
     name: 'Papier peint vinyle expansé',
@@ -1917,7 +2010,7 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     unit: 'm2',
     yield_per_unit: 1,
     ...standardWallpaperRoll(),
-    waste_factors: wallCoveringWaste(),
+    waste_factors: wallpaperStripWaste(),
   },
   {
     name: 'Papier peint vinyle sur intissé',
@@ -1925,7 +2018,7 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     unit: 'm2',
     yield_per_unit: 1,
     ...standardWallpaperRoll(),
-    waste_factors: wallCoveringWaste(),
+    waste_factors: wallpaperStripWaste(),
   },
   {
     name: 'Papier peint traditionnel',
@@ -1933,7 +2026,7 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     unit: 'm2',
     yield_per_unit: 1,
     ...standardWallpaperRoll(),
-    waste_factors: wallCoveringWaste(),
+    waste_factors: wallpaperStripWaste(),
   },
   {
     // E1-6 : pas de dimensions de rouleau — un panoramique se vend en panneaux
@@ -1945,7 +2038,7 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Panneau (variable)', quantity_per_unit: 3, unit: 'm2' },
     ],
-    waste_factors: wallCoveringPatternedWaste(),
+    waste_factors: cutAncillaryWaste(),
   },
   // Paste
   {
@@ -1957,7 +2050,7 @@ export const wallCoveringMaterials: SeedMaterial[] = [
       { label: 'Seau 5 kg', quantity_per_unit: 5, unit: 'kg' },
       { label: 'Seau 10 kg', quantity_per_unit: 10, unit: 'kg' },
     ],
-    waste_factors: wallCoveringPlainWaste(),
+    waste_factors: dosedWaste(),
   },
   {
     name: 'Colle papier peint vinyle',
@@ -1965,7 +2058,7 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     unit: 'kg',
     yield_per_unit: 30,
     packagings: [{ label: 'Seau 5 kg', quantity_per_unit: 5, unit: 'kg' }],
-    waste_factors: wallCoveringPlainWaste(),
+    waste_factors: dosedWaste(),
   },
   {
     name: 'Colle universelle papier peint',
@@ -1984,7 +2077,7 @@ export const wallCoveringMaterials: SeedMaterial[] = [
         unit: 'kg',
       },
     ],
-    waste_factors: wallCoveringPlainWaste(),
+    waste_factors: dosedWaste(),
   },
   {
     name: 'Colle papier peint renforcée (heavy)',
@@ -1992,7 +2085,7 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     unit: 'kg',
     yield_per_unit: 30,
     packagings: [{ label: 'Seau 5 kg', quantity_per_unit: 5, unit: 'kg' }],
-    waste_factors: wallCoveringPlainWaste(),
+    waste_factors: dosedWaste(),
   },
   // Lining paper
   {
@@ -2008,7 +2101,7 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Rouleau 10m x 0.50m (5 m²)', quantity_per_unit: 5, unit: 'm2' },
     ],
-    waste_factors: wallCoveringPlainWaste(),
+    waste_factors: wallpaperStripWaste(),
   },
   {
     // E1-6 : pas de dimensions de rouleau. Les toiles et voiles de verre
@@ -2024,7 +2117,7 @@ export const wallCoveringMaterials: SeedMaterial[] = [
       { label: 'Rouleau 25 m²', quantity_per_unit: 25, unit: 'm2' },
       { label: 'Rouleau 50 m²', quantity_per_unit: 50, unit: 'm2' },
     ],
-    waste_factors: wallCoveringPlainWaste(),
+    waste_factors: cutAncillaryWaste(),
   },
   {
     name: 'Toile de verre chevron',
@@ -2032,7 +2125,7 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     unit: 'm2',
     yield_per_unit: 1,
     packagings: [{ label: 'Rouleau 25 m²', quantity_per_unit: 25, unit: 'm2' }],
-    waste_factors: wallCoveringPlainWaste(),
+    waste_factors: cutAncillaryWaste(),
   },
   {
     name: 'Voile de verre à peindre',
@@ -2043,7 +2136,7 @@ export const wallCoveringMaterials: SeedMaterial[] = [
       { label: 'Rouleau 25 m²', quantity_per_unit: 25, unit: 'm2' },
       { label: 'Rouleau 50 m²', quantity_per_unit: 50, unit: 'm2' },
     ],
-    waste_factors: wallCoveringPlainWaste(),
+    waste_factors: cutAncillaryWaste(),
   },
   // Wall panels
   {
@@ -2054,7 +2147,7 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Paquet 3.9 m²', quantity_per_unit: 3.9, unit: 'm2' },
     ],
-    waste_factors: wallCoveringPlainWaste(),
+    waste_factors: cutAncillaryWaste(),
   },
   {
     name: 'Lambris PVC couleur 2.6m',
@@ -2064,7 +2157,7 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Paquet 3.9 m²', quantity_per_unit: 3.9, unit: 'm2' },
     ],
-    waste_factors: wallCoveringPlainWaste(),
+    waste_factors: cutAncillaryWaste(),
   },
   {
     name: 'Lambris bois brut 2m',
@@ -2074,7 +2167,7 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Paquet 2.5 m²', quantity_per_unit: 2.5, unit: 'm2' },
     ],
-    waste_factors: wallCoveringPlainWaste(),
+    waste_factors: cutAncillaryWaste(),
   },
   {
     name: 'Lambris MDF 2.6m',
@@ -2084,7 +2177,7 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Paquet 3.9 m²', quantity_per_unit: 3.9, unit: 'm2' },
     ],
-    waste_factors: wallCoveringPlainWaste(),
+    waste_factors: cutAncillaryWaste(),
   },
   {
     name: 'Parement pierre naturelle',
@@ -2092,7 +2185,7 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     unit: 'm2',
     yield_per_unit: 1,
     packagings: [{ label: 'Boîte 0.5 m²', quantity_per_unit: 0.5, unit: 'm2' }],
-    waste_factors: wallCoveringPlainWaste(),
+    waste_factors: cutAncillaryWaste(),
   },
   {
     name: 'Parement brique',
@@ -2100,7 +2193,7 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     unit: 'm2',
     yield_per_unit: 1,
     packagings: [{ label: 'Boîte 0.5 m²', quantity_per_unit: 0.5, unit: 'm2' }],
-    waste_factors: wallCoveringPlainWaste(),
+    waste_factors: cutAncillaryWaste(),
   },
   {
     name: 'Panneau mural 3D',
@@ -2110,7 +2203,7 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     packagings: [
       { label: 'Panneau 0.25 m²', quantity_per_unit: 0.25, unit: 'm2' },
     ],
-    waste_factors: wallCoveringPlainWaste(),
+    waste_factors: cutAncillaryWaste(),
   },
   // Tools / accessories
   {
@@ -2176,7 +2269,7 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     unit: 'm',
     yield_per_unit: 1,
     packagings: [{ label: 'Rouleau 5 m', quantity_per_unit: 5, unit: 'm' }],
-    waste_factors: wallCoveringPatternedWaste(),
+    waste_factors: cutAncillaryWaste(),
   },
   {
     name: 'Colle de fixation lambris',
@@ -2187,7 +2280,7 @@ export const wallCoveringMaterials: SeedMaterial[] = [
       { label: 'Cartouche 310 ml', quantity_per_unit: 0.4, unit: 'kg' },
       { label: 'Seau 3 kg', quantity_per_unit: 3, unit: 'kg' },
     ],
-    waste_factors: wallCoveringPlainWaste(),
+    waste_factors: dosedWaste(),
   },
   {
     name: 'Profil de départ lambris PVC',
@@ -2215,7 +2308,7 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     unit: 'm2',
     yield_per_unit: 1,
     ...standardWallpaperRoll(),
-    waste_factors: wallCoveringWaste(),
+    waste_factors: wallpaperStripWaste(),
   },
 ];
 

@@ -31,6 +31,13 @@ const accessoryWaste = (): WasteFactorInput[] => [
   { pose_type: 'standard', skill_level: 'expert', factor_percent: 2 },
 ];
 
+/** E1-7 — mortiers, colles, joints : dosés sur la surface nette. */
+const dosedWaste = (): WasteFactorInput[] => [
+  { pose_type: 'standard', skill_level: 'beginner', factor_percent: 5 },
+  { pose_type: 'standard', skill_level: 'intermediate', factor_percent: 3 },
+  { pose_type: 'standard', skill_level: 'expert', factor_percent: 2 },
+];
+
 describe('wasteReferenceRange', () => {
   it('derives the straight-tiling bracket seeded in the catalogue', () => {
     const range = wasteReferenceRange(tileWaste(), 'straight');
@@ -73,6 +80,34 @@ describe('wasteReferenceRange', () => {
 });
 
 describe('dominantWasteReference', () => {
+  /**
+   * E1-7 — le principal l'emporte sur le nombre.
+   *
+   * Composition réelle d'un carrelage sol depuis ce lot : **un** carreau, et
+   * **deux** produits dosés (mortier-colle, joint) qui portent désormais leur
+   * propre perte de mise en œuvre, bien plus basse. Le vote de majorité donnait
+   * donc la fourchette de la colle — 2 à 5 % — comme référence d'un devis
+   * exprimé en m² de carrelage. Un artisan honnête annonçant +10 % de chutes
+   * aurait été signalé « au-dessus de la référence », soit exactement le tort
+   * que ce module refuse de faire.
+   *
+   * Le défaut n'a été vu ni par les tests unitaires ni par le harnais : seule la
+   * suite d'intégration, qui monte le vrai catalogue, l'a montré. D'où ce test.
+   */
+  it('retient la fourchette du matériau principal, même minoritaire', () => {
+    const materials = [
+      { waste_factors: tileWaste(), role: 'principal' },
+      { waste_factors: dosedWaste(), role: 'consommable' },
+      { waste_factors: dosedWaste(), role: 'consommable' },
+    ];
+
+    expect(dominantWasteReference(materials, 'straight')).toMatchObject({
+      pose_type: 'straight',
+      min_percent: 5,
+      max_percent: 15,
+    });
+  });
+
   it('ignores the accessory bracket that a minority of materials carries', () => {
     // Composition réelle d'un ouvrage carrelage : carreaux, mortier et joint
     // portent tileWaste, les croisillons et le coupe-carreaux accessoryWaste.

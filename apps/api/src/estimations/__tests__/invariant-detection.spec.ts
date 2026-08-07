@@ -10,7 +10,7 @@ import { SkillLevel } from '../../projects/entities/project-work-item.entity';
 import {
   caseFor,
   HarnessCase,
-  IMPLICIT_POSE,
+  POSE_UNIQUE_CASE,
   invariantViolations,
   RECTANGULAR_ROOM,
 } from './seeded-catalog-harness';
@@ -219,7 +219,7 @@ describe('Harnais — ce que les invariants attrapent', () => {
     const base = caseFor('wall_painting', SkillLevel.BEGINNER);
     const withHeightQuestion: HarnessCase = {
       ...base,
-      poseType: IMPLICIT_POSE,
+      poseType: POSE_UNIQUE_CASE,
       workType: {
         ...base.workType,
         contextual_questions: [

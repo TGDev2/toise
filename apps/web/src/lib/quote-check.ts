@@ -228,6 +228,10 @@ export const QUOTE_CHECK_WORK_TYPES: QuoteCheckWorkType[] = [
         options: [
           { value: 'straight', label: 'Pose droite' },
           { value: 'diagonal', label: 'Pose en diagonale' },
+          // E1-7 — la pose la plus coûteuse en chutes, et celle qu'un devis
+          // sous-estime le plus souvent : sans elle, un devis en point de
+          // Hongrie était comparé à la fourchette d'une pose droite.
+          { value: 'herringbone', label: 'Chevrons ou point de Hongrie' },
         ],
         defaultValue: 'straight',
       },

@@ -34,6 +34,7 @@ import {
   dominantWasteReference,
   impliedWastePercent,
 } from './quote-coherence';
+import { resolveLayingPose } from './pose-types';
 import { PublicEstimateRequestDto } from './dto/public-estimate-request.dto';
 import { PublicQuoteCheckRequestDto } from './dto/public-quote-check-request.dto';
 import { PublicEstimateEmailDto } from './dto/public-estimate-email.dto';
@@ -554,8 +555,9 @@ export class EstimationsService {
       workType.surface_target,
     );
 
-    const poseType =
-      (dto.custom_params?.laying_pattern as string) || 'standard';
+    // E1-7 : même résolution que le moteur, par le même module — la fourchette
+    // affichée doit décrire la pose qui a servi à chiffrer, pas une autre.
+    const poseType = resolveLayingPose(workType.code, dto.custom_params);
     // La quantité d'un devis suit la surface de l'ouvrage : la fourchette de
     // référence se calcule sur les matériaux surfaciques. Depuis E1-3, les
     // accessoires (rouleaux, croisillons…) peuvent être majoritaires dans un

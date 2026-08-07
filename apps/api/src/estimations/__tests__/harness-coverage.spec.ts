@@ -6,7 +6,7 @@ import {
   caseFor,
   harnessCases,
   installReadableSnapshots,
-  IMPLICIT_POSE,
+  POSE_UNIQUE_CASE,
   materialsForWorkType,
   poseTypesForWorkType,
   RECTANGULAR_ROOM,
@@ -44,9 +44,27 @@ describe('Harnais — couverture du catalogue seedé', () => {
     }
   });
 
-  it('propose partout la pose implicite, en plus des poses du catalogue', () => {
+  /**
+   * E1-7 — ce test disait « propose partout la pose implicite ». Il gardait une
+   * commodité de harnais : `standard` était ajouté d'office à tous les ouvrages,
+   * y compris à ceux dont aucun matériau ne le déclarait, et c'est exactement
+   * cette addition qui rendait présentable un chiffrage à 10 % génériques.
+   *
+   * Ce qu'il garde désormais : chaque ouvrage offre au moins une pose, et
+   * `standard` n'apparaît que là où il **est** la pose — les ouvrages sans
+   * question de calepinage. Un ouvrage qui demanderait la pose tout en gardant
+   * `standard` dans sa liste ferait rougir ce test, et c'est la forme même du
+   * défaut d'origine.
+   */
+  it('n’offre la pose unique que là où l’ouvrage n’a pas de variante', () => {
     for (const workType of seedWorkTypes) {
-      expect(poseTypesForWorkType(workType.code)).toContain(IMPLICIT_POSE);
+      const poses = poseTypesForWorkType(workType.code);
+      expect(poses.length).toBeGreaterThan(0);
+
+      const asksPose = workType.contextual_questions.some(
+        (q) => q.key === 'laying_pattern',
+      );
+      expect(poses.includes(POSE_UNIQUE_CASE)).toBe(!asksPose);
     }
   });
 
@@ -56,8 +74,24 @@ describe('Harnais — couverture du catalogue seedé', () => {
    * ne protège — jest signale un instantané devenu obsolète, mais n'échoue
    * jamais dessus, `--ci` compris.
    */
-  it('produit 39 cas — 13 couples (ouvrage, pose) × 3 niveaux', () => {
-    expect(harnessCases).toHaveLength(39);
+  /*
+   * E1-7 : 39 → 33, et le lot **ajoute** deux poses. Ce n'est pas une perte de
+   * couverture, c'est la disparition d'un doublon qui n'existait que pour
+   * exposer le défaut.
+   *
+   *   avant : 13 couples, dont un `standard` fabriqué pour chaque ouvrage —
+   *           y compris `floor_tiling · standard` et `wall_covering · plain`,
+   *           que le produit ne pouvait pas produire ;
+   *   après : 11 couples, ceux que l'utilisateur peut décrire —
+   *           2 peintures (1) + 2 carrelages (2) + parquet (3, chevrons compris)
+   *           + cloison (1) + revêtement mural (1) = 11.
+   *
+   * Le chemin « question non répondue » reste éprouvé : il est **confondu** avec
+   * la pose par défaut de l'ouvrage, que `workItemFor` envoie en n'envoyant
+   * rien. C'est la définition même de ce chemin, au lieu d'un cas parallèle.
+   */
+  it('produit 33 cas — 11 couples (ouvrage, pose) × 3 niveaux', () => {
+    expect(harnessCases).toHaveLength(33);
   });
 
   it('fige l’inventaire des cas et des matériaux liés', () => {
@@ -89,7 +123,7 @@ describe('Harnais — couverture du catalogue seedé', () => {
       [
         'pièce   : Chambre rectangulaire',
         'ouvrage : Peinture murale (wall_painting) · surface wall',
-        'niveau  : intermediate · pose : standard (implicite)',
+        'niveau  : intermediate · pose : standard (non déclarée)',
         'surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²',
         '',
         'matériau                        rôle          perte origine   couches   qté ajustée unités achat',

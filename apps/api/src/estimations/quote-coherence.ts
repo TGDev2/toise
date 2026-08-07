@@ -29,6 +29,19 @@
  */
 
 import { WasteFactorInput, resolveWasteFactor } from './estimation-engine';
+import { POSE_UNIQUE } from './pose-types';
+
+/**
+ * Fourchette rendue quand il n'y a **rien** à comparer — un ouvrage sans
+ * matériau chiffrable. Ce n'est pas un facteur de perte : aucune quantité n'en
+ * sort jamais, et `is_default: true` accompagne toujours sa sortie pour que la
+ * page l'annonce comme une absence de référence.
+ *
+ * C'est ce qui reste de `DEFAULT_WASTE_PERCENT`, retiré du moteur par E1-7 : la
+ * valeur n'a pas disparu du produit, elle a été ramenée au seul endroit où elle
+ * décrit quelque chose de vrai.
+ */
+const GENERIC_REFERENCE_PERCENT = 10;
 
 /**
  * Verdict de cohérence d'une quantité déclarée. Union **fermée** : chaque code
@@ -82,6 +95,26 @@ export function wasteReferenceRange(
   wasteFactors: WasteFactorInput[],
   poseType: string,
 ): WasteReferenceRange {
+  // E1-7 — le seul endroit du dépôt où une valeur générique subsiste, et le
+  // seul où elle a un sens : un ouvrage **sans aucun matériau** n'a pas de
+  // fourchette à opposer au devis. Le moteur, lui, ne retombe plus sur rien —
+  // il lève. Ici on ne chiffre pas, on compare : l'absence de référence est un
+  // verdict légitime, et `is_default` existe précisément pour que la page dise
+  // « pas de référence de pose » au lieu de présenter un défaut comme une
+  // référence (leçon 13).
+  if (wasteFactors.length === 0) {
+    return {
+      pose_type: POSE_UNIQUE,
+      min_percent: GENERIC_REFERENCE_PERCENT,
+      max_percent: GENERIC_REFERENCE_PERCENT,
+      by_skill: SKILL_LEVELS.map((skill_level) => ({
+        skill_level,
+        percent: GENERIC_REFERENCE_PERCENT,
+      })),
+      is_default: true,
+    };
+  }
+
   const by_skill = SKILL_LEVELS.map((skill_level) => ({
     skill_level,
     resolved: resolveWasteFactor(wasteFactors, poseType, skill_level),
@@ -90,12 +123,18 @@ export function wasteReferenceRange(
   const percents = by_skill.map((s) => s.resolved.percent);
 
   // La pose retenue n'est `poseType` que si au moins une ligne l'a servie telle
-  // quelle ; sinon la fourchette décrit `standard`, ou le défaut générique.
+  // quelle ; sinon la fourchette décrit la pose unique du matériau — le seul
+  // autre cas que la résolution accepte depuis E1-7.
   const servedExactly = wasteFactors.some((wf) => wf.pose_type === poseType);
+  // Depuis E1-7 la résolution ne rend plus jamais `'default'` sur un matériau
+  // qui porte des lignes : elle lève. Ce calcul reste écrit plutôt que remplacé
+  // par `false` parce qu'un facteur **appris** peut un jour porter une autre
+  // origine, et parce qu'un `false` en dur cacherait une régression du jour où
+  // un repli reviendrait.
   const isDefault = by_skill.every((s) => s.resolved.source === 'default');
 
   return {
-    pose_type: servedExactly ? poseType : 'standard',
+    pose_type: servedExactly ? poseType : POSE_UNIQUE,
     min_percent: Math.min(...percents),
     max_percent: Math.max(...percents),
     by_skill: by_skill.map(({ skill_level, resolved }) => ({
@@ -129,10 +168,31 @@ export function wasteReferenceRange(
  * d'en manquer un.
  */
 export function dominantWasteReference(
-  materials: { waste_factors: WasteFactorInput[] }[],
+  materials: { waste_factors: WasteFactorInput[]; role?: string }[],
   poseType: string,
 ): WasteReferenceRange {
-  const ranges = materials.map((m) =>
+  /*
+   * E1-7 — le vote de majorité ne suffit plus, et il ne suffisait déjà qu'à
+   * cause d'une erreur du catalogue.
+   *
+   * La quantité que porte un devis de carrelage est un **m² de carrelage**. Sa
+   * fourchette de référence doit donc être celle du carreau. Jusqu'ici elle
+   * l'était par accident : la colle et le joint portaient, à tort, la perte de
+   * coupe du carreau, et les trois matériaux votaient la même chose. En rendant
+   * aux produits dosés leur propre perte (2 à 5 %), E1-7 casse l'unanimité — et
+   * le vote donne 2 contre 1 en faveur de la colle. Un devis honnête à +10 % se
+   * verrait alors signalé « au-dessus », ce que ce module existe précisément
+   * pour ne pas faire.
+   *
+   * La règle devient donc : **le rôle prime sur le nombre**. S'il y a un
+   * matériau principal, la référence est la sienne. C'est aussi ce qui rend le
+   * filtre `role !== 'accessoire'` de `checkQuotePublic` superflu plutôt que
+   * nécessaire — une parade de moins à se rappeler ailleurs (leçon 5).
+   */
+  const principals = materials.filter((m) => m.role === 'principal');
+  const considered = principals.length > 0 ? principals : materials;
+
+  const ranges = considered.map((m) =>
     wasteReferenceRange(m.waste_factors, poseType),
   );
 

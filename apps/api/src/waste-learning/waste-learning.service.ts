@@ -119,8 +119,38 @@ export class WasteLearningService {
   }
 
   async run(): Promise<WasteLearningRunSummary> {
-    const observations = await this.collectObservations();
+    const collected = await this.collectObservations();
     const resolveBaseline = await this.buildBaselineResolver();
+
+    // E1-7 — une observation dont la référence catalogue n'existe plus.
+    //
+    // Le journal des achats garde la pose telle qu'elle était au moment du
+    // chiffrage. E1-7 a réécrit le vocabulaire des poses (`plain` et
+    // `patterned` fusionnés en pose unique, `standard` du parquet renommé en
+    // `straight`) : une observation d'avant ce lot peut donc porter une pose
+    // que son matériau ne déclare plus, et la résolution lève désormais au lieu
+    // de rendre 10 %.
+    //
+    // Ces cellules sont **écartées et comptées**, jamais chiffrées sur une
+    // référence inventée : apprendre un écart contre une base qui n'existe pas
+    // reviendrait à apprendre du bruit (leçon 18). Elles disparaîtront d'elles-
+    // mêmes à mesure que le journal se renouvelle.
+    const observations = collected.filter((obs) => {
+      try {
+        resolveBaseline(obs);
+        return true;
+      } catch {
+        return false;
+      }
+    });
+    const orphaned = collected.length - observations.length;
+    if (orphaned > 0) {
+      this.logger.warn(
+        `${orphaned} observation(s) écartée(s) : pose absente du catalogue ` +
+          'depuis la refonte des facteurs de perte (E1-7)',
+      );
+    }
+
     const outcomes = learnWasteFactors(observations, resolveBaseline);
     const computedAt = new Date();
 
@@ -307,8 +337,14 @@ export class WasteLearningService {
 
   /**
    * Référence catalogue par cellule, résolue par la fonction **du moteur** :
-   * une cellule sans ligne exacte hérite de la pose `standard`, puis du défaut
-   * générique — exactement ce que l'utilisateur a subi lors de l'estimation.
+   * une cellule sans ligne exacte hérite de la pose unique du matériau —
+   * exactement ce que l'utilisateur a subi lors de l'estimation.
+   *
+   * Depuis E1-7, elle **lève** quand ni la pose exacte ni la pose unique
+   * n'existent. `run()` traite ce cas en écartant l'observation ; c'est
+   * volontairement l'appelant qui décide, parce qu'ici on ne sait pas encore si
+   * la cellule vient d'un chiffrage récent (donc d'un vrai trou de catalogue,
+   * qui doit se voir) ou d'un journal d'avant la refonte du vocabulaire.
    */
   private async buildBaselineResolver(): Promise<
     (cell: {

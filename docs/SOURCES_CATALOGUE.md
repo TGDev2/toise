@@ -474,17 +474,190 @@ le reste de la courbe est éprouvé lé par lé dans
    peut pas les décrire. Ils restent au calcul surfacique, et le dire vaut mieux
    que leur inventer un conditionnement.
 
-## Facteurs de perte : statut
+## Facteurs de perte (E1-7 — registre)
 
-Les `waste_factors` seedés (6 familles, 9 triplets pose × niveau,
-`seed-catalog.data.ts:46-113`) sont des **valeurs d'usage métier, sans
-référence normative** : aucun DTU ne fixe de pourcentage de perte, et
-l'appellation « catalogue DTU » a été retirée du code et de la documentation
-par E1-7 (la seule référence DTU réelle du dépôt, le DTU 52.2 cité pour le SEL
-en zone douche, concerne l'étanchéité, pas les pertes). Ces valeurs sont
-étalonnées depuis ENG-5, prudentes pour un débutant, et sont affinées par les
-facteurs **appris** sur les achats réels (DATA-3, `learned_waste_factors`) —
-c'est ce mécanisme, pas une norme, qui les rapproche du terrain.
+Les `waste_factors` seedés sont des **valeurs d'usage métier, sans référence
+normative**. Ce n'est pas une prudence de rédaction, c'est un résultat de
+recherche : le texte intégral du NF DTU 52.1 a été extrait et « chute » n'y
+apparaît que pour la bille d'un essai de choc ; les deux guides CAPEB du
+NF DTU 25.41 ne contiennent ni « chute », ni « perte », ni « majoration » ; le
+NF DTU 51.11 et le NF DTU 59.4 n'en publient pas davantage — ce dernier
+**prescrit une méthode** (compter les lés selon la hauteur du raccord) plutôt
+qu'un pourcentage, ce qu'E1-6 a implémenté. Aucun DTU ne fixe de pourcentage de
+perte. Toute valeur ci-dessous est un usage de la profession, relevé chez des
+fabricants, des enseignes ou des poseurs, et cité comme tel.
+
+Ces valeurs restent affinées par les facteurs **appris** sur les achats réels
+(DATA-3, `learned_waste_factors`) — c'est ce mécanisme, et pas une norme, qui
+les rapproche du terrain.
+
+### Ce que la structure dit, avant les chiffres
+
+Trois décisions d'E1-7 comptent autant que les valeurs :
+
+1. **`standard` n'est pas un repli, c'est le nom de la pose unique** des
+   ouvrages sans variante de calepinage. Un matériau déclare soit cette pose
+   seule, soit des poses variantes sans elle — jamais les deux. La résolution
+   n'a plus de troisième temps : ce qui n'est pas au catalogue lève
+   (`MissingWasteFactorError`).
+2. **La perte de coupe ne s'applique qu'à ce qui se coupe.** Les produits dosés
+   — mortiers-colles, joints, primaires, ragréages, SEL, colles à papier peint —
+   suivent la surface **nette**, jamais la surface achetée : une chute de carreau
+   est reposée ailleurs, et sa colle est comptée avec elle. La doctrine du métré
+   dit la même chose, coefficient par ligne : « Quantité élémentaire […]
+   augmentée **le cas échéant** par les pertes, casses, chutes » (SYNERGIE,
+   *Métré – Étude de prix*). Un sous-détail de carrelage corrigé l'applique
+   littéralement — carreaux à `34,5 × 1,10`, colle et joint sur `34,50 m²` :
+   « Les quantités de colle et de joint sont directement proportionnelles à la
+   surface nette à carreler » (Étudiant Génie Civil, Wayback 2026-01-14).
+3. **Le raccord de papier peint n'est plus un pourcentage.** E1-6 l'a rendu
+   géométrique ; le reporter aussi en perte le comptait deux fois.
+
+### Carrelage — `tileCoveringWaste()` (inchangé par E1-7)
+
+| Pose | Débutant | Intermédiaire | Expert |
+| --- | --- | --- | --- |
+| droite | 15 % | 10 % | 5 % |
+| diagonale | 20 % | 15 % | 10 % |
+
+Les six valeurs étaient déjà cohérentes avec la profession ; ce que ce lot a
+corrigé, c'est la **liste des matériaux** qui les portaient.
+
+| Valeur | Citation | Source | Consulté le |
+| --- | --- | --- | --- |
+| droite 5 % | « pour une pose droite, c'est-à-dire lorsque les joints sont parallèles aux murs, il faudra majorer la surface réelle de 5% » | [Réflex Boutique, *Aide aux métrés*](https://reflex-boutique.fr/content/16-aide-aux-metres) | 2026-08-07 |
+| droite 10 % | « ajoutez environ 10 % de chutes (15 % en pose diagonale) » | [Mon Coach Brico, *Calepinage carrelage*](https://www.moncoachbrico.com/tutos/mur/comment-faire-un-calepinage/) | 2026-08-07 |
+| droite 15 % (débutant) | « ajouter une marge de sécurité entre 8% et 10%, vous pouvez même aller jusqu'à 15% **si vous êtes novice** ou si votre type de pose est en diagonale ou en pose décalée » | [Castorama, *Calculer la bonne quantité de carrelage mural*](https://www.castorama.fr/idees-et-conseils/murs/carrelage-mural/calculer-la-bonne-quantite-de-carrelage-mural) | 2026-08-07 |
+| diagonale 10 % | « pour une pose en diagonale, il faudra majorer de 10% » | [Réflex Boutique](https://reflex-boutique.fr/content/16-aide-aux-metres) | 2026-08-07 |
+| diagonale 15 % | « prévoir une marge de perte de matériau de l'ordre de 15 % (contre 10 % pour la pose droite) » | [Malrieu (Espace Aubade), *La pose diagonale*](https://www.malrieu.fr/blog/carrelage/la-pose-diagonale-comment-utiliser-cette-technique-pour-corriger-les-defauts-d-une-piece) | 2026-08-07 |
+| 5–15 % (cadre) | « Appliquez systématiquement un coefficient de perte selon les matériaux : 5 à 10 % pour le carrelage » | [Obat, *Déboursé sec*](https://www.obat.fr/blog/debourse-sec/) | 2026-08-07 |
+
+Le **débutant en diagonale (20 %)** est le seul des six à ne pas être cité tel
+quel : c'est l'extrapolation du « novice **ou** diagonale = 15 % » de Castorama
+au cas où les deux se cumulent. Écrit ici plutôt que présenté comme sourcé.
+
+### Sols en lames — `floorCoveringWaste()`
+
+| Pose | Débutant | Intermédiaire | Expert | Statut E1-7 |
+| --- | --- | --- | --- | --- |
+| droite | 10 % | 7 % | 5 % | valeurs inchangées, pose **renommée** `standard` → `straight` |
+| diagonale | 20 % | 17 % | 15 % | **corrigée** (était 15/10/7) |
+| chevrons | 25 % | 22 % | 20 % | **ajoutée** |
+
+| Valeur | Citation | Source | Consulté le |
+| --- | --- | --- | --- |
+| droite 5 % | « vous pouvez vous prévoir 5 % de sol en plus » | [Quick-Step, *De quelle quantité ai-je besoin ?*](https://www.quick-step.fr/fr-fr/foire-aux-questions/sol-stratifie/preparation-et-pose/de-quelle-quantite-de-revetement-de-sol-ai-je-besoin-pour-ma-piece) | 2026-08-07 |
+| droite 5–10 % | « Lorsque vous posez du stratifié, vous devez donc en général prévoir 5 à 10 % de chutes. » | [Woodstore24, *Calculer les chutes*](https://woodstore24.fr/guide-du-bois/guide-du-sol/calculer-la-coupe.html) | 2026-08-07 |
+| droite 10 % (débutant) | « il est généralement conseillé d'ajouter minimum 10% de lames afin de pallier les éventuelles erreurs et découpes » | [Castorama, *Calculer la bonne quantité de parquet*](https://www.castorama.fr/idees-et-conseils/sols/parquet/calculer-la-bonne-quantite-de-parquet) | 2026-08-07 |
+| diagonale 15 % | « 15 % de surface supplémentaire sont à prévoir pour votre projet » | [Bricozor, *Dans quel sens poser un parquet ?*](https://comptoir.bricozor.com/dans-quel-sens-poser-un-parquet.html) | 2026-08-07 |
+| diagonale 20 % | grille du simulateur, pose diagonale : « Pièce carrée 20% / Pièce rectangulaire 25% / Pièce irrégulière 30% » | [Castorama, *Calculer la bonne quantité de parquet*](https://www.castorama.fr/idees-et-conseils/sols/parquet/calculer-la-bonne-quantite-de-parquet) — tableau publié en **image**, lu visuellement | 2026-08-07 |
+| chevrons 15–20 % | « Si vous optez pour un parquet en bâtons rompus, il est conseillé de prévoir entre 15 et 20% de chute, soit presque 2 fois plus que pour une pose droite. » | [Parquets Protat](https://www.parquetsprotat.com/blog/dans-quel-sens-poser-parquet-piece-rectangulaire/) | 2026-08-07 |
+| chevrons 12–15 % | « Surface de votre pièce + 12 à 15% en fonction de la complexité » (point de Hongrie & bâton rompu) | [La Sélection d'André, *Calculatrice* (PDF)](https://laselectiondandre.fr/calculatrice/calculatrice.pdf) | 2026-08-07 |
+
+**Pourquoi l'expert ne prend pas le bas de la fourchette sur les poses à
+motif.** Ailleurs, l'expert reçoit le bas de la fourchette professionnelle. Pour
+la diagonale et les chevrons il reçoit le haut, délibérément : le bas d'une
+fourchette publiée suppose des chutes réutilisables, or dans un calepinage à
+angle fixe la chute d'une rangée ne démarre pas la suivante. Et le mode de
+défaillance n'est pas symétrique — une lame manquante en fin de chantier ne se
+remplace pas par une lame d'un autre bain de teinte.
+
+Le **débutant en chevrons (25 %)** dépasse toutes les fourchettes relevées
+(12-20 %) : c'est une marge de prudence assumée, pas une valeur sourcée. Elle
+reste sous les 30 % que la grille Castorama atteint pour une pièce irrégulière
+en simple diagonale.
+
+**Non sourçable, et donc non implémenté** : la pose en chevrons du **carrelage**.
+Ni Point.P ni Espace Aubade ne publient de taux pour elle, et une valeur trouvée
+en ligne s'est révélée fabriquée par l'outil de lecture plutôt que présente dans
+la page. Aucune option « chevrons » n'est donc offerte au carrelage — une donnée
+qu'on ne sait pas chiffrer ne vaut pas mieux qu'une donnée absente.
+
+### Papier peint — `wallpaperStripWaste()`
+
+| Pose | Débutant | Intermédiaire | Expert |
+| --- | --- | --- | --- |
+| unique | 15 % | 8 % | 3 % |
+
+Les poses `plain` (10/7/3) et `patterned` (18/12/7) sont **supprimées**. Le
+raccord est compté par la découpe depuis E1-6, conformément au NF DTU 59.4
+§6.6.5 : « La quantité nécessaire sera calculée selon le nombre de lés au
+périmètre de la pièce […] Pour les revêtements à motif, il convient de calculer
+les lés selon la hauteur du raccord. » Ce qui reste ne dépend plus du papier
+mais du poseur.
+
+| Valeur | Citation | Source | Consulté le |
+| --- | --- | --- | --- |
+| débutant 15 % | « Un poseur novice doit effectivement prévoir 15 à 20 % de papier supplémentaire afin de compenser les erreurs de découpe ou les faux départs. » | [Bricomarché, *Calculer le nombre de rouleaux*](https://www.bricomarche.com/conseils/comment-calculer-le-nombre-de-rouleaux-de-papier-peint) | 2026-08-07 |
+| ~10 % (cadre) | « Ajoutez 10 % de marge pour les pertes, raccords et finitions. » | [Delzongle](https://www.delzongle.fr/2726-comment-calculer-la-quantite-de-papier-peint-necessaire) | 2026-08-07 |
+| expert 3 % | valeur `plain` d'avant E1-7, conservée : un lé gâché sur une trentaine | — | — |
+
+### Produits dosés — `dosedWaste()`
+
+| Pose | Débutant | Intermédiaire | Expert |
+| --- | --- | --- | --- |
+| unique | 5 % | 3 % | 2 % |
+
+**Ces trois valeurs ne sont pas sourcées, et c'est un choix.** Les fiches
+fabricants donnent une consommation « à titre indicatif » et renvoient toute la
+variation au peigne, au double encollage et à la planéité du support — jamais
+aux chutes : « Consommation : elle dépend du format et du relief du carreau, du
+mode d'encollage et de la taloche crantée utilisée » (Weber, *webercol flex*) ;
+« Les valeurs ne tiennent pas compte de l'état du support » (Cermix, *CERMIPRO*).
+Les calculateurs Weber, PRB et Sika n'ont **aucun champ de chutes**. La valeur
+sourcée serait donc 0 %.
+
+Ce qui subsiste — fond de seau, gâchée durcie, peigne trop chargé — n'est chiffré
+nulle part. Ces trois valeurs sont une marge de prudence, placée délibérément
+**sous toutes les échelles de chute du catalogue** pour qu'on ne puisse pas les
+confondre avec une perte de coupe.
+
+### Ce que ce lot n'a pas corrigé, et pourquoi
+
+**Plâtrerie — `partitionWaste()` (12/8/4) est probablement un double comptage.**
+Le SNIP publie le seul coefficient chiffré de toute cette page : « Le coefficient
+de perte est pris à 5%, signifiant que le calcul des quantitatifs des produits
+est majoré de 5% pour tenir compte des chutes sur chantier »
+([Fiche conseil n°18](https://www.lesindustriesduplatre.org/wp-content/uploads/2025/03/SNIP-FICHE-CONSEIL-18-VERSIONS-2025_V6-13fevrier.pdf),
+déc. 2024). Ces 5 % sont **déjà dans les quantitatifs** dont nos rendements
+dérivent — 2,10 m² de plaque par m² de cloison à deux faces, soit 2 × 1,05 — et
+notre `Plaque BA13` porte bien `yield_per_unit: 0,96`, c'est-à-dire 1,042 m² par
+m² de parement. Nos 12/8/4 s'ajoutent donc à une marge déjà présente.
+
+Corriger demande de réexprimer les rendements en géométrie pure, ce qui touche le
+registre ci-dessus **et** les encadrements de consommation : c'est le périmètre
+d'E1-8, pas celui d'un lot sur les facteurs de perte. Le sens de l'écart est le
+sens sûr — on achète un peu trop — et il est écrit ici pour ne pas être
+redécouvert. Le SNIP traite d'ailleurs l'enduit à part, hors de ses tableaux et
+« à titre indicatif », sans dire si les 5 % s'y appliquent : ni Placo, ni Siniat,
+ni Semin ne chargent l'enduit ou la bande d'une majoration.
+
+**Peinture — `paintWaste()` (15/10/5) est conservé.** Les 10 % de
+l'intermédiaire sont l'usage cité par [Tollens](https://www.tollens.com/conseils/conseils-travaux/comment-calculer-ma-quantite-de-peinture)
+(« TOLLENS vous recommande de calculer 10% de marge ») et
+[Castorama](https://www.castorama.fr/idees-et-conseils/calculer-votre-besoin-en-peinture/CF_CPRD_npcart_100567.art)
+(« Une marge de 10% est assez classique »). Le levier techniquement juste n'est
+d'ailleurs pas un taux de chute mais le rendement : « A majorer selon la nature
+et la structure du support » (Zolpan, FT Proalkyd Velours). Hors périmètre.
+
+**Accessoires — `accessoryWaste()` (10/5/2) est conservé sans source.** Ces
+matériaux ne sont plus liés à aucun ouvrage V1 depuis la migration `…071`.
+
+### Accès aux sources
+
+Refus systématique des clients non-navigateur (HTTP 403) : Leroy Merlin,
+Point.P, ManoMano, Lapeyre, `placo.fr`, Knauf, Gerflor, `fr.weber`. Les valeurs
+Placo ont été lues via une copie Wayback Machine, la fiche Weber via le miroir
+distributeur `media.adeo.com`. **Aucun chiffre Leroy Merlin n'est cité** : ses
+pages ne sont ni accessibles ni archivées, et les pourcentages de son
+calculateur vivent dans du JavaScript non récupérable.
+
+Deux valeurs vues en première lecture ont été **écartées après re-vérification
+du HTML brut** : une ligne « chevrons 12 à 15 % » attribuée à Réflex Boutique,
+absente de la page, et un « Coefficient de chute NF DTU 53.2 » dont
+l'attribution normative est inventée. Les contenus de `macalculatriceenligne`,
+`tropical-woods` (trois valeurs différentes sur trois pages du même site) et des
+fermes de contenu généralistes ne sont cités nulle part ici.
 
 ## Temps unitaires de main-d'œuvre : statut (E2-3)
 

@@ -14,6 +14,7 @@ import {
   WorkBasis,
   WorkItemInput,
 } from '../estimation-engine';
+import { POSE_UNIQUE, POSES_BY_WORK_TYPE } from '../pose-types';
 import { seedMaterials, SeedMaterial } from '../../materials/seed-catalog.data';
 import {
   ConsumptionBound,
@@ -132,13 +133,18 @@ import { seedWorkTypes, SeedWorkType } from '../../projects/work-types.data';
 export const SKILL_LEVELS: SkillLevel[] = Object.values(SkillLevel);
 
 /**
- * Pose retenue par le moteur quand `custom_params.laying_pattern` est absent
- * (`estimation-engine.ts`, `computeEstimation`). Ce n'est pas une pose du
- * catalogue : c'est le chemin qu'emprunte tout ouvrage dont l'utilisateur ne
- * choisit pas le calepinage — la majorité d'entre eux, six des sept ouvrages ne
- * posant même pas la question.
+ * Pose des ouvrages **sans variante de calepinage** — peintures, cloison sèche,
+ * revêtement mural.
+ *
+ * Avant E1-7 cette constante s'appelait `IMPLICIT_POSE` et désignait tout autre
+ * chose : le mot que le moteur substituait quand l'utilisateur ne choisissait
+ * pas sa pose, y compris sur un carrelage, où il ne correspondait à aucune ligne
+ * du catalogue et faisait tomber le chiffrage sur 10 % génériques. Ce chemin
+ * n'existe plus : un ouvrage qui ne déclare pas sa pose reçoit celle que
+ * `pose-types.ts` retient pour lui, et c'est toujours une pose que ses matériaux
+ * connaissent. `standard` est redevenu un nom de pose, et rien d'autre.
  */
-export const IMPLICIT_POSE = 'standard';
+export const POSE_UNIQUE_CASE = POSE_UNIQUE;
 
 const seedMaterialByKey = new Map<string, SeedMaterial>(
   seedMaterials.map((mat) => [`${mat.category}:${mat.name}`, mat]),
@@ -226,24 +232,24 @@ export const roleByMaterialId = new Map<string, WorkTypeMaterialRole>(
 );
 
 /**
- * Poses **disponibles** pour un ouvrage : celles que déclarent les facteurs de
- * perte de ses matériaux liés, plus la pose implicite `standard`.
+ * Poses **que l'ouvrage peut transmettre au moteur**, la première étant celle
+ * qu'il retient quand la question n'est pas répondue.
  *
- * Inclure `standard` partout n'est pas une commodité de test, c'est le chemin de
- * production majoritaire — et il réserve des surprises qu'un harnais doit
- * exposer plutôt que taire : `wall_covering` ne déclare que `plain`, donc en
- * pose implicite il tombe sur `DEFAULT_WASTE_PERCENT` (10 %) au lieu des 7 %
- * du catalogue. Le figer rend l'écart visible ; l'ignorer le laisserait dériver.
+ * E1-7 a changé la source de cette liste, et c'est le cœur du lot. Elle se
+ * lisait sur les facteurs de perte des matériaux, plus un `standard` ajouté
+ * d'office « parce que c'est le chemin de production majoritaire » — ce qui
+ * fabriquait des cas que le produit ne pouvait pas produire (une pose `plain`
+ * de revêtement mural, qu'aucun écran n'offrait) et en manquait un autre (le
+ * carrelage mural, dont la pose n'était pas demandée du tout).
+ *
+ * Elle se lit désormais sur l'**ouvrage** (`pose-types.ts`), c'est-à-dire sur ce
+ * que l'utilisateur peut réellement répondre. Le harnais chiffre donc exactement
+ * les chantiers que le produit sait décrire, ni plus ni moins — et
+ * `waste-factor-coverage.spec.ts` (W2) garantit en retour que cette liste est
+ * bien celle des options de la question.
  */
 export function poseTypesForWorkType(workTypeCode: string): string[] {
-  const declared = new Set<string>();
-  for (const mat of materialsForWorkType(workTypeCode)) {
-    for (const wf of mat.waste_factors) {
-      declared.add(wf.pose_type);
-    }
-  }
-  declared.delete(IMPLICIT_POSE);
-  return [IMPLICIT_POSE, ...[...declared].sort()];
+  return [...(POSES_BY_WORK_TYPE[workTypeCode] ?? [POSE_UNIQUE])];
 }
 
 export interface HarnessCase {
@@ -262,18 +268,29 @@ export const harnessCases: HarnessCase[] = seedWorkTypes.flatMap((workType) =>
   ),
 );
 
-/** Un cas nommé, pour les scénarios qui composent plusieurs ouvrages. */
+/**
+ * Un cas nommé, pour les scénarios qui composent plusieurs ouvrages. Sans pose
+ * précisée, celle que l'ouvrage retient quand la question n'est pas répondue.
+ */
 export function caseFor(
   workTypeCode: string,
   skillLevel: SkillLevel,
-  poseType = IMPLICIT_POSE,
+  poseType?: string,
 ): HarnessCase {
   const workType = seedWorkTypes.find((wt) => wt.code === workTypeCode);
   if (!workType) {
     throw new Error(`Ouvrage absent du seed : ${workTypeCode}`);
   }
-  return { workType, skillLevel, poseType };
+  return {
+    workType,
+    skillLevel,
+    poseType: poseType ?? defaultPoseFor(workTypeCode),
+  };
 }
+
+/** Pose retenue par l'ouvrage quand la question n'est pas répondue. */
+export const defaultPoseFor = (workTypeCode: string): string =>
+  poseTypesForWorkType(workTypeCode)[0];
 
 /**
  * Paramètres supplémentaires poussés dans `custom_params`, par code d'ouvrage.
@@ -309,11 +326,12 @@ export const DEFAULT_DECLARED_BASIS: DeclaredBasisByWorkType = {
 };
 
 /**
- * Work item du moteur pour un cas. La pose implicite se dit en **n'envoyant
- * rien** — `custom_params` vide — plutôt qu'en envoyant `standard` : c'est ce que
- * fait un appelant qui ne pose pas la question, et le seul moyen d'éprouver le
- * repli de `resolveWasteFactor`. `number_of_coats` reste absent, donc au défaut
- * de 2 couches, comme pour un utilisateur qui ne le renseigne pas.
+ * Work item du moteur pour un cas. La pose **par défaut** de l'ouvrage se dit en
+ * n'envoyant rien — `custom_params` vide — plutôt qu'en l'envoyant nommément :
+ * c'est ce que fait un appelant qui ne répond pas à la question, et le seul
+ * moyen d'éprouver `resolveLayingPose`. Toute autre pose est envoyée telle
+ * quelle. `number_of_coats` reste absent, donc au défaut de 2 couches, comme
+ * pour un utilisateur qui ne le renseigne pas.
  *
  * `extraParams` s'ajoute **après** la pose, donc peut la surcharger : c'est
  * voulu, l'invariant I6 s'en sert pour éprouver `laying_pattern` valeur par
@@ -334,7 +352,7 @@ export function workItemFor(
     surface_target: workType.surface_target,
     skill_level: testCase.skillLevel,
     custom_params: {
-      ...(testCase.poseType === IMPLICIT_POSE
+      ...(testCase.poseType === defaultPoseFor(workType.code)
         ? {}
         : { laying_pattern: testCase.poseType }),
       ...extraParams,
@@ -465,13 +483,17 @@ const wasteOrigin = (
   // que `no-unsafe-enum-comparison` interdit.
   skillLevel: string,
 ): string => {
+  // `défaut` n'est plus produit depuis E1-7 : la résolution lève au lieu de
+  // retomber sur une valeur générique. La branche reste écrite — si elle
+  // réapparaissait dans un instantané, ce serait la signature exacte du défaut
+  // que ce lot a supprimé, et il faut qu'elle se lise plutôt qu'elle se devine.
   if (line.waste_factor_source === 'default') {
     return 'défaut';
   }
   const exact = material.waste_factors.some(
     (wf) => wf.pose_type === line.pose_type && wf.skill_level === skillLevel,
   );
-  return exact ? 'exact' : 'repli std';
+  return exact ? 'exact' : 'pose unique';
 };
 
 /**
@@ -546,7 +568,9 @@ const caseHeading = (testCase: HarnessCase): string =>
     ? 'assiette déclarée'
     : `surface ${testCase.workType.surface_target}`) +
   `\nniveau  : ${testCase.skillLevel} · pose : ${testCase.poseType}` +
-  (testCase.poseType === IMPLICIT_POSE ? ' (implicite)' : '');
+  (testCase.poseType === defaultPoseFor(testCase.workType.code)
+    ? ' (non déclarée)'
+    : '');
 
 const metres = (value: number): string => `${value.toFixed(3)} m`;
 
