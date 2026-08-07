@@ -424,11 +424,19 @@ Vérifie : pnpm test:api, le harnais complet, pnpm lint, et montre-moi le rendu 
 
 ---
 
-### E1-9 · Optimiser le conditionnement sur le coût
+### E1-9 · Optimiser le conditionnement sur le coût — **livré**
 
-**Résultat** — l'optimiseur cesse de produire des achats que personne ne fait. Une sous-couche de 3,497 L n'est plus achetée en « 1 pot de 2,5 L + 2 pots de 0,5 L » mais en un pot de 5 L. Et la mutualisation multi-pièces cesse de s'annoncer comme une économie quand elle ajoute un contenant.
-**Zones** — `apps/api/src/estimations/estimation-engine.ts` (l. 445-470), `apps/api/src/estimations/__tests__/two-room-project.spec.ts`.
+**Résultat** — l'optimiseur cesse de produire des achats que personne ne fait. Une sous-couche de 3,497 L n'est plus achetée en « 1 pot de 2,5 L + 2 pots de 0,5 L » mais en un pot de 5 L. Et la mutualisation multi-pièces ne peut plus ajouter un contenant : ce n'est plus un affichage clampé, c'est une propriété du critère.
+**Zones** — `apps/api/src/estimations/estimation-engine.ts` (`solvePackagingMix`, `selectBestPackaging`, `aggregatePurchases`), `apps/api/src/estimations/packaging-objective.spec.ts` (neuf), `apps/api/src/estimations/__tests__/seeded-catalog-harness.ts`, `apps/api/src/estimations/__tests__/two-room-project.spec.ts`.
 **Fin quand** — l'invariant 4 d'E1-1 passe, et aucun cas du harnais ne produit un panachage à trois contenants là où deux suffisent. **Charge M.**
+
+**Ce que le lot a arbitré, et qui n'était pas dans l'énoncé.**
+
+1. **La propriété de mutualisation n'était pas celle qu'on croyait.** Ce qui était prouvé portait sur le **coût approché** `S = q_min × contenants + volume`, pas sur le nombre de contenants : `ceil(Σ) ≤ Σ ceil` avait cessé d'être vrai en contenants dès E1-5, et le « -1 » du harnais en était la trace, pas un défaut d'affichage. En prenant le nombre de contenants comme critère principal, la propriété redevient un théorème — et sur le compte, cette fois.
+2. **Un plafond de surplus relatif est indispensable.** « Moins de contenants » seul est le défaut symétrique : il achetait 1 rouleau de 30 m² de natte de découplage pour 12,6 m² (~450 €) au lieu de 3 rouleaux de 5 m² (~270 €). Plafond retenu : **+100 %**, on n'achète jamais plus du double du besoin tant qu'un autre achat tient dans la borne. La borne est **relative**, et c'est ce qui la rend compatible avec la mutualisation : `V ≤ 2q` par pièce entraîne `Σ V ≤ 2 Σ q`, donc la réunion des achats reste admissible pour le problème mutualisé. Une borne absolue n'aurait pas cette propriété.
+3. **Le seuil du panachage marginal vaut 5 % du besoin** — sous ce seuil, le volume gagné par un second format est plus petit que l'écart entre deux niveaux de compétence sur le même ouvrage (2 à 5 points de perte). Il s'applique **à égalité de contenants**, jamais en autorisant un contenant de plus : c'est cette restriction qui préserve le théorème.
+4. **Le prix entre par `PackagingInput.unit_price`, et n'est alimenté par rien.** Ni `materials_catalog` ni `material_packaging` ne portent de colonne de prix ; les prix marchands vivent dans le cache fournisseur, **en aval** de l'estimation. Le mode coût est donc éprouvé et documenté comme non alimenté, plutôt que promis. Il ne garantit pas la monotonie des contenants — le coût, lui, reste additif — d'où le `max(0, …)` conservé dans `budget-summary.ts`.
+5. **`purchaseCost` est retiré du harnais.** Il mesurait `S`, que le moteur ne minimise plus. Ce qui le remplace : `extraContainers`, qui éprouve le théorème et doit rester vide, et `extraVolume`, qui énumère ce que le théorème coûte.
 
 **`/model opus` · `/effort high`** — c'est un problème d'optimisation combinatoire dont le critère actuel est mal choisi : minimiser le surplus en volume produit des panachages absurdes parce que le nombre de contenants n'entre pas dans la fonction objectif. Il faut redéfinir le critère — nombre de contenants d'abord, surplus relatif ensuite, avec une pénalité sur les petits conditionnements — sans casser la propriété prouvée `ceil(Σ) ≤ Σceil` de la mutualisation multi-pièces, qui est le meilleur actif algorithmique du dépôt. Opus 5. `high` : algorithmique dense mais localisée.
 

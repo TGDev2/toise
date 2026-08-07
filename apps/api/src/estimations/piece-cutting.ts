@@ -101,15 +101,19 @@ const FIT_EPSILON = 1e-9;
 /**
  * Combien de barres, et de quel format.
  *
- * Le critère est **celui du moteur** (`selectBestPackaging`, E1-5) :
- *
- *     minimiser  S = q_min × (nombre de barres) + (longueur achetée)
- *
- * Reprendre le même critère n'est pas une élégance : deux critères sur le même
+ * Le critère est **celui du moteur** (`selectBestPackaging`) : le nombre de
+ * barres d'abord, la longueur achetée ensuite. Il a suivi E1-9 avec lui —
+ * reprendre le même critère n'est pas une élégance, deux critères sur le même
  * catalogue produiraient deux réponses différentes pour le même besoin, et rien
  * ne dirait laquelle est la bonne. Ici il départage un catalogue qui n'offrirait
  * qu'une longueur de barre par matériau — c'est le cas aujourd'hui — mais il
  * couvre le jour où deux longueurs coexisteraient, sans qu'on ait à y revenir.
+ *
+ * Ce qu'il **n'emprunte pas** au moteur : le plafond de surplus relatif. Une
+ * pièce se coupe dans une barre entière, chute perdue ; le surplus n'est pas un
+ * choix d'achat mais la définition même d'un matériau non aboutable. Le
+ * départage sur la longueur achetée suffit à ne pas prendre une barre de 6 m
+ * pour un montant de 2,45 m.
  *
  * Un format trop court pour une seule pièce est écarté et non arrondi à zéro :
  * une barre de 2,40 m ne participe pas à un montant de 2,50 m, quel qu'en soit
@@ -155,16 +159,20 @@ export function computePieceCut(
   }
 
   const pieces = Math.max(0, Math.ceil(demand.count));
-  const smallest = Math.min(...formats.map((f) => f.bar_length_m));
 
   const best = usable
     .map((f) => {
       const bars = Math.ceil(pieces / f.pieces_per_bar);
-      return { ...f, bars, cost: smallest * bars + bars * f.bar_length_m };
+      return { ...f, bars, bought_m: bars * f.bar_length_m };
     })
-    // À coût égal, le format qui donne le plus de pièces par barre : moins de
-    // barres à porter, et le choix reste déterministe.
-    .sort((a, b) => a.cost - b.cost || b.pieces_per_bar - a.pieces_per_bar)[0];
+    // Le nombre de barres, puis la longueur achetée. À égalité sur les deux, le
+    // format qui donne le plus de pièces par barre : le choix reste déterministe.
+    .sort(
+      (a, b) =>
+        a.bars - b.bars ||
+        a.bought_m - b.bought_m ||
+        b.pieces_per_bar - a.pieces_per_bar,
+    )[0];
 
   return {
     pieces,

@@ -7,10 +7,10 @@ niveau  : beginner · pose : standard (non déclarée)
 surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Peinture plafond mate           principal      15 % exact           2       2.760 L      2 1 × Pot 2.5 L + 1 × Pot 0.5 L
+Peinture plafond mate           principal      15 % exact           2       2.760 L      1 1 × Pot 5 L
 Sous-couche universelle         sous_couche    15 % exact                   1.380 L      1 1 × Pot 2.5 L
 
-total : 2 lignes · 3 contenants
+total : 2 lignes · 2 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 ceiling_painting · expert · pose standard 1`] = `
@@ -20,10 +20,10 @@ niveau  : expert · pose : standard (non déclarée)
 surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Peinture plafond mate           principal       5 % exact           2       2.520 L      2 1 × Pot 2.5 L + 1 × Pot 0.5 L
+Peinture plafond mate           principal       5 % exact           2       2.520 L      1 1 × Pot 5 L
 Sous-couche universelle         sous_couche     5 % exact                   1.260 L      1 1 × Pot 2.5 L
 
-total : 2 lignes · 3 contenants
+total : 2 lignes · 2 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 ceiling_painting · intermediate · pose standard 1`] = `
@@ -33,10 +33,10 @@ niveau  : intermediate · pose : standard (non déclarée)
 surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Peinture plafond mate           principal      10 % exact           2       2.640 L      2 1 × Pot 2.5 L + 1 × Pot 0.5 L
+Peinture plafond mate           principal      10 % exact           2       2.640 L      1 1 × Pot 5 L
 Sous-couche universelle         sous_couche    10 % exact                   1.320 L      1 1 × Pot 2.5 L
 
-total : 2 lignes · 3 contenants
+total : 2 lignes · 2 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 drywall · beginner · pose standard 1`] = `
@@ -100,7 +100,7 @@ niveau  : beginner · pose : diagonal
 surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Carrelage sol 45x45 cm          principal      20 % exact                 14.400 m2     10 9 × Boîte 1.5 m² + 1 × Boîte 1 m²
+Carrelage sol 45x45 cm          principal      20 % exact                 14.400 m2     10 10 × Boîte 1.5 m²
 Mortier-colle flexible (C2)     consommable     5 % pose unique             90.000 kg      4 4 × Sac 25 kg
 Joint fin 1-6mm                 consommable     5 % pose unique              2.520 kg      1 1 × Sac 5 kg
 
@@ -142,7 +142,7 @@ niveau  : expert · pose : straight (non déclarée)
 surface : brute 12.000 m² · nette 12.000 m² · déduction 0.000 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Carrelage sol 45x45 cm          principal       5 % exact                 12.600 m2      9 8 × Boîte 1.5 m² + 1 × Boîte 1 m²
+Carrelage sol 45x45 cm          principal       5 % exact                 12.600 m2      9 9 × Boîte 1.5 m²
 Mortier-colle flexible (C2)     consommable     2 % pose unique             87.429 kg      4 4 × Sac 25 kg
 Joint fin 1-6mm                 consommable     2 % pose unique              2.448 kg      1 1 × Sac 5 kg
 
@@ -349,10 +349,10 @@ niveau  : beginner · pose : standard (non déclarée)
 surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Peinture acrylique mate         principal      15 % exact           2       6.964 L      2 1 × Pot 5 L + 1 × Pot 2.5 L
+Peinture acrylique mate         principal      15 % exact           2       6.964 L      1 1 × Pot 10 L
 Sous-couche universelle         sous_couche    15 % exact                   3.830 L      1 1 × Pot 5 L
 
-total : 2 lignes · 3 contenants
+total : 2 lignes · 2 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_painting · expert · pose standard 1`] = `
@@ -362,10 +362,10 @@ niveau  : expert · pose : standard (non déclarée)
 surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Peinture acrylique mate         principal       5 % exact           2       6.359 L      2 1 × Pot 5 L + 1 × Pot 2.5 L
-Sous-couche universelle         sous_couche     5 % exact                   3.497 L      3 1 × Pot 2.5 L + 2 × Pot 0.5 L
+Peinture acrylique mate         principal       5 % exact           2       6.359 L      1 1 × Pot 10 L
+Sous-couche universelle         sous_couche     5 % exact                   3.497 L      1 1 × Pot 5 L
 
-total : 2 lignes · 5 contenants
+total : 2 lignes · 2 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_painting · intermediate · pose standard 1`] = `
@@ -375,10 +375,10 @@ niveau  : intermediate · pose : standard (non déclarée)
 surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²
 
 matériau                        rôle          perte origine   couches   qté ajustée unités achat
-Peinture acrylique mate         principal      10 % exact           2       6.661 L      2 1 × Pot 5 L + 1 × Pot 2.5 L
+Peinture acrylique mate         principal      10 % exact           2       6.661 L      1 1 × Pot 10 L
 Sous-couche universelle         sous_couche    10 % exact                   3.664 L      1 1 × Pot 5 L
 
-total : 2 lignes · 3 contenants
+total : 2 lignes · 2 contenants
 `;
 
 exports[`Harnais — chambre rectangulaire 400 × 300 × 250, une porte 83 × 204 wall_tiling · beginner · pose diagonal 1`] = `

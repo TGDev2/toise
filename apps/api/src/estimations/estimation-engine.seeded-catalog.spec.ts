@@ -116,15 +116,17 @@ describe('EstimationEngine — catalogue seedé, chambre 4 × 3 × 2,5 m', () =>
   // aveugle. Ce que ce filtre voulait surveiller est désormais tenu par
   // `__tests__/harness-coverage.spec.ts` (inventaire figé des matériaux liés).
 
-  it('achète 6,66 L de peinture acrylique mate en 1 pot de 5 L + 1 pot de 2,5 L', () => {
+  it('achète 6,66 L de peinture acrylique mate en 1 pot de 10 L', () => {
     const paint = lines.find(
       (l) => l.material_name === 'Peinture acrylique mate',
     );
     expect(paint).toBeDefined();
     expect(paint!.adjusted_qty).toBeCloseTo(6.661, 3);
+    // E1-9 : un contenant, contre deux pour `5 L + 2,5 L`. Les 3,3 L de plus
+    // sont de la peinture au teinté de la pièce, qui sert aux retouches ; le
+    // second pot, lui, ne sert qu'à porter une seconde étiquette.
     expect(purchaseBreakdown(paint!)).toEqual([
-      { label: 'Pot 5 L', units: 1 },
-      { label: 'Pot 2.5 L', units: 1 },
+      { label: 'Pot 10 L', units: 1 },
     ]);
   });
 });

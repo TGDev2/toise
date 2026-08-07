@@ -108,9 +108,12 @@ describe('Harnais — couverture du catalogue seedé', () => {
    *
    * Les chiffres sont vérifiables à la main : mur net = 2 × (4 + 3) × 2,5
    * − 0,83 × 2,04 = 33,3068 m² ; peinture = 33,3068 ÷ 11 × 2 couches = 6,0558 L,
-   * + 10 % de perte (intermédiaire) = 6,661 L. L'achat 5 L + 2,5 L est l'exemple
-   * même que documente `selectBestPackaging` (E1-5), et le chiffre que citait
-   * `docs/REPRISE_PROJET.md` pour montrer que 14 pots de 0,5 L étaient absurdes.
+   * + 10 % de perte (intermédiaire) = 6,661 L.
+   *
+   * Cette ligne a porté trois achats successifs, et c'est une bonne mesure de ce
+   * que chaque lot a changé : 14 pots de 0,5 L avant E1-5, `5 L + 2,5 L` après,
+   * un pot de 10 L depuis E1-9. Le premier était absurde, le deuxième juste au
+   * regard d'un coût approché, le troisième est celui qu'on prend au rayon.
    */
   it('rend une table alignée, lisible et sans espace de fin', () => {
     const rendered = renderRoomCase(
@@ -127,10 +130,10 @@ describe('Harnais — couverture du catalogue seedé', () => {
         'surface : brute 35.000 m² · nette 33.307 m² · déduction 1.693 m²',
         '',
         'matériau                        rôle          perte origine   couches   qté ajustée unités achat',
-        'Peinture acrylique mate         principal      10 % exact           2       6.661 L      2 1 × Pot 5 L + 1 × Pot 2.5 L',
+        'Peinture acrylique mate         principal      10 % exact           2       6.661 L      1 1 × Pot 10 L',
         'Sous-couche universelle         sous_couche    10 % exact                   3.664 L      1 1 × Pot 5 L',
         '',
-        'total : 2 lignes · 3 contenants',
+        'total : 2 lignes · 2 contenants',
       ].join('\n'),
     );
 

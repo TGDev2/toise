@@ -73,6 +73,23 @@ export interface PackagingInput {
   label: string;
   quantity_per_unit: number;
   unit: string;
+  /**
+   * E1-9 — prix d'**un contenant** de ce format, en euros. Absent = inconnu.
+   *
+   * Sa présence sur **tous** les formats d'un matériau — et sur tous, pas sur
+   * quelques-uns — bascule le choix d'achat du nombre de contenants vers le
+   * coût total (`selectBestPackaging`). Un prix partiel ne bascule rien : il
+   * ferait comparer un coût connu à un coût supposé, ce qui est pire que de ne
+   * pas comparer.
+   *
+   * Aucune table ne le porte aujourd'hui : ni `materials_catalog` ni
+   * `material_packaging` n'ont de colonne de prix, et les prix marchands vivent
+   * dans le cache fournisseur, **en aval** de l'estimation
+   * (`price-comparison/`). Ce champ est donc le point d'entrée à brancher le
+   * jour où un prix remonte jusqu'au moteur, et le mode coût est éprouvé par
+   * `packaging-objective.spec.ts` sans être alimenté en production.
+   */
+  unit_price?: number;
 }
 
 export interface WasteFactorInput {
@@ -337,9 +354,57 @@ interface PackagingFormat {
   label: string;
   /** `quantity_per_unit` en millièmes d'unité — entier, base de tous les coûts. */
   steps: number;
+  /**
+   * E1-9 — prix d'un contenant, en **centimes** entiers, ou `null` si inconnu.
+   * En centimes pour la même raison que les millièmes d'unité : tous les coûts
+   * comparés doivent être entiers, sinon deux achats de même prix se départagent
+   * sur une dérive flottante.
+   */
+  priceCents: number | null;
 }
 
 const PACKAGING_SCALE = 1000;
+const PRICE_SCALE = 100;
+
+/**
+ * E1-9 — surplus relatif au-delà duquel un achat cesse d'être admissible :
+ * **on n'achète jamais plus du double du besoin** tant qu'un autre achat tient
+ * dans la borne.
+ *
+ * Pourquoi une borne est nécessaire. Le critère principal est le nombre de
+ * contenants (cf. `selectBestPackaging`), et ce critère seul sature sur le plus
+ * grand format : pour 12,6 m² de natte de découplage, offerte en rouleaux de
+ * 5 et 30 m², il achèterait **un** rouleau de 30 m² — environ 450 € et 17 m² à
+ * la benne, là où trois rouleaux de 5 m² coûtent environ 270 €. C'est le défaut
+ * symétrique de celui qu'E1-9 corrige, et il faut le borner explicitement.
+ *
+ * Pourquoi **relative** et non absolue, et c'est le point qui commande tout le
+ * reste : `V_pièce ≤ 2 q_pièce` pour chaque pièce entraîne `Σ V ≤ 2 Σ q`. La
+ * réunion des achats pièce par pièce reste donc admissible pour le problème
+ * mutualisé, ce qui préserve `contenants(mutualisé) ≤ Σ contenants(pièce)`
+ * (cf. `aggregatePurchases`). Une borne absolue — « pas plus de 5 L de trop » —
+ * n'a pas cette propriété : cinq pièces la franchiraient ensemble en la tenant
+ * chacune.
+ */
+const MAX_RELATIVE_SURPLUS = 1;
+
+/**
+ * E1-9 — gain minimal, en fraction du besoin, qui justifie d'ajouter un second
+ * format à l'achat.
+ *
+ * À nombre de contenants égal, un panachage n'est retenu que s'il fait gagner au
+ * moins ce volume sur l'achat à format unique. Sous ce seuil, le volume gagné
+ * est plus petit que l'écart entre deux niveaux de compétence sur le même
+ * ouvrage — les facteurs de perte du catalogue sautent de 2 à 5 points d'un
+ * niveau à l'autre : c'est du bruit d'estimation, pas une économie, et cela ne
+ * paie pas une seconde référence sur la liste d'achat.
+ *
+ * Exemple du catalogue : 13,8 m² de carrelage offert en cartons de 1,08 et
+ * 1,44 m². `9 × 1,44 + 1 × 1,08 = 14,04 m²` et `10 × 1,44 = 14,40 m²` coûtent
+ * dix cartons tous les deux ; le panachage gagne 0,36 m², soit 2,6 % du besoin.
+ * On prend les dix cartons du même format.
+ */
+const MARGINAL_MIX_RATIO = 0.05;
 
 /**
  * Plafond de la table de programmation dynamique. Au-delà, le gros de l'achat
@@ -380,19 +445,43 @@ const normalizePackagings = (
     if (!Number.isFinite(steps) || steps <= 0 || bySteps.has(steps)) {
       continue;
     }
-    bySteps.set(steps, { label: pkg.label, steps });
+    const priceCents = Math.round(Number(pkg.unit_price) * PRICE_SCALE);
+    bySteps.set(steps, {
+      label: pkg.label,
+      steps,
+      priceCents:
+        Number.isFinite(priceCents) && priceCents > 0 ? priceCents : null,
+    });
   }
   return [...bySteps.values()].sort((a, b) => b.steps - a.steps);
 };
 
 /**
- * Nombre de contenants de chaque format, indexé comme `formats`, minimisant
- * `S = q_min × contenants + volume` sous contrainte `volume ≥ adjustedQty`.
+ * Nombre de contenants de chaque format, indexé comme `formats` (E1-9).
+ *
+ * L'achat retenu minimise, dans cet ordre :
+ *
+ *  1. le **coût total** si tous les formats portent un prix, sinon le **nombre
+ *     de contenants** ;
+ *  2. le nombre de contenants ;
+ *  3. le volume acheté, donc le surplus.
+ *
+ * sous deux contraintes : couvrir le besoin, et ne pas dépasser
+ * `MAX_RELATIVE_SURPLUS` — sauf si aucun achat ne tient dans cette borne, auquel
+ * cas le volume minimal l'emporte. La pénalité sur les panachages marginaux
+ * (`MARGINAL_MIX_RATIO`) s'applique en dernier, **à clé principale et nombre de
+ * contenants inchangés** : elle ne peut donc jamais faire acheter un contenant
+ * de plus, ce dont dépend la propriété de mutualisation.
  *
  * Programmation dynamique sur le pgcd des formats : tout format est un multiple
  * entier du pas, donc « couvrir le besoin » se dit exactement « couvrir
- * `ceil(besoin / pas)` pas », et tous les coûts comparés sont des entiers —
- * aucune dérive flottante ne peut départager deux achats.
+ * `ceil(besoin / pas)` pas », et toutes les grandeurs comparées sont des entiers
+ * — aucune dérive flottante ne peut départager deux achats.
+ *
+ * La table s'arrête à `besoin + plus grand format` : au-delà, aucun achat ne
+ * peut avoir moins de contenants, puisque `ceil(besoin / plus grand format)` en
+ * est le plancher et qu'il est atteint dans cet intervalle. Explorer plus loin
+ * coûterait du temps pour ne trouver que des achats plus volumineux.
  */
 const solvePackagingMix = (
   adjustedQty: number,
@@ -401,56 +490,122 @@ const solvePackagingMix = (
   const counts = new Array<number>(formats.length).fill(0);
   const step = formats.reduce((acc, f) => gcd(acc, f.steps), 0);
   const sizes = formats.map((f) => f.steps / step);
-  const smallestSteps = formats[formats.length - 1].steps;
-  // Coût d'un contenant : son contenu, plus le plus petit format offert — le
-  // prix forfaitaire du contenant, exprimé dans la seule unité dont on dispose.
-  const costs = formats.map((f) => smallestSteps + f.steps);
+  const largest = sizes[0];
+  // Le coût ne guide le choix que s'il est connu de **tous** les formats. Un
+  // prix partiel comparerait un coût su à un coût supposé.
+  const priced = formats.every((f) => f.priceCents !== null);
+  const weights = formats.map((f) => (priced ? f.priceCents! : 1));
 
-  let remaining = Math.max(
+  const need = Math.max(
     0,
     Math.ceil((adjustedQty * PACKAGING_SCALE) / step - STEP_EPSILON),
   );
-  if (remaining === 0) {
+  if (need === 0) {
     return counts;
   }
 
+  // Volume total admissible, calculé sur la quantité **réelle** et non sur le
+  // besoin arrondi à la grille : sur des formats grossiers (rouleaux de 5 et
+  // 30 m²), l'arrondi vaudrait plusieurs fois la borne elle-même.
+  const maxSteps = Math.floor(
+    (adjustedQty * PACKAGING_SCALE * (1 + MAX_RELATIVE_SURPLUS)) / step +
+      STEP_EPSILON,
+  );
+  const marginalSteps = Math.floor(
+    (adjustedQty * PACKAGING_SCALE * MARGINAL_MIX_RATIO) / step,
+  );
+
+  let remaining = need;
+  let bulkSteps = 0;
   if (remaining > MAX_PACKAGING_STEPS) {
-    const bulk = Math.ceil((remaining - MAX_PACKAGING_STEPS) / sizes[0]);
+    const bulk = Math.ceil((remaining - MAX_PACKAGING_STEPS) / largest);
     counts[0] += bulk;
-    remaining -= bulk * sizes[0];
+    bulkSteps = bulk * largest;
+    remaining -= bulkSteps;
   }
 
-  // best[n] : coût minimal pour couvrir n pas ; unitsAt[n] départage à coût
-  // égal ; from[n] retient le dernier format posé, pour la reconstruction.
-  const best = new Float64Array(remaining + 1);
-  const unitsAt = new Int32Array(remaining + 1);
-  const from = new Int32Array(remaining + 1);
+  const bound = remaining + largest;
+  // key[n]  : clé principale minimale pour acheter **exactement** n pas ;
+  // units[n]: contenants du meilleur achat de n pas, départage à clé égale ;
+  // from[n] : dernier format posé, pour la reconstruction. `Infinity` marque un
+  //           volume qu'aucune combinaison de formats n'atteint.
+  const key = new Float64Array(bound + 1).fill(Infinity);
+  const units = new Int32Array(bound + 1);
+  const from = new Int32Array(bound + 1).fill(-1);
+  key[0] = 0;
 
-  for (let n = 1; n <= remaining; n++) {
-    let bestCost = Infinity;
-    let bestUnits = 0;
-    let bestIdx = 0;
-    // Du plus grand format au plus petit : à coût et contenants égaux, le grand
+  for (let n = 1; n <= bound; n++) {
+    // Du plus grand format au plus petit : à clé et contenants égaux, le grand
     // format l'emporte — le choix reste déterministe et le détail trié.
     for (let i = 0; i < formats.length; i++) {
-      const prev = Math.max(0, n - sizes[i]);
-      const cost = best[prev] + costs[i];
-      const units = unitsAt[prev] + 1;
-      if (cost < bestCost || (cost === bestCost && units < bestUnits)) {
-        bestCost = cost;
-        bestUnits = units;
-        bestIdx = i;
+      const prev = n - sizes[i];
+      if (prev < 0 || key[prev] === Infinity) {
+        continue;
+      }
+      const candidateKey = key[prev] + weights[i];
+      const candidateUnits = units[prev] + 1;
+      if (
+        candidateKey < key[n] ||
+        (candidateKey === key[n] && candidateUnits < units[n])
+      ) {
+        key[n] = candidateKey;
+        units[n] = candidateUnits;
+        from[n] = i;
       }
     }
-    best[n] = bestCost;
-    unitsAt[n] = bestUnits;
-    from[n] = bestIdx;
   }
 
-  for (let n = remaining; n > 0; ) {
+  // Les achats admissibles : ceux qui couvrent le besoin sans franchir la borne
+  // de surplus. Si la borne n'en laisse aucun — un besoin très petit devant le
+  // plus petit format — elle s'efface au profit du volume minimal : on ne peut
+  // pas ne rien acheter.
+  const affordable = maxSteps - bulkSteps;
+  let chosen = -1;
+  for (let n = remaining; n <= bound; n++) {
+    if (key[n] === Infinity || n > affordable) {
+      continue;
+    }
+    if (
+      chosen === -1 ||
+      key[n] < key[chosen] ||
+      (key[n] === key[chosen] && units[n] < units[chosen])
+    ) {
+      chosen = n;
+    }
+  }
+  if (chosen === -1) {
+    for (let n = remaining; n <= bound; n++) {
+      if (key[n] !== Infinity) {
+        chosen = n;
+        break;
+      }
+    }
+  }
+  if (chosen === -1) {
+    return counts;
+  }
+
+  // Pénalité sur les conditionnements marginaux : à clé principale et nombre de
+  // contenants inchangés, un format unique l'emporte sur un panachage dès que
+  // celui-ci ne gagne pas `MARGINAL_MIX_RATIO` du besoin.
+  // Du plus petit format au plus grand : le premier qui couvre le besoin à lui
+  // seul est aussi celui qui achète le moins de volume.
+  for (let i = formats.length - 1; i >= 0; i--) {
+    const volume = units[chosen] * sizes[i];
+    if (volume < remaining) {
+      continue;
+    }
+    if (volume <= chosen + marginalSteps && volume <= affordable) {
+      counts[i] += units[chosen];
+      return counts;
+    }
+    break;
+  }
+
+  for (let n = chosen; n > 0; ) {
     const i = from[n];
     counts[i] += 1;
-    n = Math.max(0, n - sizes[i]);
+    n -= sizes[i];
   }
 
   return counts;
@@ -962,35 +1117,46 @@ export class EstimationEngine {
   }
 
   /**
-   * Que faut-il acheter pour couvrir `adjustedQty` ? E1-5 — le critère est
+   * Que faut-il acheter pour couvrir `adjustedQty` ? E1-9 — le critère est
+   * lexicographique, et il se lit dans cet ordre :
    *
-   *     minimiser  S = q_min × (nombre de contenants) + (volume acheté)
-   *     sous       volume acheté ≥ adjustedQty
+   *  1. **le coût total**, si le catalogue donne un prix à *tous* les formats de
+   *     ce matériau ; **le nombre de contenants** sinon ;
+   *  2. à égalité, le nombre de contenants ;
+   *  3. à égalité, le surplus.
    *
-   * où `q_min` est le plus petit format offert pour ce matériau. Plusieurs
-   * formats peuvent être panachés : 6,66 L de peinture donnent 1 pot de 5 L
-   * plus 1 de 2,5 L.
+   * sous deux contraintes : couvrir le besoin, et ne pas dépasser
+   * `MAX_RELATIVE_SURPLUS` du besoin — sauf quand aucun achat ne tient dans
+   * cette borne, où le volume minimal l'emporte. Un panachage n'est retenu que
+   * s'il gagne un contenant, ou `MARGINAL_MIX_RATIO` du besoin à contenants
+   * égaux.
    *
-   * Pourquoi cette forme. Le prix d'un conditionnement vaut `a + b × contenu`,
-   * avec `a > 0` — le pot, l'étiquette, la manutention. C'est ce qui fait
-   * baisser le prix au litre quand le pot grossit. Minimiser le coût revient
-   * donc à minimiser `(a/b) × contenants + volume`, dont la seule inconnue
-   * `r = a/b` est homogène à un volume. Le catalogue ne portant pas de prix, on
-   * pose `r = q_min` : **un contenant de plus doit faire économiser au moins la
-   * plus petite quantité que le magasin sait vendre**. Estimation volontairement
-   * prudente — le vrai `r` est plus grand, donc la règle penche vers moins de
-   * contenants, le côté sûr : un fond de pot se garde, un second aller-retour au
-   * magasin ne se rattrape pas. Et sans échelle : elle vaut en litres, en m² et
-   * en kg sans réglage par famille de matériau.
+   * **Pourquoi le nombre de contenants et non le coût approché.** Le critère
+   * d'E1-5 minimisait `S = q_min × contenants + volume`, où `q_min` est le plus
+   * petit format offert : il approchait le prix d'un conditionnement par
+   * `a + b × contenu` et posait `a/b = q_min`. L'approximation est trop basse.
+   * Sur la peinture `q_min = 0,5 L` : un contenant de plus ne « coûtait » qu'un
+   * demi-litre, donc trois pots battaient un seul dès qu'ils économisaient
+   * 1,5 L. Pour 3,497 L de sous-couche, ce critère achetait
+   * « 1 × Pot 2,5 L + 2 × Pot 0,5 L » — trois contenants, un peu plus cher en
+   * euros, et deux pots de 0,5 L de sous-couche universelle que le rayon
+   * professionnel ne tient quasiment pas. Le pot de 5 L est la réponse du
+   * métier, et c'est celle qu'un critère en contenants donne directement.
    *
-   * Le critère n'est pas fragile au choix de `r` : pour 6,66 L, 5 L + 2,5 L est
-   * optimal pour tout `r` entre 0,167 et 2,5 — une plage de 1 à 15.
+   * Le nombre de contenants n'est pas qu'un proxy de prix : c'est un coût que le
+   * prix ne porte pas. Aux tarifs constatés, `1 × 5 L` et
+   * `2,5 L + 0,5 L + 0,5 L` se tiennent à un euro près — ce qui les sépare, ce
+   * sont deux références de plus à trouver, à porter et à stocker.
    *
-   * Ce qu'il remplace : minimiser le seul surplus en volume, format unique. Ce
-   * critère achetait 14 pots de 0,5 L (7,0 L) plutôt que 5 L + 2,5 L (7,5 L)
-   * pour 6,66 L — trois à cinq fois le prix pour 0,5 L de peinture économisée.
-   * Son symétrique, minimiser le seul nombre de contenants, sature sur le plus
-   * grand format : un pot de 2,5 L pour 0,6 L de besoin. `S` pénalise les deux.
+   * **Pourquoi une borne de surplus.** Le critère en contenants, seul, sature
+   * sur le plus grand format : il achèterait un rouleau de 30 m² de natte de
+   * découplage pour 12,6 m². C'est le défaut symétrique, et
+   * `MAX_RELATIVE_SURPLUS` le borne.
+   *
+   * **Pourquoi le prix passe devant quand il existe.** Le nombre de contenants
+   * est ce qu'on regarde *faute de prix*. Là où le prix est connu, il n'y a plus
+   * rien à approcher — cf. `PackagingInput.unit_price`, aujourd'hui alimenté par
+   * aucune table.
    */
   selectBestPackaging(
     adjustedQty: number,
@@ -1311,19 +1477,33 @@ export class EstimationEngine {
    * items, puis sélectionne le conditionnement **une seule fois** sur le total.
    * Fonction pure.
    *
-   * Ce que cela garantit, exactement : la réunion des achats pièce par pièce est
-   * une solution admissible du problème mutualisé, de coût `Σ S_pièce` au sens
-   * de `selectBestPackaging`. L'optimum mutualisé ne peut donc pas coûter plus
-   * cher — c'est cela, la promesse ENG-2.
+   * Ce que cela garantit, exactement, et **pourquoi c'est un théorème depuis
+   * E1-9** : la réunion des achats pièce par pièce couvre la somme des besoins,
+   * et son volume vaut `Σ V_pièce ≤ (1 + MAX_RELATIVE_SURPLUS) × Σ q_pièce`
+   * puisque chaque pièce tient la borne — la borne est **relative**, donc elle
+   * survit à la somme. Cette réunion est donc une solution *admissible* du
+   * problème mutualisé, avec `Σ contenants_pièce` contenants. Comme l'optimum
+   * mutualisé minimise le nombre de contenants (`selectBestPackaging`), il ne
+   * peut pas en compter davantage :
    *
-   * Ce que cela ne garantit **pas**, contrairement à ce que ce commentaire a
-   * longtemps affirmé : que le nombre de contenants ne puisse pas augmenter.
-   * `ceil(Σ) ≤ Σ ceil` valait quand un achat tenait dans un format unique ; le
-   * panachage d'E1-5 arbitre en coût, et peut préférer plus de contenants pour
-   * moins de volume. Le cas se produit sur le catalogue réel, pas seulement en
-   * théorie : cf. `__tests__/two-room-project.spec.ts`, qui en énumère les deux
-   * occurrences. `budget-summary.ts` clampe l'économie affichée à 0 pour cette
-   * raison.
+   *     contenants(mutualisé) ≤ Σ contenants(pièce)
+   *
+   * C'est la forme forte de `ceil(Σ) ≤ Σ ceil`, et elle vaut désormais sur des
+   * formats panachés, pas seulement sur un format unique.
+   *
+   * Ce qu'E1-9 a corrigé pour l'obtenir. Le critère d'E1-5 arbitrait en **coût
+   * approché** : l'admissibilité ne portait alors que sur ce coût, et le nombre
+   * de contenants pouvait monter. Ce n'était pas une inquiétude théorique — le
+   * harnais en affichait deux occurrences sur le catalogue réel, sous la forme
+   * d'une « économie » de `-1` contenant. Le critère en contenants les fait
+   * disparaître par construction, et `__tests__/two-room-project.spec.ts` exige
+   * désormais qu'il n'en reste aucune.
+   *
+   * La seule réserve, écrite ici parce qu'elle survivra à ce lot : le **mode
+   * coût** (`PackagingInput.unit_price`) minimise le prix, pas le compte. Le
+   * coût étant additif, `coût(mutualisé) ≤ Σ coûts` tient de la même façon ;
+   * le nombre de contenants, lui, n'est plus garanti. `budget-summary.ts` garde
+   * son `max(0, …)` pour cette raison, et pour elle seule.
    */
   aggregatePurchases(
     lines: EstimationLineItem[],

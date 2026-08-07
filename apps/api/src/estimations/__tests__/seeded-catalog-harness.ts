@@ -95,10 +95,18 @@ import { seedWorkTypes, SeedWorkType } from '../../projects/work-types.data';
  * **I4 — le nombre de contenants est minimal à surplus égal.**
  * D'où il vient : E1-5. Le critère d'avant minimisait le surplus absolu et
  * achetait 14 pots de 0,5 L pour 6,66 L de peinture, trois à cinq fois le prix
- * de 5 L + 2,5 L. Le critère actuel minimise `S = q_min × contenants + volume` ;
+ * de 5 L + 2,5 L. E1-9 a fait du nombre de contenants le critère **principal** ;
  * cet invariant en éprouve la conséquence observable, par une programmation
  * dynamique **indépendante** de celle du moteur : aucun panachage ne doit
  * donner strictement moins de contenants sans acheter plus de volume.
+ *
+ * Il reste plus faible que le critère, et c'est voulu : il ne regarde que les
+ * achats de volume **inférieur ou égal** à celui retenu, donc il ne dit rien du
+ * plafond de surplus ni de la pénalité sur les panachages marginaux. Les
+ * décisions d'achat elles-mêmes vivent dans
+ * `estimations/packaging-objective.spec.ts`, où elles se défendent une par une.
+ * Un invariant qui recopierait le critère complet ne prouverait que la cohérence
+ * du moteur avec lui-même.
  *
  * **I5 — monter en compétence n'augmente jamais une quantité.**
  * D'où il vient : DATA-3. Les facteurs de perte **appris** sur les achats réels
@@ -543,25 +551,20 @@ export function purchasedVolume(
 }
 
 /**
- * Le critère que `selectBestPackaging` minimise (E1-5) :
+ * `purchaseCost` a été **retiré** par E1-9, et c'est le point du lot.
  *
- *     S = q_min × (nombre de contenants) + (volume acheté)
+ * Cette fonction calculait `S = q_min × contenants + volume`, le coût approché
+ * qu'E1-5 minimisait, et la suite s'en servait pour affirmer que mutualiser ne
+ * coûte jamais plus cher. Le moteur ne minimise plus `S` : il minimise le
+ * **nombre de contenants** (`selectBestPackaging`). Continuer à mesurer `S`
+ * reviendrait à vérifier une promesse que personne ne fait plus — et cela
+ * échouait effectivement de 8 unités sur la colle en pâte, pour un achat qui
+ * est meilleur au regard du nouveau critère.
  *
- * où `q_min` est le plus petit format offert. C'est la grandeur que le moteur
- * traite comme un coût ; toute affirmation sur « ce qui coûte moins cher » se
- * dit dans cette unité et pas en nombre de contenants.
+ * Ce qui la remplace : `extraContainers`, qui éprouve la propriété *démontrée*
+ * (cf. `aggregatePurchases`), et `extraVolume`, qui énumère le prix payé pour
+ * elle.
  */
-export function purchaseCost(
-  purchase: {
-    packaging_breakdown?: PackagingUnitsLine[];
-    packaging_label: string;
-    units_needed: number;
-  },
-  material: MaterialInput,
-): number {
-  const qMin = Math.min(...material.packagings.map((p) => p.quantity_per_unit));
-  return qMin * purchase.units_needed + purchasedVolume(purchase, material);
-}
 
 /**
  * Format d'un achat, contenant par contenant : « 1 × Pot 5 L + 1 × Pot 2.5 L ».
@@ -797,6 +800,29 @@ export function runProject(
   };
 }
 
+/**
+ * Ce que la mutualisation a fait, dit dans le bon sens (E1-9).
+ *
+ * L'affichage d'avant écrivait `-1 aucun contenant évité` : le compte niait le
+ * libellé, et le libellé cachait le compte. Une mutualisation qui **ajoute** un
+ * contenant est un fait qui doit se lire comme tel, pas une économie négative.
+ *
+ * Depuis E1-9, `saved < 0` est impossible sans prix au catalogue — c'est la
+ * propriété que démontre `aggregatePurchases`. La troisième branche est donc un
+ * garde-fou, et son texte est celui qu'on veut lire si elle reparaît.
+ */
+function mutualisationVerdict(saved: number): string {
+  if (saved > 0) {
+    return saved > 1 ? 'contenants évités' : 'contenant évité';
+  }
+  if (saved === 0) {
+    return 'aucun contenant évité';
+  }
+  return saved < -1
+    ? "contenants de plus qu'en achat séparé"
+    : "contenant de plus qu'en achat séparé";
+}
+
 const CONTRIBUTION_COLUMNS: Column[] = [
   { header: '', width: 2 },
   { header: 'pièce', width: 24 },
@@ -877,8 +903,8 @@ export function renderProject(
         'économie de mutualisation',
         '',
         '',
-        `${saved}`,
-        saved > 0 ? 'contenants évités' : 'aucun contenant évité',
+        `${Math.abs(saved)}`,
+        mutualisationVerdict(saved),
       ]),
     ].join('\n');
   });
@@ -1398,10 +1424,13 @@ function containerMinimalityViolations(
  * quantité.
  *
  * L'assertion porte sur `adjusted_qty` et non sur `units_needed`, et c'est
- * délibéré : le critère `S` d'E1-5 arbitre en coût, pas en nombre de
- * contenants, et le harnais démontre ailleurs (`extraContainers`) qu'il peut
- * préférer un contenant de plus pour moins de volume. Exiger la monotonie des
- * contenants exigerait donc du moteur autre chose que ce qu'il promet.
+ * délibéré. La raison a changé avec E1-9 : ce n'est plus que le critère
+ * arbitrerait ailleurs, c'est que **le nombre de contenants n'est pas monotone
+ * en quantité**, et ne peut pas l'être. Le plafond de surplus relatif s'élargit
+ * avec le besoin, donc un besoin plus grand ouvre des formats qu'un besoin plus
+ * petit s'interdit : 12,6 m² de natte de découplage s'achètent en trois rouleaux
+ * de 5 m², 15,5 m² en un seul rouleau de 30. Exiger la monotonie sur les
+ * contenants exigerait donc du moteur le contraire de ce qu'il promet.
  */
 function skillMonotonyViolations(
   engine: EstimationEngine,
@@ -1654,12 +1683,18 @@ export function invariantViolations(
 
 export interface MutualisationReport {
   /** Cas où mutualiser augmente le coût `S` du moteur. Doit rester vide. */
-  costRegressions: string[];
+  /**
+   * Cas où mutualiser achète **plus de volume** qu'acheter pièce par pièce.
+   * C'est le prix assumé du critère en contenants, et il est énuméré cas par
+   * cas plutôt que toléré en bloc.
+   */
+  extraVolume: string[];
   /** Cas où mutualiser évite au moins un contenant. */
   casesThatSave: number;
   /**
-   * Cas où mutualiser retient **plus** de contenants — en achetant moins de
-   * volume. Constaté, pas toléré par défaut : la suite en fige le nombre.
+   * Cas où mutualiser retient **plus** de contenants. Depuis E1-9 c'est
+   * impossible sans prix au catalogue — cf. la démonstration portée par
+   * `aggregatePurchases` — et la suite exige que cette liste soit vide.
    */
   extraContainers: string[];
   /** Traçabilité de chaque contribution : somme des parts = total mutualisé. */
@@ -1667,31 +1702,36 @@ export interface MutualisationReport {
 }
 
 /**
- * Ce que la mutualisation (ENG-2) garantit réellement.
+ * Ce que la mutualisation (ENG-2) garantit réellement — **et l'histoire de cette
+ * phrase**, parce qu'elle a été fausse deux fois.
  *
- * La documentation du moteur promettait `ceil(Σ) ≤ Σ ceil` — « mutualiser ne
- * coûte jamais plus de conditionnements ». C'était vrai avant E1-5, quand un
- * achat tenait dans un seul format : `ceil` est sous-additif. Depuis que
- * `selectBestPackaging` panache les formats en minimisant
- * `S = q_min × contenants + volume`, le **nombre** de contenants n'est plus
- * monotone, et ce harnais l'a montré dès sa première exécution sur le catalogue
- * réel : une peinture murale de débutant sur ces deux pièces demande 15,718 L,
- * achetés mutualisés en 10 + 5 + 0,5 + 0,5 L (4 contenants, 16 L) là où l'achat
- * pièce par pièce prenait 5 + 2,5 puis 10 L (3 contenants, 17,5 L). Quatre
- * contenants pour 1,5 L de peinture en moins : moins cher au sens du critère,
- * plus de contenants à porter.
+ * 1. Le moteur promettait `ceil(Σ) ≤ Σ ceil`, « mutualiser ne coûte jamais plus
+ *    de conditionnements ». Vrai avant E1-5, quand un achat tenait dans un
+ *    format unique : `ceil` est sous-additif.
+ * 2. E1-5 a panaché les formats en minimisant `S = q_min × contenants + volume`,
+ *    un coût **approché**. L'admissibilité ne portait plus alors que sur `S`, et
+ *    le nombre de contenants pouvait monter. Ce harnais l'a montré dès sa
+ *    première exécution sur le catalogue réel : une peinture murale de débutant
+ *    sur ces deux pièces demande 15,718 L, achetés mutualisés en
+ *    10 + 5 + 0,5 + 0,5 L (4 contenants, 16 L) là où l'achat pièce par pièce
+ *    prenait 5 + 2,5 puis 10 L (3 contenants, 17,5 L). L'écran l'affichait
+ *    « -1 contenant évité ».
+ * 3. E1-9 fait du **nombre de contenants** le critère principal. La réunion des
+ *    achats pièce par pièce couvre la somme des besoins, et sa borne de surplus
+ *    étant relative elle survit à la somme : cette réunion est donc admissible
+ *    pour le problème mutualisé, avec `Σ contenants_pièce` contenants. L'optimum
+ *    mutualisé minimisant ce compte, il ne peut pas en prendre davantage.
  *
- * Ce qui reste vrai, et se démontre : la réunion des achats pièce par pièce est
- * une solution **admissible** du problème mutualisé (son volume couvre la somme
- * des besoins) et son coût vaut exactement `Σ S_pièce`. Le moteur minimisant `S`,
- * l'optimum mutualisé ne peut pas faire pire. C'est donc `S` qu'on assert ici —
- * la seule formulation de la promesse qui soit à la fois vraie et non triviale.
+ * D'où les deux listes de ce rapport. `extraContainers` éprouve la propriété
+ * démontrée et doit rester **vide**. `extraVolume` énumère ce que cette
+ * propriété coûte — quelques litres de plus, nommés un par un : le jour où la
+ * liste s'allonge, quelqu'un doit dire lequel a changé et pourquoi.
  */
 export function mutualisationReport(
   engine: EstimationEngine,
   rooms: HarnessRoom[],
 ): MutualisationReport {
-  const costRegressions: string[] = [];
+  const extraVolume: string[] = [];
   const extraContainers: string[] = [];
   const contributionMismatches: string[] = [];
   let casesThatSave = 0;
@@ -1711,17 +1751,19 @@ export function mutualisationReport(
     for (const agg of aggregated) {
       const material = byId.get(agg.material_id)!;
       const split = perRoomUnitsByMaterial.get(agg.material_id) ?? 0;
-      const splitCost = perRoomLines
+      const splitVolume = perRoomLines
         .filter((l) => l.material_id === agg.material_id)
-        .reduce((sum, line) => sum + purchaseCost(line, material), 0);
+        .reduce((sum, line) => sum + purchasedVolume(line, material), 0);
+      const pooledVolume = purchasedVolume(agg, material);
 
       // Tolérance : `total_adjusted_qty` est la somme de quantités déjà
       // arrondies au millième, donc le besoin mutualisé peut excéder la somme
-      // des besoins de quelques 1e-4 — sans rapport avec la promesse testée.
-      if (purchaseCost(agg, material) > splitCost + 1e-3) {
-        costRegressions.push(
-          `${label} : ${agg.material_name} — coût mutualisé ${purchaseCost(agg, material)} ` +
-            `contre ${splitCost} pièce par pièce`,
+      // des besoins de quelques 1e-4 — sans rapport avec ce qu'on mesure.
+      if (pooledVolume > splitVolume + 1e-3) {
+        extraVolume.push(
+          `${label} : ${agg.material_name} — ${qty(pooledVolume, agg.material_unit)} ` +
+            `mutualisés contre ${qty(splitVolume, agg.material_unit)} pièce par pièce, ` +
+            `en ${agg.units_needed} contenants au lieu de ${split}`,
         );
       }
 
@@ -1762,7 +1804,7 @@ export function mutualisationReport(
   }
 
   return {
-    costRegressions,
+    extraVolume,
     casesThatSave,
     extraContainers,
     contributionMismatches,
