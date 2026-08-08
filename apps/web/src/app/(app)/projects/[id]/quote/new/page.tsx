@@ -57,6 +57,12 @@ export default function NewQuotePage() {
     'Acompte de 30 % à la commande, solde à la réception des travaux.',
   );
   const [notes, setNotes] = useState('');
+  // E1-11 — désactivés par défaut : détailler les fournitures ligne à ligne
+  // expose la marge de l'artisan sur les matériaux, ce que la plupart
+  // évitent délibérément.
+  const [showMaterialDetails, setShowMaterialDetails] = useState(false);
+  const [showMaterialJustifications, setShowMaterialJustifications] =
+    useState(false);
 
   useEffect(() => {
     if (isLoading) return;
@@ -223,6 +229,9 @@ export default function NewQuotePage() {
         validity_days: parseInt(validityDays) || 30,
         payment_terms: paymentTerms.trim() || undefined,
         notes: notes.trim() || undefined,
+        show_material_details: showMaterialDetails,
+        show_material_justifications:
+          showMaterialDetails && showMaterialJustifications,
       };
       if (clientId) payload.client_id = clientId;
 
@@ -449,6 +458,49 @@ export default function NewQuotePage() {
               className={NUMBER_FIELD}
             />
           </label>
+          {/*
+            E1-11 — deux réglages distincts : montrer les lignes, et — à
+            condition de les montrer — y joindre la justification. Le second
+            n'a de sens que si le premier est actif.
+          */}
+          <div className="mt-4 space-y-2 rounded-2xl border border-stone-200 bg-stone-50 p-4">
+            <label className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                checked={showMaterialDetails}
+                onChange={(e) => setShowMaterialDetails(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-stone-300 text-[var(--accent)] focus:ring-[var(--accent)]"
+              />
+              <span className="text-sm text-stone-700">
+                Afficher le détail des fournitures
+                <span className="block text-xs text-stone-500">
+                  Désactivé, le devis ne montre que le total — la marge sur
+                  les matériaux reste invisible pour le client.
+                </span>
+              </span>
+            </label>
+            <label
+              className={`flex items-start gap-2 ${
+                showMaterialDetails ? '' : 'opacity-40'
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={showMaterialJustifications}
+                disabled={!showMaterialDetails}
+                onChange={(e) =>
+                  setShowMaterialJustifications(e.target.checked)
+                }
+                className="mt-0.5 h-4 w-4 rounded border-stone-300 text-[var(--accent)] focus:ring-[var(--accent)]"
+              />
+              <span className="text-sm text-stone-700">
+                Justifier chaque quantité (source et règle)
+                <span className="block text-xs text-stone-500">
+                  Ajoute, sous chaque fourniture, le ratio et sa source.
+                </span>
+              </span>
+            </label>
+          </div>
         </section>
 
         {/* Live totals */}

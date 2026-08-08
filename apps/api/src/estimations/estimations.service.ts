@@ -186,6 +186,13 @@ export class EstimationsService {
         name: m.name,
         unit: m.unit,
         yield_per_unit: Number(m.yield_per_unit),
+        // E1-11 : miroir en lecture seule de la source du rendement, composée
+        // en justification affichable côté réponse API, jamais par le moteur.
+        source_manufacturer: m.source_manufacturer,
+        source_product: m.source_product,
+        source_url: m.source_url,
+        source_consulted_on: m.source_consulted_on,
+        source_basis_fr: m.source_basis_fr,
         applies_coats: m.applies_coats,
         // E1-3 : c'est ce champ qui dit dans quelle unité `yield_per_unit` est
         // exprimé, donc si la quantité suit le nombre de faces ou la trame.

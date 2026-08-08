@@ -186,6 +186,29 @@ function MaterialRow({
               </span>
             ) : null}
           </p>
+          {/*
+            E1-11 — la traçabilité des ratios : le ratio, sa source, la règle
+            appliquée. Toujours visible, jamais repliée derrière un clic —
+            c'est l'argument produit central, pas un détail secondaire.
+          */}
+          {item.justification_fr && (
+            <p className="mt-1 text-xs text-stone-500">
+              {item.justification_fr}
+              {item.justification_url && (
+                <>
+                  {' '}
+                  <a
+                    href={item.justification_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-sky-700 hover:underline"
+                  >
+                    Voir la fiche
+                  </a>
+                </>
+              )}
+            </p>
+          )}
           {hasRange && (
             <p className="mt-0.5 text-xs text-stone-400">
               Fourchette selon la mesure : {item.units_needed_low}–

@@ -89,6 +89,9 @@ export class QuotesService {
           margin_percent: marginPercent,
           unit_price_with_margin: Math.round(priceWithMargin * 100) / 100,
           line_total_ht: Math.round(lineTotal * 100) / 100,
+          // E1-11 : figée à l'émission, marque comprise — le devis est un
+          // document, le choix marque/sans-marque se fait à l'affichage.
+          justification: item.justification,
         };
       });
 
@@ -130,6 +133,8 @@ export class QuotesService {
         payment_terms: dto.payment_terms ?? null,
         validity_days: dto.validity_days ?? 30,
         notes: dto.notes ?? null,
+        show_material_details: dto.show_material_details ?? false,
+        show_material_justifications: dto.show_material_justifications ?? false,
         items_json: items,
         subtotal_materials_ht: Math.round(subtotalMaterials * 100) / 100,
         subtotal_labor_ht: Math.round(subtotalLabor * 100) / 100,
@@ -214,6 +219,10 @@ export class QuotesService {
     if (dto.tva_rate !== undefined) quote.tva_rate = dto.tva_rate;
     if (dto.discount_percent !== undefined)
       quote.discount_percent = dto.discount_percent;
+    if (dto.show_material_details !== undefined)
+      quote.show_material_details = dto.show_material_details;
+    if (dto.show_material_justifications !== undefined)
+      quote.show_material_justifications = dto.show_material_justifications;
 
     // Recalculate if margin changed
     if (dto.material_margin_percent !== undefined) {

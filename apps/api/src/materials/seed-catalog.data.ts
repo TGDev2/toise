@@ -27,6 +27,27 @@ export interface SeedMaterial {
    * lisse — l'identité, jusqu'à ce qu'un recouvrement d'emboîtement soit sourcé.
    */
   yield_per_unit: number;
+  /**
+   * E1-11 — d'où vient `yield_per_unit`. `source_manufacturer` absent ⇒
+   * rendement **définitionnel** (vendu et posé au m², dérivation géométrique) :
+   * `source_basis_fr` porte alors la règle plutôt qu'une fiche. Renseigné, les
+   * quatre champs identité vont **ensemble** — jamais partiellement, sous
+   * peine de citer une fiche sans pouvoir en lier la date ou le lien.
+   *
+   * `source_basis_fr` est **toujours** requis et ne doit **jamais** nommer le
+   * fabricant ou le produit : c'est le qualificatif technique brand-free
+   * (« en U9 », « ≈ 11 m²/L par couche ») qui sert de repli quand l'affichage
+   * des marques est désactivé (réglage entreprise, E1-11).
+   *
+   * Éprouvé par `sources-catalogue.spec.ts` : tout matériau lié
+   * (`work-type-materials.data.ts`) doit porter une source complète.
+   */
+  source_manufacturer?: string;
+  source_product?: string;
+  source_url?: string;
+  /** Date ISO `YYYY-MM-DD`. */
+  source_consulted_on?: string;
+  source_basis_fr?: string;
   /** Absent = `work_surface`, comme le défaut de la colonne. */
   quantity_driver?: MaterialQuantityDriver;
   /**
@@ -364,6 +385,12 @@ export const paintingMaterials: SeedMaterial[] = [
     category: 'painting',
     unit: 'L',
     yield_per_unit: 11,
+    source_manufacturer: 'Dulux Valentine',
+    source_product: 'Crème de Couleur Mat Velouté',
+    source_url:
+      'https://www.duluxvalentine.com/fr/produits/cr%C3%A8me-de-couleur-mat-velout%C3%A9',
+    source_consulted_on: '2026-08-03',
+    source_basis_fr: '≈ 11 m²/L par couche, en peinture acrylique mate',
     applies_coats: true,
     packagings: paintPkg(),
     waste_factors: paintWaste(),
@@ -373,6 +400,12 @@ export const paintingMaterials: SeedMaterial[] = [
     category: 'painting',
     unit: 'L',
     yield_per_unit: 11,
+    source_manufacturer: 'Dulux Valentine',
+    source_product: 'Crème de Couleur Satin',
+    source_url:
+      'https://www.duluxvalentine.com/fr/produits/cr%C3%A8me-de-couleur-satin',
+    source_consulted_on: '2026-08-03',
+    source_basis_fr: '± 11 m²/L par couche, en peinture acrylique satinée',
     applies_coats: true,
     packagings: paintPkg(),
     waste_factors: paintWaste(),
@@ -382,6 +415,12 @@ export const paintingMaterials: SeedMaterial[] = [
     category: 'painting',
     unit: 'L',
     yield_per_unit: 10,
+    source_manufacturer: 'Zolpan',
+    source_product: 'Cofavelours Évolution',
+    source_url: 'https://www.zolpan.fr/produit/cofavelours-evolution',
+    source_consulted_on: '2026-08-03',
+    source_basis_fr:
+      "10 à 12 m²/L par couche, selon la nature et l'état de surface du support, en peinture acrylique velours",
     applies_coats: true,
     packagings: paintPkg(),
     waste_factors: paintWaste(),
@@ -410,6 +449,12 @@ export const paintingMaterials: SeedMaterial[] = [
     category: 'painting',
     unit: 'L',
     yield_per_unit: 10,
+    source_manufacturer: 'Ripolin',
+    source_product: 'Peinture Plafonds Cuisine & Salle de Bain Mat',
+    source_url:
+      'https://ripolin.fr/produit/peinture-plafonds-cuisine-salle-de-bain-mat',
+    source_consulted_on: '2026-08-03',
+    source_basis_fr: '10 m²/L par couche (NF 30 073), en peinture plafond mate',
     applies_coats: true,
     packagings: paintPkg(),
     waste_factors: paintWaste(),
@@ -419,6 +464,12 @@ export const paintingMaterials: SeedMaterial[] = [
     category: 'painting',
     unit: 'L',
     yield_per_unit: 10,
+    source_manufacturer: 'V33',
+    source_product: 'Blanc Perfection®',
+    source_url: 'https://www.v33.fr/blanc-perfection-r-peinture-plafond.html',
+    source_consulted_on: '2026-08-03',
+    source_basis_fr:
+      '10 m²/L par couche, en peinture plafond anti-traces (corroboré par une fiche concurrente)',
     applies_coats: true,
     packagings: paintPkg(),
     waste_factors: paintWaste(),
@@ -429,6 +480,11 @@ export const paintingMaterials: SeedMaterial[] = [
     category: 'painting',
     unit: 'L',
     yield_per_unit: 10,
+    source_manufacturer: 'Ripolin',
+    source_product: 'Sous-Couche Universelle Mat',
+    source_url: 'https://ripolin.fr/produit/sous-couche-universelle-mat',
+    source_consulted_on: '2026-08-03',
+    source_basis_fr: '10 m²/L, en sous-couche universelle',
     packagings: paintPkg(),
     waste_factors: paintWaste(),
   },
@@ -470,6 +526,13 @@ export const paintingMaterials: SeedMaterial[] = [
     category: 'painting',
     unit: 'L',
     yield_per_unit: 10,
+    source_manufacturer: 'Dulux Valentine',
+    source_product: 'Crème de Couleur Cuisine et Bain Satin',
+    source_url:
+      'https://www.duluxvalentine.com/fr/produits/cr%C3%A8me-de-couleur-cuisine-et-bain-satin',
+    source_consulted_on: '2026-08-03',
+    source_basis_fr:
+      '± 10 m²/L par couche, en peinture satinée cuisine et salle de bain (corroboré par une fiche concurrente, 12 m²/L)',
     applies_coats: true,
     packagings: paintPkg(),
     waste_factors: paintWaste(),
@@ -865,6 +928,7 @@ export const tilingMaterials: SeedMaterial[] = [
     category: 'tiling',
     unit: 'm2',
     yield_per_unit: 1,
+    source_basis_fr: 'Vendu et posé au m² : rendement définitionnel.',
     packagings: [
       { label: 'Boîte 1 m²', quantity_per_unit: 1, unit: 'm2' },
       { label: 'Boîte 1.5 m²', quantity_per_unit: 1.5, unit: 'm2' },
@@ -876,6 +940,7 @@ export const tilingMaterials: SeedMaterial[] = [
     category: 'tiling',
     unit: 'm2',
     yield_per_unit: 1,
+    source_basis_fr: 'Vendu et posé au m² : rendement définitionnel.',
     packagings: [
       { label: 'Boîte 1 m²', quantity_per_unit: 1, unit: 'm2' },
       { label: 'Boîte 1.5 m²', quantity_per_unit: 1.5, unit: 'm2' },
@@ -887,6 +952,7 @@ export const tilingMaterials: SeedMaterial[] = [
     category: 'tiling',
     unit: 'm2',
     yield_per_unit: 1,
+    source_basis_fr: 'Vendu et posé au m² : rendement définitionnel.',
     packagings: [
       { label: 'Boîte 1.08 m²', quantity_per_unit: 1.08, unit: 'm2' },
       { label: 'Boîte 1.44 m²', quantity_per_unit: 1.44, unit: 'm2' },
@@ -934,6 +1000,7 @@ export const tilingMaterials: SeedMaterial[] = [
     category: 'tiling',
     unit: 'm2',
     yield_per_unit: 1,
+    source_basis_fr: 'Vendu et posé au m² : rendement définitionnel.',
     packagings: [{ label: 'Boîte 1 m²', quantity_per_unit: 1, unit: 'm2' }],
     waste_factors: tileCoveringWaste(),
   },
@@ -962,6 +1029,7 @@ export const tilingMaterials: SeedMaterial[] = [
     category: 'tiling',
     unit: 'm2',
     yield_per_unit: 1,
+    source_basis_fr: 'Vendu et posé au m² : rendement définitionnel.',
     packagings: [{ label: 'Boîte 1 m²', quantity_per_unit: 1, unit: 'm2' }],
     waste_factors: tileCoveringWaste(),
   },
@@ -994,6 +1062,13 @@ export const tilingMaterials: SeedMaterial[] = [
     category: 'tiling',
     unit: 'kg',
     yield_per_unit: 0.14,
+    source_manufacturer: 'Cermix',
+    source_product: 'CERMIPLUS 2.0 (C2)',
+    source_url:
+      'https://www.cermix.com/wp-content/uploads/2020/02/FT_CERMIPLUS-2.0_V2.pdf',
+    source_consulted_on: '2026-08-07',
+    source_basis_fr:
+      '7 kg/m² en U9, sol intérieur, carreau 1 200-2 200 cm², double encollage — rendement exprimé à la géométrie de référence 45x45 cm du modèle',
     consumption_model: 'tile_adhesive',
     packagings: [{ label: 'Sac 25 kg', quantity_per_unit: 25, unit: 'kg' }],
     waste_factors: dosedWaste(),
@@ -1021,6 +1096,13 @@ export const tilingMaterials: SeedMaterial[] = [
     category: 'tiling',
     unit: 'kg',
     yield_per_unit: 0.22,
+    source_manufacturer: 'Cermix',
+    source_product: 'CERMIFIX (D2ET)',
+    source_url:
+      'https://www.cermix.com/wp-content/uploads/2020/02/FT_CERMIFIX.pdf',
+    source_consulted_on: '2026-08-03',
+    source_basis_fr:
+      '4,5 kg/m² en U6, mur intérieur, carreau 500-1 200 cm², double encollage',
     packagings: [
       { label: 'Seau 7 kg', quantity_per_unit: 7, unit: 'kg' },
       { label: 'Seau 15 kg', quantity_per_unit: 15, unit: 'kg' },
@@ -1046,6 +1128,13 @@ export const tilingMaterials: SeedMaterial[] = [
     category: 'tiling',
     unit: 'kg',
     yield_per_unit: 5,
+    source_manufacturer: 'Cermix',
+    source_product: 'CERMIJOINT COLOR (CG2WA, 1-6 mm)',
+    source_url:
+      'https://www.cermix.com/wp-content/uploads/2020/02/FT_CERMIJOINT_COLOR.pdf',
+    source_consulted_on: '2026-08-07',
+    source_basis_fr:
+      '0,2 kg/m² pour un carreau 45x45 cm à joint de 3 mm, épaisseur 9 mm — rendement exprimé à la géométrie de référence du modèle',
     consumption_model: 'tile_grout',
     packagings: [
       { label: 'Sac 5 kg', quantity_per_unit: 5, unit: 'kg' },
@@ -1085,6 +1174,13 @@ export const tilingMaterials: SeedMaterial[] = [
     // section la plus défavorable publiée), sur le périmètre au sol portes
     // déduites — le joint périphérique du NF DTU 52.2.
     yield_per_unit: 3,
+    source_manufacturer: 'Sika',
+    source_product: 'Sanisil',
+    source_url:
+      'https://fra.sika.com/dms/getdocument.get/4bf61a71-0ba4-45cb-95e6-0d7c3ab8cb48/sika_sanisil_.pdf',
+    source_consulted_on: '2026-08-08',
+    source_basis_fr:
+      '3 m de joint périphérique par cartouche de 300 ml, cordon 10x10 mm — la section la plus défavorable publiée',
     quantity_driver: 'floor_perimeter',
     packagings: [
       { label: 'Cartouche 300 ml', quantity_per_unit: 1, unit: 'unit' },
@@ -1105,6 +1201,8 @@ export const tilingMaterials: SeedMaterial[] = [
     category: 'tiling',
     unit: 'unit',
     yield_per_unit: 40.5,
+    source_basis_fr:
+      'Dérivation géométrique : un croisillon par intersection de joints (sachet de 200), à la géométrie de référence 45x45 cm — aucun fabricant ne publie de table de consommation.',
     consumption_model: 'tile_spacers',
     packagings: [
       { label: 'Sachet 200 pcs', quantity_per_unit: 1, unit: 'unit' },
@@ -1116,6 +1214,8 @@ export const tilingMaterials: SeedMaterial[] = [
     category: 'tiling',
     unit: 'unit',
     yield_per_unit: 40.5,
+    source_basis_fr:
+      'Dérivation géométrique : un croisillon par intersection de joints (sachet de 200), à la géométrie de référence 45x45 cm — aucun fabricant ne publie de table de consommation.',
     consumption_model: 'tile_spacers',
     packagings: [
       { label: 'Sachet 200 pcs', quantity_per_unit: 1, unit: 'unit' },
@@ -1127,6 +1227,8 @@ export const tilingMaterials: SeedMaterial[] = [
     category: 'tiling',
     unit: 'unit',
     yield_per_unit: 20.25,
+    source_basis_fr:
+      'Dérivation géométrique : un croisillon par intersection de joints (sachet de 100), à la géométrie de référence 45x45 cm — aucun fabricant ne publie de table de consommation.',
     consumption_model: 'tile_spacers',
     packagings: [
       { label: 'Sachet 100 pcs', quantity_per_unit: 1, unit: 'unit' },
@@ -1193,6 +1295,13 @@ export const tilingMaterials: SeedMaterial[] = [
     // 3 kg/m², soit 0,3333 m²/kg. Kit de 32 kg (PRB CEL CÉRAMIC).
     unit: 'kg',
     yield_per_unit: 0.3333,
+    source_manufacturer: 'PRB',
+    source_product: 'CEL CÉRAMIC',
+    source_url:
+      'https://pim.prb.fr/PRB/Fiches%20Techniques/fr/ft_prb_cel_ceramic_fr_4_04_2024.pdf',
+    source_consulted_on: '2026-08-08',
+    source_basis_fr:
+      '3 kg de mélange/m² en 2 couches (milieu de plage 2,5 à 3,5 kg/m², kit de 32 kg), corroboré par une fiche concurrente (3 kg/m²)',
     wet_room_system: 'sel',
     packagings: [{ label: 'Kit 32 kg', quantity_per_unit: 32, unit: 'kg' }],
     waste_factors: dosedWaste(),
@@ -1206,6 +1315,8 @@ export const tilingMaterials: SeedMaterial[] = [
     // bande d'armature des systèmes SEL Cermix) ; le rouleau de 50 m d'avant
     // ce lot ne correspondait à aucune fiche et sort du conditionnement.
     yield_per_unit: 1,
+    source_basis_fr:
+      'Marouflée en continu dans la première couche du SEL, le long des jonctions sol/mur : un mètre de bande par mètre de jonction (rouleau de 10 m) — rendement définitionnel.',
     quantity_driver: 'floor_perimeter',
     wet_room_system: 'sealing_band',
     packagings: [{ label: 'Rouleau 10 m', quantity_per_unit: 10, unit: 'm' }],
@@ -1216,6 +1327,7 @@ export const tilingMaterials: SeedMaterial[] = [
     category: 'tiling',
     unit: 'm2',
     yield_per_unit: 1,
+    source_basis_fr: 'Vendue et posée au m² : rendement définitionnel.',
     packagings: [
       { label: 'Rouleau 5 m²', quantity_per_unit: 5, unit: 'm2' },
       { label: 'Rouleau 30 m²', quantity_per_unit: 30, unit: 'm2' },
@@ -1228,6 +1340,7 @@ export const tilingMaterials: SeedMaterial[] = [
     category: 'tiling',
     unit: 'm2',
     yield_per_unit: 1,
+    source_basis_fr: 'Vendu et posé au m² : rendement définitionnel.',
     packagings: [{ label: 'Boîte 1.2 m²', quantity_per_unit: 1.2, unit: 'm2' }],
     waste_factors: tileCoveringWaste(),
   },
@@ -1257,6 +1370,8 @@ export const tilingMaterials: SeedMaterial[] = [
     // portes déduites. Les chutes de coupe restent portées par le forfait
     // (`cutAncillaryWaste`) : les morceaux se réutilisent d'un mur à l'autre.
     yield_per_unit: 1,
+    source_basis_fr:
+      'Vendue et posée au mètre le long des murs : rendement définitionnel.',
     quantity_driver: 'floor_perimeter',
     packagings: [{ label: 'Lot de 10 (3 m)', quantity_per_unit: 3, unit: 'm' }],
     waste_factors: cutAncillaryWaste(),
@@ -1282,6 +1397,13 @@ export const tilingMaterials: SeedMaterial[] = [
     // confondaient).
     unit: 'kg',
     yield_per_unit: 5,
+    source_manufacturer: 'PRB',
+    source_product: 'ACCROSOL PLUS',
+    source_url:
+      'https://pim.prb.fr/PRB/Fiches%20Techniques/fr/(1)ft_prb_accrosol_plus_fr_18_04_2024.pdf',
+    source_consulted_on: '2026-08-08',
+    source_basis_fr:
+      '150 à 300 g/m² selon support ; 0,2 kg/m² retenu, milieu de plage, corroboré par une fiche concurrente (150-250 g/m²)',
     substrate_prep: 'leveling_primer',
     packagings: [
       { label: 'Jerrican 1 kg', quantity_per_unit: 1, unit: 'kg' },
@@ -1298,6 +1420,13 @@ export const tilingMaterials: SeedMaterial[] = [
     // : 4,5 kg/m², soit 0,2222 m²/kg. Le 0,2 d'avant ce lot supposait une
     // épaisseur de 3,33 mm qu'aucune fiche ne nomme.
     yield_per_unit: 0.2222,
+    source_manufacturer: 'PRB',
+    source_product: 'PLANIDUR PRO',
+    source_url:
+      'https://pim.prb.fr/PRB/Fiches%20Techniques/fr/(1)ft_prb_planidur_pro_fr_4_04_2024.pdf',
+    source_consulted_on: '2026-08-08',
+    source_basis_fr:
+      "1,5 kg/m²/mm d'épaisseur ; 4,5 kg/m² à 3 mm, le plancher de la plage rénovation (locaux P3, 3 à 10 mm)",
     substrate_prep: 'leveling_compound',
     packagings: [{ label: 'Sac 25 kg', quantity_per_unit: 25, unit: 'kg' }],
     waste_factors: dosedWaste(),
@@ -1317,6 +1446,7 @@ export const tilingMaterials: SeedMaterial[] = [
     category: 'tiling',
     unit: 'm2',
     yield_per_unit: 1,
+    source_basis_fr: 'Vendu et posé au m² : rendement définitionnel.',
     packagings: [{ label: 'Boîte 1 m²', quantity_per_unit: 1, unit: 'm2' }],
     waste_factors: tileCoveringWaste(),
   },
@@ -1392,6 +1522,7 @@ export const flooringMaterials: SeedMaterial[] = [
     category: 'flooring',
     unit: 'm2',
     yield_per_unit: 1,
+    source_basis_fr: 'Vendu et posé au m² : rendement définitionnel.',
     packagings: [
       { label: 'Paquet 2.49 m²', quantity_per_unit: 2.49, unit: 'm2' },
     ],
@@ -1412,6 +1543,7 @@ export const flooringMaterials: SeedMaterial[] = [
     category: 'flooring',
     unit: 'm2',
     yield_per_unit: 1,
+    source_basis_fr: 'Vendu et posé au m² : rendement définitionnel.',
     packagings: [
       { label: 'Paquet 1.48 m²', quantity_per_unit: 1.48, unit: 'm2' },
     ],
@@ -1423,6 +1555,7 @@ export const flooringMaterials: SeedMaterial[] = [
     category: 'flooring',
     unit: 'm2',
     yield_per_unit: 1,
+    source_basis_fr: 'Vendu et posé au m² : rendement définitionnel.',
     packagings: [
       { label: 'Paquet 1.58 m²', quantity_per_unit: 1.58, unit: 'm2' },
     ],
@@ -1523,6 +1656,13 @@ export const flooringMaterials: SeedMaterial[] = [
     category: 'flooring',
     unit: 'm2',
     yield_per_unit: 1,
+    source_manufacturer: 'Quick-Step',
+    source_product: 'Basic Plus + NETAPE50',
+    source_url:
+      'https://www.quick-step.fr/-/media/Imported%20Assets/Flooring/9/6/5/TDSAccNETAPE50SelfadhesiveTapeFRpdf49942.ashx?rev=867c7b1de3ff4881ace0453be4832f00&type=original&filename=Informations+techniques.pdf',
+    source_consulted_on: '2026-08-03',
+    source_basis_fr:
+      'Pose bord à bord sans chevauchement ; 1 rouleau = 15 m² — rendement définitionnel',
     packagings: [{ label: 'Rouleau 15 m²', quantity_per_unit: 15, unit: 'm2' }],
     waste_factors: cutAncillaryWaste(),
   },
@@ -1551,6 +1691,13 @@ export const flooringMaterials: SeedMaterial[] = [
     // présence dans un chiffrage est conditionnelle. Le rendement de 0,8 (soit
     // 1,25 m² de film par m² de sol) reste juste : il porte le recouvrement de
     // 20 cm entre lés, qui existe dès lors que le film est posé.
+    source_manufacturer: 'Wineo',
+    source_product: 'PE-Dampfbremse',
+    source_url:
+      'https://www.wineo.de/content/Dokumente/Zubehoer/Technische%20Datenblaetter/DE/PE-Dampfbremse-02-2019.pdf',
+    source_consulted_on: '2026-08-03',
+    source_basis_fr:
+      'Lé de 1,00 m, recouvrement ≥ 20 cm imposé par la fiche → 0,8 m² utile par m² de sol posé (corroboré par une fiche concurrente)',
     vapour_barrier: 'dedicated',
     packagings: [{ label: 'Rouleau 20 m²', quantity_per_unit: 20, unit: 'm2' }],
     waste_factors: cutAncillaryWaste(),
@@ -1574,6 +1721,13 @@ export const flooringMaterials: SeedMaterial[] = [
     category: 'flooring',
     unit: 'm2',
     yield_per_unit: 1,
+    source_manufacturer: 'Quick-Step',
+    source_product: 'Basic Plus (QSUDLBP15)',
+    source_url:
+      'https://boutique-parquet.com/qsudlbp15-quick-step-15m-sous-couche-basic-plus-pare-vapeur-integre.html',
+    source_consulted_on: '2026-08-07',
+    source_basis_fr:
+      'Mousse polyéthylène 2 mm avec pare-vapeur intégré, rouleau 1,00 x 15 m, posée bord à bord — rendement définitionnel',
     vapour_barrier: 'integrated',
     packagings: [{ label: 'Rouleau 15 m²', quantity_per_unit: 15, unit: 'm2' }],
     waste_factors: cutAncillaryWaste(),
@@ -1588,6 +1742,8 @@ export const flooringMaterials: SeedMaterial[] = [
     category: 'flooring',
     unit: 'm',
     yield_per_unit: 1,
+    source_basis_fr:
+      'Vendue et posée au mètre le long des murs, en barres de 2,40 m (longueur du commerce, confirmée par la fiche technique) : rendement définitionnel.',
     quantity_driver: 'floor_perimeter',
     packagings: [{ label: 'Barre 2.4 m', quantity_per_unit: 2.4, unit: 'm' }],
     waste_factors: cutAncillaryWaste(),
@@ -1597,6 +1753,8 @@ export const flooringMaterials: SeedMaterial[] = [
     category: 'flooring',
     unit: 'm',
     yield_per_unit: 1,
+    source_basis_fr:
+      'Vendue et posée au mètre le long des murs, en barres de 2,40 m : rendement définitionnel.',
     quantity_driver: 'floor_perimeter',
     packagings: [{ label: 'Barre 2.4 m', quantity_per_unit: 2.4, unit: 'm' }],
     waste_factors: cutAncillaryWaste(),
@@ -1606,6 +1764,8 @@ export const flooringMaterials: SeedMaterial[] = [
     category: 'flooring',
     unit: 'm',
     yield_per_unit: 1,
+    source_basis_fr:
+      'Vendue et posée au mètre le long des murs, en barres de 2,40 m : rendement définitionnel.',
     quantity_driver: 'floor_perimeter',
     packagings: [{ label: 'Barre 2.4 m', quantity_per_unit: 2.4, unit: 'm' }],
     waste_factors: cutAncillaryWaste(),
@@ -1618,6 +1778,8 @@ export const flooringMaterials: SeedMaterial[] = [
     category: 'flooring',
     unit: 'unit',
     yield_per_unit: 1,
+    source_basis_fr:
+      'Une barre par passage de porte (largeur standard 83 cm ≤ 93 cm) : rendement définitionnel.',
     quantity_driver: 'door_count',
     packagings: [{ label: 'Unité', quantity_per_unit: 1, unit: 'unit' }],
     waste_factors: countedUnitWaste(),
@@ -1627,6 +1789,8 @@ export const flooringMaterials: SeedMaterial[] = [
     category: 'flooring',
     unit: 'unit',
     yield_per_unit: 1,
+    source_basis_fr:
+      'Une barre par passage de porte : rendement définitionnel.',
     quantity_driver: 'door_count',
     packagings: [{ label: 'Unité', quantity_per_unit: 1, unit: 'unit' }],
     waste_factors: countedUnitWaste(),
@@ -1761,6 +1925,13 @@ export const flooringMaterials: SeedMaterial[] = [
     // E1-10 — 1,5 kg/m²/mm (PRB PLANIFIBRE, planchers bois DTU 51.3), à
     // l'épaisseur de 3 mm retenue au registre : 4,5 kg/m², soit 0,2222 m²/kg.
     yield_per_unit: 0.2222,
+    source_manufacturer: 'PRB',
+    source_product: 'PLANIFIBRE',
+    source_url:
+      'https://pim.prb.fr/PRB/Fiches%20Techniques/fr/ft_prb_planifibre_fr_5_12_2023.pdf',
+    source_consulted_on: '2026-08-08',
+    source_basis_fr:
+      "1,5 kg/m²/mm d'épaisseur, requis sur plancher bois (DTU 51.3) ; 4,5 kg/m² à 3 mm",
     substrate_prep: 'leveling_compound',
     packagings: [{ label: 'Sac 25 kg', quantity_per_unit: 25, unit: 'kg' }],
     waste_factors: dosedWaste(),
@@ -1772,6 +1943,13 @@ export const flooringMaterials: SeedMaterial[] = [
     // g/m², jerricans pesés (PRB ACCROSOL PLUS).
     unit: 'kg',
     yield_per_unit: 5,
+    source_manufacturer: 'PRB',
+    source_product: 'ACCROSOL PLUS',
+    source_url:
+      'https://pim.prb.fr/PRB/Fiches%20Techniques/fr/(1)ft_prb_accrosol_plus_fr_18_04_2024.pdf',
+    source_consulted_on: '2026-08-08',
+    source_basis_fr:
+      '150 à 300 g/m² selon support ; 0,2 kg/m² retenu, milieu de plage',
     substrate_prep: 'leveling_primer',
     packagings: [
       { label: 'Jerrican 1 kg', quantity_per_unit: 1, unit: 'kg' },
@@ -1822,6 +2000,13 @@ export const partitionMaterials: SeedMaterial[] = [
     // m² de parement — c'est cette dernière que le rendement exprime depuis
     // E1-3, le nombre de faces étant désormais porté par l'assiette.
     yield_per_unit: 0.96,
+    source_manufacturer: 'Placo',
+    source_product: 'Fiche Solution Placostil® 72/48 BA13',
+    source_url:
+      'https://www.placo.fr/sites/mac3.placo.fr/files/files/forum/Maison_Cloison_Placostil_Ep_72_BA13_39dB.pdf',
+    source_consulted_on: '2026-08-03',
+    source_basis_fr:
+      '2,10 m² de plaque par m² de cloison, deux faces (quantitatif système 72/48) : 1,05 m² par m² de parement',
     quantity_driver: 'clad_faces',
     packagings: [{ label: 'Plaque (3 m²)', quantity_per_unit: 3, unit: 'm2' }],
     waste_factors: partitionWaste(),
@@ -1831,6 +2016,12 @@ export const partitionMaterials: SeedMaterial[] = [
     category: 'partition',
     unit: 'm2',
     yield_per_unit: 0.96,
+    source_manufacturer: 'Knauf',
+    source_product: 'KM 72/48 KH13',
+    source_url: 'https://tools.knauf.fr/file/71742/download?token=vZzSxXQF',
+    source_consulted_on: '2026-08-03',
+    source_basis_fr:
+      '1,05 m² par m² de parement, à géométrie identique au système standard (une plaque par côté)',
     quantity_driver: 'clad_faces',
     packagings: [{ label: 'Plaque (3 m²)', quantity_per_unit: 3, unit: 'm2' }],
     waste_factors: partitionWaste(),
@@ -1880,6 +2071,13 @@ export const partitionMaterials: SeedMaterial[] = [
     // 0,90 m/m² de cloison, un ratio qui n'a de sens qu'à une hauteur donnée —
     // depuis E1-3 la lisse est métrée sur le linéaire réel de l'ouvrage.
     yield_per_unit: 1,
+    source_manufacturer: 'Placo',
+    source_product: 'Fiche Solution Placostil® 72/48',
+    source_url:
+      'https://www.placo.fr/sites/mac3.placo.fr/files/files/forum/Maison_Cloison_Placostil_Ep_72_BA13_39dB.pdf',
+    source_consulted_on: '2026-08-03',
+    source_basis_fr:
+      "Un mètre de rail couvre un mètre de lisse — rendement définitionnel, l'assiette étant le linéaire réel de l'ouvrage",
     quantity_driver: 'frame_runner',
     packagings: [{ label: 'Barre 3 m', quantity_per_unit: 3, unit: 'm' }],
     waste_factors: partitionWaste(),
@@ -1911,6 +2109,13 @@ export const partitionMaterials: SeedMaterial[] = [
     // montants se compte désormais sur la longueur, et leur longueur sur la
     // hauteur (`work_types.frame_spec`).
     yield_per_unit: 1,
+    source_manufacturer: 'Placo',
+    source_product: 'Fiche Solution Placostil® 72/48',
+    source_url:
+      'https://www.placo.fr/sites/mac3.placo.fr/files/files/forum/Maison_Cloison_Placostil_Ep_72_BA13_39dB.pdf',
+    source_consulted_on: '2026-08-03',
+    source_basis_fr:
+      "Un mètre de montant couvre un mètre de trame — rendement définitionnel, le nombre de montants se comptant sur l'entraxe déclaré",
     quantity_driver: 'frame_stud',
     // E1-8 : un montant est coupé à la hauteur de la cloison, et la chute ne se
     // raboute pas. Une barre = un montant tant que la hauteur dépasse la moitié
@@ -1950,6 +2155,13 @@ export const partitionMaterials: SeedMaterial[] = [
     // nombre de faces : la laine se pose entre les montants, pas sur chaque
     // parement — d'où `work_surface` et non `clad_faces`.
     yield_per_unit: 0.9524,
+    source_manufacturer: 'Placo',
+    source_product: 'Fiche Solution Placostil® 72/48 39 dB',
+    source_url:
+      'https://www.placo.fr/sites/mac3.placo.fr/files/files/forum/Maison_Cloison_Placostil_Ep_72_BA13_39dB.pdf',
+    source_consulted_on: '2026-08-08',
+    source_basis_fr:
+      "1,05 m² d'isolant par m² de cloison (quantitatif système, une seule trame quel que soit le nombre de faces parementées)",
     packagings: [
       { label: 'Rouleau 9.6 m²', quantity_per_unit: 9.6, unit: 'm2' },
     ],
@@ -1965,6 +2177,8 @@ export const partitionMaterials: SeedMaterial[] = [
     category: 'partition',
     unit: 'm',
     yield_per_unit: 1,
+    source_basis_fr:
+      'Collée sous les rails, en course continue : un mètre de bande couvre un mètre de lisse (rouleau de 30 m) — rendement définitionnel.',
     quantity_driver: 'frame_runner',
     packagings: [{ label: 'Rouleau 30 m', quantity_per_unit: 30, unit: 'm' }],
     waste_factors: partitionWaste(),
@@ -2014,6 +2228,13 @@ export const partitionMaterials: SeedMaterial[] = [
     unit: 'm',
     // 2,80 m par m² d'ouvrage à deux faces = 1,40 m par m² de parement.
     yield_per_unit: 0.72,
+    source_manufacturer: 'Placo',
+    source_product: 'Fiche Solution Placostil® 72/48',
+    source_url:
+      'https://www.placo.fr/sites/mac3.placo.fr/files/files/forum/Maison_Cloison_Placostil_Ep_72_BA13_39dB.pdf',
+    source_consulted_on: '2026-08-03',
+    source_basis_fr:
+      '2,80 m par m² de cloison, deux faces (joints, cueillies et angles inclus) : 1,40 m par m² de parement',
     quantity_driver: 'clad_faces',
     packagings: [{ label: 'Rouleau 23 m', quantity_per_unit: 23, unit: 'm' }],
     waste_factors: partitionWaste(),
@@ -2033,6 +2254,13 @@ export const partitionMaterials: SeedMaterial[] = [
     unit: 'kg',
     // 0,66 kg par m² d'ouvrage à deux faces = 0,33 kg par m² de parement.
     yield_per_unit: 3.04,
+    source_manufacturer: 'Placo',
+    source_product: 'Placojoint® PR4 25kg — Fiche Solution Placostil® 72/48',
+    source_url:
+      'https://www.placo.fr/sites/mac3.placo.fr/files/files/forum/Maison_Cloison_Placostil_Ep_72_BA13_39dB.pdf',
+    source_consulted_on: '2026-08-03',
+    source_basis_fr:
+      '0,66 kg par m² de cloison, deux faces : 0,33 kg par m² de parement',
     quantity_driver: 'clad_faces',
     packagings: [
       { label: 'Sac 5 kg', quantity_per_unit: 5, unit: 'kg' },
@@ -2047,6 +2275,12 @@ export const partitionMaterials: SeedMaterial[] = [
     // 1 kg par m² d'ouvrage à deux faces = 0,50 kg par m² de parement, dans la
     // plage des fiches (Placomix 0,47 kg/m² de parement, Siniat 0,40-0,45).
     yield_per_unit: 2,
+    source_manufacturer: 'Placo',
+    source_product: 'Placomix®',
+    source_url: 'https://www.placo.fr/Produits/enduits-joint/placomixr-5kg',
+    source_consulted_on: '2026-08-03',
+    source_basis_fr:
+      'Consommation minimum 470 g/m² de parement, corroboré par une fiche concurrente (0,40-0,45 kg/m²) ; 0,50 kg/m² retenu',
     quantity_driver: 'clad_faces',
     packagings: [
       { label: 'Seau 7 kg', quantity_per_unit: 7, unit: 'kg' },
@@ -2080,6 +2314,13 @@ export const partitionMaterials: SeedMaterial[] = [
     // 22 vis par m² d'ouvrage à deux faces = 11 par m² de parement, en boîtes
     // de 500 → 500 ÷ 11 ≈ 45,4 m² de parement par boîte.
     yield_per_unit: 45.4,
+    source_manufacturer: 'Placo',
+    source_product: 'Fiche Solution Placostil® 72/48',
+    source_url:
+      'https://www.placo.fr/sites/mac3.placo.fr/files/files/forum/Maison_Cloison_Placostil_Ep_72_BA13_39dB.pdf',
+    source_consulted_on: '2026-08-03',
+    source_basis_fr:
+      '22 vis par m² de cloison, deux faces : 11 vis par m² de parement',
     quantity_driver: 'clad_faces',
     packagings: [
       { label: 'Boîte 500 pcs', quantity_per_unit: 1, unit: 'unit' },
@@ -2186,6 +2427,13 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     // 1 m² de papier », et parce que le registre en fait le contrat de la
     // colonne. Cf. `roll_width_cm` sur `materials_catalog`.
     yield_per_unit: 1,
+    source_manufacturer: 'Bricoflor',
+    source_product: 'Norme rouleau standard européen',
+    source_url:
+      'https://www.bricoflor.fr/blog/2020/02/14/calcul-rouleau-papier-peint-quelle-quantite-me-faut-il',
+    source_consulted_on: '2026-08-07',
+    source_basis_fr:
+      "Rouleau standard européen 10,05 x 0,53 m, posé bord à bord (lés adjacents, sans chevauchement) — quantité dérivée de la découpe en lés, pas d'un rendement au m²",
     ...standardWallpaperRoll(),
     waste_factors: wallpaperStripWaste(),
   },
@@ -2194,6 +2442,13 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     category: 'wall_covering',
     unit: 'm2',
     yield_per_unit: 1,
+    source_manufacturer: 'Bricoflor',
+    source_product: 'Norme rouleau standard européen',
+    source_url:
+      'https://www.bricoflor.fr/blog/2020/02/14/calcul-rouleau-papier-peint-quelle-quantite-me-faut-il',
+    source_consulted_on: '2026-08-07',
+    source_basis_fr:
+      'Rouleau standard européen 10,05 x 0,53 m ; le raccord de motif allonge chaque lé et le moteur arrondit au lé entier',
     ...standardWallpaperRoll(),
     waste_factors: wallpaperStripWaste(),
   },
@@ -2210,6 +2465,13 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     category: 'wall_covering',
     unit: 'm2',
     yield_per_unit: 1,
+    source_manufacturer: 'Bricoflor',
+    source_product: 'Norme rouleau standard européen',
+    source_url:
+      'https://www.bricoflor.fr/blog/2020/02/14/calcul-rouleau-papier-peint-quelle-quantite-me-faut-il',
+    source_consulted_on: '2026-08-07',
+    source_basis_fr:
+      'Rouleau standard européen 10,05 x 0,53 m, posé bord à bord',
     ...standardWallpaperRoll(),
     waste_factors: wallpaperStripWaste(),
   },
@@ -2239,6 +2501,13 @@ export const wallCoveringMaterials: SeedMaterial[] = [
     category: 'wall_covering',
     unit: 'kg',
     yield_per_unit: 8,
+    source_manufacturer: 'Quelyd',
+    source_product: 'Perfect (guide Bostik 2024)',
+    source_url:
+      'https://www.bostik.com/files/live/sites/shared_bostik/files/documents-brochures/France/Brochures/C&C/GUIDE%20SOLUTIONS%20PRO%202024%20QUELYD%20COLLES%20MURALES.pdf',
+    source_consulted_on: '2026-08-03',
+    source_basis_fr:
+      "Envers intissés : 11 rouleaux pour 55 m² par seau de 7 kg (≈ 7,9 m²/kg) — lecture en colle prête à l'emploi",
     packagings: [
       { label: 'Seau 5 kg', quantity_per_unit: 5, unit: 'kg' },
       { label: 'Seau 10 kg', quantity_per_unit: 10, unit: 'kg' },

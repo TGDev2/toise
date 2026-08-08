@@ -17,6 +17,7 @@ import { ShoppingListsController } from '../src/shopping-lists/shopping-lists.co
 import { ShoppingListsService } from '../src/shopping-lists/shopping-lists.service';
 import { UsersService } from '../src/users/users.service';
 import { OrgContextService } from '../src/organizations/org-context.service';
+import { CompanyProfilesService } from '../src/company-profiles/company-profiles.service';
 import { FeatureGatesService } from '../src/feature-gates/feature-gates.service';
 import { CvCorrectionService } from '../src/analysis/cv-correction.service';
 import { FirebaseAuthGuard } from '../src/auth/guards/firebase-auth.guard';
@@ -288,6 +289,13 @@ const cvCorrectionServiceMock = {
   logCorrection: jest.fn().mockResolvedValue(undefined),
 };
 
+// E1-11 : `ShoppingListsController` lit le réglage marques via ce service.
+// `null` ⇒ défaut `true`, exactement le comportement d'une organisation sans
+// profil entreprise renseigné.
+const companyProfilesServiceMock = {
+  findByOrganizationId: jest.fn().mockResolvedValue(null),
+};
+
 describe('Critical path (e2e): project → dimensions → work-items → estimate → shopping-list', () => {
   let app: INestApplication<App>;
 
@@ -312,6 +320,10 @@ describe('Critical path (e2e): project → dimensions → work-items → estimat
         { provide: OrgContextService, useValue: orgContextMock },
         { provide: FeatureGatesService, useValue: featureGatesServiceMock },
         { provide: CvCorrectionService, useValue: cvCorrectionServiceMock },
+        {
+          provide: CompanyProfilesService,
+          useValue: companyProfilesServiceMock,
+        },
       ],
     })
       .overrideGuard(FirebaseAuthGuard)

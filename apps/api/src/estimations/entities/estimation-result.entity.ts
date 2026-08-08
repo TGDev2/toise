@@ -18,6 +18,31 @@ export interface PackagingUnitsLine {
   units: number;
 }
 
+/**
+ * E1-11 — pourquoi cette quantité est celle-ci : le ratio, sa source, et la
+ * règle appliquée à l'exécution (double encollage déclenché, pare-vapeur
+ * requis…), composées une fois par le moteur
+ * (`estimations/material-justification.ts`) et copiées verbatim à chaque
+ * saut — `EstimationLineItem` → `AggregatedMaterialLine` →
+ * `ShoppingListMaterialItem` → `QuoteLineItem` — exactement comme
+ * `inclusion_reason_fr`.
+ *
+ * `text_unbranded_fr` est **toujours** renseignée, égale à `text_fr` quand
+ * il n'y a rien à masquer (rendement définitionnel) : le choix entre les
+ * deux, au moment de répondre à un client, devient une fonction totale
+ * (`materials/render-justification.ts::pickJustification`) sans `??` qu'on
+ * puisse oublier — une fuite de marque est le risque asymétrique de ce
+ * champ.
+ */
+export interface MaterialJustification {
+  /** Phrase affichable telle quelle, marque comprise. 1 à 2 phrases. */
+  text_fr: string;
+  /** Même contenu, marque/produit/URL retirés. */
+  text_unbranded_fr: string;
+  /** Fiche citée. Absent si rendement définitionnel. */
+  source_url?: string;
+}
+
 export interface EstimationLineItem {
   work_item_id: string;
   work_type_code: string;
@@ -61,6 +86,13 @@ export interface EstimationLineItem {
    * reste du catalogue.
    */
   inclusion_reason_fr?: string;
+  /**
+   * E1-11 — cf. `MaterialJustification`. Absente si le matériau ne porte
+   * aucune source (`materials_catalog.source_basis_fr` nul) — un chiffrage
+   * antérieur à ce lot, ou un matériau qu'aucune migration n'a encore
+   * documenté.
+   */
+  justification?: MaterialJustification;
   /**
    * E1-8 — pièces à découper, pour un matériau dont les chutes ne se
    * réutilisent pas (`materials_catalog.offcuts_reusable = false`). Absent sur
@@ -157,6 +189,16 @@ export interface AggregatedMaterialLine {
   packaging_breakdown?: PackagingUnitsLine[];
   room_count: number;
   contributions: PurchaseContribution[];
+  /**
+   * E1-11 — cf. `MaterialJustification`. Copiée seulement si **identique**
+   * sur toutes les contributions mutualisées (même matériau, même
+   * `text_fr`) : deux pièces qui posent des géométries de carreau
+   * différentes produisent des justifications différentes pour le même
+   * matériau, et une ligne mutualisée ne peut pas en porter deux à la fois.
+   * Omise plutôt qu'une phrase composite inventée — le détail par pièce
+   * reste lisible sur l'écran d'estimation granulaire (`contributions`).
+   */
+  justification?: MaterialJustification;
   /**
    * Fourchette basse/haute (CV-5) : conditionnement sélectionné indépendamment
    * sur la somme basse et la somme haute des contributions (même logique que

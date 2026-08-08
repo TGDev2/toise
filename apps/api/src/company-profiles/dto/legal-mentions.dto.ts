@@ -101,4 +101,14 @@ export class LegalMentionsDto {
   @Min(0)
   @Max(1000)
   default_labor_hourly_rate?: number | null;
+
+  /**
+   * E1-11 — cite ou non le fabricant et le produit dans la justification
+   * affichée d'une quantité (liste d'achat, devis). Absent ⇒ le réglage
+   * existant n'est pas touché (même contrat que les autres champs de cette
+   * classe).
+   */
+  @IsOptional()
+  @IsBoolean()
+  show_material_brands?: boolean;
 }

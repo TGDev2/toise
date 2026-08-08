@@ -11,6 +11,7 @@ import { OrgContextModule } from '../organizations/org-context.module';
 import { FeatureGatesModule } from '../feature-gates/feature-gates.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { LogbookModule } from '../logbook/logbook.module';
+import { CompanyProfilesModule } from '../company-profiles/company-profiles.module';
 import { ShoppingListsService } from './shopping-lists.service';
 import { ShoppingListsController } from './shopping-lists.controller';
 import { ShoppingListExportService } from './shopping-list-export.service';
@@ -32,6 +33,7 @@ import { ShoppingListSharedController } from './shopping-list-shared.controller'
     FeatureGatesModule,
     AnalyticsModule,
     LogbookModule,
+    CompanyProfilesModule,
   ],
   controllers: [
     ShoppingListsController,

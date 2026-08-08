@@ -126,6 +126,23 @@ export class CompanyProfile {
   })
   default_labor_hourly_rate!: number | null;
 
+  /**
+   * E1-11 — cite ou non le fabricant et le produit dans la justification
+   * affichée d'une quantité (liste d'achat, devis). Vrai par défaut : c'est
+   * l'argument de traçabilité le plus fort. Un artisan qui pose une autre
+   * marque que celle sourcée le désactive — la justification technique
+   * (ratio, norme, date) reste, seul le nom commercial disparaît.
+   *
+   * Lu **en direct** à chaque réponse (`materials/render-justification.ts`),
+   * jamais figé dans un chiffrage ou une liste d'achat : basculer ce réglage
+   * doit changer l'affichage immédiatement, y compris sur ce qui a déjà été
+   * généré. Seul le devis, une fois émis, fige sa propre apparence
+   * (`Quote.items_json`) — cette colonne n'agit alors plus que sur les
+   * devis en brouillon et les listes d'achat.
+   */
+  @Column({ type: 'boolean', default: true })
+  show_material_brands!: boolean;
+
   @OneToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'user_id' })
   user!: User | null;

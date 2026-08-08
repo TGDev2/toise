@@ -27,6 +27,15 @@ export interface ShoppingListMaterialItem {
   // CV-5 : fourchette basse/haute propagée depuis l'incertitude de mesure CV.
   units_needed_low?: number;
   units_needed_high?: number;
+  /**
+   * E1-11 — la justification déjà rendue côté API : le ratio, sa source, la
+   * règle appliquée à l'exécution. Jamais un objet à interpréter ici — le
+   * réglage marques a déjà été tranché avant la réponse
+   * (`materials/render-justification.ts`).
+   */
+  justification_fr?: string;
+  /** Lien vers la fiche technique citée. Absent si les marques sont masquées. */
+  justification_url?: string;
 }
 
 export interface ShoppingListComplementaryItem {

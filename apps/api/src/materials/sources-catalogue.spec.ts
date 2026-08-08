@@ -140,6 +140,48 @@ describe('SOURCES_CATALOGUE.md — registre des rendements V1', () => {
   });
 
   /**
+   * E1-11 — la traçabilité n'est un argument que si elle est complète : ce
+   * test échoue dès qu'un matériau lié à un ouvrage n'a pas de source
+   * renseignée sur `materials_catalog` (colonnes `source_*`, portées par le
+   * seed `seed-catalog.data.ts`, migration `…094`).
+   *
+   * `source_basis_fr` est requis pour TOUT matériau lié, y compris un
+   * rendement définitionnel (vendu et posé au m²) : c'est lui qui porte le
+   * repli sans marque à l'affichage. Les quatre champs identité
+   * (fabricant, produit, URL, date) ne sont exigés qu'ensemble — un matériau
+   * définitionnel n'en a aucun, un matériau sourcé les a tous. Un état
+   * partiel (URL sans date, fabricant sans produit…) est justement le défaut
+   * qu'un `??` silencieux laisserait passer, donc il fait échouer ce test.
+   */
+  it('porte une source complète pour chaque matériau lié', () => {
+    for (const key of linkedKeys) {
+      const seed = seedByKey.get(key);
+      expect(seed).toBeDefined();
+
+      expect(seed!.source_basis_fr).toBeTruthy();
+      expect(seed!.source_basis_fr).not.toMatch(
+        /\b(Cermix|PRB|Placo|Knauf|Sika|Quick-Step|Wineo|Bricoflor|Quelyd|Bostik|Dulux|Ripolin|Zolpan|V33)\b/,
+      );
+
+      const identityFields = [
+        seed!.source_manufacturer,
+        seed!.source_product,
+        seed!.source_url,
+        seed!.source_consulted_on,
+      ];
+      const filled = identityFields.filter((f) => f != null && f !== '');
+      expect(
+        filled.length === 0 || filled.length === identityFields.length,
+      ).toBe(true);
+
+      if (filled.length === identityFields.length) {
+        expect(seed!.source_url).toMatch(/^https?:\/\//);
+        expect(seed!.source_consulted_on).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      }
+    }
+  });
+
+  /**
    * E1-5 — le registre a cessé de ne documenter que des matériaux **liés** : la
    * famille colle et joint y figure en entier, y compris les mortiers qu'aucun
    * ouvrage V1 ne sert (C1, C2F, C2S1), parce que c'est leur comparaison qui

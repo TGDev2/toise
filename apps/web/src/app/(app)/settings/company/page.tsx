@@ -39,6 +39,7 @@ interface CompanyProfile extends Partial<LegalMentions> {
   phone: string | null;
   specialties: string[];
   default_labor_hourly_rate: number | null;
+  show_material_brands: boolean;
 }
 
 export default function CompanySettingsPage() {
@@ -59,6 +60,7 @@ export default function CompanySettingsPage() {
   const [phone, setPhone] = useState('');
   const [specialties, setSpecialties] = useState<string[]>([]);
   const [defaultLaborHourlyRate, setDefaultLaborHourlyRate] = useState('');
+  const [showMaterialBrands, setShowMaterialBrands] = useState(true);
   const [legal, setLegal] = useState<LegalMentions>(EMPTY_LEGAL_MENTIONS);
 
   useEffect(() => {
@@ -83,6 +85,7 @@ export default function CompanySettingsPage() {
             ? String(profile.default_labor_hourly_rate)
             : '',
         );
+        setShowMaterialBrands(profile.show_material_brands);
         setLegal(fromCompanyProfile(profile));
       })
       .catch(() => {
@@ -115,6 +118,7 @@ export default function CompanySettingsPage() {
         ...(defaultLaborHourlyRate.trim()
           ? { default_labor_hourly_rate: Number(defaultLaborHourlyRate) }
           : {}),
+        show_material_brands: showMaterialBrands,
         ...toLegalMentionsPayload(legal),
       });
       toast.success('Profil mis à jour avec succès.');
@@ -265,6 +269,28 @@ export default function CompanySettingsPage() {
               onValueChange={setDefaultLaborHourlyRate}
               className="w-full min-h-11 rounded-2xl border border-stone-300 px-4 py-2.5 text-base sm:text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
             />
+            {/*
+              E1-11 — la traçabilité des ratios cite la source par défaut,
+              marque comprise. Un artisan qui pose une autre marque que celle
+              sourcée la désactive : la justification technique (ratio,
+              norme, date) reste, seul le nom commercial disparaît.
+            */}
+            <label className="mt-4 flex items-start gap-2">
+              <input
+                type="checkbox"
+                checked={showMaterialBrands}
+                onChange={(e) => setShowMaterialBrands(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-stone-300 text-[var(--accent)] focus:ring-[var(--accent)]"
+              />
+              <span className="text-sm text-stone-700">
+                Citer les marques dans les justifications
+                <span className="block text-xs text-stone-500">
+                  Décoché, la source reste citée sans nom commercial :
+                  « selon la fiche technique du fabricant, consultée le
+                  … ».
+                </span>
+              </span>
+            </label>
           </div>
 
           <LegalMentionsFields values={legal} onChange={setLegal} />

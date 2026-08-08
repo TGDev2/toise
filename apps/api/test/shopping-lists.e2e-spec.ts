@@ -12,6 +12,7 @@ import { ShoppingListsController } from '../src/shopping-lists/shopping-lists.co
 import { ShoppingListsService } from '../src/shopping-lists/shopping-lists.service';
 import { UsersService } from '../src/users/users.service';
 import { OrgContextService } from '../src/organizations/org-context.service';
+import { CompanyProfilesService } from '../src/company-profiles/company-profiles.service';
 import { FeatureGatesService } from '../src/feature-gates/feature-gates.service';
 import { FirebaseAuthGuard } from '../src/auth/guards/firebase-auth.guard';
 import { SubscriptionTier } from '../src/users/entities/user.entity';
@@ -119,6 +120,11 @@ const featureGatesServiceMock = {
   getGateConfig: jest.fn().mockResolvedValue(null),
 };
 
+// E1-11 : `ShoppingListsController` lit le réglage marques via ce service.
+const companyProfilesServiceMock = {
+  findByOrganizationId: jest.fn().mockResolvedValue(null),
+};
+
 describe('ShoppingListsController (e2e)', () => {
   let app: INestApplication<App>;
 
@@ -153,6 +159,10 @@ describe('ShoppingListsController (e2e)', () => {
         { provide: UsersService, useValue: usersServiceMock },
         { provide: OrgContextService, useValue: orgContextMock },
         { provide: FeatureGatesService, useValue: featureGatesServiceMock },
+        {
+          provide: CompanyProfilesService,
+          useValue: companyProfilesServiceMock,
+        },
       ],
     })
       .overrideGuard(FirebaseAuthGuard)

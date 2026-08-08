@@ -17,6 +17,9 @@ export interface QuoteLineItem {
   margin_percent: number;
   unit_price_with_margin: number;
   line_total_ht: number;
+  /** E1-11 — déjà rendue côté API, réglage marques déjà tranché. */
+  justification_fr?: string;
+  justification_url?: string;
 }
 
 /**
@@ -53,6 +56,13 @@ export interface Quote {
   payment_terms: string | null;
   validity_days: number;
   notes: string | null;
+  /**
+   * E1-11 — détail des fournitures ligne à ligne, optionnel et désactivé par
+   * défaut : le détailler expose la marge de l'artisan sur les matériaux.
+   */
+  show_material_details: boolean;
+  /** N'a de sens que si `show_material_details` est vrai. */
+  show_material_justifications: boolean;
   items_json: QuoteLineItem[];
   subtotal_materials_ht: number;
   subtotal_labor_ht: number;
@@ -98,6 +108,8 @@ export interface CreateQuotePayload {
   validity_days?: number;
   tva_rate?: number;
   notes?: string;
+  show_material_details?: boolean;
+  show_material_justifications?: boolean;
 }
 
 export interface CreateClientPayload {

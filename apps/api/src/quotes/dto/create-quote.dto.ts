@@ -1,6 +1,7 @@
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsInt,
   IsNumber,
   IsOptional,
@@ -67,4 +68,17 @@ export class CreateQuoteDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  /**
+   * E1-11 — absent ⇒ `false` (côté service), comme le défaut de la colonne :
+   * un devis créé sans le préciser ne montre pas le détail des fournitures.
+   */
+  @IsOptional()
+  @IsBoolean()
+  show_material_details?: boolean;
+
+  /** N'a de sens que si `show_material_details` est vrai ; absent ⇒ `false`. */
+  @IsOptional()
+  @IsBoolean()
+  show_material_justifications?: boolean;
 }

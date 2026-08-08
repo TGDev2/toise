@@ -8,6 +8,7 @@ import type { CompanyProfile } from '../company-profiles/entities/company-profil
 import type { Client } from '../clients/entities/client.entity';
 import { PdfBuilder, type PdfColumn } from '../common/pdf/pdf-builder';
 import { round2 } from '../common/round2';
+import { pickJustification } from '../materials/render-justification';
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Brouillon',
@@ -130,14 +131,27 @@ export class QuotePdfService {
     doc.fillColor('#000000');
 
     // ── Materials table ──
-    doc.moveDown(1);
-    pdf.sectionTitle('Détail des matériaux');
-    doc.moveDown(0.3);
-    pdf.tableHeader(COLUMNS);
+    // E1-11 : optionnel, désactivé par défaut (`quote.show_material_details`)
+    // — détailler les fournitures ligne à ligne expose la marge de l'artisan
+    // sur les matériaux. Masqué, le bloc totaux fond le sous-total matériaux
+    // dans le total plutôt que d'afficher un sous-total vide.
+    if (quote.show_material_details) {
+      doc.moveDown(1);
+      pdf.sectionTitle('Détail des matériaux');
+      doc.moveDown(0.3);
+      pdf.tableHeader(COLUMNS);
 
-    for (const item of quote.items_json) {
-      pdf.checkPageBreak(30);
-      this.drawMaterialRow(pdf, item);
+      for (const item of quote.items_json) {
+        pdf.checkPageBreak(quote.show_material_justifications ? 55 : 30);
+        this.drawMaterialRow(pdf, item);
+        if (quote.show_material_justifications) {
+          this.drawJustification(
+            pdf,
+            item,
+            companyProfile.show_material_brands,
+          );
+        }
+      }
     }
 
     // ── Labor table ──
@@ -169,14 +183,16 @@ export class QuotePdfService {
     pdf.hr();
     doc.moveDown(0.5);
 
-    pdf.totalsRow(
-      'Sous-total matériaux HT',
-      `${PdfBuilder.formatPrice(Number(quote.subtotal_materials_ht))} EUR`,
-    );
-    pdf.totalsRow(
-      'Sous-total main-d’œuvre HT',
-      `${PdfBuilder.formatPrice(Number(quote.subtotal_labor_ht))} EUR`,
-    );
+    if (quote.show_material_details) {
+      pdf.totalsRow(
+        'Sous-total matériaux HT',
+        `${PdfBuilder.formatPrice(Number(quote.subtotal_materials_ht))} EUR`,
+      );
+      pdf.totalsRow(
+        'Sous-total main-d’œuvre HT',
+        `${PdfBuilder.formatPrice(Number(quote.subtotal_labor_ht))} EUR`,
+      );
+    }
 
     const discountPercent = Number(quote.discount_percent) || 0;
     if (discountPercent > 0) {
@@ -245,6 +261,27 @@ export class QuotePdfService {
       { text: `${PdfBuilder.formatPrice(item.unit_price_with_margin)} EUR` },
       { text: `${PdfBuilder.formatPrice(item.line_total_ht)} EUR`, bold: true },
     ]);
+  }
+
+  /**
+   * E1-11 — la justification d'une ligne, sous cette ligne. Le réglage
+   * marques est lu ici, jamais recomposé : `pickJustification` ne fait que
+   * choisir laquelle des deux phrases déjà écrites imprimer.
+   */
+  private drawJustification(
+    pdf: PdfBuilder,
+    item: QuoteLineItem,
+    showBrands: boolean,
+  ): void {
+    const { justification_fr } = pickJustification(
+      item.justification,
+      showBrands,
+    );
+    if (!justification_fr) return;
+    pdf.doc.fontSize(8).font('Helvetica').fillColor('#666666');
+    pdf.text(justification_fr);
+    pdf.doc.fillColor('#000000');
+    pdf.doc.moveDown(0.2);
   }
 
   private drawLaborRow(pdf: PdfBuilder, line: QuoteLaborLine): void {

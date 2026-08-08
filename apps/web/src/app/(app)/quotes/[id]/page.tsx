@@ -355,51 +355,73 @@ export default function QuoteDetailPage() {
         </section>
       )}
 
-      {/* Materials */}
-      <section className="mt-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
-        <h2 className="text-lg font-semibold text-stone-950">
-          Détail des matériaux
-        </h2>
-        {/* `w-full` seul annulait l'`overflow-x-auto` : la table se comprimait
-            dans 358 px au lieu de déborder, chaque ligne partant sur trois ou
-            quatre retours. `min-w-` rend le scroll horizontal effectif. */}
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[32rem] text-sm">
-            <thead>
-              <tr className="border-b border-stone-200 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
-                <th className="pb-2 pr-4">Désignation</th>
-                <th className="pb-2 pr-4 text-center">Qté</th>
-                <th className="pb-2 pr-4 text-right">PU HT</th>
-                <th className="pb-2 text-right">Total HT</th>
-              </tr>
-            </thead>
-            <tbody>
-              {quote.items_json.map((item, i) => (
-                <tr
-                  key={i}
-                  className="border-b border-stone-100"
-                >
-                  <td className="py-2 pr-4 text-stone-800">
-                    {item.material_name}
-                    <span className="ml-2 text-xs text-stone-400">
-                      {item.work_type_label}
-                    </span>
-                  </td>
-                  <td className="py-2 pr-4 text-center font-medium">
-                    {item.units_needed}
-                  </td>
-                  <td className="py-2 pr-4 text-right">
-                    {formatPrice(item.unit_price_with_margin)} EUR
-                  </td>
-                  <td className="py-2 text-right font-semibold">
-                    {formatPrice(item.line_total_ht)} EUR
-                  </td>
+      {/* Materials — E1-11 : optionnel, désactivé par défaut. Détailler les
+          fournitures ligne à ligne expose la marge de l'artisan. */}
+      {quote.show_material_details && (
+        <section className="mt-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
+          <h2 className="text-lg font-semibold text-stone-950">
+            Détail des matériaux
+          </h2>
+          {/* `w-full` seul annulait l'`overflow-x-auto` : la table se comprimait
+              dans 358 px au lieu de déborder, chaque ligne partant sur trois ou
+              quatre retours. `min-w-` rend le scroll horizontal effectif. */}
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[32rem] text-sm">
+              <thead>
+                <tr className="border-b border-stone-200 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
+                  <th className="pb-2 pr-4">Désignation</th>
+                  <th className="pb-2 pr-4 text-center">Qté</th>
+                  <th className="pb-2 pr-4 text-right">PU HT</th>
+                  <th className="pb-2 text-right">Total HT</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+              </thead>
+              <tbody>
+                {quote.items_json.map((item, i) => (
+                  <tr
+                    key={i}
+                    className="border-b border-stone-100"
+                  >
+                    <td className="py-2 pr-4 text-stone-800">
+                      {item.material_name}
+                      <span className="ml-2 text-xs text-stone-400">
+                        {item.work_type_label}
+                      </span>
+                      {quote.show_material_justifications &&
+                        item.justification_fr && (
+                          <p className="mt-1 text-xs text-stone-400">
+                            {item.justification_fr}
+                            {item.justification_url && (
+                              <>
+                                {' '}
+                                <a
+                                  href={item.justification_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="font-medium text-sky-700 hover:underline"
+                                >
+                                  Voir la fiche
+                                </a>
+                              </>
+                            )}
+                          </p>
+                        )}
+                    </td>
+                    <td className="py-2 pr-4 text-center font-medium">
+                      {item.units_needed}
+                    </td>
+                    <td className="py-2 pr-4 text-right">
+                      {formatPrice(item.unit_price_with_margin)} EUR
+                    </td>
+                    <td className="py-2 text-right font-semibold">
+                      {formatPrice(item.line_total_ht)} EUR
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {/* Labor */}
       <section className="mt-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
@@ -440,14 +462,16 @@ export default function QuoteDetailPage() {
                     </td>
                   </tr>
                 ))}
-                <tr>
-                  <td colSpan={3} className="pt-3 text-right text-stone-600">
-                    Sous-total main d&apos;œuvre HT
-                  </td>
-                  <td className="pt-3 text-right font-semibold">
-                    {formatPrice(Number(quote.subtotal_labor_ht))} EUR
-                  </td>
-                </tr>
+                {quote.show_material_details && (
+                  <tr>
+                    <td colSpan={3} className="pt-3 text-right text-stone-600">
+                      Sous-total main d&apos;œuvre HT
+                    </td>
+                    <td className="pt-3 text-right font-semibold">
+                      {formatPrice(Number(quote.subtotal_labor_ht))} EUR
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -462,20 +486,24 @@ export default function QuoteDetailPage() {
       <section className="mt-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
         <h2 className="text-lg font-semibold text-stone-950">Totaux</h2>
         <div className="mt-4 space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-stone-600">Sous-total matériaux HT</span>
-            <span className="font-medium">
-              {formatPrice(Number(quote.subtotal_materials_ht))} EUR
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-stone-600">
-              Sous-total main-d&apos;œuvre HT
-            </span>
-            <span className="font-medium">
-              {formatPrice(Number(quote.subtotal_labor_ht))} EUR
-            </span>
-          </div>
+          {quote.show_material_details && (
+            <>
+              <div className="flex justify-between">
+                <span className="text-stone-600">Sous-total matériaux HT</span>
+                <span className="font-medium">
+                  {formatPrice(Number(quote.subtotal_materials_ht))} EUR
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-stone-600">
+                  Sous-total main-d&apos;œuvre HT
+                </span>
+                <span className="font-medium">
+                  {formatPrice(Number(quote.subtotal_labor_ht))} EUR
+                </span>
+              </div>
+            </>
+          )}
           {Number(quote.discount_percent) > 0 && (
             <div className="flex justify-between text-amber-700">
               <span>Remise ({Number(quote.discount_percent)} %)</span>

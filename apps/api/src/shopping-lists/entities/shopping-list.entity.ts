@@ -8,6 +8,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { Project } from '../../projects/entities/project.entity';
+import type { MaterialJustification } from '../../estimations/entities/estimation-result.entity';
 
 export interface ShoppingListMaterialItem {
   material_id: string;
@@ -59,6 +60,12 @@ export interface ShoppingListMaterialItem {
    */
   units_needed_low?: number;
   units_needed_high?: number;
+  /**
+   * E1-11 — cf. `MaterialJustification`. Absente si le matériau ne porte
+   * aucune source, ou si la ligne mutualise des pièces dont la justification
+   * diverge (`EstimationEngine.aggregatePurchases`).
+   */
+  justification?: MaterialJustification;
 }
 
 export interface ShoppingListComplementaryItem {

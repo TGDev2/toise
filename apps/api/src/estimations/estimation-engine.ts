@@ -25,6 +25,7 @@ import type { FrameSpec } from '../projects/entities/work-type.entity';
 import { tileConsumptionFactor } from './tile-consumption';
 import { computeStripCut, RollSpec, StripCut } from './wallpaper-strips';
 import { resolveVapourBarrier } from './vapour-barrier';
+import { buildMaterialJustification } from './material-justification';
 import { resolveWetRoom } from './wet-room';
 import { resolveFloorPrep } from './floor-prep';
 import { computePieceCut, PieceCut, PieceDemand } from './piece-cutting';
@@ -130,6 +131,19 @@ export interface MaterialInput {
   name: string;
   unit: string;
   yield_per_unit: number;
+  /**
+   * E1-11 — d'où vient `yield_per_unit` (`materials_catalog.source_*`).
+   * Miroir en lecture seule : le moteur ne les inspecte pas pour calculer une
+   * quantité, il les recopie sur la ligne pour que la justification affichée
+   * puisse être composée une fois, côté réponse API
+   * (`estimations/material-justification.ts`). `source_manufacturer` absent
+   * = rendement définitionnel, comme le défaut de la colonne.
+   */
+  source_manufacturer?: string | null;
+  source_product?: string | null;
+  source_url?: string | null;
+  source_consulted_on?: string | null;
+  source_basis_fr?: string | null;
   /**
    * E1-4 — la quantité de ce matériau est proportionnelle au nombre de couches
    * (`custom_params.number_of_coats`). Porté par le catalogue
@@ -1558,6 +1572,29 @@ export class EstimationEngine {
           };
         }
 
+        // E1-11 : composée une fois ici, jamais retraduite côté web — cf.
+        // material-justification.ts. `tile_context` n'est fourni que pour le
+        // matériau dont la fiche est sourcée à une géométrie de référence :
+        // les autres lisent leur source telle quelle.
+        const justification = buildMaterialJustification({
+          material_unit: mat.unit,
+          source_manufacturer: mat.source_manufacturer,
+          source_product: mat.source_product,
+          source_url: mat.source_url,
+          source_consulted_on: mat.source_consulted_on,
+          source_basis_fr: mat.source_basis_fr,
+          consumption_model: mat.consumption_model,
+          ...(mat.consumption_model === 'tile_adhesive'
+            ? {
+                tile_context: {
+                  custom_params: wi.custom_params,
+                  surface_target: wi.surface_target,
+                },
+              }
+            : {}),
+          inclusion_reason_fr: inclusionReasons.get(mat.id),
+        });
+
         items.push({
           work_item_id: wi.id,
           work_type_code: wi.work_type_code,
@@ -1588,6 +1625,7 @@ export class EstimationEngine {
           ...(inclusionReasons.has(mat.id)
             ? { inclusion_reason_fr: inclusionReasons.get(mat.id)! }
             : {}),
+          ...(justification ? { justification } : {}),
           ...(coats !== undefined ? { number_of_coats: coats } : {}),
           ...(excludedSurfaceM2 > 0
             ? {
@@ -1732,6 +1770,18 @@ export class EstimationEngine {
         };
       }
 
+      // E1-11 — la source est invariante par matériau (même `material_id`,
+      // même ligne de catalogue), mais la clause de règle (double encollage)
+      // dépend de la géométrie posée et peut donc diverger entre pièces. Une
+      // ligne mutualisée ne peut porter qu'une seule justification : on ne la
+      // garde que si toutes les contributions du groupe portent exactement le
+      // même `text_fr`, jamais une phrase composite inventée. Le détail par
+      // pièce reste lisible sur l'écran d'estimation granulaire.
+      const firstJustification = first.justification?.text_fr;
+      const uniformJustification =
+        firstJustification !== undefined &&
+        group.every((l) => l.justification?.text_fr === firstJustification);
+
       result.push({
         material_id: materialId,
         material_name: first.material_name,
@@ -1747,6 +1797,7 @@ export class EstimationEngine {
           : {}),
         room_count: distinctRooms.size || 1,
         contributions,
+        ...(uniformJustification ? { justification: first.justification } : {}),
         ...rangeFields,
       });
     }

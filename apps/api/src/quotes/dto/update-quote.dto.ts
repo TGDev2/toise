@@ -1,6 +1,7 @@
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsInt,
   IsNumber,
   IsOptional,
@@ -62,4 +63,13 @@ export class UpdateQuoteDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  /** E1-11 — un devis en brouillon peut activer le détail avant l'émission. */
+  @IsOptional()
+  @IsBoolean()
+  show_material_details?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  show_material_justifications?: boolean;
 }

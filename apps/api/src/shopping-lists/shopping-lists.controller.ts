@@ -15,6 +15,7 @@ import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
 import { OrgContextService } from '../organizations/org-context.service';
 import type { OrgScope } from '../organizations/org-context.service';
+import { CompanyProfilesService } from '../company-profiles/company-profiles.service';
 import { ShoppingListsService } from './shopping-lists.service';
 import { ShoppingListResponseDto } from './dto/shopping-list-response.dto';
 import { BudgetSummaryResponseDto } from './dto/budget-summary-response.dto';
@@ -31,6 +32,7 @@ export class ShoppingListsController {
   constructor(
     private readonly shoppingListsService: ShoppingListsService,
     private readonly orgContext: OrgContextService,
+    private readonly companyProfiles: CompanyProfilesService,
   ) {}
 
   private async resolveScope(firebaseUser: DecodedIdToken): Promise<OrgScope> {
@@ -41,19 +43,36 @@ export class ShoppingListsController {
     }
   }
 
+  /**
+   * E1-11 — vrai par défaut : une organisation qui n'a pas encore renseigné
+   * son profil entreprise voit les marques, comme le défaut de la colonne.
+   */
+  private async resolveShowBrands(organizationId: string): Promise<boolean> {
+    const profile =
+      await this.companyProfiles.findByOrganizationId(organizationId);
+    return profile?.show_material_brands ?? true;
+  }
+
   @Get(':id/shopping-list')
   async getOrGenerate(
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Param('id', ParseUUIDPipe) projectId: string,
   ): Promise<ShoppingListResponseDto> {
     const scope = await this.resolveScope(firebaseUser);
-    const { shoppingList, latestEstimationId } =
-      await this.shoppingListsService.getOrGenerate(
-        projectId,
-        scope.organizationId,
-        scope.userId,
-      );
-    return ShoppingListResponseDto.fromEntity(shoppingList, latestEstimationId);
+    const [{ shoppingList, latestEstimationId }, showBrands] =
+      await Promise.all([
+        this.shoppingListsService.getOrGenerate(
+          projectId,
+          scope.organizationId,
+          scope.userId,
+        ),
+        this.resolveShowBrands(scope.organizationId),
+      ]);
+    return ShoppingListResponseDto.fromEntity(
+      shoppingList,
+      latestEstimationId,
+      showBrands,
+    );
   }
 
   @Patch(':id/shopping-list')
@@ -63,13 +82,16 @@ export class ShoppingListsController {
     @Body() dto: UpdateShoppingListDto,
   ): Promise<ShoppingListResponseDto> {
     const scope = await this.resolveScope(firebaseUser);
-    const { shoppingList, latestEstimationId } =
-      await this.shoppingListsService.update(
-        projectId,
-        scope.organizationId,
-        dto,
-      );
-    return ShoppingListResponseDto.fromEntity(shoppingList, latestEstimationId);
+    const [{ shoppingList, latestEstimationId }, showBrands] =
+      await Promise.all([
+        this.shoppingListsService.update(projectId, scope.organizationId, dto),
+        this.resolveShowBrands(scope.organizationId),
+      ]);
+    return ShoppingListResponseDto.fromEntity(
+      shoppingList,
+      latestEstimationId,
+      showBrands,
+    );
   }
 
   /**
@@ -85,13 +107,20 @@ export class ShoppingListsController {
     @Param('id', ParseUUIDPipe) projectId: string,
   ): Promise<ShoppingListResponseDto> {
     const scope = await this.resolveScope(firebaseUser);
-    const { shoppingList, latestEstimationId } =
-      await this.shoppingListsService.regenerate(
-        projectId,
-        scope.organizationId,
-        scope.userId,
-      );
-    return ShoppingListResponseDto.fromEntity(shoppingList, latestEstimationId);
+    const [{ shoppingList, latestEstimationId }, showBrands] =
+      await Promise.all([
+        this.shoppingListsService.regenerate(
+          projectId,
+          scope.organizationId,
+          scope.userId,
+        ),
+        this.resolveShowBrands(scope.organizationId),
+      ]);
+    return ShoppingListResponseDto.fromEntity(
+      shoppingList,
+      latestEstimationId,
+      showBrands,
+    );
   }
 
   @Get(':id/shopping-list/budget-summary')

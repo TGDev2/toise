@@ -214,6 +214,13 @@ export function materialsForWorkType(workTypeCode: string): MaterialInput[] {
         name: seedMaterial.name,
         unit: seedMaterial.unit,
         yield_per_unit: seedMaterial.yield_per_unit,
+        // E1-11 : miroir de `loadMaterialInputs`, pour que le harnais exécute
+        // le même moteur sur le même catalogue jusqu'à la justification.
+        source_manufacturer: seedMaterial.source_manufacturer ?? null,
+        source_product: seedMaterial.source_product ?? null,
+        source_url: seedMaterial.source_url ?? null,
+        source_consulted_on: seedMaterial.source_consulted_on ?? null,
+        source_basis_fr: seedMaterial.source_basis_fr ?? null,
         applies_coats: seedMaterial.applies_coats ?? false,
         quantity_driver: seedMaterial.quantity_driver ?? 'work_surface',
         consumption_model: seedMaterial.consumption_model ?? null,
@@ -1113,6 +1120,31 @@ function coverageViolations(
 }
 
 /**
+ * I8 (E1-11) — toute ligne chiffrée porte une justification : le ratio, sa
+ * source, la règle appliquée à l'exécution. Une donnée seedée complète
+ * (`sources-catalogue.spec.ts`) peut coexister avec un câblage moteur cassé —
+ * un `roll_spec` qui ne passerait pas par `buildMaterialJustification`, par
+ * exemple. Ce garde-fou prouve le chemin, pas seulement la donnée.
+ */
+function justificationCompletenessViolations(
+  lines: EstimationLineItem[],
+  testCase: HarnessCase,
+): string[] {
+  const violations: string[] = [];
+  const label = caseLabel(testCase);
+
+  for (const line of lines) {
+    if (!line.justification) {
+      violations.push(
+        `[I8] ${label} : ${line.material_name} — aucune justification produite`,
+      );
+    }
+  }
+
+  return violations;
+}
+
+/**
  * I2 — la quantité d'un matériau à `applies_coats` faux ne dépend pas du nombre
  * de couches. Le même cas est rejoué à 1, 2 et 3 couches ; toute différence sur
  * un matériau qui ne déclare pas les couches est une régression vers la
@@ -1656,6 +1688,7 @@ export function invariantViolations(
 
     violations.push(
       ...coverageViolations(lines, exclusions, materials, byId, testCase),
+      ...justificationCompletenessViolations(lines, testCase),
       ...coatIndependenceViolations(engine, room, testCase, byId, config),
       ...consumptionRateViolations(engine, room, lines, byId, testCase, config),
       ...containerMinimalityViolations(lines, byId, testCase),

@@ -167,6 +167,43 @@ export class MaterialCatalog {
   yield_per_unit!: number;
 
   /**
+   * E1-11 — d'où vient `yield_per_unit`, pour qu'un artisan puisse vérifier le
+   * chiffre plutôt que le croire. `source_manufacturer` nul ⇒ rendement
+   * **définitionnel** (vendu et posé au m², dérivation géométrique comme les
+   * croisillons) : aucune fiche ne publie ce genre de chiffre, et
+   * `source_basis_fr` porte la règle à la place. Renseigné, les quatre champs
+   * identité vont **ensemble** — jamais partiellement, sous peine de citer une
+   * fiche sans pouvoir en lier la date ou le lien.
+   *
+   * Porté par le matériau et non ailleurs (table satellite, fichier de
+   * données séparé) pour la même raison que `quantity_driver` et
+   * `consumption_model` : `PUT /admin/materials/:id` édite `yield_per_unit` en
+   * direct, et une source rangée à part divergerait au premier correctif
+   * admin sans que rien ne le signale.
+   */
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  source_manufacturer!: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  source_product!: string | null;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  source_url!: string | null;
+
+  @Column({ type: 'date', nullable: true })
+  source_consulted_on!: string | null;
+
+  /**
+   * E1-11 — qualificatif technique du rendement, **toujours** requis pour un
+   * matériau lié à un ouvrage (éprouvé par `sources-catalogue.spec.ts`) et
+   * **jamais** porteur du nom du fabricant ou du produit : c'est lui qui sert
+   * de repli quand l'affichage des marques est désactivé
+   * (`company_profiles.show_material_brands`).
+   */
+  @Column({ type: 'text', nullable: true })
+  source_basis_fr!: string | null;
+
+  /**
    * E1-3 — sur quoi la quantité se métré. `work_surface` (défaut) : la surface
    * de l'ouvrage. `clad_faces` : cette surface multipliée par le nombre de
    * faces à parementer — plaques, vis, bande, enduit. `frame_runner` /

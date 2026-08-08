@@ -236,6 +236,14 @@ interface AdhesiveBand {
   double_kg_m2: number;
   /** Ce que la fiche écrit, pour que la valeur se relise sans elle. */
   basis: string;
+  /**
+   * E1-11 — code de classe fiche de la cellule retenue (« U6 », « U9»,
+   * « E10 »), tel que `basis` le cite. Champ brand-free distinct de `basis` :
+   * `basis` nomme Cermix et sert de trace pour un mainteneur qui relit le
+   * code, `classification` sert à composer la justification affichée à
+   * l'artisan (`explainAdhesiveRate`), qui ne doit jamais nommer le fabricant.
+   */
+  classification: string;
 }
 
 /**
@@ -264,12 +272,14 @@ const FLOOR_ADHESIVE_BANDS: AdhesiveBand[] = [
     simple_kg_m2: 3.5,
     double_kg_m2: 3.5 + DOUBLE_BUTTERING_SUPPLEMENT_KG_M2,
     basis: 'Cermix, sol intérieur, S ≤ 300 cm² : « 3,5 (U6) »',
+    classification: 'U6',
   },
   {
     max_area_cm2: 500,
     simple_kg_m2: 4.5,
     double_kg_m2: 4.5 + DOUBLE_BUTTERING_SUPPLEMENT_KG_M2,
     basis: 'Cermix, sol intérieur, 300 < S ≤ 500 cm² : « 4,5 (U9) »',
+    classification: 'U9',
   },
   {
     max_area_cm2: 1200,
@@ -277,18 +287,21 @@ const FLOOR_ADHESIVE_BANDS: AdhesiveBand[] = [
     double_kg_m2: 4.5 + DOUBLE_BUTTERING_SUPPLEMENT_KG_M2,
     basis:
       'Cermix, sol intérieur, 500 < S ≤ 1 200 cm² : « 4,5 (U9) » + note (1) « consommation supplémentaire de 1 à 1.5 kg/m² »',
+    classification: 'U9',
   },
   {
     max_area_cm2: 2200,
     simple_kg_m2: null,
     double_kg_m2: 7,
     basis: 'Cermix, sol intérieur, 1 200 < S ≤ 2 200 cm² : « 7 (U9) »',
+    classification: 'U9',
   },
   {
     max_area_cm2: 3600,
     simple_kg_m2: null,
     double_kg_m2: 8,
     basis: 'Cermix, sol intérieur, 2 200 < S ≤ 3 600 cm² : « 8 (E10) »',
+    classification: 'E10',
   },
   {
     max_area_cm2: 8100,
@@ -296,6 +309,7 @@ const FLOOR_ADHESIVE_BANDS: AdhesiveBand[] = [
     double_kg_m2: 8,
     basis:
       'Cermix CERMIPLUS 2.0, sol, 3 600 < S ≤ 8 100 cm² : « 8 (E10) », carreaux céramiques uniquement',
+    classification: 'E10',
   },
 ];
 
@@ -315,6 +329,7 @@ const WALL_ADHESIVE_BANDS: AdhesiveBand[] = [
     simple_kg_m2: 3.5,
     double_kg_m2: 3.5 + DOUBLE_BUTTERING_SUPPLEMENT_KG_M2,
     basis: 'Cermix, mur intérieur, S ≤ 300 cm² : « 3,5 (U6) »',
+    classification: 'U6',
   },
   {
     max_area_cm2: 500,
@@ -322,18 +337,21 @@ const WALL_ADHESIVE_BANDS: AdhesiveBand[] = [
     double_kg_m2: 3.5 + DOUBLE_BUTTERING_SUPPLEMENT_KG_M2,
     basis:
       'Cermix, mur intérieur, 300 < S ≤ 500 cm² : « 3,5 (U6) » + note (1) « consommation supplémentaire de 1 à 1.5 kg/m² »',
+    classification: 'U6',
   },
   {
     max_area_cm2: 1200,
     simple_kg_m2: null,
     double_kg_m2: 7,
     basis: 'Cermix, mur intérieur, 500 < S ≤ 1 200 cm² : « 7 (U9) »',
+    classification: 'U9',
   },
   {
     max_area_cm2: 2200,
     simple_kg_m2: null,
     double_kg_m2: 7,
     basis: 'Cermix, mur intérieur, 1 200 < S ≤ 2 200 cm² : « 7 (U9) »',
+    classification: 'U9',
   },
   {
     max_area_cm2: 3600,
@@ -341,11 +359,33 @@ const WALL_ADHESIVE_BANDS: AdhesiveBand[] = [
     double_kg_m2: 8,
     basis:
       'Cermix CERMIFLEX, mur intérieur, 2 200 < S ≤ 3 600 cm² : « 8 (E10) »',
+    classification: 'E10',
   },
 ];
 
 const bandsFor = (surfaceTarget: string): AdhesiveBand[] =>
   surfaceTarget === 'wall' ? WALL_ADHESIVE_BANDS : FLOOR_ADHESIVE_BANDS;
+
+/**
+ * E1-11 — la tranche retenue et si elle déclenche le double encollage,
+ * factorisées hors d'`adhesiveRateKgPerM2` pour qu'elles servent aussi
+ * `explainAdhesiveRate` : le chiffre affiché et sa justification doivent
+ * lire la **même** cellule de table, jamais deux résolutions indépendantes
+ * qui pourraient diverger.
+ */
+function resolveAdhesiveBand(
+  tileAreaCm2: number,
+  surfaceTarget: string,
+): { band: AdhesiveBand; doubleButtering: boolean } {
+  const bands = bandsFor(surfaceTarget);
+  const band =
+    bands.find((candidate) => tileAreaCm2 <= candidate.max_area_cm2) ??
+    bands[bands.length - 1];
+  return {
+    band,
+    doubleButtering: requiresDoubleButtering(tileAreaCm2, surfaceTarget),
+  };
+}
 
 /**
  * Consommation de mortier-colle, en kg par m² d'ouvrage, pour un carreau de
@@ -357,18 +397,79 @@ export function adhesiveRateKgPerM2(
   tileAreaCm2: number,
   surfaceTarget: string,
 ): number {
-  const bands = bandsFor(surfaceTarget);
-  const band =
-    bands.find((candidate) => tileAreaCm2 <= candidate.max_area_cm2) ??
-    bands[bands.length - 1];
+  const { band, doubleButtering } = resolveAdhesiveBand(
+    tileAreaCm2,
+    surfaceTarget,
+  );
 
-  if (requiresDoubleButtering(tileAreaCm2, surfaceTarget)) {
+  if (doubleButtering) {
     return band.double_kg_m2;
   }
   // Une tranche sans valeur en simple encollage est une tranche où le DTU
   // l'interdit : le prédicat ci-dessus a donc déjà rendu la main. Le repli
   // existe pour qu'un seuil desserré un jour ne renvoie pas `null`.
   return band.simple_kg_m2 ?? band.double_kg_m2;
+}
+
+/** Aire au format français, séparateur de milliers par espace : « 2 025 ». */
+const formatAreaCm2 = (areaCm2: number): string =>
+  Math.round(areaCm2)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+
+/**
+ * E1-11 — justification du taux de colle retenu, brand-free : un
+ * qualificatif technique (`classification_fr`, « en U9 ») toujours rendu, et
+ * une clause de règle (`rule_fr`) seulement quand le double encollage a
+ * modifié la consommation — jamais construite en dur, toujours dérivée de la
+ * **même** tranche que `adhesiveRateKgPerM2` via `resolveAdhesiveBand`.
+ *
+ * Les fiches Cermix publient deux formes selon la tranche, et la phrase doit
+ * dire la bonne : sous 1 200 cm² (sol) ou 500 cm² (mur), le double encollage
+ * **ajoute** `DOUBLE_BUTTERING_SUPPLEMENT_KG_M2` à une cellule simple
+ * publiée ; au-delà, la fiche publie **directement** la valeur double, sans
+ * cellule simple à côté. Écrire « + 1,5 kg/m² » dans le second cas
+ * inventerait une soustraction que la fiche ne fait pas.
+ */
+export interface AdhesiveRateExplanation {
+  classification_fr: string;
+  rule_fr?: string;
+}
+
+export function explainAdhesiveRate(
+  tileAreaCm2: number,
+  surfaceTarget: string,
+): AdhesiveRateExplanation {
+  const { band, doubleButtering } = resolveAdhesiveBand(
+    tileAreaCm2,
+    surfaceTarget,
+  );
+  const destination_fr =
+    surfaceTarget === 'wall' ? 'mur intérieur' : 'sol intérieur';
+  const classification_fr = `en ${band.classification}, ${destination_fr}`;
+
+  if (!doubleButtering) {
+    return { classification_fr };
+  }
+
+  const areaLabel_fr = `${formatAreaCm2(tileAreaCm2)} cm²`;
+  const trigger_fr =
+    surfaceTarget === 'wall'
+      ? 'Double encollage obligatoire à partir de 500 cm² (NF DTU 52.2)'
+      : tileAreaCm2 > 1200
+        ? 'Double encollage obligatoire au-delà de 1 200 cm² (NF DTU 52.2)'
+        : 'Double encollage requis pour ce carreau à faible porosité, entre 500 et 1 200 cm² (NF DTU 52.2)';
+
+  const supplement_fr = String(DOUBLE_BUTTERING_SUPPLEMENT_KG_M2).replace(
+    '.',
+    ',',
+  );
+  const rule_fr =
+    band.simple_kg_m2 != null
+      ? `${trigger_fr} : votre carreau fait ${areaLabel_fr}, soit +${supplement_fr} kg/m² par rapport au simple encollage.`
+      : `${trigger_fr} : votre carreau fait ${areaLabel_fr}.`;
+
+  return { classification_fr, rule_fr };
 }
 
 // ---------------------------------------------------------------------------

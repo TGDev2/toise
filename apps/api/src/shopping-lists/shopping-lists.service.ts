@@ -206,6 +206,7 @@ export class ShoppingListsService {
           room_count: agg.room_count,
           units_needed_low: agg.units_needed_low,
           units_needed_high: agg.units_needed_high,
+          justification: agg.justification,
         }))
       : latest.items_json.map((item) => ({
           material_id: item.material_id,
@@ -224,6 +225,7 @@ export class ShoppingListsService {
           is_manually_adjusted: false,
           units_needed_low: item.units_needed_low,
           units_needed_high: item.units_needed_high,
+          justification: item.justification,
         }));
 
     // Fetch complementary materials for relevant categories

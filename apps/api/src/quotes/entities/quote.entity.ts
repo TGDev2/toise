@@ -12,6 +12,7 @@ import { User } from '../../users/entities/user.entity';
 import { Project } from '../../projects/entities/project.entity';
 import { Client } from '../../clients/entities/client.entity';
 import { EstimationResult } from '../../estimations/entities/estimation-result.entity';
+import type { MaterialJustification } from '../../estimations/entities/estimation-result.entity';
 import { numericTransformer } from '../../common/transformers/numeric.transformer';
 
 export enum QuoteStatus {
@@ -34,6 +35,14 @@ export interface QuoteLineItem {
   margin_percent: number;
   unit_price_with_margin: number;
   line_total_ht: number;
+  /**
+   * E1-11 — cf. `MaterialJustification`. Copiée depuis la ligne de liste
+   * d'achat au moment de la création du devis, comme le reste de
+   * `QuoteLineItem` : figée, parce que le devis est un document et non une
+   * vue sur le projet. Le choix marque/sans-marque, lui, se fait à
+   * l'affichage (`render-justification.ts`), jamais ici.
+   */
+  justification?: MaterialJustification;
 }
 
 /**
@@ -140,6 +149,28 @@ export class Quote {
 
   @Column({ type: 'jsonb' })
   items_json!: QuoteLineItem[];
+
+  /**
+   * E1-11 — le détail des fournitures ligne à ligne est optionnel et
+   * désactivé par défaut : le détailler expose la marge de l'artisan sur les
+   * matériaux, ce qu'il évite délibérément. Faux ⇒ le PDF et la page web
+   * fondent le sous-total matériaux dans le total, sans tableau ligne à
+   * ligne. Choix du devis, figé à l'émission comme le reste de
+   * `items_json` — jamais un réglage repris d'un profil d'entreprise après
+   * coup.
+   */
+  @Column({ type: 'boolean', default: false })
+  show_material_details!: boolean;
+
+  /**
+   * E1-11 — n'a de sens que si `show_material_details` est vrai : justifier
+   * une ligne qu'on ne montre pas ne veut rien dire. L'UI le fait respecter,
+   * cette colonne ne le contraint pas — un devis dont le détail a été
+   * désactivé après coup ne doit pas perdre silencieusement une valeur qui
+   * redeviendrait pertinente si le détail est réactivé.
+   */
+  @Column({ type: 'boolean', default: false })
+  show_material_justifications!: boolean;
 
   @Column({
     type: 'numeric',

@@ -26,6 +26,7 @@ import { CompanyProfilesService } from '../company-profiles/company-profiles.ser
 import { ClientsService } from '../clients/clients.service';
 import { QuotesService } from './quotes.service';
 import { QuotePdfService } from './quote-pdf.service';
+import { pickJustification } from '../materials/render-justification';
 import { CreateQuoteDto } from './dto/create-quote.dto';
 import { UpdateQuoteDto } from './dto/update-quote.dto';
 import { UpdateQuoteStatusDto } from './dto/update-quote-status.dto';
@@ -101,7 +102,23 @@ export class QuotesController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     const scope = await this.resolveScope(firebaseUser);
-    return this.quotesService.findOneForOrg(id, scope.organizationId);
+    const [quote, companyProfile] = await Promise.all([
+      this.quotesService.findOneForOrg(id, scope.organizationId),
+      this.companyProfilesService.findByOrganizationId(scope.organizationId),
+    ]);
+    const showBrands = companyProfile?.show_material_brands ?? true;
+
+    // E1-11 : le réglage marques est lu en direct, ici — jamais figé sur le
+    // devis. `show_material_details`/`show_material_justifications`, eux,
+    // traversent tels quels : c'est la page web qui décide, avec ces deux
+    // booléens, ce qu'elle montre de `items_json`.
+    return {
+      ...quote,
+      items_json: quote.items_json.map(({ justification, ...rest }) => ({
+        ...rest,
+        ...pickJustification(justification, showBrands),
+      })),
+    };
   }
 
   @Patch(':id')
