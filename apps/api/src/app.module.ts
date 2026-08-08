@@ -22,6 +22,7 @@ import { PriceComparisonModule } from './price-comparison/price-comparison.modul
 import { CompanyProfilesModule } from './company-profiles/company-profiles.module';
 import { ClientsModule } from './clients/clients.module';
 import { QuotesModule } from './quotes/quotes.module';
+import { QuantityValidationModule } from './quantity-validation/quantity-validation.module';
 import { SiteTrackingModule } from './site-tracking/site-tracking.module';
 import { QuoteRemindersModule } from './quote-reminders/quote-reminders.module';
 import { InvoicesModule } from './invoices/invoices.module';
@@ -77,6 +78,7 @@ import { THROTTLER_CONFIG } from './config/throttler.config';
     CompanyProfilesModule,
     ClientsModule,
     QuotesModule,
+    QuantityValidationModule,
     SiteTrackingModule,
     QuoteRemindersModule,
     InvoicesModule,

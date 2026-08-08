@@ -34,6 +34,8 @@ import {
   Subscription,
   SubscriptionStatus,
 } from '../subscriptions/entities/subscription.entity';
+import { QuantityValidation } from '../quantity-validation/entities/quantity-validation.entity';
+import { QuantityCorrection } from '../quantity-validation/entities/quantity-correction.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { QuotePdfService } from '../quotes/quote-pdf.service';
 import { InvoicePdfService } from '../invoices/invoice-pdf.service';
@@ -75,6 +77,8 @@ const logbookRepoMock = emptyRepoMock();
 const lifecycleEmailsRepoMock = emptyRepoMock();
 const analyticsEventsRepoMock = emptyRepoMock();
 const subscriptionsRepoMock = emptyRepoMock();
+const quantityValidationsRepoMock = emptyRepoMock();
+const quantityCorrectionsRepoMock = emptyRepoMock();
 
 const storageMock = {
   save: jest.fn(),
@@ -178,6 +182,14 @@ async function buildService(): Promise<DataExportService> {
       {
         provide: getRepositoryToken(Subscription),
         useValue: subscriptionsRepoMock,
+      },
+      {
+        provide: getRepositoryToken(QuantityValidation),
+        useValue: quantityValidationsRepoMock,
+      },
+      {
+        provide: getRepositoryToken(QuantityCorrection),
+        useValue: quantityCorrectionsRepoMock,
       },
       { provide: STORAGE_PROVIDER, useValue: storageMock },
       { provide: SubscriptionsService, useValue: subscriptionsServiceMock },

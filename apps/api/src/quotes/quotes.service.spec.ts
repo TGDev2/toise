@@ -1,6 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { QuotesService } from './quotes.service';
 import { Quote, QuoteStatus } from './entities/quote.entity';
@@ -16,6 +20,7 @@ import { ClientsService } from '../clients/clients.service';
 import { CompanyProfilesService } from '../company-profiles/company-profiles.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { QuantityValidationsService } from '../quantity-validation/quantity-validations.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 
 const ORG_ID = 'org-1';
@@ -109,6 +114,10 @@ function makeShoppingList(realUnitPrice: number | null = 50) {
       items_json: {
         material_items: [
           {
+            // `material_id` et `work_type_code` : la ligne réelle les porte
+            // toujours, et la garde de validation (E2-4) empreinte le premier.
+            material_id: 'mat-paint',
+            work_type_code: 'wall_painting',
             material_name: 'Peinture acrylique',
             material_category: 'peinture',
             work_type_label: 'Peinture murale',
@@ -142,6 +151,12 @@ describe('QuotesService', () => {
   const clientsServiceMock = { findOneForOrg: jest.fn() };
   const companyProfilesServiceMock = { findByOrganizationId: jest.fn() };
   const analyticsServiceMock = { track: jest.fn() };
+  // La garde d'émission (E2-4) est neutre par défaut : chaque test qui ne
+  // porte pas sur elle décrit un chantier dont les quantités ont été validées.
+  // Les tests de la garde la font échouer explicitement.
+  const quantityValidationsMock = {
+    assertValidated: jest.fn().mockResolvedValue(undefined),
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -157,6 +172,7 @@ describe('QuotesService', () => {
       ),
     };
 
+    quantityValidationsMock.assertValidated.mockResolvedValue(undefined);
     projectsServiceMock.findOneForOrg.mockResolvedValue({ id: PROJECT_ID });
     projectsServiceMock.getLaborTimes.mockResolvedValue(LABOR_TIMES);
     estimationRepoMock.findOne.mockResolvedValue(makeEstimation());
@@ -184,6 +200,10 @@ describe('QuotesService', () => {
           useValue: companyProfilesServiceMock,
         },
         { provide: AnalyticsService, useValue: analyticsServiceMock },
+        {
+          provide: QuantityValidationsService,
+          useValue: quantityValidationsMock,
+        },
       ],
     }).compile();
 
@@ -315,6 +335,43 @@ describe('QuotesService', () => {
 
       expect(quote.labor_items_json[0].quantity).toBe(1);
       expect(quote.labor_items_json[0].line_total_ht).toBe(500);
+    });
+  });
+
+  /**
+   * E2-4 — troisième ligne de défense. La garde ne reçoit pas un identifiant de
+   * validation : elle reçoit les lignes que ce devis va figer. C'est la seule
+   * forme qui résiste à une correction faite entre le geste et l'émission,
+   * depuis n'importe quel écran.
+   */
+  describe('create — validation des quantités', () => {
+    it("soumet à la garde les lignes de la liste d'achats, pas un identifiant", async () => {
+      await service.create(ORG_ID, USER_ID, baseDto());
+
+      const calls = quantityValidationsMock.assertValidated.mock.calls as [
+        string,
+        { material_id: string }[],
+      ][];
+      expect(calls).toHaveLength(1);
+      expect(calls[0][0]).toBe(PROJECT_ID);
+      expect(calls[0][1].map((line) => line.material_id)).toEqual([
+        'mat-paint',
+      ]);
+    });
+
+    it("n'émet aucun devis quand la garde refuse", async () => {
+      quantityValidationsMock.assertValidated.mockRejectedValueOnce(
+        new ConflictException('Les quantités doivent être validées.'),
+      );
+
+      await expect(
+        service.create(ORG_ID, USER_ID, baseDto()),
+      ).rejects.toBeInstanceOf(ConflictException);
+
+      // Ni numéro consommé, ni ligne insérée : le refus est en amont de la
+      // transaction qui alloue le numéro de devis.
+      expect(managerMock.save).not.toHaveBeenCalled();
+      expect(managerMock.query).not.toHaveBeenCalled();
     });
   });
 

@@ -35,6 +35,14 @@ import { computeBudgetSummary } from './budget-summary';
 import type { EstimationLineItem } from '../estimations/entities/estimation-result.entity';
 import { ProjectStatus } from '../projects/entities/project.entity';
 import { isShareTokenExpired, shareTokenExpiry } from './share-token';
+import {
+  QuantityCorrection,
+  QuantityCorrectionSource,
+} from '../quantity-validation/entities/quantity-correction.entity';
+import {
+  buildQuantityCorrection,
+  type QuantityCorrectionContext,
+} from '../quantity-validation/quantity-corrections';
 
 /**
  * Reporte les relevés de terrain — prix payé, enseigne, quantité réellement
@@ -346,9 +354,19 @@ export class ShoppingListsService {
   async update(
     projectId: string,
     organizationId: string,
+    userId: string | null,
     dto: UpdateShoppingListDto,
   ): Promise<{ shoppingList: ShoppingList; latestEstimationId: string }> {
     await this.projectsService.findOneForOrg(projectId, organizationId);
+
+    // Lu **avant** la transaction, et plus après : la trace des corrections
+    // (E2-4) a besoin du niveau déclaré, et le rattacher à l'estimation
+    // courante depuis l'intérieur du verrou allongerait sa durée pour une
+    // lecture qui ne dépend pas de lui.
+    const latest = await this.estimationsService.getLatest(
+      projectId,
+      organizationId,
+    );
 
     // `items_json` est **une seule colonne** : toute correction de ligne est une
     // lecture-modification-écriture du blob entier. Sans verrou, deux PATCH
@@ -358,13 +376,15 @@ export class ShoppingListsService {
     // sérialise les deux : le second repart de ce que le premier a écrit.
     // Couvert par `test/integration/persistence.int-spec.ts`.
     const saved = await this.shoppingListRepo.manager.transaction((manager) =>
-      this.applyUpdateLocked(manager, projectId, dto),
+      this.applyUpdateLocked(manager, projectId, dto, {
+        projectId,
+        organizationId,
+        userId,
+        skillLevel: latest.skill_level ?? null,
+        source: dto.source ?? QuantityCorrectionSource.SHOPPING_LIST,
+      }),
     );
 
-    const latest = await this.estimationsService.getLatest(
-      projectId,
-      organizationId,
-    );
     return { shoppingList: saved, latestEstimationId: latest.id };
   }
 
@@ -373,6 +393,7 @@ export class ShoppingListsService {
     manager: EntityManager,
     projectId: string,
     dto: UpdateShoppingListDto,
+    correctionContext: QuantityCorrectionContext,
   ): Promise<ShoppingList> {
     const shoppingList = await manager.findOne(ShoppingList, {
       where: { project_id: projectId },
@@ -387,6 +408,14 @@ export class ShoppingListsService {
 
     const data = shoppingList.items_json;
 
+    /**
+     * E2-4 — la trace des corrections manuelles est écrite ici et nulle part
+     * ailleurs : c'est le seul chemin qui écrit `units_needed`. La poser dans
+     * chacun des écrans qui corrigent une quantité aurait laissé la troisième
+     * surface à écrire (leçon 5).
+     */
+    const corrections: Partial<QuantityCorrection>[] = [];
+
     // Merge material item updates (mutualisé : matching par material_id seul)
     if (dto.material_items) {
       for (const update of dto.material_items) {
@@ -394,6 +423,20 @@ export class ShoppingListsService {
           (m) => m.material_id === update.material_id,
         );
         if (item) {
+          // `units_needed` est obligatoire dans le DTO : un PATCH qui ne
+          // renseigne qu'un prix le renvoie inchangé. Sans cette comparaison,
+          // chaque saisie de prix produirait une « correction » de la quantité
+          // vers elle-même, et l'agrégat d'E8 serait noyé sous des écarts nuls
+          // que personne n'a déclarés (leçon 18).
+          if (update.units_needed !== item.units_needed) {
+            corrections.push(
+              buildQuantityCorrection(
+                item,
+                update.units_needed,
+                correctionContext,
+              ),
+            );
+          }
           item.units_needed = update.units_needed;
           item.is_manually_adjusted =
             update.units_needed !== item.original_units_needed;
@@ -429,6 +472,16 @@ export class ShoppingListsService {
           }
         }
       }
+    }
+
+    // Dans la même transaction que la quantité qu'elles décrivent : une trace
+    // qui survivrait à un échec d'écriture, ou l'inverse, ne prouverait rien.
+    if (corrections.length > 0) {
+      await manager.save(
+        corrections.map((correction) =>
+          manager.create(QuantityCorrection, correction),
+        ),
+      );
     }
 
     shoppingList.items_json = data;

@@ -36,6 +36,8 @@ import { RoomLogEntry } from '../logbook/entities/room-log-entry.entity';
 import { LifecycleEmailSend } from '../lifecycle-emails/entities/lifecycle-email-send.entity';
 import { AnalyticsEvent } from '../analytics/entities/analytics-event.entity';
 import { Subscription } from '../subscriptions/entities/subscription.entity';
+import { QuantityValidation } from '../quantity-validation/entities/quantity-validation.entity';
+import { QuantityCorrection } from '../quantity-validation/entities/quantity-correction.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { QuotePdfService } from '../quotes/quote-pdf.service';
 import { InvoicePdfService } from '../invoices/invoice-pdf.service';
@@ -158,6 +160,8 @@ export const EXPORTED_ENTITIES: string[] = [
   'community_comments',
   'lifecycle_email_sends',
   'analytics_events',
+  'quantity_validations',
+  'quantity_corrections',
 ];
 
 interface PhotoArchiveRef {
@@ -274,6 +278,10 @@ export class DataExportService {
     private readonly analyticsEventsRepo: Repository<AnalyticsEvent>,
     @InjectRepository(Subscription)
     private readonly subscriptionsRepo: Repository<Subscription>,
+    @InjectRepository(QuantityValidation)
+    private readonly quantityValidationsRepo: Repository<QuantityValidation>,
+    @InjectRepository(QuantityCorrection)
+    private readonly quantityCorrectionsRepo: Repository<QuantityCorrection>,
     @Inject(STORAGE_PROVIDER)
     private readonly storage: StorageProvider,
     private readonly subscriptionsService: SubscriptionsService,
@@ -640,6 +648,8 @@ export class DataExportService {
       quotes,
       invoices,
       communityProjects,
+      quantityValidations,
+      quantityCorrections,
     ] = await Promise.all([
       roomIds.length
         ? this.workItemsRepo.find({ where: { room_id: In(roomIds) } })
@@ -675,6 +685,16 @@ export class DataExportService {
             withDeleted: true,
           })
         : Promise.resolve([]),
+      projectIds.length
+        ? this.quantityValidationsRepo.find({
+            where: { project_id: In(projectIds) },
+          })
+        : Promise.resolve([]),
+      projectIds.length
+        ? this.quantityCorrectionsRepo.find({
+            where: { project_id: In(projectIds) },
+          })
+        : Promise.resolve([]),
     ]);
 
     const workItemsByRoom = groupBy(workItems, (w) => w.room_id);
@@ -696,6 +716,14 @@ export class DataExportService {
     );
     const communityByProject = new Map(
       communityProjects.map((c) => [c.project_id, c]),
+    );
+    const quantityValidationsByProject = groupBy(
+      quantityValidations,
+      (v) => v.project_id,
+    );
+    const quantityCorrectionsByProject = groupBy(
+      quantityCorrections,
+      (c) => c.project_id,
     );
 
     for (const photo of photos) {
@@ -780,6 +808,8 @@ export class DataExportService {
           quotesByProject,
           invoicesByProject,
           communityByProject,
+          quantityValidationsByProject,
+          quantityCorrectionsByProject,
           hasCompanyProfile: !!companyProfile,
         }),
       ),
@@ -799,6 +829,8 @@ export class DataExportService {
       quotesByProject: Map<string, Quote[]>;
       invoicesByProject: Map<string, Invoice[]>;
       communityByProject: Map<string, CommunityProject>;
+      quantityValidationsByProject: Map<string, QuantityValidation[]>;
+      quantityCorrectionsByProject: Map<string, QuantityCorrection[]>;
       hasCompanyProfile: boolean;
     },
   ): Record<string, unknown> {
@@ -884,6 +916,15 @@ export class DataExportService {
       quotes: (grouped.quotesByProject.get(project.id) ?? []).map((q) =>
         this.toQuoteManifest(q, grouped.hasCompanyProfile),
       ),
+      // E2-4 : la trace de validation des quantités et les corrections
+      // manuelles. Exportées sous le projet, qui est leur périmètre naturel :
+      // c'est le chantier qu'un litige désigne, pas le compte.
+      quantity_validations: (
+        grouped.quantityValidationsByProject.get(project.id) ?? []
+      ).map((v) => this.toQuantityValidationManifest(v)),
+      quantity_corrections: (
+        grouped.quantityCorrectionsByProject.get(project.id) ?? []
+      ).map((c) => this.toQuantityCorrectionManifest(c)),
       invoices: (grouped.invoicesByProject.get(project.id) ?? []).map((i) =>
         this.toInvoiceManifest(i),
       ),
@@ -913,6 +954,44 @@ export class DataExportService {
             deleted_at: communityPublication.deleted_at,
           }
         : null,
+    };
+  }
+
+  private toQuantityValidationManifest(
+    validation: QuantityValidation,
+  ): Record<string, unknown> {
+    return {
+      id: validation.id,
+      organization_id: validation.organization_id,
+      user_id: validation.user_id,
+      user_email: validation.user_email,
+      quantities_fingerprint: validation.quantities_fingerprint,
+      quantities_json: validation.quantities_json,
+      line_count: validation.line_count,
+      validated_at: validation.validated_at,
+    };
+  }
+
+  private toQuantityCorrectionManifest(
+    correction: QuantityCorrection,
+  ): Record<string, unknown> {
+    return {
+      id: correction.id,
+      organization_id: correction.organization_id,
+      user_id: correction.user_id,
+      material_id: correction.material_id,
+      material_name: correction.material_name,
+      material_unit: correction.material_unit,
+      packaging_label: correction.packaging_label,
+      work_type_code: correction.work_type_code,
+      work_type_label: correction.work_type_label,
+      skill_level: correction.skill_level,
+      computed_units: correction.computed_units,
+      previous_units: correction.previous_units,
+      corrected_units: correction.corrected_units,
+      relative_deviation: correction.relative_deviation,
+      source: correction.source,
+      corrected_at: correction.corrected_at,
     };
   }
 

@@ -262,6 +262,8 @@ describe('ShoppingListsController (e2e)', () => {
     expect(shoppingListsServiceMock.update).toHaveBeenCalledWith(
       mockProjectId,
       mockOrgId,
+      // E2-4 : l'auteur de la correction, pour la trace de l'écart au calcul.
+      mockUserId,
       expect.objectContaining({
         material_items: [
           expect.objectContaining({

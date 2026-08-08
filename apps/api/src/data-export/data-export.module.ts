@@ -28,6 +28,8 @@ import { RoomLogEntry } from '../logbook/entities/room-log-entry.entity';
 import { LifecycleEmailSend } from '../lifecycle-emails/entities/lifecycle-email-send.entity';
 import { AnalyticsEvent } from '../analytics/entities/analytics-event.entity';
 import { Subscription } from '../subscriptions/entities/subscription.entity';
+import { QuantityValidation } from '../quantity-validation/entities/quantity-validation.entity';
+import { QuantityCorrection } from '../quantity-validation/entities/quantity-correction.entity';
 import { DataExportService } from './data-export.service';
 import { DataExportController } from './data-export.controller';
 import { QuotePdfService } from '../quotes/quote-pdf.service';
@@ -68,6 +70,8 @@ import { InvoicePdfService } from '../invoices/invoice-pdf.service';
       LifecycleEmailSend,
       AnalyticsEvent,
       Subscription,
+      QuantityValidation,
+      QuantityCorrection,
     ]),
     StorageModule,
     UsersModule,

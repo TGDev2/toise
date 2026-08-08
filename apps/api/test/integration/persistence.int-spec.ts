@@ -830,12 +830,22 @@ describe('Persistance (intégration, PostgreSQL réel)', () => {
       const service = buildService(fixture);
 
       await Promise.all([
-        service.update(fixture.projectId, fixture.organizationId, {
-          material_items: [{ material_id: PEINTURE, units_needed: 7 }],
-        }),
-        service.update(fixture.projectId, fixture.organizationId, {
-          material_items: [{ material_id: ENDUIT, units_needed: 9 }],
-        }),
+        service.update(
+          fixture.projectId,
+          fixture.organizationId,
+          fixture.userId,
+          {
+            material_items: [{ material_id: PEINTURE, units_needed: 7 }],
+          },
+        ),
+        service.update(
+          fixture.projectId,
+          fixture.organizationId,
+          fixture.userId,
+          {
+            material_items: [{ material_id: ENDUIT, units_needed: 9 }],
+          },
+        ),
       ]);
 
       const stored = await dataSource
@@ -876,11 +886,16 @@ describe('Persistance (intégration, PostgreSQL réel)', () => {
           fixture.organizationId,
           fixture.userId,
         ),
-        service.update(fixture.projectId, fixture.organizationId, {
-          material_items: [
-            { material_id: PEINTURE, units_needed: 4, real_unit_price: 31.5 },
-          ],
-        }),
+        service.update(
+          fixture.projectId,
+          fixture.organizationId,
+          fixture.userId,
+          {
+            material_items: [
+              { material_id: PEINTURE, units_needed: 4, real_unit_price: 31.5 },
+            ],
+          },
+        ),
       ]);
 
       const after = await repo.findOneByOrFail({

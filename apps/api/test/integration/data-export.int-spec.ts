@@ -75,6 +75,11 @@ import {
   Subscription,
   SubscriptionStatus,
 } from '../../src/subscriptions/entities/subscription.entity';
+import { QuantityValidation } from '../../src/quantity-validation/entities/quantity-validation.entity';
+import {
+  QuantityCorrection,
+  QuantityCorrectionSource,
+} from '../../src/quantity-validation/entities/quantity-correction.entity';
 import { LocalStorageService } from '../../src/photos/storage/local-storage.service';
 import { QuotePdfService } from '../../src/quotes/quote-pdf.service';
 import { InvoicePdfService } from '../../src/invoices/invoice-pdf.service';
@@ -158,6 +163,8 @@ describe('Export RGPD (intégration, PostgreSQL et volume réels)', () => {
       dataSource.getRepository(LifecycleEmailSend),
       dataSource.getRepository(AnalyticsEvent),
       dataSource.getRepository(Subscription),
+      dataSource.getRepository(QuantityValidation),
+      dataSource.getRepository(QuantityCorrection),
       storage,
       { listBillingHistory } as unknown as SubscriptionsService,
       new QuotePdfService(),
@@ -479,6 +486,48 @@ describe('Export RGPD (intégration, PostgreSQL et volume réels)', () => {
       status: SubscriptionStatus.ACTIVE,
     });
 
+    // E2-4 : la trace probatoire de la validation des quantités et l'écart
+    // déclaré avant achat. Rattachées au projet, donc au périmètre du compte.
+    const quantityValidation = await dataSource
+      .getRepository(QuantityValidation)
+      .save({
+        project_id: projectA.id,
+        organization_id: orgA.id,
+        user_id: user1.id,
+        user_email: user1.email,
+        quantities_fingerprint: 'b'.repeat(64),
+        quantities_json: [
+          {
+            material_id: 'mat-paint',
+            material_name: 'Peinture acrylique mate',
+            work_type_code: 'wall_painting',
+            work_type_label: 'Peinture murale',
+            packaging_label: 'Pot 10 L',
+            units_needed: 2,
+          },
+        ],
+        line_count: 1,
+      });
+    const quantityCorrection = await dataSource
+      .getRepository(QuantityCorrection)
+      .save({
+        project_id: projectA.id,
+        organization_id: orgA.id,
+        user_id: user1.id,
+        material_id: '00000000-0000-4000-8000-0000000000f1',
+        material_name: 'Mortier-colle C2',
+        material_unit: 'kg',
+        packaging_label: 'Sac 25 kg',
+        work_type_code: 'floor_tiling',
+        work_type_label: 'Carrelage sol',
+        skill_level: 'expert',
+        computed_units: 4,
+        previous_units: 4,
+        corrected_units: 5,
+        relative_deviation: 0.25,
+        source: QuantityCorrectionSource.QUOTE_VALIDATION,
+      });
+
     return {
       user1,
       user2,
@@ -511,6 +560,8 @@ describe('Export RGPD (intégration, PostgreSQL et volume réels)', () => {
       lifecycleEmail,
       analyticsEvent,
       subscription,
+      quantityValidation,
+      quantityCorrection,
     };
   }
 
@@ -548,6 +599,8 @@ describe('Export RGPD (intégration, PostgreSQL et volume réels)', () => {
       fixture.lifecycleEmail.id,
       fixture.analyticsEvent.id,
       fixture.subscription.id,
+      fixture.quantityValidation.id,
+      fixture.quantityCorrection.id,
     ];
 
     for (const id of expectedIds) {

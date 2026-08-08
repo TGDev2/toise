@@ -232,7 +232,8 @@ const shoppingListsServiceMock = {
   update: jest.fn().mockImplementation(
     (
       _projectId: string,
-      _userId: string,
+      _organizationId: string,
+      _userId: string | null,
       dto: {
         material_items?: { material_id: string; units_needed: number }[];
       },

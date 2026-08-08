@@ -354,14 +354,35 @@ async function priceEveryMaterial(chrono: Chrono, page: Page): Promise<number> {
 
 /** Fin de parcours commune : liste chiffrée → devis → PDF partagé. */
 async function quoteAndSend(chrono: Chrono, page: Page): Promise<void> {
+  /*
+    E2-4 — le prédicat d'arrivée ne peut plus être « Créer le devis est
+    actif » : ce bouton reste désactivé tant que les quantités ne sont pas
+    validées. L'attendre actif aurait fait expirer le script sur un écran
+    parfaitement sain, et la première réaction aurait été d'accuser le produit.
+    L'écran est prêt quand le panneau de validation est là.
+  */
   await chrono.advance(
     page.getByRole('button', { name: 'Générer le devis' }),
     'Devis',
     async (p) => {
       await expect(
-        p.getByRole('button', { name: 'Créer le devis' }),
+        p.getByRole('button', { name: 'Je valide ces quantités' }),
       ).toBeEnabled({ timeout: 30_000 });
     },
+  );
+
+  /*
+    E2-4 — le geste ajouté par ce lot : UN tap pour l'ensemble des lignes, plus
+    une décision (relire les quantités). Coût mesuré : 1,2 s + 3 s. La
+    validation ligne par ligne existe pour qui corrige, mais elle n'est pas sur
+    le chemin nominal — c'est tout l'objet de la contrainte produit.
+  */
+  chrono.decide(); // relire les quantités avant de les engager
+  await chrono.tap(
+    page.getByRole('button', { name: 'Je valide ces quantités' }),
+  );
+  await expect(page.getByRole('button', { name: 'Créer le devis' })).toBeEnabled(
+    { timeout: 30_000 },
   );
 
   // Client, marge, TVA, validité, conditions de règlement : tous pré-remplis ou
@@ -479,7 +500,8 @@ test.describe('E4-4 — chronométrage du parcours artisan', () => {
       E1-10 — les deux questions qui décident du système d'étanchéité et du
       ragréage. Elles sont obligatoires depuis leur arrivée et le script n'y
       répondait pas : « Calculer » ne naviguait plus, et ce scénario ne mesurait
-      donc plus rien depuis ce lot-là.
+      donc plus rien depuis ce lot-là. Leur coût — deux taps, deux décisions —
+      appartient à E1-10, pas à E2-4.
     */
     await answerSelect(chrono, page, /exposition à l'eau/i, 'dry');
     await answerSelect(chrono, page, /planéité du support/i, 'flat');

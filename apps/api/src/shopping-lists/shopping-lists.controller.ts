@@ -84,7 +84,12 @@ export class ShoppingListsController {
     const scope = await this.resolveScope(firebaseUser);
     const [{ shoppingList, latestEstimationId }, showBrands] =
       await Promise.all([
-        this.shoppingListsService.update(projectId, scope.organizationId, dto),
+        this.shoppingListsService.update(
+          projectId,
+          scope.organizationId,
+          scope.userId,
+          dto,
+        ),
         this.resolveShowBrands(scope.organizationId),
       ]);
     return ShoppingListResponseDto.fromEntity(

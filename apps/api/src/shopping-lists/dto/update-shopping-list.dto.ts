@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
+  IsEnum,
   IsInt,
   IsNumber,
   IsOptional,
@@ -12,6 +13,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
+import { QuantityCorrectionSource } from '../../quantity-validation/entities/quantity-correction.entity';
 
 /**
  * Plafond de saisie par ligne d'achat. Dix mille conditionnements d'un même
@@ -86,4 +88,15 @@ export class UpdateShoppingListDto {
   @ValidateNested({ each: true })
   @Type(() => ComplementaryItemUpdateDto)
   complementary_items?: ComplementaryItemUpdateDto[];
+
+  /**
+   * E2-4 — d'où vient le geste, pour la trace des corrections. Déclaratif :
+   * c'est l'écran de l'artisan qui le dit, et il n'ouvre aucun droit. Par
+   * défaut la liste d'achats, qui est le chemin historique ; l'écran de devis
+   * déclare `quote_validation`, dont la valeur probatoire est plus forte
+   * puisqu'il précède immédiatement l'engagement.
+   */
+  @IsOptional()
+  @IsEnum(QuantityCorrectionSource)
+  source?: QuantityCorrectionSource;
 }

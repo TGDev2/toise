@@ -4,10 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeatureGates } from '@/contexts/FeatureGateContext';
-import { apiGet, apiPost, apiPut } from '@/lib/api';
+import { apiGet, apiPatch, apiPost, apiPut } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { ClientSelect } from '@/components/quotes/ClientSelect';
 import { LaborLinesEditor } from '@/components/quotes/LaborLinesEditor';
+import { QuantityValidationPanel } from '@/components/quotes/QuantityValidationPanel';
 import { FlowProgress } from '@/components/quote-flow/FlowProgress';
 import { Alert, DecimalInput, Skeleton, StickyActionBar } from '@/components/ui';
 import type { EstimationResponse } from '@/lib/estimation-types';
@@ -18,6 +19,7 @@ import type {
   CreateQuotePayload,
 } from '@/lib/quote-types';
 import type { ShoppingListResponse } from '@/lib/shopping-list-types';
+import type { QuantityValidationState } from '@/lib/quantity-validation-types';
 
 function formatPrice(v: number): string {
   return v.toFixed(2).replace('.', ',');
@@ -42,6 +44,9 @@ export default function NewQuotePage() {
   const [estimation, setEstimation] = useState<EstimationResponse | null>(null);
   const [shoppingList, setShoppingList] = useState<ShoppingListResponse | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
+  const [quantityValidation, setQuantityValidation] =
+    useState<QuantityValidationState | null>(null);
+  const [validationBusy, setValidationBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -84,14 +89,18 @@ export default function NewQuotePage() {
     setLoading(true);
     setError('');
     try {
-      const [est, sl, cls] = await Promise.all([
+      const [est, sl, cls, validation] = await Promise.all([
         apiGet<EstimationResponse>(`/projects/${projectId}/estimates/latest`),
         apiGet<ShoppingListResponse>(`/projects/${projectId}/shopping-list`),
         apiGet<Client[]>('/clients'),
+        apiGet<QuantityValidationState>(
+          `/projects/${projectId}/quantity-validation`,
+        ),
       ]);
       setEstimation(est);
       setShoppingList(sl);
       setClients(cls);
+      setQuantityValidation(validation);
 
       // La proposition dépend de l'estimation (elle en dérive les ouvrages) :
       // ne peut être demandée en même temps que les trois appels ci-dessus.
@@ -107,6 +116,71 @@ export default function NewQuotePage() {
       setLoading(false);
     }
   }, [projectId]);
+
+  const refreshValidation = useCallback(async () => {
+    setQuantityValidation(
+      await apiGet<QuantityValidationState>(
+        `/projects/${projectId}/quantity-validation`,
+      ),
+    );
+  }, [projectId]);
+
+  /**
+   * E2-4 — la correction passe par la liste d'achats, pas par un chemin
+   * d'écriture propre à cet écran : c'est là que la trace de l'écart au calcul
+   * est enregistrée, et une seconde route l'aurait contournée (leçon 5).
+   */
+  const handleCorrectQuantity = useCallback(
+    async (materialId: string, units: number) => {
+      setValidationBusy(true);
+      setError('');
+      try {
+        const updated = await apiPatch<ShoppingListResponse>(
+          `/projects/${projectId}/shopping-list`,
+          {
+            material_items: [
+              { material_id: materialId, units_needed: units },
+            ],
+            source: 'quote_validation',
+          },
+        );
+        setShoppingList(updated);
+        // La quantité a changé : l'empreinte aussi, donc la validation
+        // précédente ne vaut plus pour cette liste. C'est le serveur qui le
+        // dit, pas cet écran.
+        await refreshValidation();
+      } catch (err: unknown) {
+        setError(
+          getErrorMessage(err, 'Impossible d’enregistrer la quantité corrigée'),
+        );
+      } finally {
+        setValidationBusy(false);
+      }
+    },
+    [projectId, refreshValidation],
+  );
+
+  const handleValidateQuantities = useCallback(async () => {
+    if (!quantityValidation) return;
+    setValidationBusy(true);
+    setError('');
+    try {
+      const next = await apiPost<QuantityValidationState>(
+        `/projects/${projectId}/quantity-validation`,
+        { fingerprint: quantityValidation.fingerprint },
+      );
+      setQuantityValidation(next);
+    } catch (err: unknown) {
+      setError(
+        getErrorMessage(err, 'Impossible d’enregistrer la validation'),
+      );
+      // Refus le plus probable : les quantités ont bougé ailleurs depuis
+      // l'affichage. Recharger est ce qui rend le geste rejouable.
+      await refreshValidation().catch(() => {});
+    } finally {
+      setValidationBusy(false);
+    }
+  }, [projectId, quantityValidation, refreshValidation]);
 
   // La gate `export_devis` ouvrait le paywall mais laissait le rendu et le
   // `fetchData()` se poursuivre : le formulaire complet s'affichait derrière la
@@ -212,9 +286,17 @@ export default function NewQuotePage() {
   const removeLaborLine = (index: number) =>
     setLaborLines((prev) => prev.filter((_, i) => i !== index));
 
+  /**
+   * E2-4 — sans validation enregistrée, l'API refuse le devis (409). Le bouton
+   * est désactivé pour que le refus se lise avant le tap, pas après.
+   */
+  const quantitiesValidated =
+    quantityValidation !== null && quantityValidation.validated_at !== null;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!estimation || !shoppingList || laborRateMissing) return;
+    if (!quantitiesValidated) return;
 
     setSubmitting(true);
     setError('');
@@ -294,6 +376,15 @@ export default function NewQuotePage() {
         <Alert variant="error" className="mt-6">
           {error}
         </Alert>
+      )}
+
+      {quantityValidation && (
+        <QuantityValidationPanel
+          state={quantityValidation}
+          onCorrect={handleCorrectQuantity}
+          onValidate={handleValidateQuantities}
+          busy={validationBusy}
+        />
       )}
 
       {pricedItems.length === 0 && (
@@ -564,11 +655,18 @@ export default function NewQuotePage() {
         >
           <button
             type="submit"
-            disabled={submitting || pricedItems.length === 0 || laborRateMissing}
+            disabled={
+              submitting ||
+              pricedItems.length === 0 ||
+              laborRateMissing ||
+              !quantitiesValidated
+            }
             title={
               laborRateMissing
                 ? "Renseignez le taux de chaque ligne de main-d'œuvre"
-                : undefined
+                : !quantitiesValidated
+                  ? 'Validez les quantités avant de créer le devis'
+                  : undefined
             }
             className="inline-flex min-h-12 items-center justify-center rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-60"
           >

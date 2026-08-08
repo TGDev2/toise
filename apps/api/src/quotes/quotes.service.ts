@@ -27,6 +27,8 @@ import { QuoteLaborLineDto } from './dto/quote-labor-line.dto';
 import { round2 } from '../common/round2';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
+import { QuantityValidationsService } from '../quantity-validation/quantity-validations.service';
+import { selectQuotableItems } from '../quantity-validation/quantity-fingerprint';
 
 @Injectable()
 export class QuotesService {
@@ -41,6 +43,7 @@ export class QuotesService {
     private readonly clientsService: ClientsService,
     private readonly companyProfilesService: CompanyProfilesService,
     private readonly analyticsService: AnalyticsService,
+    private readonly quantityValidations: QuantityValidationsService,
   ) {}
 
   async create(
@@ -71,31 +74,38 @@ export class QuotesService {
       userId,
     );
 
+    // E2-4 — troisième ligne de défense. La garde porte sur les quantités que
+    // ce devis va figer, pas sur un identifiant de validation fourni par
+    // l'appelant : c'est la seule forme qui résiste à une correction faite
+    // entre la validation et l'émission, depuis n'importe quel écran.
+    await this.quantityValidations.assertValidated(
+      dto.project_id,
+      shoppingList.items_json.material_items,
+    );
+
     // Build items snapshot with margin
     const marginPercent = dto.material_margin_percent;
-    const items: QuoteLineItem[] = shoppingList.items_json.material_items
-      .filter(
-        (item) => item.real_unit_price != null && item.real_unit_price > 0,
-      )
-      .map((item) => {
-        const basePrice = Number(item.real_unit_price);
-        const priceWithMargin = basePrice * (1 + marginPercent / 100);
-        const lineTotal = priceWithMargin * item.units_needed;
-        return {
-          material_name: item.material_name,
-          material_category: item.material_category,
-          work_type_label: item.work_type_label,
-          packaging_label: item.packaging_label,
-          units_needed: item.units_needed,
-          base_unit_price: Math.round(basePrice * 100) / 100,
-          margin_percent: marginPercent,
-          unit_price_with_margin: Math.round(priceWithMargin * 100) / 100,
-          line_total_ht: Math.round(lineTotal * 100) / 100,
-          // E1-11 : figée à l'émission, marque comprise — le devis est un
-          // document, le choix marque/sans-marque se fait à l'affichage.
-          justification: item.justification,
-        };
-      });
+    const items: QuoteLineItem[] = selectQuotableItems(
+      shoppingList.items_json.material_items,
+    ).map((item) => {
+      const basePrice = Number(item.real_unit_price);
+      const priceWithMargin = basePrice * (1 + marginPercent / 100);
+      const lineTotal = priceWithMargin * item.units_needed;
+      return {
+        material_name: item.material_name,
+        material_category: item.material_category,
+        work_type_label: item.work_type_label,
+        packaging_label: item.packaging_label,
+        units_needed: item.units_needed,
+        base_unit_price: Math.round(basePrice * 100) / 100,
+        margin_percent: marginPercent,
+        unit_price_with_margin: Math.round(priceWithMargin * 100) / 100,
+        line_total_ht: Math.round(lineTotal * 100) / 100,
+        // E1-11 : figée à l'émission, marque comprise — le devis est un
+        // document, le choix marque/sans-marque se fait à l'affichage.
+        justification: item.justification,
+      };
+    });
 
     // Calculate totals
     const subtotalMaterials = items.reduce(

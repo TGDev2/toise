@@ -86,6 +86,14 @@ test('un artisan connecté génère un devis-minute et télécharge le PDF', asy
   await expect(generateQuoteButton).toBeEnabled({ timeout: 10_000 });
   await generateQuoteButton.click();
 
+  // E2-4 : aucun devis n'est émis sans validation enregistrée des quantités.
+  // Un tap, pour l'ensemble des lignes.
+  const validateQuantities = page.getByRole('button', {
+    name: 'Je valide ces quantités',
+  });
+  await expect(validateQuantities).toBeEnabled({ timeout: 15_000 });
+  await validateQuantities.click();
+
   const createQuoteButton = page.getByRole('button', { name: 'Créer le devis' });
   await expect(createQuoteButton).toBeEnabled({ timeout: 15_000 });
   await createQuoteButton.click();

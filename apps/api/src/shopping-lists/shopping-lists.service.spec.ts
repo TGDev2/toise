@@ -14,6 +14,7 @@ import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 import { LogbookService } from '../logbook/logbook.service';
 import { ProjectStatus } from '../projects/entities/project.entity';
 import type { EstimationLineItem } from '../estimations/entities/estimation-result.entity';
+import { QuantityCorrectionSource } from '../quantity-validation/entities/quantity-correction.entity';
 
 const mockEstimationItem: EstimationLineItem = {
   work_item_id: 'wi-1',
@@ -847,6 +848,156 @@ describe('ShoppingListsService.finalizeBudgetSummary', () => {
       { budget_summary_json: { is_complete: boolean } },
     ];
     expect(persisted.budget_summary_json.is_complete).toBe(true);
+  });
+});
+
+/**
+ * E2-4 — la trace des corrections manuelles est écrite ici, dans la
+ * transaction qui écrit la quantité, et nulle part ailleurs : `update()` est
+ * le seul chemin qui écrit `units_needed`.
+ */
+describe('ShoppingListsService.update — trace des corrections', () => {
+  let service: ShoppingListsService;
+  let savedEntities: unknown[][];
+
+  function listWith(units: number, original = 4) {
+    return {
+      id: 'shopping-list-1',
+      project_id: 'project-1',
+      items_json: {
+        material_items: [
+          {
+            material_id: 'mat-adhesive',
+            work_type_code: 'floor_tiling',
+            work_type_label: 'Carrelage sol',
+            material_name: 'Mortier-colle C2',
+            material_category: 'tiling',
+            material_unit: 'kg',
+            packaging_label: 'Sac 25 kg',
+            packaging_qty_per_unit: 25,
+            adjusted_qty: 92,
+            original_units_needed: original,
+            units_needed: units,
+            is_manually_adjusted: units !== original,
+            real_unit_price: 19.9,
+          },
+        ],
+        complementary_items: [],
+      },
+    };
+  }
+
+  /** Ce qui a été enregistré comme corrections, à plat. */
+  function recordedCorrections(): Record<string, unknown>[] {
+    return savedEntities
+      .flat()
+      .filter(
+        (entity): entity is Record<string, unknown> =>
+          typeof entity === 'object' &&
+          entity !== null &&
+          'corrected_units' in entity,
+      );
+  }
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    savedEntities = [];
+
+    estimationsServiceMock.getLatest.mockResolvedValue({
+      id: 'estimation-1',
+      skill_level: 'expert',
+      items_json: [],
+    });
+
+    const manager = {
+      findOne: jest.fn().mockResolvedValue(listWith(4)),
+      create: (_entity: unknown, data: unknown) => data,
+      save: jest.fn((entity: unknown) => {
+        savedEntities.push(Array.isArray(entity) ? entity : [entity]);
+        return Promise.resolve(entity);
+      }),
+    };
+
+    const repo = {
+      ...shoppingListRepoMock,
+      manager: {
+        transaction: <T>(run: (m: unknown) => Promise<T>) => run(manager),
+      },
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        ShoppingListsService,
+        { provide: getRepositoryToken(ShoppingList), useValue: repo },
+        {
+          provide: getRepositoryToken(ComplementaryMaterial),
+          useValue: complementaryRepoMock,
+        },
+        { provide: getRepositoryToken(WorkType), useValue: workTypeRepoMock },
+        {
+          provide: getRepositoryToken(MaterialCatalog),
+          useValue: materialCatalogRepoMock,
+        },
+        {
+          provide: getRepositoryToken(MaterialEcoEquivalence),
+          useValue: ecoEquivalenceRepoMock,
+        },
+        { provide: EstimationsService, useValue: estimationsServiceMock },
+        { provide: ProjectsService, useValue: projectsServiceMock },
+        { provide: AnalyticsService, useValue: analyticsServiceMock },
+        { provide: LogbookService, useValue: logbookServiceMock },
+      ],
+    }).compile();
+
+    service = module.get(ShoppingListsService);
+  });
+
+  it("enregistre l'ancienne valeur, la nouvelle, le calcul et l'écart relatif", async () => {
+    await service.update('project-1', 'org-1', 'user-1', {
+      material_items: [{ material_id: 'mat-adhesive', units_needed: 5 }],
+    });
+
+    const [correction] = recordedCorrections();
+    expect(correction).toMatchObject({
+      project_id: 'project-1',
+      organization_id: 'org-1',
+      user_id: 'user-1',
+      material_id: 'mat-adhesive',
+      work_type_code: 'floor_tiling',
+      skill_level: 'expert',
+      computed_units: 4,
+      previous_units: 4,
+      corrected_units: 5,
+      source: 'shopping_list',
+    });
+    expect(correction.relative_deviation).toBeCloseTo(0.25, 10);
+  });
+
+  /**
+   * `units_needed` est obligatoire dans le DTO : une saisie de prix le renvoie
+   * inchangé. Sans la comparaison, chaque prix saisi produirait un écart nul
+   * que personne n'a déclaré, et l'agrégat d'E8 conclurait que le catalogue
+   * est confirmé (leçon 18).
+   */
+  it("n'enregistre rien quand seul le prix change", async () => {
+    await service.update('project-1', 'org-1', 'user-1', {
+      material_items: [
+        { material_id: 'mat-adhesive', units_needed: 4, real_unit_price: 21 },
+      ],
+    });
+
+    expect(recordedCorrections()).toHaveLength(0);
+  });
+
+  it("porte la provenance déclarée par l'écran de devis", async () => {
+    await service.update('project-1', 'org-1', 'user-1', {
+      material_items: [{ material_id: 'mat-adhesive', units_needed: 6 }],
+      source: QuantityCorrectionSource.QUOTE_VALIDATION,
+    });
+
+    expect(recordedCorrections()[0]).toMatchObject({
+      source: 'quote_validation',
+    });
   });
 });
 

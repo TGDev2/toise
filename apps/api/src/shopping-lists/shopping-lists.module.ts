@@ -5,6 +5,7 @@ import { ComplementaryMaterial } from './entities/complementary-material.entity'
 import { WorkType } from '../projects/entities/work-type.entity';
 import { MaterialCatalog } from '../materials/entities/material-catalog.entity';
 import { MaterialEcoEquivalence } from '../materials/entities/material-eco-equivalence.entity';
+import { QuantityCorrection } from '../quantity-validation/entities/quantity-correction.entity';
 import { ProjectsModule } from '../projects/projects.module';
 import { EstimationsModule } from '../estimations/estimations.module';
 import { OrgContextModule } from '../organizations/org-context.module';
@@ -26,6 +27,9 @@ import { ShoppingListSharedController } from './shopping-list-shared.controller'
       WorkType,
       MaterialCatalog,
       MaterialEcoEquivalence,
+      // E2-4 : écrite dans la transaction de `applyUpdateLocked`, via
+      // l'`EntityManager` — d'où l'enregistrement ici, à l'endroit de l'écriture.
+      QuantityCorrection,
     ]),
     ProjectsModule,
     EstimationsModule,
