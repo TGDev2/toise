@@ -90,7 +90,6 @@ const projectsServiceMock = {
     status: 'draft',
     created_at: new Date('2026-03-27T00:00:00.000Z'),
   })),
-  ensureProjectWritable: jest.fn().mockResolvedValue(undefined),
   getDimensions: jest.fn().mockResolvedValue(null),
   updateDimensions: jest.fn().mockImplementation(
     (

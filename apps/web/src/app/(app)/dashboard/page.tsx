@@ -6,7 +6,6 @@ import { ExportDataButton } from '@/components/dashboard/ExportDataButton';
 import { ProjectCard } from '@/components/dashboard/ProjectCard';
 import { Alert, Button, ConfirmDialog, Input, Skeleton, useToast } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
-import { useFeatureGates } from '@/contexts/FeatureGateContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import { apiDelete, apiGet, apiPost, ApiError } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
@@ -31,7 +30,6 @@ function formatProjectDate(value: string): string {
 
 export default function DashboardPage() {
   const { appUser, isGuest, isLoading, logout, deleteAccount } = useAuth();
-  const { showPaywall } = useFeatureGates();
   const { subscription, openCheckout, openPortal } = useSubscription();
   const router = useRouter();
 
@@ -144,14 +142,11 @@ export default function DashboardPage() {
       router.push(`/projects/${project.id}/dimensions`);
     } catch (err: unknown) {
       // Un invité qui atteint son quota (1 projet, E2-1) n'a rien à acheter :
-      // il lui manque un compte, pas un abonnement. Lui servir le paywall Pro
-      // lui demanderait de payer ce qui est gratuit.
+      // il lui manque un compte, pas un abonnement. C'est le seul refus de
+      // création qui subsiste — E3-2 a supprimé le plafond des comptes
+      // inscrits, donc `PROJECT_LIMIT_REACHED` n'est plus émis nulle part.
       if (err instanceof ApiError && err.code === 'ACCOUNT_REQUIRED') {
         setShowGuestPrompt(true);
-        return;
-      }
-      if (err instanceof ApiError && err.code === 'PROJECT_LIMIT_REACHED') {
-        showPaywall('unlimited_projects');
         return;
       }
       setError(getErrorMessage(err, 'Impossible de créer le projet'));

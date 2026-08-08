@@ -14,6 +14,7 @@ import {
   UseGuards,
   UnauthorizedException,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
@@ -21,7 +22,6 @@ import { isGuestToken } from '../auth/guest-token';
 import { OrgContextService } from '../organizations/org-context.service';
 import type { OrgScope } from '../organizations/org-context.service';
 import { ProjectsService } from './projects.service';
-import { FeatureGatesService } from '../feature-gates/feature-gates.service';
 import { CvCorrectionService } from '../analysis/cv-correction.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { CreateRoomDto } from './dto/create-room.dto';
@@ -55,7 +55,6 @@ export class ProjectsController {
   constructor(
     private readonly projectsService: ProjectsService,
     private readonly orgContext: OrgContextService,
-    private readonly featureGatesService: FeatureGatesService,
     private readonly cvCorrectionService: CvCorrectionService,
   ) {}
 
@@ -67,6 +66,14 @@ export class ProjectsController {
     }
   }
 
+  /**
+   * E3-2 — la seule route qui crée des lignes sans plafond par compte depuis
+   * que la limite de projets a disparu pour les comptes inscrits. Le limiteur
+   * global (100 req/min/IP) borne le débit d'une adresse, pas celui d'un
+   * compte ; celui-ci borne la route elle-même, très au-dessus de tout usage
+   * humain — un artisan ne démarre pas vingt chantiers par minute.
+   */
+  @Throttle({ default: { ttl: 60_000, limit: 20 } })
   @Post()
   async create(
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
@@ -77,7 +84,6 @@ export class ProjectsController {
       scope.organizationId,
       scope.userId,
       dto,
-      scope.effectiveTier,
       isGuestToken(firebaseUser),
     );
     return {
@@ -100,19 +106,6 @@ export class ProjectsController {
       scope.organizationId,
       query,
     );
-
-    // Determine writable project IDs for free-tier users
-    const unlimitedAllowed = await this.featureGatesService.isFeatureAllowed(
-      'unlimited_projects',
-      scope.effectiveTier,
-    );
-    let writableIds: Set<string> | null = null;
-    if (!unlimitedAllowed && data.length > 0) {
-      const topProjects = await this.projectsService.getWritableProjectIds(
-        scope.organizationId,
-      );
-      writableIds = new Set(topProjects);
-    }
 
     return {
       data: data.map((p) => ({
@@ -138,7 +131,6 @@ export class ProjectsController {
             height_cm: o.height_cm,
             count: o.count,
           })) ?? [],
-        is_read_only: writableIds ? !writableIds.has(p.id) : false,
         created_at: p.created_at,
         updated_at: p.updated_at,
       })),
@@ -171,11 +163,6 @@ export class ProjectsController {
       id,
       scope.organizationId,
     );
-    const isReadOnly = !(await this.projectsService.isProjectWritable(
-      id,
-      scope.organizationId,
-      scope.effectiveTier,
-    ));
     return {
       id: project.id,
       name: project.name,
@@ -199,7 +186,6 @@ export class ProjectsController {
           height_cm: o.height_cm,
           count: o.count,
         })) ?? [],
-      is_read_only: isReadOnly,
       created_at: project.created_at,
       updated_at: project.updated_at,
     };
@@ -213,12 +199,6 @@ export class ProjectsController {
     @Query('room', new ParseUUIDPipe({ optional: true })) roomId?: string,
   ) {
     const scope = await this.resolveScope(firebaseUser);
-    await this.projectsService.ensureProjectWritable(
-      id,
-      scope.organizationId,
-      scope.effectiveTier,
-    );
-
     // Check if current dimensions are CV-sourced for correction logging
     const currentDims = await this.projectsService.getDimensions(
       id,
@@ -305,11 +285,6 @@ export class ProjectsController {
     @Query('room', new ParseUUIDPipe({ optional: true })) roomId?: string,
   ) {
     const scope = await this.resolveScope(firebaseUser);
-    await this.projectsService.ensureProjectWritable(
-      id,
-      scope.organizationId,
-      scope.effectiveTier,
-    );
     const opening = await this.projectsService.addOpening(
       id,
       scope.organizationId,
@@ -372,11 +347,6 @@ export class ProjectsController {
     @Body() dto: UpdateOpeningDto,
   ) {
     const scope = await this.resolveScope(firebaseUser);
-    await this.projectsService.ensureProjectWritable(
-      id,
-      scope.organizationId,
-      scope.effectiveTier,
-    );
     // État avant mutation, pour le log de correction (pattern dimensions)
     const before = await this.projectsService.findOpeningForOrg(
       id,
@@ -425,11 +395,6 @@ export class ProjectsController {
     @Param('openingId', ParseUUIDPipe) openingId: string,
   ) {
     const scope = await this.resolveScope(firebaseUser);
-    await this.projectsService.ensureProjectWritable(
-      id,
-      scope.organizationId,
-      scope.effectiveTier,
-    );
     const before = await this.projectsService.findOpeningForOrg(
       id,
       scope.organizationId,
@@ -462,11 +427,6 @@ export class ProjectsController {
     @Query('room', new ParseUUIDPipe({ optional: true })) roomId?: string,
   ) {
     const scope = await this.resolveScope(firebaseUser);
-    await this.projectsService.ensureProjectWritable(
-      id,
-      scope.organizationId,
-      scope.effectiveTier,
-    );
     const items = await this.projectsService.saveWorkItems(
       id,
       scope.organizationId,
@@ -567,11 +527,6 @@ export class ProjectsController {
     @Body() dto: CreateRoomDto,
   ) {
     const scope = await this.resolveScope(firebaseUser);
-    await this.projectsService.ensureProjectWritable(
-      id,
-      scope.organizationId,
-      scope.effectiveTier,
-    );
     const room = await this.projectsService.createRoom(
       id,
       scope.organizationId,
@@ -588,11 +543,6 @@ export class ProjectsController {
     @Body() dto: UpdateRoomDto,
   ) {
     const scope = await this.resolveScope(firebaseUser);
-    await this.projectsService.ensureProjectWritable(
-      id,
-      scope.organizationId,
-      scope.effectiveTier,
-    );
     const room = await this.projectsService.renameRoom(
       id,
       scope.organizationId,
@@ -610,11 +560,6 @@ export class ProjectsController {
     @Param('roomId', ParseUUIDPipe) roomId: string,
   ) {
     const scope = await this.resolveScope(firebaseUser);
-    await this.projectsService.ensureProjectWritable(
-      id,
-      scope.organizationId,
-      scope.effectiveTier,
-    );
     await this.projectsService.deleteRoom(id, scope.organizationId, roomId);
   }
 

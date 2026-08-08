@@ -60,18 +60,22 @@ export interface KnownFeatureGate {
 }
 
 /**
- * Les 16 gates existantes, dans l'ordre de leur migration d'insertion, avec le
+ * Les 15 gates existantes, dans l'ordre de leur migration d'insertion, avec le
  * `min_tier` **effectif** après toutes les migrations ultérieures.
  *
  * Le socle historique du palier `pro` (017, 020, 049, 053, 060) est descendu à
  * `free` par 099 : le chiffrage est gratuit, seule la production d'un document
  * opposable est payante (ADR 0002 D4). Plus aucune gate ne pointe `pro`.
+ *
+ * `unlimited_projects` a été **supprimée** par 100 (E3-2) : l'illimité est
+ * l'absence d'un quota, pas une capacité qu'une ligne fail-closed accorde. La
+ * promesse « chantiers illimités » est désormais portée par `pricing.ts` avec
+ * `nonGateReason: 'quota'`, et plus rien en base ne peut la refermer.
  */
 export const KNOWN_FEATURE_GATES: KnownFeatureGate[] = [
   // 1711468800017 — socle Pro à l'origine, descendu à `free` par 099
   { key: 'cv_analysis', label: 'Analyse photo automatique', minTier: 'free', enabled: false, since: '065' },
   { key: 'advanced_loss_factors', label: 'Facteurs de perte avancés', minTier: 'free', enabled: true, since: '017' },
-  { key: 'unlimited_projects', label: 'Projets illimités', minTier: 'free', enabled: true, since: '017' },
   { key: 'budget_tracking', label: 'Suivi budgétaire', minTier: 'free', enabled: true, since: '017' },
   // 1711468800020, éteinte en 027 (adaptateurs mock), rallumée en 036 (ManoMano + Leroy Merlin réels)
   { key: 'price_comparison', label: 'Comparateur de prix', minTier: 'free', enabled: true, since: '036' },

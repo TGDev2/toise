@@ -7,7 +7,7 @@ import {
   selectWork,
   signIn,
   workSelectionReady,
-} from './parcours-chrono.spec';
+} from './helpers';
 
 const MOBILE = { width: 390, height: 844 };
 

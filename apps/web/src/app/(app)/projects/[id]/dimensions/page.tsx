@@ -49,7 +49,6 @@ export default function DimensionsPage() {
     if (roomParam && rooms.some((r) => r.id === roomParam)) return roomParam;
     return rooms[0].id;
   }, [rooms, roomParam]);
-  const isReadOnly = false;
 
   const seedFromRoom = useCallback((room: Room | undefined) => {
     if (room?.dimensions) {
@@ -315,7 +314,6 @@ export default function DimensionsPage() {
           onRename={handleRenameRoom}
           onDelete={handleDeleteRoom}
           busy={roomBusy || isSaving}
-          disabled={isReadOnly}
         />
       )}
 

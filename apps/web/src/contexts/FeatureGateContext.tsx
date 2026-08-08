@@ -29,13 +29,30 @@ interface FeatureGateContextType {
   closePaywall: () => void;
 }
 
+/**
+ * Miroir exact de `TIER_RANK` côté API
+ * (apps/api/src/feature-gates/feature-gates.service.ts). Les deux tables
+ * divergeaient : `enterprise` manquait ici, si bien qu'un compte de ce palier
+ * retombait sur le repli `?? 0` et se voyait refuser côté client tout ce que
+ * l'API lui accordait.
+ */
 const TIER_RANK: Record<string, number> = {
   free: 0,
   pro: 1,
   contractor_essentiel: 2,
   contractor_standard: 3,
   contractor_premium: 4,
+  enterprise: 5,
 };
+
+/**
+ * Palier retenu quand le `min_tier` d'une gate est illisible. Le repli valait
+ * `1`, le rang de `pro` — palier retiré en E3-1 : une gate mal configurée
+ * s'ouvrait donc aux seuls comptes portant encore cette valeur en base. L'API
+ * replie sur `contractor_essentiel`, le seul palier payant ; le client dit
+ * désormais la même chose.
+ */
+const UNREADABLE_GATE_RANK = TIER_RANK.contractor_essentiel;
 
 const FeatureGateContext = createContext<FeatureGateContextType | null>(null);
 
@@ -83,7 +100,7 @@ export function FeatureGateProvider({ children }: { children: ReactNode }) {
       if (!gate.is_enabled) return false;
 
       const userRank = TIER_RANK[appUser.subscription_tier] ?? 0;
-      const requiredRank = TIER_RANK[gate.min_tier] ?? 1;
+      const requiredRank = TIER_RANK[gate.min_tier] ?? UNREADABLE_GATE_RANK;
       return userRank >= requiredRank;
     },
     [appUser, gates],

@@ -5,9 +5,7 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import { FeatureGatesService } from '../feature-gates/feature-gates.service';
-import { SubscriptionTier } from '../users/entities/user.entity';
-import { ProjectsService } from './projects.service';
+import { MAX_ROOMS_PER_PROJECT, ProjectsService } from './projects.service';
 import { Project, WorkType, ProjectStatus } from './entities/project.entity';
 import { Room } from './entities/room.entity';
 import {
@@ -204,10 +202,6 @@ const laborTimesRepoMock = {
   find: jest.fn().mockResolvedValue([]),
 };
 
-const featureGatesServiceMock = {
-  isFeatureAllowed: jest.fn().mockResolvedValue(true),
-};
-
 const analyticsServiceMock = {
   track: jest.fn(),
 };
@@ -242,10 +236,6 @@ describe('ProjectsService', () => {
         {
           provide: getRepositoryToken(ProjectWorkItem),
           useValue: workItemsRepoMock,
-        },
-        {
-          provide: FeatureGatesService,
-          useValue: featureGatesServiceMock,
         },
         { provide: getDataSourceToken(), useValue: dataSourceMock },
         { provide: AnalyticsService, useValue: analyticsServiceMock },
@@ -283,9 +273,16 @@ describe('ProjectsService', () => {
       expect(result).toEqual(mockProject);
     });
 
-    it('blocks free tier users when the project limit is reached', async () => {
-      featureGatesServiceMock.isFeatureAllowed.mockResolvedValueOnce(false);
-      projectsRepoMock.count.mockResolvedValueOnce(2);
+    /**
+     * E3-2 — l'invariant s'est inversé, et c'est le cœur du lot : il y avait
+     * ici un test qui exigeait le **refus** du troisième projet d'un compte
+     * gratuit. Le chiffrage étant gratuit et illimité (ADR 0002 D4), c'est
+     * désormais l'autorisation qu'il faut prouver — et la prouver sur un
+     * compte qui en a déjà beaucoup, sinon l'assertion passerait aussi avec la
+     * limite en place.
+     */
+    it('ne borne plus un compte inscrit, quel que soit son nombre de chantiers', async () => {
+      projectsRepoMock.count.mockResolvedValue(999);
 
       await expect(
         service.createProject(
@@ -296,15 +293,36 @@ describe('ProjectsService', () => {
             room_name: 'Salon',
             work_type: WorkType.PAINTING,
           },
-          SubscriptionTier.FREE,
+          false,
         ),
-      ).rejects.toThrow(ForbiddenException);
+      ).resolves.toEqual(mockProject);
+    });
+
+    it("ne compte même pas les chantiers d'un compte inscrit", async () => {
+      // Un comptage subsistant serait le symptôme d'un plafond réintroduit
+      // ailleurs : la requête ne doit pas être émise du tout.
+      projectsRepoMock.count.mockClear();
+
+      await service.createProject(
+        'org-uuid',
+        'user-uuid',
+        {
+          name: 'Renovation salon',
+          room_name: 'Salon',
+          work_type: WorkType.PAINTING,
+        },
+        false,
+      );
+
+      expect(projectsRepoMock.count).not.toHaveBeenCalled();
     });
 
     /**
      * Quota invité (E2-1). Un compte anonyme se crée gratuitement et à
      * l'infini : son allocation par compte doit être le strict nécessaire au
      * parcours, soit un projet. Le deuxième se mérite en créant son compte.
+     *
+     * C'est le **seul** quota de volume qui subsiste après E3-2.
      */
     describe('quota invité', () => {
       const guestDto = {
@@ -313,66 +331,39 @@ describe('ProjectsService', () => {
         work_type: WorkType.PAINTING,
       };
 
-      it('refuse le deuxième projet, là où un compte gratuit y a droit', async () => {
-        featureGatesServiceMock.isFeatureAllowed.mockResolvedValue(false);
+      it('refuse le deuxième projet, là où un compte inscrit y a droit', async () => {
         projectsRepoMock.count.mockResolvedValue(1);
 
-        // Compte gratuit inscrit : 1 < 2, le projet passe.
+        // Compte inscrit : plus aucun plafond.
         await expect(
-          service.createProject(
-            'org-uuid',
-            'user-uuid',
-            guestDto,
-            SubscriptionTier.FREE,
-            false,
-          ),
+          service.createProject('org-uuid', 'user-uuid', guestDto, false),
         ).resolves.toEqual(mockProject);
 
         // Même organisation, même compte : seul l'invité est refusé.
         await expect(
-          service.createProject(
-            'org-uuid',
-            'user-uuid',
-            guestDto,
-            SubscriptionTier.FREE,
-            true,
-          ),
+          service.createProject('org-uuid', 'user-uuid', guestDto, true),
         ).rejects.toThrow(ForbiddenException);
       });
 
       it('autorise le premier projet : le parcours doit rester ouvert', async () => {
-        featureGatesServiceMock.isFeatureAllowed.mockResolvedValue(false);
         projectsRepoMock.count.mockResolvedValue(0);
 
         await expect(
-          service.createProject(
-            'org-uuid',
-            'user-uuid',
-            guestDto,
-            SubscriptionTier.FREE,
-            true,
-          ),
+          service.createProject('org-uuid', 'user-uuid', guestDto, true),
         ).resolves.toEqual(mockProject);
       });
 
       /**
        * `ACCOUNT_REQUIRED` et non `PROJECT_LIMIT_REACHED` : le front branche le
-       * premier sur la création de compte et le second sur le paywall Pro.
-       * Servir un paywall à un invité lui ferait payer ce qui est gratuit.
+       * premier sur la création de compte. Le second n'est plus émis nulle part
+       * depuis E3-2 — il n'existait que pour le plafond des comptes inscrits.
        */
       it("annonce ACCOUNT_REQUIRED, pas le paywall d'abonnement", async () => {
-        featureGatesServiceMock.isFeatureAllowed.mockResolvedValue(false);
         projectsRepoMock.count.mockResolvedValue(1);
 
         let thrown: unknown;
         try {
-          await service.createProject(
-            'org-uuid',
-            'user-uuid',
-            guestDto,
-            SubscriptionTier.FREE,
-            true,
-          );
+          await service.createProject('org-uuid', 'user-uuid', guestDto, true);
         } catch (error) {
           thrown = error;
         }
@@ -381,26 +372,6 @@ describe('ProjectsService', () => {
           error: 'ACCOUNT_REQUIRED',
           limit: 1,
         });
-      });
-
-      /**
-       * Le quota invité ne doit pas dépendre d'une gate qu'un réglage
-       * d'administration peut déplacer : si `unlimited_projects` s'ouvrait au
-       * palier `free`, l'invité resterait borné.
-       */
-      it("reste borné même si `unlimited_projects` s'ouvre", async () => {
-        featureGatesServiceMock.isFeatureAllowed.mockResolvedValue(true);
-        projectsRepoMock.count.mockResolvedValue(1);
-
-        await expect(
-          service.createProject(
-            'org-uuid',
-            'user-uuid',
-            guestDto,
-            SubscriptionTier.FREE,
-            true,
-          ),
-        ).rejects.toThrow(ForbiddenException);
       });
     });
   });
@@ -513,6 +484,27 @@ describe('ProjectsService', () => {
       await expect(
         service.createRoom('project-uuid', 'other-user', {}),
       ).rejects.toThrow(ForbiddenException);
+    });
+
+    /**
+     * E3-2 — le plafond de pièces prend le relais du plafond de projets, qui a
+     * disparu pour les comptes inscrits. `createRoom` comptait déjà les pièces,
+     * mais pour les **nommer** : rien ne bornait leur nombre.
+     */
+    it(`refuse la pièce au-delà de ${MAX_ROOMS_PER_PROJECT}`, async () => {
+      roomsRepoMock.count.mockResolvedValueOnce(MAX_ROOMS_PER_PROJECT);
+
+      await expect(
+        service.createRoom('project-uuid', 'org-uuid', {}),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it(`accepte la ${MAX_ROOMS_PER_PROJECT}ᵉ pièce : le plafond n'est pas atteint avant`, async () => {
+      roomsRepoMock.count.mockResolvedValueOnce(MAX_ROOMS_PER_PROJECT - 1);
+
+      await expect(
+        service.createRoom('project-uuid', 'org-uuid', {}),
+      ).resolves.toBeDefined();
     });
   });
 

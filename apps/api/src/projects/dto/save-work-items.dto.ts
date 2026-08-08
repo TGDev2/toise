@@ -11,6 +11,7 @@ import {
   Min,
   ValidateNested,
   ArrayMinSize,
+  ArrayMaxSize,
 } from 'class-validator';
 import { SkillLevel } from '../entities/project-work-item.entity';
 
@@ -50,8 +51,17 @@ export class WorkItemDto {
 }
 
 export class SaveWorkItemsDto {
+  /**
+   * E3-2 — plafond ajouté avec la disparition de la limite de projets : c'était
+   * l'autre dimension par laquelle un compte pouvait faire grossir un projet
+   * sans borne. La route est **par pièce** (`POST :id/work-items?room=`), et le
+   * catalogue compte sept ouvrages : 20 laisse la place à sa croissance tout en
+   * bornant le POST. Avec `MAX_ROOMS_PER_PROJECT`, il borne le produit
+   * `pièces × ouvrages`.
+   */
   @IsArray()
   @ArrayMinSize(1)
+  @ArrayMaxSize(20)
   @ValidateNested({ each: true })
   @Type(() => WorkItemDto)
   items!: WorkItemDto[];

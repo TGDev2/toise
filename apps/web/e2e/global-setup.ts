@@ -8,10 +8,13 @@ import {
   ARTISAN_SIRET,
   FIREBASE_AUTH_EMULATOR_HOST,
   FIREBASE_PROJECT_ID,
+  FREE_EMAIL,
+  FREE_PASSWORD,
 } from './fixtures';
 
 /**
- * Seed du compte artisan utilisé par le scénario 2 (devis-minute → PDF).
+ * Seed des deux comptes inscrits des scénarios : l'artisan au palier payant
+ * (scénario devis-minute → PDF) et le compte **gratuit** d'E3-2.
  *
  * Le flow d'inscription normal (`POST /auth/register`) laisse l'email non
  * vérifié — `login()` le refuse tant que ce n'est pas le cas — et aucune route
@@ -34,6 +37,8 @@ export default async function globalSetup(): Promise<void> {
   if (admin.apps.length === 0) {
     admin.initializeApp({ projectId: FIREBASE_PROJECT_ID });
   }
+
+  await seedFreeAccount();
 
   const registerRes = await fetch(`${API_URL}/auth/register`, {
     method: 'POST',
@@ -88,6 +93,71 @@ export default async function globalSetup(): Promise<void> {
       `UPDATE users SET subscription_tier = 'contractor_essentiel', firebase_uid = $2 WHERE email = $1`,
       [ARTISAN_EMAIL, firebaseUser.uid],
     );
+  } finally {
+    await db.end();
+  }
+}
+
+/**
+ * Compte gratuit inscrit. Même contournement que pour l'artisan et pour la même
+ * raison — `POST /auth/register` laisse l'e-mail non vérifié, `login()` le
+ * refuse — mais **sans** la requête `pg` qui élève le palier : le défaut de
+ * `users.subscription_tier` est `free`, et c'est précisément l'état qu'on veut
+ * observer. Le forcer reviendrait à faire dire au harnais ce qu'il est censé
+ * constater.
+ *
+ * Le `firebase_uid` est republié quand l'émulateur a été purgé sans que
+ * Postgres le soit (leur durée de vie diffère en local) : sans cela, la ligne
+ * `users` resterait accrochée à un uid mort et `/auth/sync` créerait un second
+ * compte, gratuit lui aussi mais vierge — le test passerait pour de mauvaises
+ * raisons.
+ */
+async function seedFreeAccount(): Promise<void> {
+  const res = await fetch(`${API_URL}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: FREE_EMAIL,
+      password: FREE_PASSWORD,
+      display_name: 'Compte gratuit E2E',
+    }),
+  });
+
+  if (!res.ok && res.status !== 409) {
+    throw new Error(
+      `Échec de la création du compte gratuit E2E : ${res.status} ${await res.text()}`,
+    );
+  }
+
+  let user: admin.auth.UserRecord;
+  try {
+    user = await admin.auth().getUserByEmail(FREE_EMAIL);
+  } catch (error) {
+    if ((error as { code?: string }).code !== 'auth/user-not-found') throw error;
+    user = await admin.auth().createUser({
+      email: FREE_EMAIL,
+      password: FREE_PASSWORD,
+      emailVerified: true,
+    });
+  }
+
+  if (!user.emailVerified) {
+    await admin.auth().updateUser(user.uid, { emailVerified: true });
+  }
+
+  const db = new Client({
+    host: process.env.DB_HOST ?? 'localhost',
+    port: Number(process.env.DB_PORT ?? 5432),
+    user: process.env.DB_USERNAME ?? 'chiffreo',
+    password: process.env.DB_PASSWORD ?? 'chiffreo_dev',
+    database: process.env.DB_NAME ?? 'chiffreo',
+  });
+  await db.connect();
+  try {
+    await db.query(`UPDATE users SET firebase_uid = $2 WHERE email = $1`, [
+      FREE_EMAIL,
+      user.uid,
+    ]);
   } finally {
     await db.end();
   }

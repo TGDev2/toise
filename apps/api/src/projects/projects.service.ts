@@ -26,8 +26,6 @@ import { ProjectWorkItem } from './entities/project-work-item.entity';
 import { LaborTime } from './entities/labor-time.entity';
 import { LaborTimeRow } from './labor-time-resolution';
 import { CommunityProject } from '../community/entities/community-project.entity';
-import { SubscriptionTier } from '../users/entities/user.entity';
-import { FeatureGatesService } from '../feature-gates/feature-gates.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 import { CreateProjectDto } from './dto/create-project.dto';
@@ -39,13 +37,22 @@ import { UpdateOpeningDto } from './dto/update-opening.dto';
 import { SaveWorkItemsDto } from './dto/save-work-items.dto';
 import { ListProjectsQueryDto } from './dto/list-projects-query.dto';
 
+/**
+ * Un projet ne peut pas porter plus de pièces que ceci (E3-2).
+ *
+ * La limite de projets ayant disparu pour les comptes inscrits, c'est la
+ * dimension qui restait sans plafond : `createRoom` comptait les pièces pour
+ * les nommer, jamais pour les borner. 50 est trois fois la plus grande maison
+ * qu'on puisse relever pièce par pièce ; associé au plafond d'ouvrages par
+ * pièce (`SaveWorkItemsDto`), il borne le produit `pièces × ouvrages`, seule
+ * grandeur par laquelle un compte peut faire grossir un projet sans fin.
+ */
+export const MAX_ROOMS_PER_PROJECT = 50;
+
 @Injectable()
 export class ProjectsService {
-  private readonly FREE_TIER_PROJECT_LIMIT = 2;
-
   /**
-   * Un compte invité (anonyme Firebase) n'a droit qu'à **un** projet, là où un
-   * compte gratuit en a deux (E2-1).
+   * Un compte invité (anonyme Firebase) n'a droit qu'à **un** projet (E2-1).
    *
    * Ce n'est pas une brimade : c'est le seul quota qu'un compte anonyme rende
    * significatif. Se créer un compte anonyme est gratuit, instantané et
@@ -53,6 +60,12 @@ export class ProjectsService {
    * nécessaire au parcours, qui est d'un projet, de la page d'accueil à la
    * liste d'achat. Le deuxième projet se mérite en créant son compte, ce qui
    * est précisément la conversion que ce lot cherche à provoquer.
+   *
+   * C'est désormais **la seule** limite de volume du produit : E3-2 a supprimé
+   * le plafond des comptes inscrits, et avec lui la gate `unlimited_projects`
+   * qui le levait. Ce plafond-ci n'a jamais dépendu d'elle, et c'est délibéré —
+   * un réglage d'administration ne doit pas pouvoir ouvrir la création de
+   * projets en masse à des comptes anonymes.
    */
   private readonly GUEST_PROJECT_LIMIT = 1;
 
@@ -69,15 +82,20 @@ export class ProjectsService {
     private readonly workTypesRepo: Repository<WorkType>,
     @InjectRepository(ProjectWorkItem)
     private readonly workItemsRepo: Repository<ProjectWorkItem>,
-    private readonly featureGatesService: FeatureGatesService,
+    /**
+     * `FeatureGatesService` était injecté ici pour la seule gate
+     * `unlimited_projects`, retirée par E3-2. Sa suppression **décale** les
+     * paramètres suivants, et deux `*.int-spec.ts` construisent ce service
+     * positionnellement (leçon 25) : ils sont recalés dans le même lot.
+     */
     @InjectDataSource()
     private readonly dataSource: DataSource,
     private readonly analyticsService: AnalyticsService,
     /**
-     * Ajouté **en dernier** délibérément : trois `*.int-spec.ts` construisent
-     * ce service positionnellement et omettent déjà des paramètres de queue
-     * (leçon 25). Insérer au milieu y décalerait silencieusement les arguments
-     * suivants — ces fichiers ne sont pas couverts par `tsc` aujourd'hui.
+     * Ajouté **en dernier** délibérément : ces `*.int-spec.ts` omettent déjà
+     * des paramètres de queue. Insérer au milieu y décalerait silencieusement
+     * les arguments suivants — ces fichiers ne sont pas couverts par `tsc`
+     * aujourd'hui.
      */
     @InjectRepository(LaborTime)
     private readonly laborTimesRepo: Repository<LaborTime>,
@@ -91,29 +109,20 @@ export class ProjectsService {
     organizationId: string,
     userId: string,
     dto: CreateProjectDto,
-    userTier: SubscriptionTier = SubscriptionTier.FREE,
     isGuest = false,
   ): Promise<Project> {
-    const unlimitedAllowed = await this.featureGatesService.isFeatureAllowed(
-      'unlimited_projects',
-      userTier,
-    );
-
-    // Un invité reste borné même si `unlimited_projects` venait à s'ouvrir au
-    // palier `free` : son quota ne dépend pas d'une gate qu'un réglage
-    // d'administration peut déplacer.
-    if (isGuest || !unlimitedAllowed) {
-      const limit = isGuest
-        ? this.GUEST_PROJECT_LIMIT
-        : this.FREE_TIER_PROJECT_LIMIT;
+    // Seul un invité est compté. Un compte inscrit, quel que soit son palier,
+    // crée autant de chantiers qu'il veut : c'est la promesse du palier gratuit
+    // (ADR 0002 D4), et elle ne passe plus par une gate — une ligne absente de
+    // `feature_gates` réimposait deux projets en silence.
+    if (isGuest) {
       const count = await this.countActiveProjects(organizationId);
-      if (count >= limit) {
+      if (count >= this.GUEST_PROJECT_LIMIT) {
         throw new ForbiddenException({
-          message: isGuest
-            ? 'Créez votre compte gratuit pour démarrer un deuxième projet.'
-            : 'Limite de projets atteinte pour le forfait gratuit',
-          error: isGuest ? 'ACCOUNT_REQUIRED' : 'PROJECT_LIMIT_REACHED',
-          limit,
+          message:
+            'Créez votre compte gratuit pour démarrer un deuxième projet.',
+          error: 'ACCOUNT_REQUIRED',
+          limit: this.GUEST_PROJECT_LIMIT,
           current_count: count,
         });
       }
@@ -147,73 +156,20 @@ export class ProjectsService {
     });
   }
 
-  /**
-   * Les `FREE_TIER_PROJECT_LIMIT` projets les plus récemment modifiés — les
-   * seuls qu'un palier sans `unlimited_projects` puisse encore écrire.
+  /*
+   * `findMostRecentlyUpdated`, `isProjectWritable`, `getWritableProjectIds` et
+   * `ensureProjectWritable` ont été retirés par E3-2 avec le quota qu'ils
+   * servaient : au-delà de deux projets, un compte gratuit voyait les plus
+   * anciens passer en lecture seule. Il n'y a plus de fenêtre d'écriture — tous
+   * les chantiers d'un compte inscrit sont modifiables, toujours.
    *
-   * **`updated_at` doit figurer dans le `select`, alors qu'on ne lit que
-   * `id`.** `Project.rooms` est `eager`, donc TypeORM ne peut pas appliquer
-   * `take` par un simple `LIMIT` : il passe par une sous-requête
-   * `SELECT DISTINCT … AS distinctAlias` qui ne projette que les colonnes
-   * demandées, puis ordonne le tout sur `distinctAlias.Project_updated_at`.
-   * Omettre la colonne de tri produit donc `column
-   * distinctAlias.Project_updated_at does not exist` — une erreur SQL, à
-   * l'exécution, sur toutes les écritures d'un compte gratuit.
+   * Le piège SQL qu'ils documentaient reste vrai et vaut d'être gardé ici :
+   * `Project.rooms` étant `eager`, un `take` force TypeORM à passer par une
+   * sous-requête `SELECT DISTINCT … AS distinctAlias` qui ne projette que les
+   * colonnes du `select`, puis ordonne sur `distinctAlias.Project_updated_at`.
+   * Tout `find` combinant `take`, `select` et un `order` sur une colonne
+   * absente du `select` échoue à l'exécution, pas à la compilation.
    */
-  private async findMostRecentlyUpdated(
-    organizationId: string,
-  ): Promise<Project[]> {
-    return this.projectsRepo.find({
-      where: { organization_id: organizationId, deleted_at: IsNull() },
-      order: { updated_at: 'DESC' },
-      take: this.FREE_TIER_PROJECT_LIMIT,
-      select: ['id', 'updated_at'],
-    });
-  }
-
-  async isProjectWritable(
-    projectId: string,
-    organizationId: string,
-    userTier: SubscriptionTier,
-  ): Promise<boolean> {
-    const unlimitedAllowed = await this.featureGatesService.isFeatureAllowed(
-      'unlimited_projects',
-      userTier,
-    );
-    if (unlimitedAllowed) return true;
-
-    const topProjects = await this.findMostRecentlyUpdated(organizationId);
-
-    return topProjects.some((p) => p.id === projectId);
-  }
-
-  async getWritableProjectIds(organizationId: string): Promise<string[]> {
-    const topProjects = await this.findMostRecentlyUpdated(organizationId);
-    return topProjects.map((p) => p.id);
-  }
-
-  async ensureProjectWritable(
-    projectId: string,
-    organizationId: string,
-    userTier: SubscriptionTier,
-  ): Promise<void> {
-    const writable = await this.isProjectWritable(
-      projectId,
-      organizationId,
-      userTier,
-    );
-    if (!writable) {
-      throw new ForbiddenException({
-        // Ne nomme plus de palier : « Passez à Pro » désignait une offre
-        // supprimée en E3-1. Ce refus n'a d'ailleurs plus de chemin nominal —
-        // `unlimited_projects` est ouverte au palier gratuit — il ne subsiste
-        // que si la gate est gelée ou absente, cas où aucun achat ne le lève.
-        message:
-          'Ce projet est en lecture seule : seuls vos chantiers les plus récents sont modifiables.',
-        error: 'PROJECT_READ_ONLY',
-      });
-    }
-  }
 
   async findByOrg(
     organizationId: string,
@@ -356,6 +312,14 @@ export class ProjectsService {
     const count = await this.roomsRepo.count({
       where: { project_id: projectId },
     });
+    if (count >= MAX_ROOMS_PER_PROJECT) {
+      throw new BadRequestException({
+        message: `Un projet ne peut pas dépasser ${MAX_ROOMS_PER_PROJECT} pièces.`,
+        error: 'ROOM_LIMIT_REACHED',
+        limit: MAX_ROOMS_PER_PROJECT,
+        current_count: count,
+      });
+    }
     return this.roomsRepo.save(
       this.roomsRepo.create({
         project_id: projectId,

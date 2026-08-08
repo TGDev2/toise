@@ -23,7 +23,6 @@ import { WorkType } from '../../src/projects/entities/work-type.entity';
 import { ProjectWorkItem } from '../../src/projects/entities/project-work-item.entity';
 import { LaborTime } from '../../src/projects/entities/labor-time.entity';
 import { ProjectsService } from '../../src/projects/projects.service';
-import type { FeatureGatesService } from '../../src/feature-gates/feature-gates.service';
 import { ProjectPhoto } from '../../src/photos/entities/project-photo.entity';
 import {
   CommunityProject,
@@ -199,9 +198,6 @@ describe('Rétention et effacement (intégration, PostgreSQL et volume réels)',
       dataSource.getRepository(Opening),
       dataSource.getRepository(WorkType),
       dataSource.getRepository(ProjectWorkItem),
-      {
-        isFeatureAllowed: jest.fn().mockResolvedValue(true),
-      } as unknown as FeatureGatesService,
       dataSource,
       { track: jest.fn() } as unknown as AnalyticsService,
       dataSource.getRepository(LaborTime),

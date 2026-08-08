@@ -261,7 +261,15 @@ function MaterialRow({
                     ? 'text-stone-300 hover:text-stone-400'
                     : 'text-stone-400 hover:bg-stone-100 hover:text-stone-600'
               }`}
-              title={budgetAllowed === false ? 'Fonctionnalité Pro' : 'Saisir le prix réel'}
+              // « Fonctionnalité Pro » nommait un palier retiré en E3-1, et le
+              // suivi budgétaire est gratuit depuis E3-2 : ce cadenas ne
+              // s'affiche plus que si `budget_tracking` est gelée ou absente de
+              // `feature_gates`, cas qu'aucun abonnement ne lève.
+              title={
+                budgetAllowed === false
+                  ? 'Saisie des prix momentanément indisponible'
+                  : 'Saisir le prix réel'
+              }
               aria-label="Saisir le prix réel"
             >
               {budgetAllowed === false ? (

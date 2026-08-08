@@ -74,7 +74,8 @@ export default function CalculatorsHubPage() {
           <p className="mx-auto mt-3 max-w-xl text-base text-stone-700">
             Chiffréo transforme votre estimation en projet complet : liste
             d’achats optimisée par conditionnement, budget suivi en temps réel et
-            carnet de vos pièces. Deux projets offerts, sans carte bancaire.
+            carnet de vos pièces. Autant de chantiers que vous voulez, sans carte
+            bancaire.
           </p>
           <div className="mt-7 flex justify-center gap-3">
             <Link

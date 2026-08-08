@@ -30,7 +30,6 @@ import type { CvAnalysisResponse } from '../../src/analysis/cv-client/cv-client.
 import type { CvClientService } from '../../src/analysis/cv-client/cv-client.service';
 import type { PhotosService } from '../../src/photos/photos.service';
 import type { CvAccuracyService } from '../../src/analysis/cv-accuracy.service';
-import type { FeatureGatesService } from '../../src/feature-gates/feature-gates.service';
 
 /**
  * Ce qu'un job d'analyse CV doit garantir, et que seul un vrai PostgreSQL peut
@@ -151,9 +150,6 @@ describe("Jobs d'analyse CV (intégration, PostgreSQL réel)", () => {
       dataSource.getRepository(Opening),
       dataSource.getRepository(WorkType),
       dataSource.getRepository(ProjectWorkItem),
-      {
-        isFeatureAllowed: () => Promise.resolve(true),
-      } as unknown as FeatureGatesService,
       dataSource,
       { track: jest.fn() } as unknown as AnalyticsService,
       dataSource.getRepository(LaborTime),

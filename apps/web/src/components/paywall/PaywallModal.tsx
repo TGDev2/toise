@@ -63,6 +63,11 @@ function FreeTierPaywallContent({
 
   return (
     <div
+      // Marqueur unique des deux racines de paywall (celle-ci et
+      // `ContractorPricingModal`). Le parcours gratuit d'E3-2 assure qu'aucune
+      // ne paraît avant l'export du devis : une assertion d'absence doit porter
+      // sur un marqueur qui existe, sinon elle survit muette à sa disparition.
+      data-testid="paywall-modal"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();

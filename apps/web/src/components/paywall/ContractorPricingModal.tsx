@@ -82,6 +82,9 @@ export function ContractorPricingModal({
 
   return (
     <div
+      // Même marqueur que `FreeTierPaywallContent` : les deux racines de
+      // paywall se reconnaissent d'un seul sélecteur (E3-2).
+      data-testid="paywall-modal"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();

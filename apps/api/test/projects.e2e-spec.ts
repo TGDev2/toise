@@ -107,9 +107,6 @@ const projectsServiceMock = {
     meta: { total: 1, page: 1, limit: 12, totalPages: 1 },
   }),
   findOneForOrg: jest.fn().mockResolvedValue(mockProject),
-  getWritableProjectIds: jest.fn().mockResolvedValue([mockProjectId]),
-  isProjectWritable: jest.fn().mockResolvedValue(true),
-  ensureProjectWritable: jest.fn().mockResolvedValue(undefined),
   updateDimensions: jest.fn().mockResolvedValue(mockDimensions),
   getDimensions: jest.fn().mockResolvedValue(mockDimensions),
   softDeleteProject: jest.fn().mockResolvedValue(undefined),
@@ -231,9 +228,9 @@ describe('ProjectsController (e2e)', () => {
       mockOrgId,
       mockUserId,
       expect.objectContaining({ name: 'Renovation salon' }),
-      SubscriptionTier.FREE,
-      // E2-1 : quota invité (1 projet) distinct du quota gratuit (2). Le jeton
-      // de cette suite est un compte inscrit.
+      // E3-2 : le palier a quitté la signature avec le plafond des comptes
+      // inscrits. Ne reste que la qualité d'invité (E2-1), seul quota de
+      // volume subsistant ; le jeton de cette suite est un compte inscrit.
       false,
     );
   });

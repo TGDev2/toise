@@ -51,7 +51,7 @@ const HOW_IT_WORKS = [
   {
     title: '3. Sauvegardez votre projet',
     description:
-      'En un clic, transformez votre calcul en projet Chiffréo : liste d’achats complète, budget suivi et export PDF.',
+      'En un clic, transformez votre calcul en projet Chiffréo : liste d’achats complète, budget suivi et export PDF de la liste d’achats.',
   },
 ];
 

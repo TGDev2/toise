@@ -49,7 +49,7 @@ export const AUDIENCE_DEFINITIONS: Record<Audience, AudienceDefinition> = {
  * une fonctionnalité inexistante entre dans une carte tarifaire.
  */
 export type NonGateReason =
-  /** Volume autorisé, pas une capacité (« 2 projets actifs »). */
+  /** Volume autorisé, pas une capacité (« un projet » pour un invité). */
   | 'quota'
   /** Socle produit disponible à tous les paliers, jamais gaté. */
   | 'socle'
@@ -123,7 +123,17 @@ export const OFFER_PLANS: OfferPlan[] = [
     description:
       'Tout le chiffrage, sur autant de chantiers que vous voulez, sans carte bancaire.',
     features: [
-      { label: 'Chantiers illimités', gateKey: 'unlimited_projects' },
+      {
+        // Pas une gate, et c'est le correctif d'E3-2 : une gate **accorde** une
+        // capacité à partir d'un palier, alors que l'illimité est l'absence
+        // d'un quota. Adossée à `unlimited_projects`, la promesse héritait du
+        // caractère fail-closed du mécanisme — ligne supprimée ou gelée, et
+        // deux projets actifs revenaient en silence. La limite est désormais
+        // retirée du code ; seul un invité non inscrit reste borné à un projet.
+        label: 'Chantiers illimités',
+        gateKey: null,
+        nonGateReason: 'quota',
+      },
       {
         label: 'Estimation complète des quantités',
         gateKey: null,
