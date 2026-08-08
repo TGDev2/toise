@@ -52,7 +52,7 @@ interface ScreenRecord {
   machineMs: number;
 }
 
-class Chrono {
+export class Chrono {
   private readonly records: ScreenRecord[] = [];
   private current: ScreenRecord | null = null;
 
@@ -179,7 +179,7 @@ async function ensureVisible(locator: Locator): Promise<void> {
   await expect(locator).toBeVisible({ timeout: 20_000 });
 }
 
-async function signIn(page: Page): Promise<void> {
+export async function signIn(page: Page): Promise<void> {
   await page.goto('/login');
   await page.getByRole('button', { name: 'Accepter' }).click();
   await page.getByLabel('Email').fill(ARTISAN_EMAIL);
@@ -195,20 +195,20 @@ async function signIn(page: Page): Promise<void> {
   }
 }
 
-const dimensionsReady = async (p: Page): Promise<void> => {
+export const dimensionsReady = async (p: Page): Promise<void> => {
   await expect(
     p.getByRole('heading', { name: 'Dimensions de la pièce' }),
   ).toBeVisible({ timeout: 20_000 });
 };
 
-const workSelectionReady = async (p: Page): Promise<void> => {
+export const workSelectionReady = async (p: Page): Promise<void> => {
   await expect(
     p.getByRole('heading', { name: 'Sélection des travaux' }),
   ).toBeVisible({ timeout: 20_000 });
 };
 
 /** Mesure d'une pièce, depuis l'écran dimensions jusqu'à l'écran ouvrages. */
-async function measureRoom(
+export async function measureRoom(
   chrono: Chrono,
   page: Page,
   dims: { length: string; width: string; height: string },
@@ -247,7 +247,7 @@ const ALL_WORK_TYPES = [
  * porter. Sans cela, le scénario 1 héritait des ouvrages du scénario précédent
  * et chiffrait un chantier qu'on ne lui avait pas demandé.
  */
-async function selectWork(
+export async function selectWork(
   chrono: Chrono,
   page: Page,
   workTypes: string[],
@@ -284,7 +284,7 @@ async function answerSelect(
  * ne retient que les lignes portant un prix réel, un matériau laissé vide
  * disparaît donc du devis sans un mot.
  */
-async function priceEveryMaterial(chrono: Chrono, page: Page): Promise<number> {
+export async function priceEveryMaterial(chrono: Chrono, page: Page): Promise<number> {
   let patches = 0;
   const countPatch = (res: { url(): string; request(): { method(): string } }) => {
     if (

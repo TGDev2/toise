@@ -65,6 +65,7 @@ const quotesServiceMock = {
   updateStatus: jest.fn(),
   remove: jest.fn(),
   proposeLaborLines: jest.fn(),
+  getCoveredRoomNames: jest.fn(),
 };
 
 const quotePdfServiceMock = { generatePdf: jest.fn() };
@@ -103,6 +104,7 @@ describe('QuotesController (e2e)', () => {
     quotesServiceMock.findOneForOrg.mockResolvedValue(mockQuote);
     quotesServiceMock.update.mockResolvedValue(mockQuote);
     quotesServiceMock.proposeLaborLines.mockResolvedValue(mockLaborProposal);
+    quotesServiceMock.getCoveredRoomNames.mockResolvedValue(['Salon']);
     featureGatesServiceMock.isFeatureAllowed.mockResolvedValue(true);
     featureGatesServiceMock.getGateConfig.mockResolvedValue({
       feature_key: 'export_devis',
@@ -153,6 +155,23 @@ describe('QuotesController (e2e)', () => {
     if (app) {
       await app.close();
     }
+  });
+
+  describe('GET /quotes/:id', () => {
+    it('E2-5 — ajoute les pièces couvertes, dérivées de l’estimation d’origine', async () => {
+      await request(app.getHttpServer())
+        .get(`/quotes/${mockQuoteId}`)
+        .expect(200)
+        .expect((res: request.Response) => {
+          expect(
+            (res.body as { covered_rooms: string[] }).covered_rooms,
+          ).toEqual(['Salon']);
+        });
+
+      expect(quotesServiceMock.getCoveredRoomNames).toHaveBeenCalledWith(
+        mockEstimationId,
+      );
+    });
   });
 
   describe('GET /quotes/labor-proposal', () => {

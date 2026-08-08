@@ -95,6 +95,11 @@ export interface Quote {
   updated_at: string;
   project?: { id: string; name: string; room_name: string };
   client?: Client | null;
+  /**
+   * E2-5 — noms des pièces réellement couvertes par ce devis, dérivés
+   * serveur de l'estimation d'origine (`GET /quotes/:id` seulement).
+   */
+  covered_rooms?: string[];
 }
 
 export interface Client {

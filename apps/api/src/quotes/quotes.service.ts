@@ -192,6 +192,26 @@ export class QuotesService {
     return quote;
   }
 
+  /**
+   * E2-5 — noms des pièces réellement couvertes par ce devis, pour son
+   * récapitulatif. `items_json` (matériaux) ne porte aucune pièce ;
+   * `labor_items_json` en porte une mais peut être vide (devis sans
+   * main-d'œuvre). La source fiable est l'estimation d'origine — figée,
+   * toujours présente (`onDelete: 'CASCADE'` sur `Quote.estimation`) — dont
+   * chaque ligne porte `room_name` depuis `EstimationsService.estimate`.
+   */
+  async getCoveredRoomNames(estimationId: string): Promise<string[]> {
+    const estimation = await this.estimationRepo.findOne({
+      where: { id: estimationId },
+      select: ['items_json'],
+    });
+    if (!estimation) return [];
+    const names = estimation.items_json
+      .map((item) => item.room_name)
+      .filter((name): name is string => Boolean(name));
+    return Array.from(new Set(names));
+  }
+
   async countForOrg(organizationId: string): Promise<number> {
     return this.repo.count({ where: { organization_id: organizationId } });
   }

@@ -12,6 +12,7 @@ import type {
   LastWorkSelectionItem,
 } from '@/lib/work-types';
 import type { Room } from '@/lib/room-types';
+import { computeRoomCoverage } from '@/lib/room-coverage';
 import { WorkSelectionForm } from '@/components/work-selection/WorkSelectionForm';
 import { FlowProgress } from '@/components/quote-flow/FlowProgress';
 import { RoomSwitcher } from '@/components/rooms/RoomSwitcher';
@@ -116,6 +117,25 @@ export default function WorkSelectionPage() {
       ?.height_cm;
     return heightCm && heightCm > 0 ? heightCm / 100 : undefined;
   }, [rooms, activeRoomId]);
+
+  const activeRoom = useMemo(
+    () => rooms.find((r) => r.id === activeRoomId) ?? null,
+    [rooms, activeRoomId],
+  );
+
+  /*
+    E2-5 — les ouvrages s'enregistrent par pièce : sans ce repère, rien
+    n'indique pour quelle pièce le choix en cours vaudra, ni que mesurer trois
+    pièces à la suite n'a pas donné d'ouvrage aux deux dernières. La pièce
+    active est exclue du compte : elle est justement en cours de saisie.
+  */
+  const otherRoomsMissingWorkItemsCount = useMemo(
+    () =>
+      computeRoomCoverage(rooms).roomsMissingWorkItems.filter(
+        (r) => r.id !== activeRoomId,
+      ).length,
+    [rooms, activeRoomId],
+  );
 
   const goToRoom = useCallback(
     (roomId: string) => {
@@ -229,6 +249,25 @@ export default function WorkSelectionPage() {
           onSelect={goToRoom}
           busy={isSaving}
         />
+      )}
+
+      {appUser && activeRoom && (
+        <p className="mb-6 text-sm text-stone-600">
+          Vous choisissez les travaux pour :{' '}
+          <strong className="font-semibold text-stone-900">
+            {activeRoom.name}
+          </strong>
+          {otherRoomsMissingWorkItemsCount > 0 && (
+            <>
+              {' '}
+              — {otherRoomsMissingWorkItemsCount} autre
+              {otherRoomsMissingWorkItemsCount > 1 ? 's' : ''} pièce
+              {otherRoomsMissingWorkItemsCount > 1 ? 's' : ''} du projet n&apos;
+              {otherRoomsMissingWorkItemsCount > 1 ? 'ont' : 'a'} pas encore
+              d&apos;ouvrage.
+            </>
+          )}
+        </p>
       )}
 
       {error && (

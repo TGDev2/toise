@@ -10,6 +10,7 @@ import { ClientSelect } from '@/components/quotes/ClientSelect';
 import { LaborLinesEditor } from '@/components/quotes/LaborLinesEditor';
 import { QuantityValidationPanel } from '@/components/quotes/QuantityValidationPanel';
 import { FlowProgress } from '@/components/quote-flow/FlowProgress';
+import { RoomCoverageWarning } from '@/components/rooms/RoomCoverageWarning';
 import { Alert, DecimalInput, Skeleton, StickyActionBar } from '@/components/ui';
 import type { EstimationResponse } from '@/lib/estimation-types';
 import type {
@@ -20,6 +21,8 @@ import type {
 } from '@/lib/quote-types';
 import type { ShoppingListResponse } from '@/lib/shopping-list-types';
 import type { QuantityValidationState } from '@/lib/quantity-validation-types';
+import type { Room } from '@/lib/room-types';
+import { computeRoomCoverage } from '@/lib/room-coverage';
 
 function formatPrice(v: number): string {
   return v.toFixed(2).replace('.', ',');
@@ -44,6 +47,7 @@ export default function NewQuotePage() {
   const [estimation, setEstimation] = useState<EstimationResponse | null>(null);
   const [shoppingList, setShoppingList] = useState<ShoppingListResponse | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [quantityValidation, setQuantityValidation] =
     useState<QuantityValidationState | null>(null);
   const [validationBusy, setValidationBusy] = useState(false);
@@ -89,18 +93,22 @@ export default function NewQuotePage() {
     setLoading(true);
     setError('');
     try {
-      const [est, sl, cls, validation] = await Promise.all([
+      const [est, sl, cls, validation, roomList] = await Promise.all([
         apiGet<EstimationResponse>(`/projects/${projectId}/estimates/latest`),
         apiGet<ShoppingListResponse>(`/projects/${projectId}/shopping-list`),
         apiGet<Client[]>('/clients'),
         apiGet<QuantityValidationState>(
           `/projects/${projectId}/quantity-validation`,
         ),
+        // E2-5 — purement informatif pour le bandeau de couverture : un échec
+        // ne doit pas empêcher la création du devis.
+        apiGet<Room[]>(`/projects/${projectId}/rooms`).catch(() => []),
       ]);
       setEstimation(est);
       setShoppingList(sl);
       setClients(cls);
       setQuantityValidation(validation);
+      setRooms(roomList);
 
       // La proposition dépend de l'estimation (elle en dérive les ouvrages) :
       // ne peut être demandée en même temps que les trois appels ci-dessus.
@@ -190,6 +198,9 @@ export default function NewQuotePage() {
   useEffect(() => {
     if (appUser && quotingAllowed) fetchData();
   }, [appUser, quotingAllowed, fetchData]);
+
+  const { coveredRooms, roomsMissingWorkItems, roomsMissingDimensions } =
+    useMemo(() => computeRoomCoverage(rooms), [rooms]);
 
   // Live totals
   const pricedItems = useMemo(() => {
@@ -377,6 +388,15 @@ export default function NewQuotePage() {
           {error}
         </Alert>
       )}
+
+      <div className="mt-6">
+        <RoomCoverageWarning
+          projectId={projectId}
+          coveredRooms={coveredRooms}
+          roomsMissingWorkItems={roomsMissingWorkItems}
+          roomsMissingDimensions={roomsMissingDimensions}
+        />
+      </div>
 
       {quantityValidation && (
         <QuantityValidationPanel

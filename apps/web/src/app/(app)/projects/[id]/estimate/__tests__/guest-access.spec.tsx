@@ -53,7 +53,10 @@ describe('EstimatePage — garde du parcours invité', () => {
     mockAuth.appUser = null;
     mockAuth.isGuest = false;
     mockAuth.isLoading = false;
-    mockApiGet.mockResolvedValue({ name: 'Salon' });
+    mockApiGet.mockImplementation((url: string) => {
+      if (url.endsWith('/rooms')) return Promise.resolve([]);
+      return Promise.resolve({ name: 'Salon' });
+    });
     mockApiPost.mockResolvedValue(estimation);
   });
 

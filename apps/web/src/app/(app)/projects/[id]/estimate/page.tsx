@@ -5,13 +5,16 @@ import { useFeatureGates } from '@/contexts/FeatureGateContext';
 import { apiGet, apiPost } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import type { EstimationResponse } from '@/lib/estimation-types';
+import type { Room } from '@/lib/room-types';
+import { computeRoomCoverage } from '@/lib/room-coverage';
 import { EstimationResults } from '@/components/estimation/EstimationResults';
 import { EstimationSummary } from '@/components/estimation/EstimationSummary';
 import { SkillLevelSelector } from '@/components/estimation/SkillLevelSelector';
 import { FlowProgress } from '@/components/quote-flow/FlowProgress';
+import { RoomCoverageWarning } from '@/components/rooms/RoomCoverageWarning';
 import { Alert, Skeleton, StickyActionBar } from '@/components/ui';
 import { useParams, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export default function EstimatePage() {
   const { appUser, isGuest, isLoading } = useAuth();
@@ -27,9 +30,13 @@ export default function EstimatePage() {
   const [estimation, setEstimation] = useState<EstimationResponse | null>(null);
   const [skillLevel, setSkillLevel] = useState('beginner');
   const [projectName, setProjectName] = useState('');
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [isCalculating, setIsCalculating] = useState(false);
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
+
+  const { coveredRooms, roomsMissingWorkItems, roomsMissingDimensions } =
+    useMemo(() => computeRoomCoverage(rooms), [rooms]);
 
   const runEstimation = useCallback(
     async (level?: string) => {
@@ -71,6 +78,18 @@ export default function EstimatePage() {
           `/projects/${projectId}`,
         );
         setProjectName(project.name);
+
+        // E2-5 — l'invité reste mono-pièce (cf. work-selection) : rien à
+        // couvrir pour lui, l'appel serait sans objet. Purement informatif
+        // pour le bandeau de couverture : un échec ne doit pas faire échouer
+        // le chargement de l'écran.
+        if (appUser) {
+          try {
+            setRooms(await apiGet<Room[]>(`/projects/${projectId}/rooms`));
+          } catch {
+            // Le bandeau reste simplement absent.
+          }
+        }
 
         await runEstimation();
       } catch (err: unknown) {
@@ -118,6 +137,13 @@ export default function EstimatePage() {
           {error}
         </Alert>
       )}
+
+      <RoomCoverageWarning
+        projectId={projectId}
+        coveredRooms={coveredRooms}
+        roomsMissingWorkItems={roomsMissingWorkItems}
+        roomsMissingDimensions={roomsMissingDimensions}
+      />
 
       <section className="mb-6 rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
         <label className="mb-3 block text-sm font-medium text-stone-700">

@@ -722,4 +722,52 @@ describe('QuotesService', () => {
       ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
+
+  describe('getCoveredRoomNames', () => {
+    it('deduplique les noms de piece portes par les lignes de l’estimation', async () => {
+      estimationRepoMock.findOne.mockResolvedValue(
+        makeEstimation({
+          items_json: [
+            makeEstimationLine({ room_id: 'room-1', room_name: 'Salon' }),
+            makeEstimationLine({
+              material_id: 'mat-2',
+              room_id: 'room-1',
+              room_name: 'Salon',
+            }),
+            makeEstimationLine({
+              material_id: 'mat-3',
+              room_id: 'room-2',
+              room_name: 'Cuisine',
+            }),
+          ],
+        }),
+      );
+
+      const names = await service.getCoveredRoomNames(ESTIMATION_ID);
+
+      expect(names).toEqual(['Salon', 'Cuisine']);
+    });
+
+    it('ignore les lignes anterieures a ENG-2, sans pièce associee', async () => {
+      estimationRepoMock.findOne.mockResolvedValue(
+        makeEstimation({
+          items_json: [
+            makeEstimationLine({ room_id: undefined, room_name: undefined }),
+          ],
+        }),
+      );
+
+      const names = await service.getCoveredRoomNames(ESTIMATION_ID);
+
+      expect(names).toEqual([]);
+    });
+
+    it('rend un tableau vide si l’estimation a disparu', async () => {
+      estimationRepoMock.findOne.mockResolvedValue(null);
+
+      const names = await service.getCoveredRoomNames(ESTIMATION_ID);
+
+      expect(names).toEqual([]);
+    });
+  });
 });

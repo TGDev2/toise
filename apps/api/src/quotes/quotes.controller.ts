@@ -107,6 +107,12 @@ export class QuotesController {
       this.companyProfilesService.findByOrganizationId(scope.organizationId),
     ]);
     const showBrands = companyProfile?.show_material_brands ?? true;
+    // E2-5 — pièces réellement couvertes par ce devis, pour son
+    // récapitulatif. Dépend de `quote.estimation_id`, donc après le premier
+    // aller-retour plutôt que dans le même `Promise.all`.
+    const coveredRooms = await this.quotesService.getCoveredRoomNames(
+      quote.estimation_id,
+    );
 
     // E1-11 : le réglage marques est lu en direct, ici — jamais figé sur le
     // devis. `show_material_details`/`show_material_justifications`, eux,
@@ -118,6 +124,7 @@ export class QuotesController {
         ...rest,
         ...pickJustification(justification, showBrands),
       })),
+      covered_rooms: coveredRooms,
     };
   }
 

@@ -243,6 +243,11 @@ export default function QuoteDetailPage() {
               Projet : {quote.project.name}
             </p>
           )}
+          {quote.covered_rooms && quote.covered_rooms.length > 0 && (
+            <p className="mt-1 text-sm text-stone-600">
+              Pièces couvertes : {quote.covered_rooms.join(', ')}
+            </p>
+          )}
         </div>
         <div className="hidden flex-wrap gap-3 lg:flex">
           <Button onClick={handleSendPdf} loading={downloading}>
