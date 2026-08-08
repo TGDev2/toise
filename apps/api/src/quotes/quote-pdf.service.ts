@@ -7,6 +7,14 @@ import type {
 import type { CompanyProfile } from '../company-profiles/entities/company-profile.entity';
 import type { Client } from '../clients/entities/client.entity';
 import { PdfBuilder, type PdfColumn } from '../common/pdf/pdf-builder';
+import {
+  insuranceLine,
+  legalFormLine,
+  registrationLine,
+  siretToSiren,
+  vatLine,
+  type SellerLegalMentions,
+} from '../common/pdf/seller-legal-mentions';
 import { round2 } from '../common/round2';
 import { pickJustification } from '../materials/render-justification';
 
@@ -64,6 +72,18 @@ export class QuotePdfService {
       doc.text(`Tél : ${companyProfile.phone}`, pdf.left, doc.y);
     }
     doc.text(`SIRET : ${companyProfile.siret}`, pdf.left, doc.y);
+
+    // ── Mentions légales de l'émetteur ──
+    // `docs/CONFORMITE_FACTURATION.md` déclare la décennale obligatoire « sur
+    // les devis ET les factures » (art. L243-2 c. assurances), et le RCS/RM
+    // comme la TVA sont dus sur tout document commercial. Seul le PDF de
+    // facture les portait. Imprimées si renseignées, jamais bloquantes ici :
+    // le contrôle `MISSING_LEGAL_MENTIONS` garde l'émission d'une facture, et
+    // l'étendre au devis interdirait de chiffrer à un artisan qui n'a pas
+    // fini de remplir son profil — un refus plus coûteux que l'absence.
+    for (const line of this.sellerMentions(companyProfile)) {
+      doc.text(line, pdf.left, doc.y, { width: 280 });
+    }
 
     const headerBottom = doc.y;
 
@@ -252,6 +272,26 @@ export class QuotePdfService {
     );
 
     return pdf.finish();
+  }
+
+  /**
+   * Les mêmes mentions que la facture, composées par le même module — un devis
+   * et la facture qui en dérive ne peuvent pas décrire l'entreprise
+   * différemment. Le `CompanyProfile` courant tient lieu de vendeur : un devis
+   * n'est pas figé comme une facture, il suit le profil tant qu'il n'est pas
+   * transformé.
+   */
+  private sellerMentions(profile: CompanyProfile): string[] {
+    const seller: SellerLegalMentions = {
+      ...profile,
+      siren: siretToSiren(profile.siret),
+    };
+    return [
+      registrationLine(seller),
+      legalFormLine(seller),
+      vatLine(seller),
+      insuranceLine(seller),
+    ].filter((line): line is string => line !== null);
   }
 
   private drawMaterialRow(pdf: PdfBuilder, item: QuoteLineItem): void {

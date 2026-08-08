@@ -285,6 +285,91 @@ describe('QuotePdfService', () => {
    * vers la droite jusqu'à sortir de la page (première ligne du tableau à x=710
    * sur une A4 de 595 pt). `PdfBuilder` repart systématiquement de la marge.
    */
+  /**
+   * E2-2 — les mentions obligatoires de l'émetteur sur le PDF de **devis**.
+   *
+   * Les autres cas de ce fichier n'assertent que `buffer.length > 1000`, ce qui
+   * ne peut rien dire d'une mention légale : un PDF conforme et un PDF qui a
+   * perdu sa décennale pèsent le même poids. On collecte donc le texte
+   * réellement dessiné, par le même monkey-patch que le contrôle de
+   * débordement plus bas.
+   */
+  async function drawnText(profile: CompanyProfile): Promise<string> {
+    const proto = PDFDocument.prototype as unknown as {
+      text: (...args: unknown[]) => unknown;
+    };
+    const original = proto.text;
+    const chunks: string[] = [];
+
+    proto.text = function (this: PDFKit.PDFDocument, ...args: unknown[]) {
+      chunks.push(String(args[0]));
+      return original.apply(this, args);
+    };
+
+    try {
+      await service.generatePdf(makeQuote(), profile, makeClient());
+    } finally {
+      proto.text = original;
+    }
+    return chunks.join('\n');
+  }
+
+  describe('mentions obligatoires de l emetteur', () => {
+    it('imprime la decennale, le RCS et la TVA intracom', async () => {
+      const text = await drawnText(
+        makeCompanyProfile({
+          rcs_city: 'Paris',
+          vat_exempt: false,
+          vat_number: 'FR12345678901',
+          legal_form: 'SARL',
+          capital_social: 10000,
+          insurance_name: 'AXA',
+          insurance_policy: 'POL-42',
+          insurance_coverage: 'France metropolitaine',
+        }),
+      );
+
+      expect(text).toContain('RCS Paris 123456789');
+      expect(text).toContain('TVA intracom. : FR12345678901');
+      expect(text).toContain('SARL au capital de 10000,00 EUR');
+      expect(text).toContain(
+        'Assurance décennale : AXA — contrat POL-42 — couverture : France metropolitaine',
+      );
+    });
+
+    it('imprime la franchise en base a la place du numero de TVA', async () => {
+      const text = await drawnText(
+        makeCompanyProfile({ vat_exempt: true, vat_number: null }),
+      );
+      expect(text).toContain('TVA non applicable, art. 293 B du CGI');
+      expect(text).not.toContain('TVA intracom.');
+    });
+
+    it('imprime le repertoire des metiers pour un artisan sans RCS', async () => {
+      const text = await drawnText(
+        makeCompanyProfile({ rcs_city: null, rm_department: '75' }),
+      );
+      expect(text).toContain('Répertoire des métiers : 123456789 RM 75');
+    });
+
+    it('tait les mentions absentes plutot que d imprimer des tirets', async () => {
+      const text = await drawnText(
+        makeCompanyProfile({
+          rcs_city: null,
+          rm_department: null,
+          legal_form: null,
+          insurance_name: null,
+        }),
+      );
+      expect(text).not.toContain('RCS');
+      expect(text).not.toContain('Répertoire des métiers');
+      expect(text).not.toContain('Assurance décennale');
+      // La TVA, elle, n'est jamais tue : son absence est bloquante a l'emission
+      // d'une facture, et un devis muet la-dessus masquerait le trou.
+      expect(text).toContain('TVA');
+    });
+  });
+
   it('never draws text outside the page content box', async () => {
     const proto = PDFDocument.prototype as unknown as {
       text: (...args: unknown[]) => unknown;

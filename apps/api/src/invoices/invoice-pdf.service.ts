@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { PdfBuilder, type PdfColumn } from '../common/pdf/pdf-builder';
 import {
+  insuranceLine,
+  legalFormLine,
+  registrationLine,
+  vatLine,
+} from '../common/pdf/seller-legal-mentions';
+import {
   InvoiceStatus,
   type Invoice,
   type InvoiceLineItem,
@@ -74,52 +80,22 @@ export class InvoicePdfService {
     if (seller.email) lines.push(seller.email);
     lines.push(`SIRET : ${seller.siret ?? '-'}`);
 
-    const registration = this.registrationLine(seller);
+    const registration = registrationLine(seller);
     if (registration) lines.push(registration);
 
-    const legal = this.legalFormLine(seller);
+    const legal = legalFormLine(seller);
     if (legal) lines.push(legal);
 
-    lines.push(
-      seller.vat_exempt
-        ? 'TVA non applicable, art. 293 B du CGI'
-        : `TVA intracom. : ${seller.vat_number ?? '-'}`,
-    );
+    lines.push(vatLine(seller));
+
+    const insurance = insuranceLine(seller);
+    if (insurance) lines.push(insurance);
 
     for (const line of lines) {
       doc.text(line, pdf.left, doc.y, { width: 280 });
     }
 
-    if (seller.insurance_name) {
-      const policy = seller.insurance_policy
-        ? ` — contrat ${seller.insurance_policy}`
-        : '';
-      doc.text(
-        `Assurance décennale : ${seller.insurance_name}${policy} — couverture : ${seller.insurance_coverage ?? '-'}`,
-        pdf.left,
-        doc.y,
-        { width: 280 },
-      );
-    }
-
     pdf.resetX();
-  }
-
-  private registrationLine(seller: InvoicePartySnapshot): string | null {
-    // Le numéro RCS est le SIREN : on ne le stocke pas, on le dérive du SIRET.
-    if (seller.rcs_city) {
-      return `RCS ${seller.rcs_city} ${seller.siren ?? ''}`.trim();
-    }
-    if (seller.rm_department) {
-      return `Répertoire des métiers : ${seller.siren ?? ''} RM ${seller.rm_department}`.trim();
-    }
-    return null;
-  }
-
-  private legalFormLine(seller: InvoicePartySnapshot): string | null {
-    if (!seller.legal_form) return null;
-    if (seller.capital_social == null) return seller.legal_form;
-    return `${seller.legal_form} au capital de ${PdfBuilder.formatPrice(Number(seller.capital_social))} EUR`;
   }
 
   private drawBuyer(
