@@ -9,6 +9,7 @@ import { RoomDimensions } from './entities/room-dimensions.entity';
 import { Opening } from './entities/opening.entity';
 import { WorkType } from './entities/work-type.entity';
 import { ProjectWorkItem } from './entities/project-work-item.entity';
+import { LaborTime } from './entities/labor-time.entity';
 import { CvCorrectionLog } from '../analysis/entities/cv-correction-log.entity';
 import { AnalysisJob } from '../analysis/entities/analysis-job.entity';
 import { CommunityProject } from '../community/entities/community-project.entity';
@@ -25,6 +26,9 @@ import { CvCorrectionService } from '../analysis/cv-correction.service';
       Opening,
       WorkType,
       ProjectWorkItem,
+      // E2-2 — registre des temps de pose (E2-1), lu par `getLaborTimes()`
+      // pour la proposition de main-d'œuvre du devis.
+      LaborTime,
       CvCorrectionLog,
       AnalysisJob,
       // Supprimer un projet retire sa publication communautaire dans la même

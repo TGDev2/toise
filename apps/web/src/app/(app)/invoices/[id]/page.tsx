@@ -284,6 +284,18 @@ export default function InvoiceDetailPage() {
                     <span className="ml-2 text-xs text-stone-400">
                       {INVOICE_LINE_KIND_LABELS[item.kind]}
                     </span>
+                    {/*
+                      E2-2 — le detail figé à l'émission (« 5 h x 45 EUR/h »,
+                      « Forfait »). Il était déjà écrit dans `items_json` et
+                      imprimé sur le PDF, mais cet écran ne le montrait pas :
+                      une facture à plusieurs ouvrages y perdait exactement ce
+                      qui la rend lisible.
+                    */}
+                    {item.description && (
+                      <p className="mt-0.5 text-xs text-stone-400">
+                        {item.description}
+                      </p>
+                    )}
                   </td>
                   <td className="py-2 pr-4 text-center font-medium">
                     {item.quantity}

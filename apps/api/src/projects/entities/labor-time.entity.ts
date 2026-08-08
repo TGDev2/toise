@@ -24,11 +24,10 @@ import { numericTransformer } from '../../common/transformers/numeric.transforme
  * par niveau n'existe que si une source la différencie réellement — pas de
  * grille fabriquée (registre : `projects/labor-times.data.ts`).
  *
- * Personne ne lit cette table avant E2-2 (même séquence que
- * `consumption-bounds` : le registre d'abord, le consommateur ensuite).
- * L'entité existe dès maintenant pour que le contrôle de dérive
- * entité ↔ schéma (`schema.int-spec.ts`) couvre le DDL de la migration
- * `…097`, et non enregistrée dans un module puisque rien ne l'injecte.
+ * Lue depuis E2-2 par `ProjectsService.getLaborTimes()`, qui la sert à
+ * `resolveLaborTime` (`projects/labor-time-resolution.ts`) pour chiffrer la
+ * main-d'œuvre d'un devis. Elle a remplacé `work_types.labor_minutes_per_m2`,
+ * que plus personne ne lit.
  */
 @Entity('labor_times')
 export class LaborTime {

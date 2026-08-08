@@ -21,6 +21,7 @@ import { RoomDimensions } from '../../src/projects/entities/room-dimensions.enti
 import { Opening } from '../../src/projects/entities/opening.entity';
 import { WorkType } from '../../src/projects/entities/work-type.entity';
 import { ProjectWorkItem } from '../../src/projects/entities/project-work-item.entity';
+import { LaborTime } from '../../src/projects/entities/labor-time.entity';
 import { ProjectsService } from '../../src/projects/projects.service';
 import type { FeatureGatesService } from '../../src/feature-gates/feature-gates.service';
 import { ProjectPhoto } from '../../src/photos/entities/project-photo.entity';
@@ -203,6 +204,7 @@ describe('Rétention et effacement (intégration, PostgreSQL et volume réels)',
       } as unknown as FeatureGatesService,
       dataSource,
       { track: jest.fn() } as unknown as AnalyticsService,
+      dataSource.getRepository(LaborTime),
     );
   });
 

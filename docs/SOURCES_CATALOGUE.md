@@ -1069,12 +1069,21 @@ SNIP n° 18 (quantitatifs par m² de cloison, utilisée pour convertir les
 cadences « m² de plaque » en « m² de cloison »,
 https://www.lesindustriesduplatre.org/wp-content/uploads/2025/03/SNIP-FICHE-CONSEIL-18-VERSIONS-2025_V6-13fevrier.pdf).
 
-### Coexistence avec `labor_minutes_per_m2` (E2-3)
+### `labor_minutes_per_m2` : retirée du chiffrage (E2-2)
 
-`work_types.labor_minutes_per_m2` (migration `…072`) préremplit aujourd'hui
-les lignes de MO du devis (`GET /quotes/labor-proposal`). Ces valeurs restent
-en place, **non sourcées** — des ordres de grandeur métier, sans référence
-normative — jusqu'à ce qu'E2-2 câble le devis sur le registre ci-dessus :
+**Plus aucun code ne lit cette colonne.** Depuis E2-2, `GET
+/quotes/labor-proposal` chiffre la main-d'œuvre sur le registre ci-dessus, via
+`resolveLaborTime` (`projects/labor-time-resolution.ts`), avec les axes pose et
+niveau que ces sept constantes ne pouvaient pas exprimer.
+
+`work_types.labor_minutes_per_m2` (migration `…072`) reste **en base** jusqu'à
+la version suivante : la règle expand-only de `docs/deploy/MIGRATIONS.md`
+interdit de supprimer une colonne dans le lot qui cesse de la lire, puisque le
+code N-1 doit tourner sur le schéma N. Son `DROP` est un item de backlog.
+
+Les valeurs conservées ici pour mémoire — **non sourcées**, des ordres de
+grandeur métier sans référence normative, ce qui est précisément la raison de
+leur retrait :
 
 | Ouvrage | min/m² | Hypothèse |
 | --- | --- | --- |
@@ -1086,10 +1095,12 @@ normative — jusqu'à ce qu'E2-2 câble le devis sur le registre ci-dessus :
 | `floor_tiling` | 40 | Carrelage sol 45 × 45, double encollage (même hypothèse que le registre ci-dessus) |
 | `wall_tiling` | 50 | Carrelage mural, faïence 25 × 40, plus de découpes qu'au sol |
 
-Nullable et jamais un défaut à l'échelle du produit : si la colonne est vide
-pour un ouvrage (le 8e ouvrage d'une future extension, par exemple), aucune
-ligne de MO n'est proposée pour cet ouvrage plutôt que d'en inventer une à
-0 min — l'UI l'affiche comme un temps indicatif, modifiable ligne à ligne.
+La doctrine du trou de données, elle, est reprise telle quelle par la
+résolution : un ouvrage sans aucune ligne au registre ne reçoit **aucune**
+heure proposée — 0 h et pas de source — plutôt qu'un temps inventé. L'écran de
+création affiche la base retenue sous chaque ligne (temps unitaire × assiette,
+niveau, organisme et lien), et les heures restent modifiables ligne à ligne :
+la source éclaire la proposition, elle ne suit pas le devis émis.
 
 ## Réintégrer un matériau retiré
 

@@ -10,6 +10,7 @@ import {
   QuoteStatus,
   QuoteLineItem,
   QuoteLaborLine,
+  ProposedQuoteLaborLine,
 } from './entities/quote.entity';
 import {
   EstimationResult,
@@ -17,6 +18,7 @@ import {
 } from '../estimations/entities/estimation-result.entity';
 import { ShoppingListsService } from '../shopping-lists/shopping-lists.service';
 import { ProjectsService } from '../projects/projects.service';
+import { resolveLaborTime } from '../projects/labor-time-resolution';
 import { ClientsService } from '../clients/clients.service';
 import { CompanyProfilesService } from '../company-profiles/company-profiles.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
@@ -304,7 +306,7 @@ export class QuotesService {
     organizationId: string,
     projectId: string,
     estimationId: string,
-  ): Promise<QuoteLaborLine[]> {
+  ): Promise<ProposedQuoteLaborLine[]> {
     await this.projectsService.findOneForOrg(projectId, organizationId);
     const estimation = await this.estimationRepo.findOne({
       where: { id: estimationId, project_id: projectId },
@@ -315,25 +317,48 @@ export class QuotesService {
     return this.buildProposedLaborLines(organizationId, estimation);
   }
 
+  /**
+   * E2-2 — les heures viennent du registre sourcé d'E2-1 (`labor_times`), plus
+   * de `work_types.labor_minutes_per_m2` : sept constantes que la migration qui
+   * les a posées qualifiait elle-même d'ordres de grandeur métier, sans une
+   * source à opposer à un client qui conteste un devis.
+   *
+   * Les deux axes du registre sont lus **sur la ligne**, jamais sur
+   * l'estimation : `pose_type` y est depuis E1-7, `skill_level` depuis ce lot.
+   * `estimation.skill_level` ne sert que de repli pour les estimations
+   * antérieures — c'est le niveau du premier ouvrage, pas celui de chacun.
+   */
   private async buildProposedLaborLines(
     organizationId: string,
     estimation: EstimationResult,
-  ): Promise<QuoteLaborLine[]> {
+  ): Promise<ProposedQuoteLaborLine[]> {
     const profile =
       await this.companyProfilesService.findByOrganizationId(organizationId);
     const rate = Number(profile?.default_labor_hourly_rate) || 0;
 
-    const workTypes = await this.projectsService.getWorkTypes();
-    const minutesByCode = new Map(
-      workTypes.map((wt) => [wt.code, wt.labor_minutes_per_m2]),
-    );
+    const laborTimes = await this.projectsService.getLaborTimes();
 
     return this.dedupeByWorkItem(estimation.items_json)
       .filter((item) => item.surface_m2 !== 0)
       .map((item) => {
-        const minutes = minutesByCode.get(item.work_type_code) ?? null;
-        const quantity =
-          minutes == null ? 0 : round2((item.surface_m2 * minutes) / 60);
+        const time = resolveLaborTime(
+          laborTimes,
+          item.work_type_code,
+          item.pose_type,
+          item.skill_level ?? estimation.skill_level,
+        );
+
+        // Le temps se multiplie par l'assiette **de son unité**. Toutes les
+        // lignes seedées sont en m², et l'assiette dont dispose le devis est
+        // une surface : un temps au mètre linéaire ou à la pièce, ajouté plus
+        // tard au registre, ne doit pas être multiplié par des m² en silence.
+        // Sans temps applicable, aucune heure proposée — pas de valeur de
+        // repli, c'est le trou de données qu'il faut voir.
+        const applicable = time !== null && time.unit_basis === 'm2';
+        const quantity = applicable
+          ? round2(item.surface_m2 * time.hours_per_unit)
+          : 0;
+
         return {
           work_item_id: item.work_item_id ?? null,
           work_type_code: item.work_type_code,
@@ -344,6 +369,18 @@ export class QuotesService {
           quantity,
           unit_price_ht: rate,
           line_total_ht: round2(quantity * rate),
+          ...(applicable
+            ? {
+                basis: {
+                  hours_per_unit: time.hours_per_unit,
+                  unit_basis: time.unit_basis,
+                  skill_level: time.skill_level,
+                  source_org: time.source_org,
+                  source_document: time.source_document,
+                  source_url: time.source_url,
+                },
+              }
+            : {}),
         };
       });
   }

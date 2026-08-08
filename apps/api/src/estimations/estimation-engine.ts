@@ -1615,6 +1615,7 @@ export class EstimationEngine {
             ? { packaging_breakdown: packaging.breakdown }
             : {}),
           pose_type: poseType,
+          skill_level: wi.skill_level,
           ...(cut
             ? {
                 pieces_needed: cut.pieces,

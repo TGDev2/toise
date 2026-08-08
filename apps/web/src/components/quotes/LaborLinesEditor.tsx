@@ -21,6 +21,11 @@ function formatPrice(v: number): string {
   return v.toFixed(2).replace('.', ',');
 }
 
+/** Sans zéros de queue : « 0,25 h/m² », pas « 0,250 ». */
+function formatDecimal(v: number): string {
+  return String(v).replace('.', ',');
+}
+
 /**
  * Liste éditable des lignes de MO d'un devis (E2-3). `unit_price_ht` à `0`
  * s'affiche vide plutôt que « 0,00 » : une ligne proposée sans taux
@@ -58,6 +63,51 @@ export function LaborLinesEditor({
         + Ajouter une ligne
       </button>
     </div>
+  );
+}
+
+const SKILL_LABELS: Record<string, string> = {
+  beginner: 'débutant',
+  intermediate: 'confirmé',
+  expert: 'expert',
+};
+
+/**
+ * E2-2 — la base sourcée d'où sortent les heures proposées.
+ *
+ * Formulée comme **une proposition**, et le temps unitaire est multiplié
+ * devant l'utilisateur plutôt qu'affiché seul : la phrase reste vraie quand
+ * l'artisan corrige ses heures, alors qu'un « 0,25 h/m² » posé à côté d'un
+ * champ passé à 10 h prétendrait qu'un organisme a chiffré ce que l'artisan
+ * vient de décider.
+ *
+ * Un temps « tous niveaux » ne s'annonce pas comme un niveau : c'est ce que
+ * publient les sources libres, un temps de professionnel confirmé, et le dire
+ * autrement inventerait une précision que le registre n'a pas.
+ */
+function LaborBasisNote({ line }: { line: QuoteLaborLineInput }) {
+  const { basis, surface_m2 } = line;
+  if (!basis || surface_m2 == null) return null;
+
+  const proposed = Math.round(surface_m2 * basis.hours_per_unit * 100) / 100;
+  const level = basis.skill_level ? SKILL_LABELS[basis.skill_level] : null;
+
+  return (
+    <p className="mt-1 text-xs leading-relaxed text-stone-400">
+      Base proposée : {formatDecimal(basis.hours_per_unit)} h/
+      {basis.unit_basis === 'm2' ? 'm²' : basis.unit_basis} ×{' '}
+      {formatDecimal(surface_m2)} m² = {formatDecimal(proposed)} h
+      {level ? ` · niveau ${level}` : ''}
+      {' — '}
+      <a
+        href={basis.source_url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="underline decoration-stone-300 underline-offset-2 hover:text-stone-600"
+      >
+        {basis.source_org}
+      </a>
+    </p>
   );
 }
 
@@ -101,6 +151,7 @@ function LaborLineRow({ line, index, onUpdate, onRemove }: LaborLineRowProps) {
               {line.surface_m2 != null ? ` — ${line.surface_m2} m²` : ''}
             </p>
           )}
+          <LaborBasisNote line={line} />
         </div>
 
         <button

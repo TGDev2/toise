@@ -17,6 +17,8 @@ import {
   OpeningType,
 } from '../../src/projects/entities/opening.entity';
 import { ProjectWorkItem } from '../../src/projects/entities/project-work-item.entity';
+import { LaborTime } from '../../src/projects/entities/labor-time.entity';
+import { AnalyticsService } from '../../src/analytics/analytics.service';
 import { WorkType } from '../../src/projects/entities/work-type.entity';
 import { ProjectsService } from '../../src/projects/projects.service';
 import { AnalysisService } from '../../src/analysis/analysis.service';
@@ -153,6 +155,8 @@ describe("Jobs d'analyse CV (intégration, PostgreSQL réel)", () => {
         isFeatureAllowed: () => Promise.resolve(true),
       } as unknown as FeatureGatesService,
       dataSource,
+      { track: jest.fn() } as unknown as AnalyticsService,
+      dataSource.getRepository(LaborTime),
     );
 
     cvAnalyze = jest.fn<Promise<CvAnalysisResponse>, []>();

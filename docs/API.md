@@ -1379,10 +1379,14 @@ appeler `GET /quotes/labor-proposal` avant de construire ce corps.
 
 ### `GET /quotes/labor-proposal`
 
-Proposer des lignes de MO à partir des ouvrages d'une estimation — un temps unitaire indicatif par
-ouvrage (`work_types.labor_minutes_per_m2`) multiplié par sa surface, au taux horaire par défaut du
-profil d'entreprise (`0` si non renseigné). Lecture pure : n'écrit rien, à appeler avant
-`POST /quotes` ou `PATCH /quotes/:id`.
+Proposer des lignes de MO à partir des ouvrages d'une estimation — le temps unitaire **sourcé** du
+registre `labor_times` (E2-1), résolu sur la pose et le niveau de compétence de l'ouvrage, multiplié
+par son assiette, au taux horaire par défaut du profil d'entreprise (`0` si non renseigné). Lecture
+pure : n'écrit rien, à appeler avant `POST /quotes` ou `PATCH /quotes/:id`.
+
+Résolution : ligne exacte `(pose, niveau)`, sinon `(pose, tous niveaux)`, sinon la ligne de base de
+l'ouvrage. Un ouvrage absent du registre reçoit `quantity: 0` et **pas** de `basis` — jamais un temps
+de repli.
 
 **Auth :** Requise | **Feature gate :** `export_devis`
 
@@ -1395,6 +1399,20 @@ profil d'entreprise (`0` si non renseigné). Lecture pure : n'écrit rien, à ap
 
 **Réponses :** `200 OK` — tableau de lignes (même forme que `labor_items[]` ci-dessus, avec
 `line_total_ht`) | `404 Not Found` (estimation hors du projet) | `403 Forbidden`
+
+Chaque ligne porte en plus un objet `basis` — d'où sort le nombre d'heures proposé :
+
+| Champ | Type | Description |
+|-------|------|-------------|
+| `hours_per_unit` | number | Temps unitaire retenu au registre |
+| `unit_basis` | string | `m2` \| `ml` \| `piece` — l'unité à laquelle ce temps se rattache |
+| `skill_level` | string \| null | Niveau de la ligne retenue ; `null` = temps « tous niveaux » |
+| `source_org`, `source_document`, `source_url` | string | La source, librement consultable |
+
+`basis` est **informatif** : `POST /quotes` et `PATCH /quotes/:id` l'acceptent (pour qu'un client
+puisse resoumettre le tableau reçu sans essuyer un `400`) et l'ignorent toujours. Il n'est jamais
+persisté sur le devis — l'artisan corrige ses heures librement, et une source figée à côté d'une
+quantité corrigée deviendrait une citation fausse.
 
 ---
 

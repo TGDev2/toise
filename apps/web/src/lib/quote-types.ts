@@ -28,6 +28,22 @@ export interface QuoteLineItem {
  * envoyée (`QuoteLaborLineInput`) : le serveur le recalcule toujours, il ne
  * fait jamais confiance à celui du client.
  */
+/**
+ * E2-2 — d'où sort le nombre d'heures proposé. Présent **uniquement** sur la
+ * réponse de `/quotes/labor-proposal`, jamais sur une ligne lue d'un devis :
+ * l'artisan corrige ses heures librement, et une source figée à côté d'une
+ * quantité corrigée deviendrait une citation fausse. L'écran de création
+ * l'affiche comme la base proposée, pas comme la justification du devis.
+ */
+export interface QuoteLaborBasis {
+  hours_per_unit: number;
+  unit_basis: string;
+  skill_level: string | null;
+  source_org: string;
+  source_document: string;
+  source_url: string;
+}
+
 export interface QuoteLaborLine {
   work_item_id: string | null;
   work_type_code: string | null;
@@ -38,6 +54,7 @@ export interface QuoteLaborLine {
   quantity: number;
   unit_price_ht: number;
   line_total_ht: number;
+  basis?: QuoteLaborBasis;
 }
 
 export type QuoteLaborLineInput = Omit<QuoteLaborLine, 'line_total_ht'>;

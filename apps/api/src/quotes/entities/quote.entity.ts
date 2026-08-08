@@ -84,6 +84,37 @@ export interface QuoteLaborLine {
   line_total_ht: number;
 }
 
+/**
+ * D'où sort le nombre d'heures proposé — et **seulement** proposé.
+ *
+ * Attaché à la réponse de `GET /quotes/labor-proposal`, jamais à
+ * `labor_items_json`. La raison est la même que celle qui interdit d'y stocker
+ * le temps unitaire : l'artisan corrige ses heures librement, et une source
+ * figée à côté d'une quantité corrigée deviendrait une citation fausse — le
+ * document affirmerait qu'un organisme professionnel a chiffré ce que
+ * l'artisan a décidé. La source éclaire la saisie ; elle ne suit pas le devis.
+ */
+export interface QuoteLaborBasis {
+  /** Heures par unité d'ouvrage retenues au registre (E2-1). */
+  hours_per_unit: number;
+  /** `m2` | `ml` | `piece` — l'unité à laquelle ce temps se rattache. */
+  unit_basis: string;
+  /** Niveau de la ligne retenue. `null` = temps « tous niveaux ». */
+  skill_level: string | null;
+  source_org: string;
+  source_document: string;
+  source_url: string;
+}
+
+/**
+ * Ligne de MO telle que le serveur la **propose**. `basis` absent quand aucun
+ * temps n'a pu être résolu : l'ouvrage n'a pas de ligne au registre, la
+ * quantité vaut alors 0 et l'artisan saisit ses heures lui-même.
+ */
+export interface ProposedQuoteLaborLine extends QuoteLaborLine {
+  basis?: QuoteLaborBasis;
+}
+
 @Entity('quotes')
 export class Quote {
   @PrimaryGeneratedColumn('uuid')

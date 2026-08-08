@@ -79,6 +79,22 @@ export interface EstimationLineItem {
   packaging_breakdown?: PackagingUnitsLine[];
   pose_type: string;
   /**
+   * E2-2 — le niveau déclaré sur **cet** ouvrage, à côté de sa pose et pour la
+   * même raison : ce sont les deux axes du registre des temps de pose
+   * (`labor_times`), et le devis les lit sur la ligne.
+   *
+   * Pourquoi ici et pas sur `EstimationResult.skill_level` : cette colonne ne
+   * retient que le niveau du **premier** ouvrage rencontré
+   * (`estimations.service.ts`, `firstSkillLevel`). S'en servir pour chiffrer la
+   * main-d'œuvre donnerait le niveau du salon à la salle de bain — un champ à
+   * deux sens (leçon 18). Le moteur, lui, résout déjà ses pertes avec le niveau
+   * de chaque ouvrage : la ligne le porte désormais aussi.
+   *
+   * Absent sur toute estimation calculée avant E2-2 ; l'appelant retombe alors
+   * sur `EstimationResult.skill_level`, qui reste la meilleure valeur connue.
+   */
+  skill_level?: string;
+  /**
    * E1-8 — pourquoi cette ligne est là, quand sa présence même est le résultat
    * d'une condition. Renseignée aujourd'hui sur le seul film pare-vapeur : sa
    * jumelle est `MaterialExclusion.reason_fr`, qui dit pourquoi une ligne n'y

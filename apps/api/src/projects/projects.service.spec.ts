@@ -18,6 +18,7 @@ import {
 } from './entities/room-dimensions.entity';
 import { Opening, OpeningType, OpeningSource } from './entities/opening.entity';
 import { WorkType as WorkTypeEntity } from './entities/work-type.entity';
+import { LaborTime } from './entities/labor-time.entity';
 import {
   ProjectWorkItem,
   SkillLevel,
@@ -199,6 +200,10 @@ const workItemsRepoMock = {
   delete: jest.fn().mockResolvedValue({ affected: 0 }),
 };
 
+const laborTimesRepoMock = {
+  find: jest.fn().mockResolvedValue([]),
+};
+
 const featureGatesServiceMock = {
   isFeatureAllowed: jest.fn().mockResolvedValue(true),
 };
@@ -244,6 +249,10 @@ describe('ProjectsService', () => {
         },
         { provide: getDataSourceToken(), useValue: dataSourceMock },
         { provide: AnalyticsService, useValue: analyticsServiceMock },
+        {
+          provide: getRepositoryToken(LaborTime),
+          useValue: laborTimesRepoMock,
+        },
       ],
     }).compile();
 

@@ -13,6 +13,8 @@ import { RoomDimensions } from '../../src/projects/entities/room-dimensions.enti
 import { Opening } from '../../src/projects/entities/opening.entity';
 import { WorkType } from '../../src/projects/entities/work-type.entity';
 import { ProjectWorkItem } from '../../src/projects/entities/project-work-item.entity';
+import { LaborTime } from '../../src/projects/entities/labor-time.entity';
+import { AnalyticsService } from '../../src/analytics/analytics.service';
 import { ProjectsService } from '../../src/projects/projects.service';
 import type { FeatureGatesService } from '../../src/feature-gates/feature-gates.service';
 
@@ -104,6 +106,8 @@ describe("Fenêtre d'écriture du palier gratuit (PostgreSQL réel)", () => {
       repo(ProjectWorkItem),
       FREE_TIER as unknown as FeatureGatesService,
       dataSource,
+      { track: jest.fn() } as unknown as AnalyticsService,
+      repo(LaborTime),
     );
   });
 

@@ -10,6 +10,8 @@ import {
 } from '../estimations/entities/estimation-result.entity';
 import { ShoppingListsService } from '../shopping-lists/shopping-lists.service';
 import { ProjectsService } from '../projects/projects.service';
+import { LaborTimeRow } from '../projects/labor-time-resolution';
+import { seedLaborTimes } from '../projects/labor-times.data';
 import { ClientsService } from '../clients/clients.service';
 import { CompanyProfilesService } from '../company-profiles/company-profiles.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
@@ -47,12 +49,36 @@ function makeEstimationLine(
     packaging_label: 'Pot de 10 L',
     packaging_qty_per_unit: 10,
     units_needed: 1,
-    pose_type: 'roller',
+    // `standard` est la pose des ouvrages sans variante de calepinage
+    // (`pose-types.ts`), pas un repli : la peinture n'en connait qu'une.
+    pose_type: 'standard',
+    skill_level: 'intermediate',
     room_id: 'room-1',
     room_name: 'Salon',
     ...overrides,
   };
 }
+
+/**
+ * E2-2 — le registre sourcé d'E2-1, tel que `getLaborTimes()` le rend.
+ *
+ * Dérivé de `seedLaborTimes`, jamais de constantes recopiées : le devis doit
+ * chiffrer avec les temps réellement publiés, et un fixture inventé ici
+ * laisserait passer une divergence entre le registre et ce que le devis en
+ * fait (leçon 32).
+ */
+const LABOR_TIMES: LaborTimeRow[] = seedLaborTimes.map((time) => ({
+  work_type_code: time.work_type_code,
+  pose_type: time.pose_type,
+  skill_level: time.skill_level ?? null,
+  unit_basis: time.unit_basis,
+  hours_per_unit: time.hours_per_unit,
+  hours_low: time.hours_low ?? null,
+  hours_high: time.hours_high ?? null,
+  source_org: time.source_org,
+  source_document: time.source_document,
+  source_url: time.source_url,
+}));
 
 function makeEstimation(
   overrides: Partial<EstimationResult> = {},
@@ -67,22 +93,6 @@ function makeEstimation(
     created_at: new Date('2026-08-01T08:00:00.000Z'),
     ...overrides,
   } as EstimationResult;
-}
-
-function makeWorkType(code: string, minutesPerM2: number | null) {
-  return {
-    id: `wt-${code}`,
-    code,
-    label_fr: code,
-    category: 'painting',
-    surface_target: 'wall',
-    waste_factor_base: 1.1,
-    contextual_questions: [],
-    display_order: 1,
-    labor_minutes_per_m2: minutesPerM2,
-    created_at: new Date(),
-    updated_at: new Date(),
-  };
 }
 
 function makeCompanyProfile(defaultLaborHourlyRate: number | null) {
@@ -127,7 +137,7 @@ describe('QuotesService', () => {
   const shoppingListsServiceMock = { getOrGenerate: jest.fn() };
   const projectsServiceMock = {
     findOneForOrg: jest.fn(),
-    getWorkTypes: jest.fn(),
+    getLaborTimes: jest.fn(),
   };
   const clientsServiceMock = { findOneForOrg: jest.fn() };
   const companyProfilesServiceMock = { findByOrganizationId: jest.fn() };
@@ -148,10 +158,7 @@ describe('QuotesService', () => {
     };
 
     projectsServiceMock.findOneForOrg.mockResolvedValue({ id: PROJECT_ID });
-    projectsServiceMock.getWorkTypes.mockResolvedValue([
-      makeWorkType('wall_painting', 12),
-      makeWorkType('ceiling_painting', 15),
-    ]);
+    projectsServiceMock.getLaborTimes.mockResolvedValue(LABOR_TIMES);
     estimationRepoMock.findOne.mockResolvedValue(makeEstimation());
     shoppingListsServiceMock.getOrGenerate.mockResolvedValue(
       makeShoppingList(),
@@ -422,7 +429,7 @@ describe('QuotesService', () => {
       expect(lines[0].surface_m2).toBe(25);
     });
 
-    it('propose une ligne par ouvrage, temps derive de labor_minutes_per_m2 et taux du profil', async () => {
+    it('propose une ligne par ouvrage, heures issues du registre sourcé et taux du profil', async () => {
       estimationRepoMock.findOne.mockResolvedValue(
         makeEstimation({
           items_json: [
@@ -447,24 +454,128 @@ describe('QuotesService', () => {
       );
 
       expect(lines).toHaveLength(2);
-      // 25 m2 x 12 min/m2 / 60 = 5 h
+      // 25 m2 x 0,25 h/m2 (peinture murale, tous niveaux) = 6,25 h
       expect(lines[0]).toMatchObject({
-        quantity: 5,
+        quantity: 6.25,
         unit_price_ht: 45,
-        line_total_ht: 225,
+        line_total_ht: 281.25,
       });
-      // 12 m2 x 15 min/m2 / 60 = 3 h
+      // 12 m2 x 0,28 h/m2 (peinture plafond, tous niveaux) = 3,36 h
       expect(lines[1]).toMatchObject({
-        quantity: 3,
+        quantity: 3.36,
         unit_price_ht: 45,
-        line_total_ht: 135,
+        line_total_ht: 151.2,
       });
     });
 
-    it('propose une ligne a 0 h pour un ouvrage sans temps unitaire connu', async () => {
-      projectsServiceMock.getWorkTypes.mockResolvedValue([
-        makeWorkType('wall_painting', null),
-      ]);
+    /**
+     * Le cas que l'ancien chiffrage ne pouvait pas distinguer : il lisait un
+     * temps par ouvrage, sans axe de niveau, et `estimation.skill_level` ne
+     * porte de toute façon que le niveau du **premier** ouvrage.
+     */
+    it('chiffre chaque ouvrage a son propre niveau, pas a celui du premier', async () => {
+      estimationRepoMock.findOne.mockResolvedValue(
+        makeEstimation({
+          skill_level: 'beginner',
+          items_json: [
+            makeEstimationLine({
+              work_item_id: 'wi-1',
+              work_type_code: 'wall_painting',
+              surface_m2: 25,
+              skill_level: 'beginner',
+            }),
+            makeEstimationLine({
+              work_item_id: 'wi-2',
+              work_type_code: 'ceiling_painting',
+              surface_m2: 12,
+              skill_level: 'intermediate',
+            }),
+          ],
+        }),
+      );
+
+      const lines = await service.proposeLaborLines(
+        ORG_ID,
+        PROJECT_ID,
+        ESTIMATION_ID,
+      );
+
+      // 25 x 0,6 h/m2 (debutant) = 15 h, contre 6,25 h pour un confirme.
+      expect(lines[0].quantity).toBe(15);
+      expect(lines[0].basis?.skill_level).toBe('beginner');
+      // 12 x 0,28 h/m2 (tous niveaux) = 3,36 h, malgre un devis dont
+      // `skill_level` vaut `beginner`.
+      expect(lines[1].quantity).toBe(3.36);
+      expect(lines[1].basis?.skill_level).toBeNull();
+    });
+
+    it('chiffre la pose declaree sur la ligne : une diagonale coute plus qu une pose droite', async () => {
+      estimationRepoMock.findOne.mockResolvedValue(
+        makeEstimation({
+          items_json: [
+            makeEstimationLine({
+              work_item_id: 'wi-1',
+              work_type_code: 'floor_tiling',
+              pose_type: 'straight',
+              surface_m2: 20,
+            }),
+            makeEstimationLine({
+              work_item_id: 'wi-2',
+              work_type_code: 'floor_tiling',
+              pose_type: 'diagonal',
+              surface_m2: 20,
+            }),
+          ],
+        }),
+      );
+
+      const lines = await service.proposeLaborLines(
+        ORG_ID,
+        PROJECT_ID,
+        ESTIMATION_ID,
+      );
+
+      expect(lines[0].quantity).toBe(16); // 20 x 0,8
+      expect(lines[1].quantity).toBe(24); // 20 x 1,2
+    });
+
+    it('retombe sur le niveau de l estimation pour une ligne calculee avant E2-2', async () => {
+      const legacyLine = makeEstimationLine({ surface_m2: 25 });
+      delete legacyLine.skill_level;
+      estimationRepoMock.findOne.mockResolvedValue(
+        makeEstimation({ skill_level: 'beginner', items_json: [legacyLine] }),
+      );
+
+      const lines = await service.proposeLaborLines(
+        ORG_ID,
+        PROJECT_ID,
+        ESTIMATION_ID,
+      );
+
+      expect(lines[0].quantity).toBe(15); // 25 x 0,6, le temps debutant
+    });
+
+    it('expose la source du temps retenu, sans jamais la persister sur le devis', async () => {
+      const lines = await service.proposeLaborLines(
+        ORG_ID,
+        PROJECT_ID,
+        ESTIMATION_ID,
+      );
+
+      expect(lines[0].basis).toMatchObject({
+        hours_per_unit: 0.25,
+        unit_basis: 'm2',
+      });
+      expect(lines[0].basis?.source_url).toMatch(/^https?:\/\//);
+      expect(lines[0].basis?.source_org.length).toBeGreaterThan(0);
+    });
+
+    it('propose une ligne a 0 h, sans source, pour un ouvrage absent du registre', async () => {
+      estimationRepoMock.findOne.mockResolvedValue(
+        makeEstimation({
+          items_json: [makeEstimationLine({ work_type_code: 'roof_zinc' })],
+        }),
+      );
 
       const lines = await service.proposeLaborLines(
         ORG_ID,
@@ -475,6 +586,33 @@ describe('QuotesService', () => {
       expect(lines).toHaveLength(1);
       expect(lines[0].quantity).toBe(0);
       expect(lines[0].line_total_ht).toBe(0);
+      expect(lines[0].basis).toBeUndefined();
+    });
+
+    it('ne multiplie jamais une surface par un temps qui n est pas au m2', async () => {
+      projectsServiceMock.getLaborTimes.mockResolvedValue(
+        LABOR_TIMES.filter((t) => t.work_type_code !== 'wall_painting').concat({
+          work_type_code: 'wall_painting',
+          pose_type: 'standard',
+          skill_level: null,
+          unit_basis: 'ml',
+          hours_per_unit: 0.4,
+          hours_low: null,
+          hours_high: null,
+          source_org: 'org',
+          source_document: 'doc',
+          source_url: 'https://example.org',
+        }),
+      );
+
+      const lines = await service.proposeLaborLines(
+        ORG_ID,
+        PROJECT_ID,
+        ESTIMATION_ID,
+      );
+
+      expect(lines[0].quantity).toBe(0);
+      expect(lines[0].basis).toBeUndefined();
     });
 
     it('propose un taux a 0 quand le profil ne porte pas de taux par defaut', async () => {

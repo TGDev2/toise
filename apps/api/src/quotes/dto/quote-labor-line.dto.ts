@@ -1,6 +1,7 @@
 import {
   IsIn,
   IsNumber,
+  IsObject,
   IsOptional,
   IsString,
   Max,
@@ -62,4 +63,16 @@ export class QuoteLaborLineDto {
   @IsOptional()
   @IsNumber()
   line_total_ht?: number;
+
+  /**
+   * E2-2 — même statut que `line_total_ht` : la proposition la renvoie pour
+   * que l'écran puisse dire d'où sort le nombre d'heures, et le client la
+   * resoumet telle quelle. Acceptée pour ne pas essuyer un 400
+   * `forbidNonWhitelisted`, **jamais lue** : la source du temps n'est pas
+   * persistée sur le devis (cf. `QuoteLaborBasis`, `entities/quote.entity.ts`).
+   * Non validée dans le détail — rien ne la lit, il n'y a donc rien à garantir.
+   */
+  @IsOptional()
+  @IsObject()
+  basis?: unknown;
 }

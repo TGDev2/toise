@@ -23,6 +23,8 @@ import {
 import { Opening, OpeningSource } from './entities/opening.entity';
 import { WorkType } from './entities/work-type.entity';
 import { ProjectWorkItem } from './entities/project-work-item.entity';
+import { LaborTime } from './entities/labor-time.entity';
+import { LaborTimeRow } from './labor-time-resolution';
 import { CommunityProject } from '../community/entities/community-project.entity';
 import { SubscriptionTier } from '../users/entities/user.entity';
 import { FeatureGatesService } from '../feature-gates/feature-gates.service';
@@ -71,6 +73,14 @@ export class ProjectsService {
     @InjectDataSource()
     private readonly dataSource: DataSource,
     private readonly analyticsService: AnalyticsService,
+    /**
+     * Ajouté **en dernier** délibérément : trois `*.int-spec.ts` construisent
+     * ce service positionnellement et omettent déjà des paramètres de queue
+     * (leçon 25). Insérer au milieu y décalerait silencieusement les arguments
+     * suivants — ces fichiers ne sont pas couverts par `tsc` aujourd'hui.
+     */
+    @InjectRepository(LaborTime)
+    private readonly laborTimesRepo: Repository<LaborTime>,
   ) {}
 
   /**
@@ -684,6 +694,31 @@ export class ProjectsService {
     return this.workTypesRepo.find({
       order: { display_order: 'ASC' },
     });
+  }
+
+  /**
+   * E2-2 — le registre des temps de pose d'E2-1, code d'ouvrage résolu.
+   *
+   * Rend une forme étroite plutôt que l'entité : la résolution
+   * (`labor-time-resolution.ts`) est une fonction pure que son spec alimente
+   * avec `seedLaborTimes`, et l'entité y ferait entrer un dépôt. Le registre
+   * est un catalogue global, sans donnée d'organisation — comme
+   * `getWorkTypes()`, il se lit sans filtre de propriété.
+   */
+  async getLaborTimes(): Promise<LaborTimeRow[]> {
+    const rows = await this.laborTimesRepo.find({ relations: ['work_type'] });
+    return rows.map((row) => ({
+      work_type_code: row.work_type.code,
+      pose_type: row.pose_type,
+      skill_level: row.skill_level,
+      unit_basis: row.unit_basis,
+      hours_per_unit: Number(row.hours_per_unit),
+      hours_low: row.hours_low === null ? null : Number(row.hours_low),
+      hours_high: row.hours_high === null ? null : Number(row.hours_high),
+      source_org: row.source_org,
+      source_document: row.source_document,
+      source_url: row.source_url,
+    }));
   }
 
   async saveWorkItems(

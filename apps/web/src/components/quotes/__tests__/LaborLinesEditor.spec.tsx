@@ -159,4 +159,97 @@ describe('LaborLinesEditor', () => {
     );
     expect(screen.getByText('225,00 EUR')).toBeInTheDocument();
   });
+
+  it('reports a rate edit', () => {
+    render(
+      <LaborLinesEditor
+        lines={[makeLine({ unit_price_ht: 45 })]}
+        onAdd={mockAdd}
+        onUpdate={mockUpdate}
+        onRemove={mockRemove}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText(/taux horaire/i), {
+      target: { value: '52' },
+    });
+    expect(mockUpdate).toHaveBeenCalledWith(
+      0,
+      expect.objectContaining({ unit_price_ht: 52 }),
+    );
+  });
+
+  describe('base sourcée (E2-2)', () => {
+    const basis = {
+      hours_per_unit: 0.25,
+      unit_basis: 'm2',
+      skill_level: null,
+      source_org: 'Bibliothèque de temps unitaires',
+      source_document: 'Temps de pose peinture',
+      source_url: 'https://example.org/temps',
+    };
+
+    it("montre le temps unitaire multiplié par l'assiette, et sa source", () => {
+      render(
+        <LaborLinesEditor
+          lines={[makeLine({ surface_m2: 25, quantity: 6.25, basis })]}
+          onAdd={mockAdd}
+          onUpdate={mockUpdate}
+          onRemove={mockRemove}
+        />,
+      );
+      expect(
+        screen.getByText(/base proposée : 0,25 h\/m² × 25 m² = 6,25 h/i),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('link', { name: /bibliothèque de temps unitaires/i }),
+      ).toHaveAttribute('href', 'https://example.org/temps');
+    });
+
+    it('nomme le niveau seulement quand le temps en porte un', () => {
+      const { rerender } = render(
+        <LaborLinesEditor
+          lines={[makeLine({ basis })]}
+          onAdd={mockAdd}
+          onUpdate={mockUpdate}
+          onRemove={mockRemove}
+        />,
+      );
+      expect(screen.queryByText(/niveau/i)).not.toBeInTheDocument();
+
+      rerender(
+        <LaborLinesEditor
+          lines={[makeLine({ basis: { ...basis, skill_level: 'beginner' } })]}
+          onAdd={mockAdd}
+          onUpdate={mockUpdate}
+          onRemove={mockRemove}
+        />,
+      );
+      expect(screen.getByText(/niveau débutant/i)).toBeInTheDocument();
+    });
+
+    it("reste vraie quand l'artisan corrige ses heures : elle décrit la proposition, pas la saisie", () => {
+      render(
+        <LaborLinesEditor
+          lines={[makeLine({ surface_m2: 25, quantity: 12, basis })]}
+          onAdd={mockAdd}
+          onUpdate={mockUpdate}
+          onRemove={mockRemove}
+        />,
+      );
+      expect(screen.getByDisplayValue('12')).toBeInTheDocument();
+      expect(screen.getByText(/= 6,25 h/)).toBeInTheDocument();
+    });
+
+    it("n'affiche rien pour une ligne libre, qui n'a pas de base", () => {
+      render(
+        <LaborLinesEditor
+          lines={[makeLine({ basis: undefined })]}
+          onAdd={mockAdd}
+          onUpdate={mockUpdate}
+          onRemove={mockRemove}
+        />,
+      );
+      expect(screen.queryByText(/base proposée/i)).not.toBeInTheDocument();
+    });
+  });
 });

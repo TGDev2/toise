@@ -282,6 +282,32 @@ describe('QuotesController (e2e)', () => {
       }).expect(201);
     });
 
+    /**
+     * E2-2 — la proposition renvoie `basis` (la source du temps de pose) et
+     * l'écran resoumet le tableau tel qu'il l'a reçu. Le refuser ferait
+     * échouer la création de tout devis passé par la proposition.
+     */
+    it('accepte basis renvoye par la proposition (ignore, jamais rejete)', async () => {
+      await post({
+        labor_items: [
+          {
+            label: 'x',
+            kind: 'hourly',
+            quantity: 1,
+            unit_price_ht: 1,
+            basis: {
+              hours_per_unit: 0.25,
+              unit_basis: 'm2',
+              skill_level: null,
+              source_org: 'org',
+              source_document: 'doc',
+              source_url: 'https://example.org',
+            },
+          },
+        ],
+      }).expect(201);
+    });
+
     it('rejette plus de 50 lignes', async () => {
       const labor_items = Array.from({ length: 51 }, (_, i) => ({
         label: `Ligne ${i}`,

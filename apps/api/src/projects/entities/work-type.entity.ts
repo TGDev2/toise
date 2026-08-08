@@ -90,11 +90,18 @@ export class WorkType {
   display_order!: number;
 
   /**
-   * Temps unitaire indicatif (E2-3), min/m², artisan seul. Ordre de grandeur
-   * métier — pas un rendement fabricant sourcé au sens de
-   * `docs/SOURCES_CATALOGUE.md` : voir la section dédiée de ce registre.
-   * Nullable : un 8e ouvrage sans valeur ne propose aucune ligne, il n'invente
-   * pas un temps.
+   * **Retirée — plus aucun code ne lit cette colonne (E2-2).**
+   *
+   * Temps unitaire indicatif en min/m², seedé par la migration `…072` sur les
+   * 7 ouvrages : un ordre de grandeur métier, sans source opposable. Le devis
+   * chiffre désormais sa main-d'œuvre sur `labor_times` (registre sourcé
+   * d'E2-1), qui porte en plus les axes pose et niveau que cette colonne ne
+   * pouvait pas exprimer.
+   *
+   * Conservée jusqu'à la version suivante par la règle expand-only de
+   * `docs/deploy/MIGRATIONS.md` — le code N-1 doit tourner sur le schéma N,
+   * donc la colonne ne peut pas partir dans le lot qui cesse de la lire. Son
+   * `DROP` est un item de backlog, pas un oubli.
    */
   @Column({
     type: 'numeric',
