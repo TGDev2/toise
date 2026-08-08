@@ -475,6 +475,14 @@ test.describe('E4-4 — chronométrage du parcours artisan', () => {
     // la largeur recommandée pour le format choisi.
     await answerSelect(chrono, page, /largeur de joint/i, 'auto');
     await answerSelect(chrono, page, /type de pose/i, 'straight');
+    /*
+      E1-10 — les deux questions qui décident du système d'étanchéité et du
+      ragréage. Elles sont obligatoires depuis leur arrivée et le script n'y
+      répondait pas : « Calculer » ne naviguait plus, et ce scénario ne mesurait
+      donc plus rien depuis ce lot-là.
+    */
+    await answerSelect(chrono, page, /exposition à l'eau/i, 'dry');
+    await answerSelect(chrono, page, /planéité du support/i, 'flat');
     await chrono.advance(
       page.getByRole('button', { name: 'Calculer' }),
       'Estimation',
