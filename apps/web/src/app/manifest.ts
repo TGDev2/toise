@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'Chiffréo — Estimation de matériaux de rénovation',
     short_name: 'Chiffréo',
     description:
-      'Estimez précisément vos matériaux de rénovation : dimensions, travaux, liste d\'achat.',
+      'Estimez vos matériaux de rénovation sur la géométrie réelle de vos pièces : dimensions, travaux, base de commande à valider.',
     start_url: '/dashboard',
     display: 'standalone',
     background_color: '#efe7d6',

@@ -62,23 +62,28 @@ describe('buildCommunityProjectMetadata', () => {
     expect(title).not.toContain('Chiffréo');
   });
 
-  it('mentions the real cost and savings percent in the description', () => {
+  // E2-3 — l'écart est présenté comme une comparaison constatée sur les achats
+  // réels du projet, jamais comme une économie que le produit ferait réaliser :
+  // c'est la seule promesse chiffrée que Chiffréo publiait en SEO.
+  it('mentions the real cost and the measured gap in the description', () => {
     const { description } = buildCommunityProjectMetadata(baseProject);
     expect(description).toContain('carrelage');
     expect(description).toContain('8.0 m²');
     expect(description).toContain('850');
     expect(description).toContain('6 %');
+    expect(description).toContain("d'écart avec un achat pièce par pièce");
+    expect(description).not.toContain('économies');
   });
 
-  it('omits the savings mention when there is no budget summary', () => {
+  it('omits the gap mention when there is no budget summary', () => {
     const { description } = buildCommunityProjectMetadata({
       ...baseProject,
       budget_summary: null,
     });
-    expect(description).not.toContain('économies');
+    expect(description).not.toContain("d'écart avec un achat pièce par pièce");
   });
 
-  it('omits the savings mention when savings_percent is 0', () => {
+  it('omits the gap mention when savings_percent is 0', () => {
     const { description } = buildCommunityProjectMetadata({
       ...baseProject,
       budget_summary: {
@@ -93,7 +98,7 @@ describe('buildCommunityProjectMetadata', () => {
         computed_at: '2026-07-01T00:00:00.000Z',
       },
     });
-    expect(description).not.toContain('économies');
+    expect(description).not.toContain("d'écart avec un achat pièce par pièce");
   });
 
   it('builds the OG image URL from the first after photo', () => {

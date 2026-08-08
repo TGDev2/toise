@@ -432,20 +432,28 @@ Notes sur la colonne Chiffréo — l'honnêteté du tableau vaut dans les deux s
 
 ### 5.1 Phrase défendable
 
-> **Parmi les neuf offres françaises étudiées, Chiffréo est la seule dont le calcul de
-> quantités est à la fois géométrique et traçable de bout en bout : surface nette
-> calculée depuis la pièce avec déduction des ouvertures, rendements adossés fiche par
-> fiche à des sources fabricants publiées et testées, facteur de perte selon la pose et
-> le niveau de l'artisan, et résultat rendu en conditionnements commerciaux panachés —
-> là où les concurrents appliquent des ratios opaques à des quantités saisies à la
-> main, ou s'arrêtent à la mesure de surfaces sur un plan.**
+> **Chiffréo calcule les quantités de façon géométrique et traçable de bout en bout :
+> surface nette calculée depuis la pièce avec déduction des ouvertures, rendements
+> adossés fiche par fiche à des sources fabricants publiées et testées, facteur de perte
+> selon la pose et le niveau de l'artisan, et résultat rendu en conditionnements
+> commerciaux panachés. Parmi les neuf offres françaises étudiées, aucune ne documente
+> cette chaîne de bout en bout : les ratios y sont appliqués de façon opaque à des
+> quantités saisies à la main, ou le produit s'arrête à la mesure de surfaces sur un
+> plan.**
 
 Conditions de défendabilité, à respecter dans toute communication :
 
+- **ne pas dire « le seul » ni « la seule »**, même borné à un panel. Le superlatif est
+  invérifiable par le lecteur, il vieillit au premier concurrent qui bouge, et il
+  transforme une constatation d'absence — « aucune des neuf offres étudiées ne le
+  documente » — en affirmation d'unicité que nous aurions à prouver. Dire ce que le
+  produit fait, puis ce que la veille a constaté chez les autres ;
 - dire « parmi les offres étudiées » ou « à notre connaissance » — le panel est de neuf
   acteurs, sur documentation publique, à date d'août 2026 ;
 - ne pas l'étendre à la justesse générale tant que le défaut d'assiette cloison sèche
   n'est pas corrigé ;
+- ne jamais présenter le résultat comme une quantité exacte : c'est une base de commande
+  que l'artisan valide (cf. `docs/PROMESSE_PRODUIT.md`) ;
 - l'affirmation sur les sources ne vaut que pour les **rendements matériaux** — pas pour
   les facteurs de perte ni les temps de main-d'œuvre, non sourcés à ce jour.
 
@@ -460,16 +468,16 @@ Conditions de défendabilité, à respecter dans toute communication :
    ScanPlan et JLogiciels font du relevé géométrique sur plan importé — chose que
    Chiffréo, qui part de dimensions saisies et non d'un plan, ne fait pas.
 3. **« Le seul à déduire les ouvertures »** — risqué. ArtisanSmart le revendique
-   publiquement (page peintre : « murs + plafonds − ouvertures »). Version défendable :
-   « le seul à documenter et démontrer la déduction, ouverture par ouverture, dans le
-   détail du calcul ».
+   publiquement (page peintre : « murs + plafonds − ouvertures »). Version défendable,
+   sans superlatif : « la déduction est documentée et démontrée ouverture par ouverture
+   dans le détail du calcul ».
 4. **« Le seul à chiffrer la main-d'œuvre »** — faux. Les 30 000 ouvrages Obat incluent
    des temps de pose, Costructor embarque les débours Batiprix (temps compris),
    ArtisanSmart affiche des heures dans ses exemples.
 5. **« Le seul adossé à des sources professionnelles »** — faux tel quel. Quatre
    concurrents s'adossent à Batiprix ou BatiChiffrage, bibliothèques établies. Version
-   défendable : « le seul à publier la source fabricant de chaque rendement et à la
-   vérifier automatiquement ».
+   défendable, sans superlatif : « la source fabricant de chaque rendement est publiée
+   et vérifiée automatiquement ».
 6. **« Des ratios conformes aux DTU »** — interdit. L'appellation « catalogue DTU » a
    été retirée du produit précisément parce que les facteurs de perte sont des valeurs
    d'usage sans référence normative, et le moteur n'applique aucun seuil DTU de
@@ -483,3 +491,9 @@ Conditions de défendabilité, à respecter dans toute communication :
    14-15 (Costructor, ArtisanSmart) et « tous corps d'état » (Obat, Mediabat,
    JLogiciels). La largeur est le point faible objectif de Chiffréo ; sa profondeur sur
    chaque ouvrage couvert est son point fort démontrable.
+9. **Toute promesse d'exactitude du calcul** (« la quantité exacte », « des quantités
+   exactes », « une estimation précise ») — interdit, et vérifié par un test. Le
+   vocabulaire admis et la raison juridique de cette interdiction sont dans
+   `docs/PROMESSE_PRODUIT.md`.
+10. **Tout superlatif d'unicité**, y compris borné au panel (« le seul à… », « la seule
+    dont… »). Voir la première condition de défendabilité du §5.1.

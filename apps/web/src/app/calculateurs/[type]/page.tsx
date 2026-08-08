@@ -102,8 +102,8 @@ export default async function CalculatorPage({ params }: PageProps) {
           <p className="mt-3 max-w-2xl text-base leading-7 text-stone-700">
             Le mètre carré, tout le monde sait le calculer. L’écart se joue sur
             ce qu’on retire, sur la géométrie réelle de la pièce et sur la marge
-            de perte — c’est là que se trouvent les 15 à 25 % de matériaux
-            achetés pour rien.
+            de perte — c’est là que se décide ce que vous emportez du magasin,
+            et ce qui finit au fond du garage.
           </p>
           <div className="mt-8 grid gap-5 md:grid-cols-2">
             {config.differentiators.map((key) => {

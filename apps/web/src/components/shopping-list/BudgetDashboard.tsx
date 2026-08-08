@@ -80,8 +80,8 @@ export function BudgetDashboard({
               Suivi budgétaire
             </h2>
             <p className="mt-1 text-sm text-stone-500">
-              Saisissez vos prix réels et découvrez combien vous économisez grâce
-              à Chiffréo.
+              Saisissez vos prix réels et suivez votre dépense, pièce par pièce,
+              face à votre budget de départ.
             </p>
           </div>
           <button

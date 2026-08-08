@@ -29,8 +29,8 @@ export function buildProjectAbandonedEmail(
     <h1 style="font-size:20px;margin:0 0 8px;">Votre projet « ${projectLabel} » vous attend</h1>
     <p style="font-size:14px;color:#57534e;">
       Vous avez renseigné des dimensions pour ce projet, mais n'êtes pas allé
-      jusqu'à l'estimation. Il ne reste qu'une étape pour connaître les
-      quantités de matériaux et le budget exact.
+      jusqu'à l'estimation. Il ne reste qu'une étape pour obtenir les
+      quantités de matériaux et le budget estimé.
     </p>
     <p style="font-size:14px;">
       <a href="${data.projectUrl}" style="color:#0369a1;">Reprendre « ${projectLabel} »</a>
@@ -44,7 +44,7 @@ export function buildProjectAbandonedEmail(
   const text = [
     `Votre projet « ${data.projectName} » vous attend`,
     '',
-    "Vous avez renseigné des dimensions pour ce projet, mais n'êtes pas allé jusqu'à l'estimation. Il ne reste qu'une étape pour connaître les quantités de matériaux et le budget exact.",
+    "Vous avez renseigné des dimensions pour ce projet, mais n'êtes pas allé jusqu'à l'estimation. Il ne reste qu'une étape pour obtenir les quantités de matériaux et le budget estimé.",
     '',
     `Reprendre « ${data.projectName} » : ${data.projectUrl}`,
     '',

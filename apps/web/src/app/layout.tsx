@@ -17,14 +17,14 @@ export const metadata: Metadata = {
     template: '%s | Chiffréo',
   },
   description:
-    'Estimez précisément vos matériaux de rénovation grâce à des calculs intelligents.',
+    'Calculez une base de commande de matériaux à partir de la géométrie réelle de vos pièces et de ratios sourcés, à valider avant d\'acheter.',
   openGraph: {
     type: 'website',
     locale: 'fr_FR',
     siteName: 'Chiffréo',
     title: 'Chiffréo — Estimation de matériaux de rénovation',
     description:
-      'Scannez votre pièce, sélectionnez vos travaux, obtenez une liste d\'achat précise.',
+      'Mesurez votre pièce, sélectionnez vos travaux, obtenez une liste d\'achats chiffrée et sourcée, à valider avant d\'acheter.',
   },
 };
 

@@ -80,7 +80,7 @@ export function AnalysisResultPanel({
         <p className="mt-1">
           L&apos;analyse photo est en version bêta : les dimensions détectées
           sont une estimation. Vérifiez-les et corrigez-les avant de continuer
-          — la précision de votre liste d&apos;achat en dépend.
+          — tout ce qui suit est calculé à partir d&apos;elles.
         </p>
       </div>
 

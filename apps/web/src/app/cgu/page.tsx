@@ -1,5 +1,12 @@
 import type { Metadata } from 'next';
-import { LegalLayout, Section, P, Bullets, LegalLink } from '@/components/legal/LegalLayout';
+import {
+  LegalLayout,
+  Section,
+  P,
+  Bullets,
+  LegalLink,
+  LiabilityClause,
+} from '@/components/legal/LegalLayout';
 
 export const metadata: Metadata = {
   title: 'Conditions générales d’utilisation',
@@ -12,7 +19,8 @@ export default function CguPage() {
   return (
     <LegalLayout
       title="Conditions générales d’utilisation"
-      updated="juillet 2026"
+      updated="août 2026"
+      pendingLegalReview
     >
       <Section title="1. Objet">
         <P>
@@ -58,11 +66,16 @@ export default function CguPage() {
           </li>
         </Bullets>
         <P>
-          Les estimations sont fournies <strong>à titre purement indicatif</strong>.
-          Elles dépendent des informations saisies et de facteurs de perte
-          moyens ; l’analyse d’images est proposée en version bêta et peut
-          comporter des approximations. L’utilisateur reste seul responsable de
-          la vérification des quantités avant tout achat ou engagement.
+          Les quantités restituées par le Service constituent une{' '}
+          <strong>base de commande à valider</strong>, calculée à partir des
+          informations saisies et de ratios de consommation et de perte
+          documentés. Elles ne constituent pas un engagement sur le résultat :
+          elles dépendent de la fidélité des mesures saisies et des conditions réelles
+          du chantier, et l’analyse d’images, proposée en version bêta, peut
+          comporter des approximations. Il appartient à l’utilisateur de les
+          vérifier et, le cas échéant, de les corriger avant tout achat ou
+          engagement. Les limites de responsabilité applicables figurent à
+          l’article 10.
         </P>
       </Section>
 
@@ -146,14 +159,7 @@ export default function CguPage() {
       </Section>
 
       <Section title="10. Responsabilité">
-        <P>
-          Le Service étant un outil d’aide à la décision fournissant des
-          estimations indicatives, l’éditeur ne saurait être tenu responsable
-          des écarts de quantités, des surcoûts, pertes de matériaux ou dommages
-          indirects résultant de l’usage du Service. La responsabilité de
-          l’éditeur ne pourra en tout état de cause être engagée qu’en cas de
-          faute prouvée et dans les limites permises par la loi.
-        </P>
+        <LiabilityClause />
       </Section>
 
       <Section title="11. Suspension et résiliation">

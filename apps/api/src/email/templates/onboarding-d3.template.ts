@@ -17,7 +17,7 @@ export function buildOnboardingD3Email(
     : "Vous n'avez pas encore lancé de projet ?";
 
   const bodyText = data.hasProject
-    ? "Vous avez commencé un projet sur Chiffréo. Ajoutez vos travaux et générez la liste d'achats pour connaître le budget exact — quantités et prix, pièce par pièce."
+    ? "Vous avez commencé un projet sur Chiffréo. Ajoutez vos travaux et générez la liste d'achats pour voir votre base de commande — quantités et prix, pièce par pièce."
     : "Vous vous êtes inscrit il y a 3 jours mais n'avez pas encore créé de projet. Ça prend moins de 2 minutes : quelques dimensions ou une photo suffisent pour obtenir une première estimation chiffrée.";
 
   const ctaLabel = data.hasProject

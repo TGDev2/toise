@@ -115,7 +115,7 @@ export const QUOTE_COHERENCE_WORDING: Record<
     headline: 'La quantité est inférieure à la marge de perte de référence',
     body: 'La quantité annoncée laisse moins de marge de découpe que le catalogue n’en retient pour cette pose, y compris pour un professionnel confirmé.',
     caveat:
-      'Cela se rencontre quand une partie de la fourniture est comptée ailleurs sur le devis, quand du matériau déjà sur place est réemployé, ou quand la surface retenue diffère de celle décrite ici. Il vaut la peine de vérifier ce que la ligne recouvre exactement.',
+      'Cela se rencontre quand une partie de la fourniture est comptée ailleurs sur le devis, quand du matériau déjà sur place est réemployé, ou quand la surface retenue diffère de celle décrite ici. Il vaut la peine de vérifier ce que cette ligne recouvre au juste.',
     tone: 'attention',
   },
   not_comparable: {

@@ -99,7 +99,7 @@ export default function ArtisansPage() {
               )}
               . Ce n&apos;est pas un logiciel de devis tous corps d&apos;état.{' '}
               <a href="#perimetre" className="underline hover:text-stone-900">
-                Voir le périmètre exact
+                Voir le périmètre couvert
               </a>
               .
             </p>

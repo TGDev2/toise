@@ -26,8 +26,8 @@ export default function PrivacyPage() {
       <Section title="2. Utilisation des données">
         <P>
           Vos données sont utilisées exclusivement pour fournir le service
-          d’estimation de matériaux, gérer votre compte, et améliorer la
-          précision de nos calculs.
+          d’estimation de matériaux, gérer votre compte, et améliorer nos
+          calculs.
         </P>
         <P>
           Lorsque vous demandez à recevoir une estimation par e-mail depuis un

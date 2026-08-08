@@ -57,7 +57,7 @@ La correction ne détruit pas la position ; elle la déplace du **fait de calcul
 | **Conditionnement commercial** | Non — sorties en unités techniques (u, ml, m³, L) | Oui — achat panaché, mutualisé entre pièces |
 | **Sources techniques citées** | DTU en vitrine, **aucune source des 448 ratios** | Registre public de 35 rendements sourcés fabricant, vérifié en CI |
 
-**La phrase défendable reste celle de `VEILLE_CONCURRENTIELLE.md` §5.1**, et elle survit intacte à la correction : *parmi les neuf offres françaises étudiées, Chiffréo est la seule dont le calcul de quantités est à la fois géométrique et traçable de bout en bout.* Ce n'est plus « le seul qui calcule ». C'est « le seul dont on peut vérifier le calcul ».
+**La phrase défendable reste celle de `VEILLE_CONCURRENTIELLE.md` §5.1**, et elle survit intacte à la correction : *le calcul de quantités de Chiffréo est géométrique et traçable de bout en bout ; aucune des neuf offres françaises étudiées ne documente cette chaîne.* Ce n'est plus « le seul qui calcule », et ce n'est pas davantage « le seul dont on peut vérifier le calcul » — c'est **« un calcul que vous pouvez vérifier »**, ce qui se démontre sur un écran au lieu de se prouver contre le marché.
 
 **Le point faible objectif ne bouge pas non plus** : 5 corps d'état de finition contre 15 chez ArtisanSmart et « tous corps d'état » chez Obat, Mediabat et JLogiciels. La largeur ne sera jamais l'argument.
 

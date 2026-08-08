@@ -18,7 +18,7 @@
 
 **Le dépôt contient une plateforme presque complète autour d'un produit qui n'existe pas encore.**
 
-Ce n'est pas une figure de style. Le parcours revendiqué — « photo ou dimensions → liste d'achat précise, sans acheter 15 à 25 % en trop » — a été construit jusqu'à l'écran final, mais **la liste d'achat produite est fausse d'un ordre de grandeur**. J'ai rejoué le moteur sur le catalogue réellement seedé, pour le cas le plus banal du produit — repeindre les murs d'une pièce de 4 × 3 m sous 2,50 m, une porte, niveau intermédiaire :
+Ce n'est pas une figure de style. Le parcours revendiqué — « photo ou dimensions → base de commande chiffrée sur la géométrie réelle » (à l'époque formulé en promesse d'exactitude, corrigé depuis : `docs/PROMESSE_PRODUIT.md`) — a été construit jusqu'à l'écran final, mais **la liste d'achat produite est fausse d'un ordre de grandeur**. J'ai rejoué le moteur sur le catalogue réellement seedé, pour le cas le plus banal du produit — repeindre les murs d'une pièce de 4 × 3 m sous 2,50 m, une porte, niveau intermédiaire :
 
 ```
 Surface nette : 33,31 m²  →  liste générée : 54 lignes, 1 486 unités à acheter
@@ -84,7 +84,7 @@ Raisons, dans l'ordre :
 3. Son parcours est déjà le plus complet du dépôt : dimensions → ouvrage → estimation → liste → devis PDF conforme → facture numérotée sans trou. **[O]**
 4. Il n'a **pas besoin de la vision par ordinateur** : il a un télémètre laser dans la poche. Cela permet de sortir du périmètre le composant le plus coûteux et le moins fiable (§3.3).
 
-Ce que la V1 promet, et rien de plus : **« Chez le client, en dix minutes : je mesure, je choisis l'ouvrage, j'obtiens la quantité exacte à acheter et un devis conforme que j'envoie avant de repartir. »**
+Ce que la V1 promet, et rien de plus : **« Chez le client, en dix minutes : je mesure, je choisis l'ouvrage, j'obtiens une base de commande que je valide, et un devis conforme que j'envoie avant de repartir. »**
 
 Ce qu'elle ne promet pas, et doit le dire : couvrir la plomberie, l'électricité, la maçonnerie ; remplacer un logiciel de gestion ; mesurer une pièce à partir d'une photo.
 
@@ -111,7 +111,7 @@ Cinq problèmes déterminent l'avenir du projet. Le reste est du bruit tant qu'i
 
 **Constat.** Détaillé au §1 : absence de liaison ouvrage → matériaux, couches appliquées aux accessoires, conditionnement choisi sur le surplus volumique, contexte carrelage ×48.
 
-**Conséquence concrète.** Un produit dont la promesse est « n'achetez pas 15 à 25 % en trop » livre une liste qui ferait acheter environ dix fois trop, et fait passer un artisan pour un incompétent devant son client. C'est un défaut qui **détruit la confiance à la première utilisation** et qu'aucune communication ne rattrape.
+**Conséquence concrète.** Un produit qui propose une base de commande calculée sur la géométrie réelle livre ici une liste qui ferait acheter environ dix fois trop, et fait passer un artisan pour un incompétent devant son client. C'est un défaut qui **détruit la confiance à la première utilisation** et qu'aucune communication ne rattrape.
 
 **Coût du correctif.** Faible, et c'est le point important : ce n'est pas un problème d'architecture. Peupler `required_materials` (ou une table de liaison `work_type_materials`), filtrer dans `loadMaterialInputs`, conditionner les couches à un flag `applies_coats` porté par le matériau, réécrire `selectBestPackaging` sur le nombre d'unités puis le surplus relatif, corriger la déduplication du contexte carrelage. **Estimation : 3 à 5 jours, dont la moitié en curation de données.**
 

@@ -164,7 +164,7 @@ export const OFFER_PLANS: OfferPlan[] = [
     features: [
       { label: 'Projets illimités', gateKey: 'unlimited_projects' },
       {
-        label: 'Facteurs de perte avancés pour plus de précision',
+        label: 'Facteurs de perte sourcés, par type de pose et par niveau',
         gateKey: 'advanced_loss_factors',
       },
       { label: 'Suivi budgétaire', gateKey: 'budget_tracking' },

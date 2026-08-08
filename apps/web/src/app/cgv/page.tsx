@@ -1,5 +1,13 @@
 import type { Metadata } from 'next';
-import { LegalLayout, Section, P, Bullets, Fill, LegalLink } from '@/components/legal/LegalLayout';
+import {
+  LegalLayout,
+  Section,
+  P,
+  Bullets,
+  Fill,
+  LegalLink,
+  LiabilityClause,
+} from '@/components/legal/LegalLayout';
 
 export const metadata: Metadata = {
   title: 'Conditions générales de vente',
@@ -10,7 +18,11 @@ export const metadata: Metadata = {
 
 export default function CgvPage() {
   return (
-    <LegalLayout title="Conditions générales de vente" updated="juillet 2026">
+    <LegalLayout
+      title="Conditions générales de vente"
+      updated="août 2026"
+      pendingLegalReview
+    >
       <Section title="1. Objet et champ d’application">
         <P>
           Les présentes conditions générales de vente (les « CGV ») régissent la
@@ -161,14 +173,13 @@ export default function CgvPage() {
       </Section>
 
       <Section title="11. Responsabilité">
+        <LiabilityClause />
         <P>
-          Les estimations fournies par le Service sont indicatives. Les
-          conditions et limites de responsabilité applicables sont détaillées
-          dans les{' '}
+          Les présentes stipulations complètent celles des{' '}
           <LegalLink href="/cgu">
             conditions générales d’utilisation
           </LegalLink>
-          .
+          , dont elles reprennent les termes.
         </P>
       </Section>
 

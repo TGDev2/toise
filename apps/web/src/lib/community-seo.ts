@@ -46,7 +46,7 @@ export function buildCommunityProjectMetadata(
 
   const savings =
     project.budget_summary && project.budget_summary.savings_percent > 0
-      ? ` (${project.budget_summary.savings_percent.toFixed(0)} % d'économies grâce à la liste d'achats détaillée)`
+      ? ` (${project.budget_summary.savings_percent.toFixed(0)} % d'écart avec un achat pièce par pièce)`
       : '';
 
   const description =

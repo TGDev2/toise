@@ -45,7 +45,9 @@ Le §8 de `REPRISE_PROJET.md` laisse trois décisions ouvertes — la cible, la 
 
 La V1 s'adresse à un **artisan peintre, carreleur, plaquiste ou solier, seul ou à deux, en France**, qui doit chiffrer un chantier de finition chez son client et repartir avec un devis envoyé.
 
-La promesse est bornée à une phrase : *« Chez le client, en dix minutes : je mesure, je choisis l'ouvrage, j'obtiens la quantité exacte à acheter et un devis conforme que j'envoie avant de repartir. »*
+La promesse est bornée à une phrase : *« Chez le client, en dix minutes : je mesure, je choisis l'ouvrage, j'obtiens une base de commande que je valide, et un devis conforme que j'envoie avant de repartir. »*
+
+La formulation d'origine disait « j'obtiens la quantité exacte à acheter ». Elle a été corrigée en août 2026 : promettre l'exactitude fait du calcul juste l'obligation essentielle du contrat, ce qui fragilise toute clause limitative de responsabilité au sens de l'article 1170 du Code civil. Voir `docs/PROMESSE_PRODUIT.md`.
 
 Le particulier conserve **exactement deux surfaces**, parce qu'elles existent déjà et coûtent trois lignes à réparer : les calculateurs publics indexables, et le mode invité **jusqu'à la liste d'achat incluse**. Aucune monétisation, aucun tarif, aucun paywall et aucun investissement produit DIY en V1.
 
@@ -110,7 +112,7 @@ Les paliers différenciés attendront d'avoir des clients à différencier : auj
 - **Le déploiement continu est débloqué.** L'étape bloquante de vérification des poids YOLO disparaît de `deploy.yml` ; un tag redevient déployable, ce qu'il n'est pas aujourd'hui.
 - **Le risque juridique AGPL-3.0 d'`ultralytics` est suspendu, pas résolu.** La dépendance n'a plus d'effet runtime en production. L'arbitrage reste dû, mais il devient une condition d'entrée au retour du composant plutôt qu'une urgence.
 - **Le différenciateur affiché disparaît des surfaces commerciales** (`/`, `/artisans`, `/pricing`, `/calculateurs`), du README, de `docs/ARCHITECTURE.md` et de `docs/DEPLOY.md`. Sa valeur mesurée à ce jour étant nulle — il n'existe aucun chiffre de précision sur une seule photo réelle — ce retrait ne retire aucune valeur démontrée.
-- **La principale source d'erreur de dimensions est éliminée.** Un produit dont l'unique promesse est la justesse des quantités ne peut pas s'alimenter d'une mesure à +24/+42 % d'erreur, avec un score de confiance qui ne mesure que la cohérence interne et jamais la justesse.
+- **La principale source d'erreur de dimensions est éliminée.** Un produit dont la valeur tient à la traçabilité du calcul ne peut pas s'alimenter d'une mesure à +24/+42 % d'erreur, avec un score de confiance qui ne mesure que la cohérence interne et jamais la justesse. Une base de commande n'est vérifiable par l'artisan que si la géométrie dont elle part l'est.
 
 **Ce que cela coûte** : le seul argument marketing spectaculaire du produit, et le travail déjà investi dans `apps/cv-service`. Le code étant conservé, ce coût est récupérable.
 
@@ -168,7 +170,7 @@ C'est l'alternative sérieuse, et elle mérite d'être exposée à son meilleur 
 2. **L'alternative gratuite est suffisante pour lui.** La calculette de Leroy Merlin couvre environ 80 % de ses cas, ne coûte rien et ne demande pas de compte. Chiffréo doit être *beaucoup* meilleur pour justifier un abonnement ; face à un artisan, il doit seulement faire quelque chose que Tolteck et Obat ne font pas — et il le fait. *[La fin de cette phrase est la prémisse corrigée par l'[ADR 0002 §1.1](0002-modele-economique-facturation-distribution.md) : ArtisanSmart le fait aussi, à 29 € HT/mois sur 15 métiers. La conclusion de ce §4.1 — écarter le particulier — n'en dépend pas et tient.]*
 3. **La valeur ne se convertit pas en euros pour lui.** Acheter 20 % de peinture en trop coûte 30 € à un particulier une fois tous les trois ans. Cela coûte à un artisan plusieurs centaines d'euros par an, tous chantiers confondus, plus la crédibilité devant son client quand la liste est visiblement fausse.
 4. **Il n'y a pas de récurrence donc pas de signal.** Un produit sans utilisateur qui revient ne peut pas apprendre. Toutes les mécaniques de données du dépôt (facteurs de perte appris, benchmark de coûts) supposent des chantiers clôturés à répétition : elles n'ont de sens que sur le segment récurrent.
-5. **Choisir le particulier obligerait à conserver la CV**, donc 4 Go de VPS, une AGPL non arbitrée, un CD bloqué, et une mesure à +24/+42 % d'erreur au cœur d'un produit dont la promesse est la justesse. La décision D2 ne serait pas possible, et le seul composant véritablement disproportionné du dépôt resterait à financer.
+5. **Choisir le particulier obligerait à conserver la CV**, donc 4 Go de VPS, une AGPL non arbitrée, un CD bloqué, et une mesure à +24/+42 % d'erreur au cœur d'un produit dont la valeur tient à la traçabilité du calcul. La décision D2 ne serait pas possible, et le seul composant véritablement disproportionné du dépôt resterait à financer.
 
 **Ce que la décision préserve de cette alternative** : les deux surfaces les moins chères — calculateurs publics et mode invité jusqu'à la liste. Si la thèse artisan échoue, le canal particulier n'aura pas été détruit, seulement pas investi.
 

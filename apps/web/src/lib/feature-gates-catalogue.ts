@@ -112,7 +112,7 @@ export const GATES_NOT_MARKETED: Record<string, string> = {
   // reste dans git, et aucune surface ne les annonce tant qu'elles sont à
   // `is_enabled = false`. Les critères de dégel sont écrits à l'ADR §5.
   cv_analysis:
-    "Gelée (ADR 0001 D2) : la précision de l'analyse photo n'a jamais été mesurée sur une seule photo réelle, et le service sort de la production. Dégel : erreur médiane sous 5 % sur 50 à 100 photos relevées au télémètre.",
+    "Gelée (ADR 0001 D2) : la justesse de l'analyse photo n'a jamais été mesurée sur une seule photo réelle, et le service sort de la production. Dégel : erreur médiane sous 5 % sur 50 à 100 photos relevées au télémètre.",
   multi_user:
     "Gelée (ADR 0001 D3) : le multi-utilisateurs était vendu au palier Premium sans qu'aucun écran ne permette d'inviter qui que ce soit. Le modèle `organizations` reste en base, l'interface reste gelée.",
   cost_benchmark:

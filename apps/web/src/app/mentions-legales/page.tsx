@@ -93,14 +93,13 @@ export default function MentionsLegalesPage() {
 
       <Section title="5. Responsabilité">
         <P>
-          Les estimations de quantités de matériaux fournies par Chiffréo sont
-          communiquées à titre indicatif. Elles reposent sur les informations
-          saisies par l’utilisateur et, le cas échéant, sur une analyse
-          d’images en version bêta. L’utilisateur reste seul responsable de la
-          vérification des quantités, de ses achats et de ses décisions de
-          chantier. L’éditeur ne saurait être tenu responsable des écarts,
-          surplus ou manques constatés, ni des dommages indirects résultant de
-          l’utilisation du service. Les conditions détaillées figurent dans nos{' '}
+          Les quantités de matériaux calculées par Chiffréo constituent une base
+          de commande à valider. Elles reposent sur les informations saisies par
+          l’utilisateur, sur des ratios de consommation et de perte documentés
+          et, le cas échéant, sur une analyse d’images en version bêta. Il
+          appartient à l’utilisateur de les vérifier et de les corriger avant
+          ses achats et ses décisions de chantier. L’engagement de l’éditeur et
+          les limites de sa responsabilité sont définis dans nos{' '}
           <LegalLink href="/cgu">
             conditions générales d’utilisation
           </LegalLink>

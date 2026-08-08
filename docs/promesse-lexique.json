@@ -1,0 +1,75 @@
+{
+  "$comment": "Liste canonique du vocabulaire interdit dans les chaînes affichées à l'utilisateur. Lue à l'exécution par apps/web/src/__tests__/promise-wording.spec.ts et apps/api/src/common/__tests__/promise-wording.spec.ts. Les motifs sont compilés avec les drapeaux 'iu' ; le texte scanné est normalisé au préalable (apostrophes typographiques et entités JSX). Sa raison d'être est dans docs/PROMESSE_PRODUIT.md — ne pas modifier ce fichier sans mettre ce document à jour.",
+  "forbidden": [
+    {
+      "id": "exactitude",
+      "pattern": "(?<!\\p{L})exact(?:e|es|s|itude|ement)?(?!\\p{L})",
+      "why": "Promettre l'exactitude fait du calcul juste l'obligation essentielle du contrat. Toute clause qui limite ensuite notre responsabilité sur ce calcul est alors réputée non écrite (art. 1170 C. civ., codifiant Chronopost puis Faurecia)."
+    },
+    {
+      "id": "precision",
+      "pattern": "(?<!\\p{L})pr[ée]cis(?:e|es|ion|ions|[ée]ment)?(?!\\p{L})",
+      "why": "Même mécanisme que l'exactitude, sous un mot plus doux. « Une estimation précise » reste une promesse de résultat. Le participe « précisé(es) », qui veut dire « indiqué », n'est volontairement pas visé."
+    },
+    {
+      "id": "unicite",
+      "pattern": "(?<!\\p{L})(?:le seul|la seule|l'unique|seul|seule)\\s+(?:outil|logiciel|produit|service|application|[àa] calculer|dont)",
+      "why": "« Le seul outil qui calcule les quantités » est faux depuis ArtisanSmart, ChantierFlow, JLogiciels et Obat (docs/VEILLE_CONCURRENTIELLE.md §5.2). Une affirmation fausse est un risque en soi, indépendant du risque contractuel — et un superlatif borné à un panel reste invérifiable par le lecteur."
+    },
+    {
+      "id": "zero-perte",
+      "pattern": "(?<!\\p{L})(?:n'achetez plus|z[ée]ro perte|z[ée]ro d[ée]chet|sans aucune perte|ni trop ni trop peu|juste quantit[ée]|la bonne quantit[ée])(?!\\p{L})",
+      "why": "Promesses de résultat parfait. Le moteur retient un conditionnement réellement vendu : il reste toujours un surplus, et le produit l'affiche ligne par ligne."
+    },
+    {
+      "id": "infaillibilite",
+      "pattern": "(?<!\\p{L})(?:infaillible|au centim[èe]tre pr[èe]s|au litre pr[èe]s|au carreau pr[èe]s|r[ée]sultat garanti|quantit[ée]s garanties|garantie de justesse)(?!\\p{L})",
+      "why": "Superlatifs de fiabilité. Ils déplacent une obligation de moyens vers une obligation de résultat qu'aucune ligne de code ne tient."
+    },
+    {
+      "id": "economie-promise",
+      "pattern": "(?<!\\p{L})(?:[ée]conomisez|vous [ée]conomiserez|[ée]conomies garanties|jusqu'[àa]\\s*\\d+\\s*%)",
+      "why": "Promesse chiffrée d'économie tournée vers l'avenir. Un montant d'économie CONSTATÉ sur les données réelles de l'utilisateur reste permis — voir la section « Ce qui reste autorisé » de docs/PROMESSE_PRODUIT.md."
+    },
+    {
+      "id": "surplus-chiffre",
+      "pattern": "\\d+\\s*(?:[àa]|-|–)\\s*\\d+\\s*%\\s*(?:de\\s+)?mat[ée]riaux",
+      "why": "La formule « 15 à 25 % de matériaux en trop » chiffre un gain que rien ne mesure sur le chantier de l'utilisateur, et fait du gain la contrepartie attendue du prix."
+    }
+  ],
+  "allowed": [
+    {
+      "phrase": "exactement 14 chiffres",
+      "files": [
+        "apps/web/src/components/auth/RegisterForm.tsx",
+        "apps/api/src/clients/dto/create-client.dto.ts",
+        "apps/api/src/clients/dto/update-client.dto.ts",
+        "apps/api/src/company-profiles/dto/create-company-profile.dto.ts",
+        "apps/api/src/company-profiles/dto/update-company-profile.dto.ts"
+      ],
+      "reason": "Message de validation d'un format légal : le SIRET compte 14 chiffres, ni plus ni moins. Ne dit rien du calcul de quantités."
+    },
+    {
+      "phrase": "informations exactes",
+      "files": ["apps/web/src/app/cgu/page.tsx"],
+      "reason": "Obligation mise à la charge de l'utilisateur (tenir ses données de compte à jour), pas une promesse de l'éditeur."
+    },
+    {
+      "phrase": "Cutter de précision",
+      "files": [
+        "apps/api/src/materials/seed-catalog.data.ts",
+        "apps/api/src/migrations/1711468800069-RetireDuplicateComplementaryMaterials.ts",
+        "apps/api/src/migrations/1711468800071-RetireToolWorkTypeMaterialLinks.ts"
+      ],
+      "reason": "Nom commercial d'un outil du catalogue, tel qu'il est vendu en rayon."
+    },
+    {
+      "phrase": "Cutter de precision",
+      "files": [
+        "apps/api/src/migrations/1711468800009-SeedComplementaryMaterials.ts",
+        "apps/api/src/migrations/1711468800069-RetireDuplicateComplementaryMaterials.ts"
+      ],
+      "reason": "Même outil, orthographié sans accent dans deux migrations déjà appliquées : leur texte est figé, le corriger ferait diverger le seed de ce qui est en base."
+    }
+  ]
+}

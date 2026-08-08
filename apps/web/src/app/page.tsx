@@ -37,9 +37,9 @@ const steps = [
       'Peinture, carrelage, sol, cloison… Indiquez le type de pose et votre niveau de bricolage : les pertes en dépendent.',
   },
   {
-    title: 'Obtenez les quantités exactes',
+    title: 'Obtenez votre base de commande',
     description:
-      'Le moteur déduit les ouvertures, applique les pertes de coupe réelles et compte les couches. Pas de forfait « +10 % au pif ».',
+      'Le moteur déduit les ouvertures, applique les pertes de coupe du catalogue et compte les couches. Pas de forfait « +10 % au pif ».',
   },
   {
     title: 'Achetez juste ce qu’il faut',
@@ -122,18 +122,19 @@ export default function HomePage() {
         <section className="mt-6 grid items-center gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:gap-14">
           <div>
             <p className="inline-flex items-center rounded-full border border-emerald-900/10 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-900">
-              Estimation de matériaux précise
+              Une base de commande calculée et sourcée
             </p>
 
             <h1 className="mt-6 text-4xl font-semibold leading-tight text-stone-950 sm:text-5xl">
-              Arrêtez d&apos;acheter 15 à 25&nbsp;% de matériaux en trop.
+              Chiffrez vos matériaux sur la pièce réelle, pas au jugé.
             </h1>
 
             <p className="mt-5 max-w-xl text-lg leading-8 text-stone-700">
               Sur un chantier amateur, une part des pots, cartons et rouleaux
-              finit à la cave. Chiffréo calcule les quantités exactes à partir
-              de vos mesures — ouvertures déduites, pertes de coupe, couches —
-              et génère votre liste d&apos;achats chiffrée.
+              finit à la cave. Chiffréo part de vos mesures — ouvertures
+              déduites, pertes de coupe, couches — et vous propose une base de
+              commande chiffrée, dont vous voyez le détail. À vous de la valider
+              avant d&apos;acheter.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -227,10 +228,10 @@ export default function HomePage() {
         {/* Preuve */}
         <section className="mt-24 rounded-[2rem] border border-amber-950/10 bg-[var(--surface)] p-8 shadow-[0_25px_80px_rgba(67,39,15,0.10)] sm:p-10">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-900">
-            Pourquoi c&apos;est juste
+            D&apos;où vient le chiffre
           </p>
           <h2 className="mt-4 max-w-2xl text-3xl font-semibold text-stone-950">
-            Une précision qui ne repose pas sur des promesses
+            Un calcul que vous pouvez vérifier ligne par ligne
           </h2>
           <div className="mt-8 grid gap-5 sm:grid-cols-2">
             {proofPoints.map((point) => (

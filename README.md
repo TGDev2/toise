@@ -1,6 +1,10 @@
 # Chiffréo
 
-Application d'estimation de matériaux pour projets de rénovation. Scannez votre pièce ou saisissez ses dimensions, sélectionnez vos travaux, et obtenez une liste d'achat précise tenant compte des pertes, découpes et de votre niveau de compétence.
+Application d'estimation de matériaux pour projets de rénovation. Scannez votre pièce ou saisissez ses dimensions, sélectionnez vos travaux, et obtenez une base de commande chiffrée — pertes, découpes et niveau de compétence compris — que vous validez avant d'acheter.
+
+> La promesse produit est encadrée : Chiffréo ne promet nulle part une quantité exacte.
+> Le vocabulaire interdit, sa raison juridique et le test qui le fait respecter sont
+> décrits dans [`docs/PROMESSE_PRODUIT.md`](docs/PROMESSE_PRODUIT.md).
 
 ## Architecture
 

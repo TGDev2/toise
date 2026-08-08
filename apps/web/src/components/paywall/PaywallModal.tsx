@@ -14,7 +14,7 @@ const PRO_BENEFITS = [
         <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 0 1-9.201 2.466l-.312-.311h2.433a.75.75 0 0 0 0-1.5H4.28a.75.75 0 0 0-.75.75v3.955a.75.75 0 0 0 1.5 0v-2.134l.313.312a7 7 0 0 0 11.712-3.138.75.75 0 0 0-1.449-.4Zm1.002-5.478a.75.75 0 0 0-.468.91 5.5 5.5 0 0 1-9.2 2.467l-.313-.312h2.434a.75.75 0 0 0 0-1.5H4.813a.75.75 0 0 0-.75.75v3.955a.75.75 0 0 0 1.5 0V10.08l.312.313a7 7 0 0 0 11.713-3.138.75.75 0 0 0-.91-.468Z" clipRule="evenodd" />
       </svg>
     ),
-    text: 'Facteurs de perte avancés pour plus de précision',
+    text: 'Facteurs de perte sourcés, par type de pose et par niveau',
   },
   {
     icon: (
