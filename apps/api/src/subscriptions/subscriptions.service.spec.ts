@@ -31,7 +31,6 @@ jest.mock('stripe', () =>
 const CONFIG_VALUES: Record<string, string | number> = {
   'stripe.secretKey': 'sk_test_123',
   'stripe.webhookSecret': 'whsec_test',
-  'stripe.proPriceId': 'price_pro',
   publicUrl: 'https://chiffreo.fr',
   'stripe.contractorEssentielPriceId': 'price_contractor_essentiel',
   'stripe.contractorStandardPriceId': 'price_contractor_standard',
@@ -179,7 +178,12 @@ describe('SubscriptionsService.createCheckoutSession', () => {
     expect(analyticsServiceMock.track).toHaveBeenCalledWith(
       AnalyticsEventName.CHECKOUT_STARTED,
       testUser.id,
-      { plan: 'pro', price_id: 'price_pro' },
+      // Un checkout sans `price_id` souscrit le seul palier payant. Il
+      // souscrivait `pro`, supprimé de l'offre en E3-1.
+      {
+        plan: 'contractor_essentiel',
+        price_id: 'price_contractor_essentiel',
+      },
     );
   });
 
@@ -337,7 +341,7 @@ describe('SubscriptionsService.handleWebhookEvent (invoice.paid)', () => {
       items: {
         data: [
           {
-            price: { id: 'price_pro' },
+            price: { id: 'price_contractor_essentiel' },
             current_period_start: 1700000000,
             current_period_end: 1702592000,
           },
@@ -377,7 +381,7 @@ describe('SubscriptionsService.handleWebhookEvent (invoice.paid)', () => {
       items: {
         data: [
           {
-            price: { id: 'price_pro' },
+            price: { id: 'price_contractor_essentiel' },
             current_period_start: 1700000000,
             current_period_end: 1702592000,
           },
@@ -390,7 +394,7 @@ describe('SubscriptionsService.handleWebhookEvent (invoice.paid)', () => {
     expect(analyticsServiceMock.track).toHaveBeenCalledWith(
       AnalyticsEventName.PAID_SUBSCRIPTION_ACTIVE,
       'user-1',
-      expect.objectContaining({ plan: 'pro' }),
+      expect.objectContaining({ plan: 'contractor_essentiel' }),
     );
   });
 
@@ -409,7 +413,7 @@ describe('SubscriptionsService.handleWebhookEvent (invoice.paid)', () => {
       items: {
         data: [
           {
-            price: { id: 'price_pro' },
+            price: { id: 'price_contractor_essentiel' },
             current_period_start: 1700000000,
             current_period_end: 1702592000,
           },
@@ -482,7 +486,7 @@ describe('SubscriptionsService.handleWebhookEvent (checkout.session.completed)',
       items: {
         data: [
           {
-            price: { id: 'price_pro' },
+            price: { id: 'price_contractor_essentiel' },
             current_period_start: 1700000000,
             current_period_end: 1702592000,
           },
@@ -495,7 +499,7 @@ describe('SubscriptionsService.handleWebhookEvent (checkout.session.completed)',
     expect(analyticsServiceMock.track).toHaveBeenCalledWith(
       AnalyticsEventName.TRIAL_STARTED,
       'user-1',
-      { plan: 'pro' },
+      { plan: 'contractor_essentiel' },
     );
     expect(analyticsServiceMock.track).not.toHaveBeenCalledWith(
       AnalyticsEventName.PAID_SUBSCRIPTION_ACTIVE,
@@ -512,7 +516,7 @@ describe('SubscriptionsService.handleWebhookEvent (checkout.session.completed)',
       items: {
         data: [
           {
-            price: { id: 'price_pro' },
+            price: { id: 'price_contractor_essentiel' },
             current_period_start: 1700000000,
             current_period_end: 1702592000,
           },
@@ -525,7 +529,7 @@ describe('SubscriptionsService.handleWebhookEvent (checkout.session.completed)',
     expect(analyticsServiceMock.track).toHaveBeenCalledWith(
       AnalyticsEventName.PAID_SUBSCRIPTION_ACTIVE,
       'user-1',
-      { plan: 'pro' },
+      { plan: 'contractor_essentiel' },
     );
     expect(analyticsServiceMock.track).not.toHaveBeenCalledWith(
       AnalyticsEventName.TRIAL_STARTED,
@@ -542,7 +546,7 @@ describe('SubscriptionsService.handleWebhookEvent (checkout.session.completed)',
       items: {
         data: [
           {
-            price: { id: 'price_pro' },
+            price: { id: 'price_contractor_essentiel' },
             current_period_start: 1700000000,
             current_period_end: 1702592000,
           },
@@ -555,7 +559,7 @@ describe('SubscriptionsService.handleWebhookEvent (checkout.session.completed)',
     expect(analyticsServiceMock.track).toHaveBeenCalledWith(
       AnalyticsEventName.SUBSCRIPTION_STARTED,
       'user-1',
-      { plan: 'pro', trial: true },
+      { plan: 'contractor_essentiel', trial: true },
     );
   });
 });

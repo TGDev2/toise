@@ -8,6 +8,7 @@ import { Reflector } from '@nestjs/core';
 import { OrgContextService } from '../../organizations/org-context.service';
 import type { OrgScope } from '../../organizations/org-context.service';
 import { FeatureGatesService } from '../feature-gates.service';
+import { SubscriptionTier } from '../../users/entities/user.entity';
 import { FEATURE_KEY } from '../decorators/require-feature.decorator';
 import type { Request } from 'express';
 
@@ -55,10 +56,14 @@ export class FeatureGateGuard implements CanActivate {
     if (!allowed) {
       const gate = await this.featureGatesService.getGateConfig(featureKey);
       throw new ForbiddenException({
-        message: 'Cette fonctionnalité nécessite un abonnement Pro',
+        // Le message nommait « un abonnement Pro », un palier supprimé de
+        // l'offre en E3-1. Il ne nomme plus de palier : `required_tier` le
+        // porte déjà, et c'est la seule des deux valeurs que le client lit
+        // pour décider quoi proposer.
+        message: 'Cette fonctionnalité nécessite un abonnement',
         error: 'FEATURE_GATED',
         feature_key: featureKey,
-        required_tier: gate?.min_tier ?? 'pro',
+        required_tier: gate?.min_tier ?? SubscriptionTier.CONTRACTOR_ESSENTIEL,
         current_tier: scope.effectiveTier,
       });
     }

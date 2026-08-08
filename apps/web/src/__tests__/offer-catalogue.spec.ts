@@ -151,6 +151,22 @@ describe("catalogue d'offre", () => {
 
       expect(overreach).toEqual([]);
     });
+
+    it("n'adosse aucune gate à un palier qu'aucune offre ne porte", () => {
+      // Le défaut inverse du précédent, et celui que E3-1 a dû réparer : en
+      // retirant le palier `pro`, huit gates se retrouvaient à exiger un palier
+      // que plus aucun plan ne vendait. Le mécanisme étant fail-closed en base
+      // (`FeatureGatesService.isFeatureAllowed`), elles devenaient
+      // inatteignables — silencieusement, y compris pour un abonné. Rien dans
+      // le dépôt ne pouvait le signaler.
+      const soldTiers = new Set(OFFER_PLANS.map((plan) => plan.tier));
+
+      const stranded = KNOWN_FEATURE_GATES.filter(
+        (gate) => !soldTiers.has(gate.minTier),
+      ).map((gate) => `${gate.key} exige ${gate.minTier}`);
+
+      expect(stranded).toEqual([]);
+    });
   });
 
   describe('4. chaque plan sait à qui il parle', () => {
@@ -196,18 +212,31 @@ describe("catalogue d'offre", () => {
    * périmètre annoncé n'étaient adossés à quoi que ce soit.
    */
   describe('6. le prix artisan reste tenable face au marché', () => {
-    it("garde le palier d'entrée sous le plafond du marché généraliste", () => {
-      const [entry] = plansForAudience('artisan');
+    it("garde le palier payant d'entrée sous le plafond du marché généraliste", () => {
+      // Sur le plan **payant** le moins cher, pas sur le premier de la liste :
+      // depuis que le gratuit et le payant partagent l'unique audience, un
+      // `plansForAudience('artisan')[0]` rendrait le plan à 0 € et l'assertion
+      // serait vraie pour toujours, quel que soit le prix demandé.
+      const [entry] = plansForAudience('artisan')
+        .filter((plan) => plan.priceNumber !== null && plan.priceNumber > 0)
+        .sort((a, b) => a.priceNumber! - b.priceNumber!);
 
-      expect(entry.priceNumber).not.toBeNull();
+      expect(entry).toBeDefined();
       expect(entry.priceNumber!).toBeLessThan(GENERALIST_MARKET_CEILING_EUR);
     });
 
     it('ne laisse aucun palier artisan dépasser le marché sans capacité propre', () => {
       // Au-dessus du plafond, un palier doit porter une gate que les suites
       // généralistes ne vendent pas à ce prix — pas seulement l'héritage du
-      // palier inférieur.
-      const DIFFERENTIATORS = ['multi_user', 'public_api', 'enterprise_sso'];
+      // palier inférieur. `public_api` et `enterprise_sso` figuraient ici
+      // jusqu'à leur suppression en base (migration 074) : une liste qui nomme
+      // des gates inexistantes ne peut plus justifier quoi que ce soit, d'où
+      // l'assertion de fraîcheur qui suit.
+      const DIFFERENTIATORS = ['multi_user'];
+
+      expect(
+        DIFFERENTIATORS.filter((key) => !KNOWN_FEATURE_GATE_KEYS.includes(key)),
+      ).toEqual([]);
 
       const unjustified = plansForAudience('artisan')
         .filter(

@@ -69,11 +69,21 @@ const MIN_FUNNEL_STEP_SAMPLE = 30;
 // Correspondance entre la clé de plan (plans.constants.ts) et le tier utilisateur
 // qu'elle attribue (cf. subscriptions.service.ts syncSubscriptionTier).
 const PLAN_KEY_TO_TIER: Record<string, SubscriptionTier> = {
-  pro: SubscriptionTier.PRO,
   contractor_essentiel: SubscriptionTier.CONTRACTOR_ESSENTIEL,
   contractor_standard: SubscriptionTier.CONTRACTOR_STANDARD,
   contractor_premium: SubscriptionTier.CONTRACTOR_PREMIUM,
 };
+
+/**
+ * Paliers rapportés dans le MRR : exactement ceux qu'un plan de `PLANS` peut
+ * attribuer, dérivés et non recopiés. La liste était écrite à la main et
+ * portait `pro` ; le plan retiré en E3-1, elle aurait publié indéfiniment une
+ * ligne à zéro abonné — le genre de zéro qu'on finit par lire comme une
+ * mesure plutôt que comme un vestige.
+ */
+const REPORTED_TIERS: SubscriptionTier[] = PLANS.map(
+  (plan) => PLAN_KEY_TO_TIER[plan.key],
+).filter((tier): tier is SubscriptionTier => Boolean(tier));
 
 function round2(value: number): number {
   return Math.round(value * 100) / 100;
@@ -332,12 +342,7 @@ export class AdminAnalyticsService {
       totalsByTier.set(tier, entry);
     }
 
-    const by_tier = [
-      SubscriptionTier.PRO,
-      SubscriptionTier.CONTRACTOR_ESSENTIEL,
-      SubscriptionTier.CONTRACTOR_STANDARD,
-      SubscriptionTier.CONTRACTOR_PREMIUM,
-    ].map((tier) => {
+    const by_tier = REPORTED_TIERS.map((tier) => {
       const entry = totalsByTier.get(tier) ?? { subscriber_count: 0, mrr: 0 };
       return {
         tier,

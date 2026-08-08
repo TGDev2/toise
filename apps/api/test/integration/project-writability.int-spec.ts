@@ -40,6 +40,14 @@ import type { FeatureGatesService } from '../../src/feature-gates/feature-gates.
  * `find` mocké ne construit aucun SQL) et les `*.e2e-spec.ts` mockent le
  * service. Seul PostgreSQL a un avis sur une requête SQL — d'où ce fichier,
  * exactement dans l'esprit de `test/README.md`.
+ *
+ * ## Ce que E3-1 change à sa portée
+ *
+ * `unlimited_projects` est passée au palier `free` : plus aucun compte inscrit
+ * n'emprunte cette requête sur le chemin nominal. Elle reste atteignable si la
+ * gate est gelée ou absente — cas fail-closed — et le SQL doit alors être bon.
+ * Le stub `FREE_TIER` ci-dessous force ce chemin quel que soit l'état réel de
+ * la gate : c'est ce qui rend ce fichier indépendant de la décision d'offre.
  */
 const FREE_TIER = { isFeatureAllowed: () => Promise.resolve(false) };
 

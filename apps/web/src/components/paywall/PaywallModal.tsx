@@ -1,38 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import Link from 'next/link';
 import { useFeatureGates } from '@/contexts/FeatureGateContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAnalytics } from '@/hooks/useAnalytics';
-import { apiPost } from '@/lib/api';
 import { ContractorPricingModal } from './ContractorPricingModal';
-
-const PRO_BENEFITS = [
-  {
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5 text-[var(--accent)]">
-        <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 0 1-9.201 2.466l-.312-.311h2.433a.75.75 0 0 0 0-1.5H4.28a.75.75 0 0 0-.75.75v3.955a.75.75 0 0 0 1.5 0v-2.134l.313.312a7 7 0 0 0 11.712-3.138.75.75 0 0 0-1.449-.4Zm1.002-5.478a.75.75 0 0 0-.468.91 5.5 5.5 0 0 1-9.2 2.467l-.313-.312h2.434a.75.75 0 0 0 0-1.5H4.813a.75.75 0 0 0-.75.75v3.955a.75.75 0 0 0 1.5 0V10.08l.312.313a7 7 0 0 0 11.713-3.138.75.75 0 0 0-.91-.468Z" clipRule="evenodd" />
-      </svg>
-    ),
-    text: 'Facteurs de perte sourcés, par type de pose et par niveau',
-  },
-  {
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5 text-[var(--accent)]">
-        <path d="M2 4.25A2.25 2.25 0 0 1 4.25 2h2.5A2.25 2.25 0 0 1 9 4.25v2.5A2.25 2.25 0 0 1 6.75 9h-2.5A2.25 2.25 0 0 1 2 6.75v-2.5ZM2 13.25A2.25 2.25 0 0 1 4.25 11h2.5A2.25 2.25 0 0 1 9 13.25v2.5A2.25 2.25 0 0 1 6.75 18h-2.5A2.25 2.25 0 0 1 2 15.75v-2.5ZM11 4.25A2.25 2.25 0 0 1 13.25 2h2.5A2.25 2.25 0 0 1 18 4.25v2.5A2.25 2.25 0 0 1 15.75 9h-2.5A2.25 2.25 0 0 1 11 6.75v-2.5ZM15.25 11h-2.5A2.25 2.25 0 0 0 10.5 13.25v2.5A2.25 2.25 0 0 0 12.75 18h2.5A2.25 2.25 0 0 0 17.5 15.75v-2.5A2.25 2.25 0 0 0 15.25 11Z" />
-      </svg>
-    ),
-    text: 'Projets illimités',
-  },
-  {
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5 text-[var(--accent)]">
-        <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM8.732 6.232a2.5 2.5 0 0 1 3.536 0 .75.75 0 1 0 1.06-1.06 4 4 0 0 0-5.656 0 .75.75 0 0 0 1.06 1.06ZM6.5 9v.5a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1h-5a1 1 0 0 0-1 1Zm.25 5.75a.75.75 0 0 0 0 1.5h6.5a.75.75 0 0 0 0-1.5h-6.5Z" clipRule="evenodd" />
-      </svg>
-    ),
-    text: 'Suivi budgétaire',
-  },
-];
 
 export function PaywallModal() {
   const { paywallFeature, closePaywall, getGateConfig } = useFeatureGates();
@@ -64,38 +37,29 @@ export function PaywallModal() {
     );
   }
 
-  return <ProPaywallContent gate={gate} onClose={closePaywall} triggerFeature={paywallFeature} />;
+  return <FreeTierPaywallContent gate={gate} onClose={closePaywall} />;
 }
 
-function ProPaywallContent({
+/**
+ * Ce panneau vendait le palier Pro à 9,99 €/mois et déclenchait un checkout
+ * Stripe. Ce palier n'existe plus (E3-1, ADR 0002 D4), et depuis que le
+ * chiffrage est gratuit, aucune gate payante n'arrive plus ici : les gates
+ * payantes sont toutes `contractor_*` et partent dans la branche précédente.
+ *
+ * Ne restent donc que deux situations, et aucune ne se résout par un paiement :
+ * une gate `free` refusée — c'est un compte qui manque, pas un abonnement — et
+ * une gate gelée (`is_enabled = false`), refusée à tous les paliers, y compris
+ * au plus élevé. Proposer une souscription dans l'un ou l'autre cas serait
+ * vendre ce qu'aucun paiement ne débloque.
+ */
+function FreeTierPaywallContent({
   gate,
   onClose,
-  triggerFeature,
 }: {
-  gate: { label_fr: string } | null | undefined;
+  gate: { label_fr: string; is_enabled: boolean } | null | undefined;
   onClose: () => void;
-  triggerFeature: string;
 }) {
-  const { track } = useAnalytics();
-  const [ctaLoading, setCtaLoading] = useState(false);
-  const [ctaError, setCtaError] = useState('');
-
-  const handleCtaClick = async () => {
-    track('paywall_clicked', {
-      trigger_feature: triggerFeature,
-    });
-    setCtaLoading(true);
-    setCtaError('');
-    try {
-      const { url } = await apiPost<{ url: string }>('/subscriptions/checkout');
-      window.location.href = url;
-    } catch (err) {
-      setCtaError(
-        err instanceof Error ? err.message : 'Erreur lors de la souscription.',
-      );
-      setCtaLoading(false);
-    }
-  };
+  const frozen = gate ? !gate.is_enabled : false;
 
   return (
     <div
@@ -144,54 +108,45 @@ function ProPaywallContent({
 
         {/* Title */}
         <h2 className="mb-2 text-center text-xl font-bold text-stone-900">
-          Passez à Chiffréo Pro
+          {frozen
+            ? 'Fonctionnalité indisponible'
+            : 'Créez votre compte gratuit'}
         </h2>
 
         {/* Subtitle */}
-        {gate && (
-          <p className="mb-6 text-center text-sm text-stone-500">
-            <span className="font-medium text-stone-700">{gate.label_fr}</span>{' '}
-            est une fonctionnalité Pro
-          </p>
-        )}
-
-        {/* Benefits */}
-        <div className="mb-6 space-y-3">
-          {PRO_BENEFITS.map((benefit) => (
-            <div key={benefit.text} className="flex items-start gap-3">
-              <div className="mt-0.5 shrink-0">{benefit.icon}</div>
-              <span className="text-sm text-stone-700">{benefit.text}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Price */}
-        <p className="mb-4 text-center text-sm text-stone-600">
-          <span className="text-lg font-bold text-stone-900">9,99 &euro;</span>
-          <span className="text-stone-500"> /mois</span>
+        <p className="mb-6 text-center text-sm text-stone-500">
+          {gate && (
+            <span className="font-medium text-stone-700">{gate.label_fr}</span>
+          )}{' '}
+          {frozen
+            ? 'n’est pas disponible pour le moment. Aucun abonnement ne la débloque.'
+            : 'fait partie du chiffrage, gratuit et sans limite de chantiers. Il suffit d’un compte pour y accéder.'}
         </p>
-
-        {/* Error */}
-        {ctaError && (
-          <p className="mb-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-center text-xs text-red-700">
-            {ctaError}
-          </p>
-        )}
 
         {/* CTA */}
-        <button
-          type="button"
-          onClick={handleCtaClick}
-          disabled={ctaLoading}
-          className="w-full rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[var(--accent-strong)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {ctaLoading ? 'Redirection...' : 'Essai gratuit de 7 jours'}
-        </button>
+        {frozen ? (
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full rounded-full border border-stone-300 px-5 py-3 text-sm font-semibold text-stone-800 transition-all hover:border-stone-500 hover:bg-stone-50"
+          >
+            Fermer
+          </button>
+        ) : (
+          <Link
+            href="/register"
+            onClick={onClose}
+            className="block w-full rounded-full bg-[var(--accent)] px-5 py-3 text-center text-sm font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[var(--accent-strong)] hover:shadow-md"
+          >
+            Créer mon compte gratuit
+          </Link>
+        )}
 
-        {/* Secondary */}
-        <p className="mt-3 text-center text-xs text-stone-400">
-          Annulable à tout moment. Sans engagement.
-        </p>
+        {!frozen && (
+          <p className="mt-3 text-center text-xs text-stone-400">
+            Sans carte bancaire. Votre brouillon est conservé.
+          </p>
+        )}
       </div>
     </div>
   );

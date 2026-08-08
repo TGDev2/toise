@@ -36,12 +36,12 @@ const logbookServiceMock = {
 
 const orgContextMock = {
   resolveForFirebaseUid: jest.fn().mockResolvedValue({
-    user: { id: mockUserId, subscription_tier: SubscriptionTier.PRO },
+    user: { id: mockUserId, subscription_tier: SubscriptionTier.FREE },
     userId: mockUserId,
     organization: { id: mockOrgId, name: 'Mon espace', is_personal: true },
     organizationId: mockOrgId,
     role: 'owner',
-    effectiveTier: SubscriptionTier.PRO,
+    effectiveTier: SubscriptionTier.FREE,
   }),
 };
 

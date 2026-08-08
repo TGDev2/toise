@@ -27,10 +27,15 @@ const ALLOWLIST: Array<{ file: string; pattern: string; reason: string }> = [
   {
     file: 'app/pricing/page.tsx',
     pattern: 'ajoute ',
-    reason: '« Contractor ajoute ce dont... » : présent correct de « ajouter », pas un participe passé fautif',
+    reason: '« L’offre payante ajoute ce dont... » : présent correct de « ajouter », pas un participe passé fautif',
   },
   {
-    file: 'app/artisans/page.tsx',
+    // Le récit artisan vivait sur `app/artisans/page.tsx` jusqu'à E3-1 ; il est
+    // désormais la page d'accueil. Une exemption qui pointe un fichier disparu
+    // ne rougit pas : elle cesse simplement de couvrir la ligne qu'elle
+    // couvrait, et c'est le scan qui rougit — d'où le recalage sur le nouveau
+    // chemin plutôt qu'une suppression.
+    file: 'app/page.tsx',
     pattern: 'renseigne',
     reason: '« renseignez votre profil » : impératif correct, contient la sous-chaîne sans être fautif',
   },
@@ -66,6 +71,18 @@ describe('aucune chaîne affichée ne contient une séquence désaccentuée conn
 
   it('parcourt bien des fichiers sources (garde-fou contre un scan vide)', () => {
     expect(files.length).toBeGreaterThan(100);
+  });
+
+  it('ne garde aucune exemption pointant un fichier disparu', () => {
+    // Une exemption périmée n'échoue jamais : elle cesse juste de couvrir quoi
+    // que ce soit. On ne saurait plus, en la lisant, si elle protège encore une
+    // formulation correcte ou si elle a survécu à un déplacement de fichier —
+    // exactement ce qui est arrivé à `app/artisans/page.tsx` en E3-1.
+    const stale = ALLOWLIST.filter(
+      (entry) => !fs.existsSync(path.join(SRC_ROOT, entry.file)),
+    ).map((entry) => entry.file);
+
+    expect(stale).toEqual([]);
   });
 
   it('ne laisse passer aucune des séquences fautives listées', () => {

@@ -14,7 +14,7 @@ import {
   ReferralCreditStatus,
 } from './entities/referral-credit.entity';
 import { Subscription } from '../subscriptions/entities/subscription.entity';
-import { PLANS } from '../subscriptions/plans.constants';
+import { getDefaultPlan } from '../subscriptions/plans.constants';
 import { EmailService } from '../email/email.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
@@ -37,7 +37,7 @@ export interface ReferralStats {
 export class ReferralsService {
   private readonly stripeClient: Stripe | null;
   private readonly publicUrl: string;
-  private readonly proPriceEuros: number;
+  private readonly paidPlanPriceEuros: number;
   private readonly logger = new Logger(ReferralsService.name);
 
   constructor(
@@ -54,7 +54,7 @@ export class ReferralsService {
     const secretKey = this.config.get<string>('stripe.secretKey');
     this.stripeClient = secretKey ? new Stripe(secretKey) : null;
     this.publicUrl = this.config.get<string>('publicUrl')!;
-    this.proPriceEuros = PLANS.find((p) => p.key === 'pro')!.price;
+    this.paidPlanPriceEuros = getDefaultPlan().price;
   }
 
   private get stripe(): Stripe {
@@ -178,7 +178,7 @@ export class ReferralsService {
       return;
     }
 
-    const amountCents = Math.round(this.proPriceEuros * 100);
+    const amountCents = Math.round(this.paidPlanPriceEuros * 100);
 
     await this.referralCreditsRepo
       .createQueryBuilder()
@@ -253,7 +253,7 @@ export class ReferralsService {
       {
         amount: -credit.amount_cents,
         currency: credit.currency,
-        description: 'Parrainage Chiffréo : 1 mois Pro offert',
+        description: 'Parrainage Chiffréo : 1 mois offert',
       },
       { idempotencyKey: `referral-credit-${credit.id}` },
     );
@@ -277,7 +277,7 @@ export class ReferralsService {
 
     try {
       await this.emailService.sendReferralCreditEmail(referrer.email, {
-        amountEuros: this.proPriceEuros,
+        amountEuros: this.paidPlanPriceEuros,
         referralsUrl: `${this.publicUrl}/referrals`,
       });
     } catch (error) {

@@ -382,14 +382,14 @@ describe('Persistance (intégration, PostgreSQL réel)', () => {
    */
   describe('Ordre de livraison des webhooks Stripe', () => {
     const PRICE_ARTISAN = 'price_artisan_19';
-    const PRICE_PRO = 'price_pro_999';
+    const PRICE_STANDARD = 'price_standard_29';
 
     /** Émission chez Stripe : T1 précède T2 d'une minute. */
     const T1 = 1_700_000_000;
     const T2 = T1 + 60;
 
     const CONFIG: Record<string, string> = {
-      'stripe.proPriceId': PRICE_PRO,
+      'stripe.contractorStandardPriceId': PRICE_STANDARD,
       'stripe.contractorEssentielPriceId': PRICE_ARTISAN,
     };
 
@@ -511,19 +511,21 @@ describe('Persistance (intégration, PostgreSQL réel)', () => {
       const service = buildService();
       const row = await seedSubscription('downgrade');
 
-      // Le passage artisan → Pro (T2) est doublé par un événement artisan plus
-      // ancien (T1) : sans garde, le prix et le palier remontaient.
+      // Le passage artisan → Standard (T2) est doublé par un événement artisan
+      // plus ancien (T1) : sans garde, le prix et le palier remontaient. Le
+      // couple de paliers était artisan → Pro ; `pro` a quitté l'offre (E3-1)
+      // et un prix qui ne résout aucun palier ne prouverait plus rien ici.
       await service.handleWebhookEvent(
-        updatedEvent('sub_downgrade', T2, PRICE_PRO),
+        updatedEvent('sub_downgrade', T2, PRICE_STANDARD),
       );
       await service.handleWebhookEvent(
         updatedEvent('sub_downgrade', T1, PRICE_ARTISAN),
       );
 
       const persisted = await reload(row.id);
-      expect(persisted.stripe_price_id).toBe(PRICE_PRO);
+      expect(persisted.stripe_price_id).toBe(PRICE_STANDARD);
       expect(persisted.last_stripe_event_at).toEqual(new Date(T2 * 1000));
-      expect(tiersWritten).toEqual(['pro']);
+      expect(tiersWritten).toEqual(['contractor_standard']);
     });
 
     it('applique le premier événement d’une ligne sans filigrane', async () => {

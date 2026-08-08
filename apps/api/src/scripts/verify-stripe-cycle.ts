@@ -174,17 +174,10 @@ async function main(): Promise<void> {
     'Chiffréo Artisan',
     1900,
   );
-  const proPrice = await resolvePrice(
-    'STRIPE_PRO_PRICE_ID',
-    'Chiffréo Pro',
-    999,
-  );
-
   // Les maps price_id → palier et price_id → durée d'essai sont construites
   // dans le constructeur du service : renseigner l'environnement **avant** de
-  // monter le contexte Nest, sinon le palier retomberait sur `pro`.
+  // monter le contexte Nest, sinon aucun prix ne résoudrait de palier.
   process.env.STRIPE_CONTRACTOR_ESSENTIEL_PRICE_ID = artisanPrice.id;
-  process.env.STRIPE_PRO_PRICE_ID = proPrice.id;
 
   const artisanPlan = PLANS.find(
     (plan) => plan.key === 'contractor_essentiel',
@@ -204,16 +197,21 @@ async function main(): Promise<void> {
 
   // Deux gates représentatives, lues dans le catalogue plutôt que codées en
   // dur : ce que vend chaque palier bouge, la mécanique testée ici non.
+  //
+  // La seconde était une gate au palier `pro`, retiré de l'offre en E3-1.
+  // C'est une gate `free` qui la remplace, et le remplacement dit quelque
+  // chose de plus : depuis que le chiffrage est gratuit, il doit rester
+  // ouvert à toutes les étapes du cycle de facturation, résiliation comprise.
   const gates = await featureGates.getAllGates();
   const artisanGate = gates.find(
     (gate) => gate.is_enabled && gate.min_tier === 'contractor_essentiel',
   );
-  const proGate = gates.find(
-    (gate) => gate.is_enabled && gate.min_tier === 'pro',
+  const freeGate = gates.find(
+    (gate) => gate.is_enabled && gate.min_tier === 'free',
   );
-  if (!artisanGate || !proGate) {
+  if (!artisanGate || !freeGate) {
     console.error(
-      'Catalogue de gates incomplet : il faut au moins une gate active par palier payant.',
+      'Catalogue de gates incomplet : il faut au moins une gate active au palier gratuit et une au palier payant.',
     );
     await app.close();
     process.exit(EXIT_MISCONFIGURED);
@@ -302,7 +300,7 @@ async function main(): Promise<void> {
     priceId: string | null;
     tier: string;
     artisanGateAllowed: boolean;
-    proGateAllowed: boolean;
+    freeGateAllowed: boolean;
   }): Promise<void> {
     const row = await subscriptionsRepo.findOne({
       where: { user_id: user.id },
@@ -326,12 +324,12 @@ async function main(): Promise<void> {
       expected.artisanGateAllowed,
     );
     check(
-      `gate ${proGate!.feature_key} (palier pro)`,
+      `gate ${freeGate!.feature_key} (palier gratuit)`,
       await featureGates.isFeatureAllowed(
-        proGate!.feature_key,
+        freeGate!.feature_key,
         scope.effectiveTier,
       ),
-      expected.proGateAllowed,
+      expected.freeGateAllowed,
     );
   }
 
@@ -404,7 +402,7 @@ async function main(): Promise<void> {
       priceId: artisanPrice.id,
       tier: 'contractor_essentiel',
       artisanGateAllowed: true,
-      proGateAllowed: true,
+      freeGateAllowed: true,
     });
 
     // -------------------------------------------------------------------
@@ -418,33 +416,33 @@ async function main(): Promise<void> {
       priceId: artisanPrice.id,
       tier: 'contractor_essentiel',
       artisanGateAllowed: true,
-      proGateAllowed: true,
+      freeGateAllowed: true,
     });
 
     // -------------------------------------------------------------------
-    step('3. Changement de palier — artisan vers Pro');
+    // Cette étape éprouvait un changement de palier, artisan vers Pro. Il n'y
+    // a plus qu'un palier payant (E3-1) : ce qu'il reste à vérifier, c'est
+    // qu'une mise à jour d'abonnement qui ne touche pas au prix ne bouge pas
+    // l'accès — et elle fournit l'événement `updated` que l'étape 5 rejoue.
+    step('3. Mise à jour d’abonnement — l’accès ne bouge pas');
 
-    const current = await stripe.subscriptions.retrieve(stripeSub.id);
     await stripe.subscriptions.update(stripeSub.id, {
-      items: [{ id: current.items.data[0].id, price: proPrice.id }],
-      proration_behavior: 'none',
+      cancel_at_period_end: true,
     });
-    const tierChangeEvents = await drainEvents([
-      'customer.subscription.updated',
-    ]);
+    const updateEvents = await drainEvents(['customer.subscription.updated']);
     tierChangeEvent =
-      tierChangeEvents
+      updateEvents
         .filter((event) => event.type === 'customer.subscription.updated')
         .pop() ?? null;
 
     await assertState({
       status: 'active',
-      priceId: proPrice.id,
-      tier: 'pro',
-      // Le déclassement doit se voir immédiatement là où il compte : la
-      // capacité vendue au seul palier artisan se referme.
-      artisanGateAllowed: false,
-      proGateAllowed: true,
+      priceId: artisanPrice.id,
+      // Résiliation programmée n'est pas résiliation : le palier tient jusqu'à
+      // l'échéance, et c'est exactement ce qu'un client a payé.
+      tier: 'contractor_essentiel',
+      artisanGateAllowed: true,
+      freeGateAllowed: true,
     });
 
     // -------------------------------------------------------------------
@@ -455,10 +453,12 @@ async function main(): Promise<void> {
 
     await assertState({
       status: 'canceled',
-      priceId: proPrice.id,
+      priceId: artisanPrice.id,
       tier: 'free',
       artisanGateAllowed: false,
-      proGateAllowed: false,
+      // Le chiffrage est gratuit : une résiliation ferme le devis conforme,
+      // jamais le calcul.
+      freeGateAllowed: true,
     });
 
     // -------------------------------------------------------------------
@@ -467,7 +467,7 @@ async function main(): Promise<void> {
     if (!tierChangeEvent) {
       failures += 1;
       console.error(
-        "    ✗ pas d'événement de changement de palier à rejouer — étape non concluante",
+        "    ✗ pas d'événement de mise à jour à rejouer — étape non concluante",
       );
     } else {
       console.log(
@@ -483,10 +483,10 @@ async function main(): Promise<void> {
       // rendait un palier payant à un compte résilié.
       await assertState({
         status: 'canceled',
-        priceId: proPrice.id,
+        priceId: artisanPrice.id,
         tier: 'free',
         artisanGateAllowed: false,
-        proGateAllowed: false,
+        freeGateAllowed: true,
       });
     }
   } finally {
@@ -502,7 +502,7 @@ async function main(): Promise<void> {
     }
     // Les prix Stripe ne se suppriment pas ; ceux créés pour ce run sont
     // désactivés pour ne pas polluer le catalogue de test.
-    for (const price of [artisanPrice, proPrice]) {
+    for (const price of [artisanPrice]) {
       if (price.ephemeral) {
         await stripe.prices
           .update(price.id, { active: false })

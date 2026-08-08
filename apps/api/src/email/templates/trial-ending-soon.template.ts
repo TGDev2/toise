@@ -20,14 +20,14 @@ export function buildTrialEndingSoonEmail(
   const priceLabel = formatEuros(data.priceEuros);
   const dayLabel =
     data.daysRemaining === 1 ? '1 jour' : `${data.daysRemaining} jours`;
-  const subject = `Votre essai Pro se termine dans ${dayLabel}`;
+  const subject = `Votre essai Chiffréo se termine dans ${dayLabel}`;
 
   const html = `<!DOCTYPE html>
 <html lang="fr"><body style="font-family:Arial,sans-serif;background:#f7f5f2;padding:24px;color:#292524;margin:0;">
   <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:16px;padding:32px;">
-    <h1 style="font-size:20px;margin:0 0 8px;">Votre essai Pro se termine dans ${dayLabel}</h1>
+    <h1 style="font-size:20px;margin:0 0 8px;">Votre essai Chiffréo se termine dans ${dayLabel}</h1>
     <p style="font-size:14px;color:#57534e;">
-      Passé ce délai, votre abonnement Pro sera automatiquement facturé
+      Passé ce délai, votre abonnement sera automatiquement facturé
       <strong>${priceLabel}/mois</strong>. Vous pouvez gérer ou annuler votre
       abonnement à tout moment avant la fin de l'essai.
     </p>
@@ -35,19 +35,19 @@ export function buildTrialEndingSoonEmail(
       <a href="${data.manageSubscriptionUrl}" style="color:#0369a1;">Gérer mon abonnement</a>
     </p>
     <p style="font-size:12px;color:#a8a29e;margin-top:32px;">
-      Vous recevez cet e-mail car votre essai Chiffréo Pro arrive à échéance. Pour toute question, contactez-nous à privacy@chiffreo.fr.
+      Vous recevez cet e-mail car votre essai Chiffréo arrive à échéance. Pour toute question, contactez-nous à privacy@chiffreo.fr.
     </p>
   </div>
 </body></html>`;
 
   const text = [
-    `Votre essai Pro se termine dans ${dayLabel}`,
+    `Votre essai Chiffréo se termine dans ${dayLabel}`,
     '',
-    `Passé ce délai, votre abonnement Pro sera automatiquement facturé ${priceLabel}/mois. Vous pouvez gérer ou annuler votre abonnement à tout moment avant la fin de l'essai.`,
+    `Passé ce délai, votre abonnement sera automatiquement facturé ${priceLabel}/mois. Vous pouvez gérer ou annuler votre abonnement à tout moment avant la fin de l'essai.`,
     '',
     `Gérer mon abonnement : ${data.manageSubscriptionUrl}`,
     '',
-    'Vous recevez cet e-mail car votre essai Chiffréo Pro arrive à échéance.',
+    'Vous recevez cet e-mail car votre essai Chiffréo arrive à échéance.',
   ].join('\n');
 
   return { subject, html, text };

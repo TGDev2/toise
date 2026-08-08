@@ -11,7 +11,11 @@ const PRODUCTION_REQUIRED_VARS = [
   'FIREBASE_PRIVATE_KEY',
   'STRIPE_SECRET_KEY',
   'STRIPE_WEBHOOK_SECRET',
-  'STRIPE_PRO_PRICE_ID',
+  // `STRIPE_PRO_PRICE_ID` figurait ici. Le palier qu'elle désignait a été
+  // supprimé (E3-1) : l'exiger revenait à demander qu'un prix existe dans
+  // Stripe pour une offre qu'aucune surface ne vend, sous peine de refus de
+  // démarrage. Le prix du palier payant, lui, n'est pas exigé au démarrage —
+  // sans lui l'API démarre et la caisse est simplement fermée (DEPLOY.md §4.2).
   'BREVO_API_KEY',
   'BREVO_SENDER_EMAIL',
 ] as const;

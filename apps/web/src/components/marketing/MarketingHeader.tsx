@@ -3,45 +3,24 @@
 import Link from 'next/link';
 import { Logo } from '@/components/Logo';
 import { useAuth } from '@/contexts/AuthContext';
-import { AUDIENCE_DEFINITIONS, type Audience } from '@/lib/pricing';
 
 interface MarketingHeaderProps {
   /**
-   * Audience servie par la page. Le lien de bascule vers l'autre landing en
-   * découle : c'est le seul endroit où une surface reconnaît qu'une autre
-   * audience existe, au lieu de lui consacrer une section au milieu de son
-   * propre récit.
-   */
-  audience?: Audience;
-  /** Audience vers laquelle proposer la bascule. Sans effet si égale à `audience`. */
-  switchTo?: Audience;
-  /**
-   * Lien contextuel propre à la page (« Tous les calculateurs »). Occupe le même
-   * emplacement que la bascule d'audience et l'emporte sur elle : l'en-tête
-   * n'affiche jamais deux liens secondaires concurrents.
+   * Lien contextuel propre à la page (« Tous les calculateurs »).
+   *
+   * Cet emplacement portait aussi la bascule d'audience, du temps où `/` parlait
+   * au particulier et `/artisans` à l'artisan. E3-1 a fusionné les deux
+   * surfaces : il n'existe plus qu'une audience, donc plus rien vers quoi
+   * basculer.
    */
   extraLink?: { href: string; label: string };
 }
 
-export function MarketingHeader({
-  audience,
-  switchTo,
-  extraLink,
-}: MarketingHeaderProps) {
+export function MarketingHeader({ extraLink }: MarketingHeaderProps) {
   const { appUser, isGuest } = useAuth();
   const hasSession = Boolean(appUser) || isGuest;
 
-  const switchDefinition =
-    switchTo && switchTo !== audience ? AUDIENCE_DEFINITIONS[switchTo] : null;
-
-  const bridge =
-    extraLink ??
-    (switchDefinition
-      ? {
-          href: switchDefinition.landingPath,
-          label: switchDefinition.switchLabel,
-        }
-      : null);
+  const bridge = extraLink ?? null;
 
   return (
     <header className="flex items-center justify-between gap-3 py-6">

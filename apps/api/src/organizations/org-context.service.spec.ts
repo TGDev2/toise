@@ -166,12 +166,14 @@ describe('OrgContextService', () => {
 
   describe('palier effectif', () => {
     it('est celui de l’utilisateur dans son espace personnel', async () => {
-      const user = makeUser({ subscription_tier: SubscriptionTier.PRO });
+      const user = makeUser({
+        subscription_tier: SubscriptionTier.CONTRACTOR_ESSENTIEL,
+      });
       orgsRepo.findOne.mockResolvedValue(makeOrg());
 
       const scope = await service.resolveForUser(user);
 
-      expect(scope.effectiveTier).toBe(SubscriptionTier.PRO);
+      expect(scope.effectiveTier).toBe(SubscriptionTier.CONTRACTOR_ESSENTIEL);
       expect(usersRepo.findOne).not.toHaveBeenCalled();
     });
 

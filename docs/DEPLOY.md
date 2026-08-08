@@ -54,7 +54,7 @@ règles n'est pas respectée — le message d'erreur nomme la variable fautive :
 | `CORS_ORIGIN` | `https://chiffreo.fr` |
 | `PUBLIC_URL` | `https://chiffreo.fr` |
 | `FIREBASE_PROJECT_ID` / `FIREBASE_CLIENT_EMAIL` / `FIREBASE_PRIVATE_KEY` | depuis la clé de service account |
-| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_PRO_PRICE_ID` | depuis le dashboard Stripe — **§4.2**, la variable à ne pas confondre |
+| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | depuis le dashboard Stripe — **§4.2** |
 | `NEXT_PUBLIC_API_URL` | `https://api.chiffreo.fr/api/v1` |
 | `NEXT_PUBLIC_SITE_URL` | `https://chiffreo.fr` |
 | `NEXT_PUBLIC_FIREBASE_*` | config web Firebase |
@@ -126,9 +126,9 @@ refusera le checkout avec « Offre invalide ».
    - **Pricing** : `Recurring`, `279,00`, `EUR`, **`Yearly`**
 2. Copier l'identifiant du **prix** : `price_…`, pas `prod_…`. C'est le prix,
    jamais le produit, que l'API transmet à Stripe.
-3. Créer aussi un prix pour `Chiffréo Pro` **uniquement si**
-   `STRIPE_PRO_PRICE_ID` est encore exigée au démarrage (voir §4.2) — c'est un
-   contournement, pas une offre : ce palier n'est plus vendu.
+3. Il n'y a **qu'un seul prix à créer**. Le palier DIY à 9,99 €/mois a été
+   supprimé du code en E3-1 : plus aucune variable d'environnement ne le
+   réclame, et créer un prix qu'aucune surface ne vend n'a plus d'objet.
 
 > **La périodicité est annuelle, et elle se règle ici.** C'est le seul endroit.
 > Un prix créé en `Monthly` facturerait 279 € par mois.
@@ -149,7 +149,6 @@ refusera le checkout avec « Offre invalide ».
 |---|---|---|
 | `STRIPE_SECRET_KEY` | `sk_live_…` | oui, validée au démarrage |
 | `STRIPE_WEBHOOK_SECRET` | `whsec_…` (§4.4) | oui, validée au démarrage |
-| `STRIPE_PRO_PRICE_ID` | palier supprimé — **valeur de contournement** tant que la validation l'exige | oui, validée au démarrage |
 | `STRIPE_CONTRACTOR_ESSENTIEL_PRICE_ID` | prix **Conformité** 279 €/an | de fait (voir ci-dessous) |
 | `STRIPE_CONTRACTOR_STANDARD_PRICE_ID` | laisser vide | non |
 | `STRIPE_CONTRACTOR_PREMIUM_PRICE_ID` | laisser vide | non |
@@ -160,18 +159,18 @@ Trois pièges, dans l'ordre où ils coûtent cher :
 - **`CONTRACTOR_ESSENTIEL` *est* le palier Conformité à 279 €/an.** Le nom est
   hérité des trois paliers Contractor d'avant leur fusion (E3-4) ; l'ADR 0002
   a délibérément conservé l'identifiant technique pour éviter une migration.
-  Mettre le prix à 279 € dans `STRIPE_PRO_PRICE_ID` ferait vendre l'offre **au
-  palier `pro`** : le client paierait 279 € et n'aurait ni devis PDF, ni
-  fichier clients, ni facturation — les gates de ces capacités exigent
+  Mettre le prix à 279 € ailleurs que dans
+  `STRIPE_CONTRACTOR_ESSENTIEL_PRICE_ID` ferait vendre l'offre au mauvais
+  palier : le client paierait 279 € et n'aurait ni devis PDF, ni fichier
+  clients, ni facturation — les gates de ces capacités exigent
   `contractor_essentiel`.
-- **`STRIPE_PRO_PRICE_ID` est requise au démarrage** en production
-  ([`env.validation.ts`](../apps/api/src/config/env.validation.ts)) : sans elle
-  l'API refuse de démarrer avec « Configuration invalide », **alors même que le
-  palier DIY à 9,99 € est supprimé de l'offre** par l'ADR 0002 §D4. C'est un
-  reliquat, et il doit être traité dans E5-1 (rendre la variable facultative)
-  **avant** la mise en vente. En attendant, un prix Pro doit exister dans
-  Stripe sans être vendu nulle part — un contournement à supprimer, pas une
-  configuration à pérenniser.
+- **`STRIPE_PRO_PRICE_ID` n'existe plus.** Elle était exigée au démarrage
+  ([`env.validation.ts`](../apps/api/src/config/env.validation.ts)) pour un
+  palier que l'ADR 0002 §D4 avait retiré de l'offre : l'API refusait de
+  démarrer sans un prix Stripe qu'aucune surface ne vendait. E3-1 a supprimé le
+  palier du code, et la variable est partie avec lui — de `env.validation.ts`,
+  `configuration.ts`, `.env.example` et `docker-compose.prod.yml`. Ne pas la
+  réintroduire.
 - **`CONTRACTOR_ESSENTIEL` n'est pas validée au démarrage, mais rien ne se
   vend sans elle.** Vide, le prix artisan n'entre pas dans les prix autorisés :
   `GET /subscriptions/plans` renvoie `price_id: null`, le bouton de la page
@@ -606,7 +605,7 @@ panne, webhook Stripe qui échoue) ne se voit qu'en allant lire les logs.
 | L'API refuse de démarrer avec « Configuration invalide » | une variable requise manque, garde `CHANGEME`/sa valeur d'exemple, pointe sur localhost, ou `DB_PASSWORD` fait moins de 16 caractères — le message nomme la variable, §1 |
 | Checkout Stripe → 503 | `STRIPE_SECRET_KEY` absente (l'API tourne mais les paiements sont désactivés) |
 | Checkout Stripe → 400 « Offre invalide » | le `price_id` demandé n'est dans aucune variable `STRIPE_*_PRICE_ID`, ou il a été créé dans l'autre mode (test/live) que la clé secrète — §4.2 |
-| Un abonné à 279 € n'a ni devis PDF ni facturation | le prix Conformité a été mis dans `STRIPE_PRO_PRICE_ID` au lieu de `STRIPE_CONTRACTOR_ESSENTIEL_PRICE_ID` — §4.2 |
+| Un abonné à 279 € n'a ni devis PDF ni facturation | le prix Conformité n'est pas dans `STRIPE_CONTRACTOR_ESSENTIEL_PRICE_ID` — §4.2 |
 | Un client est prélevé de 279 € tous les mois | le prix Stripe a été créé en `Monthly` au lieu de `Yearly` — §4.1 |
 | « Gérer mon abonnement » → 500 | portail de facturation Stripe jamais configuré en mode live — §4.3 |
 | Webhook Stripe → 400 dans le dashboard | `STRIPE_WEBHOOK_SECRET` erroné, ou secret du mode test utilisé en live — §4.4 |

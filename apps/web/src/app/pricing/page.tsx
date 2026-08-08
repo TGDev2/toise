@@ -9,17 +9,16 @@ import { serializeJsonLd } from '@/lib/json-ld';
 export const metadata: Metadata = {
   title: 'Tarifs',
   description:
-    'Comparez les offres Chiffréo : Gratuit, Pro à 9,99 €/mois et Artisan à 19 €/mois pour les métiers de finition, tous deux avec 7 jours d’essai.',
+    'Le chiffrage est gratuit et sans limite de chantiers. L’offre à 19 €/mois ajoute le devis PDF conforme, le fichier clients et la facturation, avec 7 jours d’essai.',
   alternates: { canonical: '/pricing' },
   openGraph: {
     title: 'Tarifs Chiffréo',
     description:
-      'Gratuit, Pro à 9,99 €/mois, Artisan à 19 €/mois — essai de 7 jours sur les deux offres payantes.',
+      'Chiffrer est gratuit. Le devis conforme, le fichier clients et la facturation sont à 19 €/mois, avec 7 jours d’essai.',
     url: '/pricing',
   },
 };
 
-const DIY_PLANS = plansForAudience('diy');
 const ARTISAN_PLANS = plansForAudience('artisan');
 
 /**
@@ -46,8 +45,10 @@ const JSON_LD = {
     offerCount: PRICED_PLANS.length,
     offers: PRICED_PLANS.map((plan) => ({
       '@type': 'Offer',
-      name:
-        plan.audience === 'artisan' ? `Contractor ${plan.name}` : plan.name,
+      // Le préfixe « Contractor » distinguait les paliers artisan de ceux du
+      // particulier. Il n'y a plus qu'une audience (E3-1) : le préfixe ne
+      // distinguait plus rien et aurait fini par publier « Contractor Gratuit ».
+      name: plan.name,
       price: String(plan.priceNumber),
       priceCurrency: 'EUR',
     })),
@@ -58,7 +59,7 @@ const FAQ_ITEMS = [
   {
     question: 'L’essai est-il vraiment gratuit ?',
     answer:
-      'Oui, sur Pro comme sur Artisan. Vous profitez de toutes les fonctionnalités de l’offre choisie pendant 7 jours. Si vous annulez avant la fin de l’essai, rien ne vous est facturé.',
+      'Le chiffrage, lui, n’est pas un essai : il est gratuit et sans limite de chantiers, sans carte bancaire. L’offre payante s’essaie 7 jours ; si vous annulez avant la fin, rien ne vous est facturé.',
   },
   {
     question: 'Puis-je annuler à tout moment ?',
@@ -71,14 +72,14 @@ const FAQ_ITEMS = [
       'Oui. Vous pouvez passer d’une offre à l’autre depuis votre espace abonnement, la facturation s’ajuste automatiquement.',
   },
   {
-    question: 'Quelle offre choisir : Pro ou Contractor ?',
+    question: 'Qu’est-ce qui est payant ?',
     answer:
-      'Pro s’adresse aux particuliers qui rénovent chez eux : estimation, liste d’achats, budget. Contractor ajoute ce dont un professionnel a besoin pour facturer son client — devis conformes, fichier clients et factures numérotées.',
+      'Tout le chiffrage est gratuit : métré, quantités, facteurs de perte, liste d’achats en conditionnements, budget. L’offre payante ajoute ce dont un professionnel a besoin pour facturer son client — devis PDF conformes, fichier clients et factures numérotées.',
   },
   {
-    question: 'Contractor couvre-t-il tous les corps d’état ?',
+    question: 'Chiffréo couvre-t-il tous les corps d’état ?',
     answer:
-      'Non, et c’est assumé. Le moteur calcule des quantités à partir de surfaces : il couvre les ouvrages de finition (peinture, carrelage, parquet, cloison sèche, revêtement mural). La plomberie, l’électricité, l’isolation, la maçonnerie et la menuiserie ne sont pas chiffrables. Le devis porte par ailleurs un seul bloc de main-d’œuvre, pas un déboursé par corps d’état. Le détail figure sur la page artisans.',
+      'Non, et c’est assumé. Le moteur calcule des quantités à partir de surfaces : il couvre les ouvrages de finition (peinture, carrelage, parquet, cloison sèche, revêtement mural). La plomberie, l’électricité, l’isolation, la maçonnerie et la menuiserie ne sont pas chiffrables. Le devis porte par ailleurs un seul bloc de main-d’œuvre, pas un déboursé par corps d’état. Le détail figure sur la page d’accueil.',
   },
   {
     question: 'Comment se passe le paiement ?',
@@ -118,20 +119,20 @@ export default function PricingPage() {
         {/* Hero */}
         <section className="mt-6 text-center">
           <h1 className="mx-auto max-w-2xl text-4xl font-semibold leading-tight text-stone-950 sm:text-5xl">
-            Une échelle, deux publics
+            Chiffrer est gratuit. Le devis conforme est payant.
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-stone-700">
-            Le même moteur d&apos;estimation pour tout le monde. Ce qui change
-            d&apos;un palier à l&apos;autre, c&apos;est ce que vous en faites
-            ensuite : une liste d&apos;achats, ou un devis client.
+            Le moteur d&apos;estimation est le même dans les deux offres, sans
+            limite de chantiers. Ce qui change, c&apos;est ce que vous en faites
+            ensuite : une liste d&apos;achats, ou un devis client opposable.
           </p>
         </section>
 
-        {/* Particuliers */}
-        <section id="particuliers" className="mt-20 scroll-mt-8">
-          <AudienceHeading audience="diy" />
+        {/* Artisans */}
+        <section id="artisans" className="mt-20 scroll-mt-8">
+          <AudienceHeading audience="artisan" />
           <div className="mt-8 grid gap-5 md:grid-cols-2 lg:max-w-3xl">
-            {DIY_PLANS.map((plan) => (
+            {ARTISAN_PLANS.map((plan) => (
               <PlanCard
                 key={plan.key}
                 plan={plan}
@@ -144,29 +145,11 @@ export default function PricingPage() {
               />
             ))}
           </div>
-        </section>
-
-        {/* Artisans */}
-        <section id="artisans" className="mt-24 scroll-mt-8">
-          <AudienceHeading audience="artisan" />
-          <div className="mt-8 max-w-sm">
-            {ARTISAN_PLANS.map((plan) => (
-              <PlanCard key={plan.key} plan={plan} tone="highlighted" />
-            ))}
-          </div>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-stone-600">
             Périmètre chiffrable : ouvrages de finition uniquement (peinture,
             carrelage, parquet, cloison sèche, revêtement mural). Plomberie,
             électricité, isolation, maçonnerie et menuiserie sont hors
             périmètre.
-          </p>
-          <p className="mt-3 text-sm text-stone-600">
-            <Link
-              href={AUDIENCE_DEFINITIONS.artisan.landingPath}
-              className="font-semibold text-[var(--accent)] hover:text-[var(--accent-strong)]"
-            >
-              Voir la page artisans →
-            </Link>
           </p>
         </section>
 
@@ -198,8 +181,8 @@ export default function PricingPage() {
             Commencez gratuitement dès aujourd’hui
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-base text-stone-700">
-            Deux projets offerts, aucune carte bancaire demandée. Passez à une
-            offre payante quand votre chantier le demande.
+            Chantiers illimités, aucune carte bancaire demandée. Passez à
+            l&apos;offre payante le jour où vous devez envoyer un devis.
           </p>
           <div className="mt-7 flex justify-center">
             <Link

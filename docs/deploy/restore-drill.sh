@@ -327,7 +327,6 @@ docker run -d --name "$API_CONTAINER" --network "$NETWORK" \
   -e FIREBASE_PRIVATE_KEY="$FIREBASE_KEY" \
   -e STRIPE_SECRET_KEY=sk_test_drill \
   -e STRIPE_WEBHOOK_SECRET=whsec_drill \
-  -e STRIPE_PRO_PRICE_ID=price_drill \
   -e BREVO_API_KEY=drill \
   -e BREVO_SENDER_EMAIL=drill@chiffreo.test \
   -e CV_ENABLED=false \

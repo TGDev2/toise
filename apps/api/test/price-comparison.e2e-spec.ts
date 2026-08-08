@@ -73,7 +73,7 @@ const priceComparisonServiceMock = {
 const usersServiceMock = {
   findByFirebaseUid: jest.fn().mockResolvedValue({
     id: mockUserId,
-    subscription_tier: SubscriptionTier.PRO,
+    subscription_tier: SubscriptionTier.FREE,
   }),
 };
 
@@ -101,7 +101,7 @@ const featureGatesServiceMock = {
   isFeatureAllowed: jest.fn().mockResolvedValue(true),
   getGateConfig: jest.fn().mockResolvedValue({
     feature_key: 'price_comparison',
-    min_tier: 'pro',
+    min_tier: 'free',
   }),
 };
 
@@ -117,7 +117,7 @@ describe('PriceComparisonController (e2e)', () => {
     priceComparisonServiceMock.getBuyLinks.mockResolvedValue(mockBuyLinks);
     usersServiceMock.findByFirebaseUid.mockResolvedValue({
       id: mockUserId,
-      subscription_tier: SubscriptionTier.PRO,
+      subscription_tier: SubscriptionTier.FREE,
     });
     featureGatesServiceMock.isFeatureAllowed.mockResolvedValue(true);
 

@@ -308,7 +308,7 @@ describe('LifecycleEmailsService', () => {
     expect(emailServiceMock.sendProjectAbandonedEmail).not.toHaveBeenCalled();
   });
 
-  it('fin d’essai Pro : envoie et calcule les jours restants', async () => {
+  it('fin d’essai payant : envoie et calcule les jours restants', async () => {
     const subscription = makeSubscription({
       trial_end: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
     });
@@ -320,7 +320,7 @@ describe('LifecycleEmailsService', () => {
       'utilisateur@example.fr',
       expect.objectContaining({
         daysRemaining: 3,
-        priceEuros: 9.99,
+        priceEuros: 19,
         manageSubscriptionUrl: 'https://chiffreo.fr/subscription',
       }),
     );

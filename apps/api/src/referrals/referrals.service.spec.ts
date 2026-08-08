@@ -261,7 +261,7 @@ describe('ReferralsService', () => {
         id: 'credit-1',
         referrer_user_id: 'referrer-1',
         referred_user_id: 'referred-1',
-        amount_cents: 999,
+        amount_cents: 1900,
         currency: 'eur',
         status: ReferralCreditStatus.PENDING,
       });
@@ -276,7 +276,7 @@ describe('ReferralsService', () => {
       ).toHaveBeenCalledWith(
         'cus_referrer',
         {
-          amount: -999,
+          amount: -1900,
           currency: 'eur',
           description: expect.any(String) as string,
         },
@@ -289,7 +289,7 @@ describe('ReferralsService', () => {
       });
       expect(emailServiceMock.sendReferralCreditEmail).toHaveBeenCalledWith(
         'referrer@chiffreo.fr',
-        expect.objectContaining({ amountEuros: 9.99 }),
+        expect.objectContaining({ amountEuros: 19 }),
       );
       expect(usersRepoMock.update).toHaveBeenCalledWith('referred-1', {
         referral_converted_at: expect.any(Date) as Date,
@@ -306,7 +306,7 @@ describe('ReferralsService', () => {
         id: 'credit-1',
         referrer_user_id: 'referrer-1',
         referred_user_id: 'referred-1',
-        amount_cents: 999,
+        amount_cents: 1900,
         currency: 'eur',
         status: ReferralCreditStatus.PENDING,
       });
@@ -337,7 +337,7 @@ describe('ReferralsService', () => {
         id: 'credit-1',
         referrer_user_id: 'referrer-1',
         referred_user_id: 'referred-1',
-        amount_cents: 999,
+        amount_cents: 1900,
         currency: 'eur',
         status: ReferralCreditStatus.PENDING,
       });
@@ -368,14 +368,14 @@ describe('ReferralsService', () => {
         {
           id: 'credit-1',
           referrer_user_id: 'referrer-1',
-          amount_cents: 999,
+          amount_cents: 1900,
           currency: 'eur',
           status: ReferralCreditStatus.PENDING,
         },
         {
           id: 'credit-2',
           referrer_user_id: 'referrer-1',
-          amount_cents: 999,
+          amount_cents: 1900,
           currency: 'eur',
           status: ReferralCreditStatus.PENDING,
         },

@@ -78,7 +78,6 @@ export default async function CalculatorPage({ params }: PageProps) {
       />
       <div className="mx-auto w-full max-w-6xl">
         <MarketingHeader
-          audience="diy"
           extraLink={{ href: '/calculateurs', label: 'Tous les calculateurs' }}
         />
 

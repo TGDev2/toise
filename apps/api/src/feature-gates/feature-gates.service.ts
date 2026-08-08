@@ -5,6 +5,13 @@ import { FeatureGate } from './entities/feature-gate.entity';
 import { SubscriptionTier } from '../users/entities/user.entity';
 import { UpsertFeatureGateDto } from './dto/upsert-feature-gate.dto';
 
+/**
+ * Rangs des paliers. Tous ne sont plus vendables — `pro` a été retiré de
+ * l'offre en E3-1, `contractor_standard`, `contractor_premium` et `enterprise`
+ * en E3-4 — mais tous restent des valeurs que `users.subscription_tier` peut
+ * porter. Retirer un rang ferait retomber ces comptes sur le repli `?? 0`,
+ * c'est-à-dire sur `free`, sans que rien ne le signale.
+ */
 const TIER_RANK: Record<string, number> = {
   [SubscriptionTier.FREE]: 0,
   [SubscriptionTier.PRO]: 1,
@@ -37,7 +44,13 @@ export class FeatureGatesService {
     if (!gate.is_enabled) return false;
 
     const userRank = TIER_RANK[userTier] ?? 0;
-    const requiredRank = TIER_RANK[gate.min_tier] ?? 1;
+    // Un `min_tier` illisible doit fermer, pas entrouvrir : le repli est le
+    // palier payant. Il valait `1`, le rang de `pro` — retiré de l'offre en
+    // E3-1, il laissait une gate mal renseignée ouverte à un palier que plus
+    // personne ne souscrit, donc fermée à tous sauf aux comptes historiques.
+    const requiredRank =
+      TIER_RANK[gate.min_tier] ??
+      TIER_RANK[SubscriptionTier.CONTRACTOR_ESSENTIEL];
     return userRank >= requiredRank;
   }
 
@@ -70,7 +83,10 @@ export class FeatureGatesService {
         feature_key: featureKey,
         label_fr: dto.label_fr!,
         description_fr: dto.description_fr ?? null,
-        min_tier: dto.min_tier ?? 'pro',
+        // Une gate créée sans palier explicite doit être fermée par défaut, et
+        // le seul palier payant est `contractor_essentiel` (le défaut valait
+        // `pro`, supprimé de l'offre en E3-1).
+        min_tier: dto.min_tier ?? SubscriptionTier.CONTRACTOR_ESSENTIEL,
         is_enabled: dto.is_enabled ?? true,
       });
     }

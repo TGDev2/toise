@@ -19,9 +19,13 @@ export class UpsertFeatureGateDto {
 
   @IsOptional()
   @IsString()
+  // `'pro'` a quitté cette liste avec le palier lui-même (E3-1). Le rang existe
+  // encore pour les comptes qui portent la valeur en base, mais l'accorder à
+  // une gate depuis l'administration recréerait précisément le défaut que la
+  // migration 1711468800099 a réparé : une gate adossée à un palier que plus
+  // aucune offre ne vend, donc fermée sans que rien ne le dise.
   @IsIn([
     'free',
-    'pro',
     'contractor_essentiel',
     'contractor_standard',
     'contractor_premium',

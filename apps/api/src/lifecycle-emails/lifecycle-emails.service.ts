@@ -9,7 +9,7 @@ import {
   Subscription,
   SubscriptionStatus,
 } from '../subscriptions/entities/subscription.entity';
-import { PLANS } from '../subscriptions/plans.constants';
+import { getDefaultPlan } from '../subscriptions/plans.constants';
 import { EmailService } from '../email/email.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
@@ -22,7 +22,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * BACKLOG PLAT-2 : e-mails de cycle de vie. Sweep quotidien (même patron que
  * QuoteRemindersService, PRO-3) couvrant 5 déclencheurs indépendants :
  * onboarding J+1/J+3, projet abandonné à mi-parcours, chantier estimé jamais
- * clôturé (DATA-5), fin d'essai Pro.
+ * clôturé (DATA-5), fin d'essai de l'offre payante.
  *
  * Les fenêtres des 4 sweeps rétrospectifs (onboarding ×2, abandon, clôture)
  * sont bornées haut ET bas (contrairement à PRO-3 qui n'a qu'un seuil bas) :
@@ -37,7 +37,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export class LifecycleEmailsService {
   private readonly logger = new Logger(LifecycleEmailsService.name);
   private readonly publicUrl: string;
-  private readonly proPriceEuros: number;
+  private readonly paidPlanPriceEuros: number;
 
   constructor(
     @InjectRepository(User)
@@ -53,7 +53,7 @@ export class LifecycleEmailsService {
     private readonly config: ConfigService,
   ) {
     this.publicUrl = this.config.get<string>('publicUrl')!;
-    this.proPriceEuros = PLANS.find((p) => p.key === 'pro')!.price;
+    this.paidPlanPriceEuros = getDefaultPlan().price;
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_8AM, { timeZone: 'Europe/Paris' })
@@ -300,7 +300,7 @@ export class LifecycleEmailsService {
     );
   }
 
-  // --- Fin d'essai Pro -------------------------------------------------------
+  // --- Fin d'essai de l'offre payante -------------------------------------------------------
 
   private async sweepTrialEndingSoon(): Promise<void> {
     const now = new Date();
@@ -349,7 +349,7 @@ export class LifecycleEmailsService {
         subscription.user.email!,
         {
           daysRemaining,
-          priceEuros: this.proPriceEuros,
+          priceEuros: this.paidPlanPriceEuros,
           manageSubscriptionUrl: `${this.publicUrl}/subscription`,
         },
       );

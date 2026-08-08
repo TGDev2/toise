@@ -10,7 +10,7 @@ function makeGate(overrides: Partial<FeatureGate>): FeatureGate {
     feature_key: 'some_feature',
     label_fr: 'Une fonctionnalité',
     description_fr: null,
-    min_tier: 'pro',
+    min_tier: 'contractor_essentiel',
     is_enabled: true,
     created_at: new Date(),
     updated_at: new Date(),
@@ -40,7 +40,8 @@ describe('FeatureGatesService', () => {
       ['contractor_essentiel', SubscriptionTier.CONTRACTOR_ESSENTIEL, true],
       ['contractor_essentiel', SubscriptionTier.CONTRACTOR_STANDARD, true],
       ['contractor_essentiel', SubscriptionTier.CONTRACTOR_PREMIUM, true],
-      ['contractor_essentiel', SubscriptionTier.PRO, false],
+      ['contractor_essentiel', SubscriptionTier.FREE, false],
+      ['free', SubscriptionTier.FREE, true],
       ['contractor_standard', SubscriptionTier.CONTRACTOR_ESSENTIEL, false],
       ['contractor_standard', SubscriptionTier.CONTRACTOR_STANDARD, true],
       ['contractor_standard', SubscriptionTier.CONTRACTOR_PREMIUM, true],
@@ -69,17 +70,44 @@ describe('FeatureGatesService', () => {
       },
     );
 
-    it('un palier Contractor supérieur couvre toujours les gates Pro', async () => {
+    it('honore encore une ligne restée au palier `pro` (compte ou base non migré)', async () => {
+      // `pro` a quitté l'offre (E3-1) et la migration 1711468800099 a recalé
+      // les huit gates qui l'exigeaient. Le **rang** reste : une base non
+      // encore migrée, ou un compte portant la valeur, doit continuer d'être
+      // évalué correctement — c'est la seule raison de garder ce rang, et donc
+      // ce cas.
       gatesRepoMock.find.mockResolvedValue([
         makeGate({ feature_key: 'cv_analysis', min_tier: 'pro' }),
       ]);
 
-      const allowed = await service.isFeatureAllowed(
-        'cv_analysis',
-        SubscriptionTier.CONTRACTOR_ESSENTIEL,
-      );
+      expect(
+        await service.isFeatureAllowed(
+          'cv_analysis',
+          SubscriptionTier.CONTRACTOR_ESSENTIEL,
+        ),
+      ).toBe(true);
+      expect(
+        await service.isFeatureAllowed('cv_analysis', SubscriptionTier.FREE),
+      ).toBe(false);
+    });
 
-      expect(allowed).toBe(true);
+    it('ferme sur le palier payant quand le `min_tier` est illisible', async () => {
+      // Le repli valait le rang de `pro`. Sur une valeur inconnue, la question
+      // n'est pas « quel palier ? » mais « ouvrir ou fermer ? » : on ferme, et
+      // le seul palier qui rouvre est le palier payant.
+      gatesRepoMock.find.mockResolvedValue([
+        makeGate({ feature_key: 'mystere', min_tier: 'palier_inexistant' }),
+      ]);
+
+      expect(
+        await service.isFeatureAllowed('mystere', SubscriptionTier.FREE),
+      ).toBe(false);
+      expect(
+        await service.isFeatureAllowed(
+          'mystere',
+          SubscriptionTier.CONTRACTOR_ESSENTIEL,
+        ),
+      ).toBe(true);
     });
   });
 

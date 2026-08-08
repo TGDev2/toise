@@ -280,7 +280,7 @@ export default function DashboardPage() {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-sm font-semibold text-stone-900">
-                      Essai Pro
+                      Essai en cours
                     </p>
                     {trialEnd && (
                       <p className="mt-1 text-xs text-stone-500">
@@ -315,6 +315,10 @@ export default function DashboardPage() {
               );
             }
 
+            // Chemin historique : le palier `pro` a été retiré de l'offre
+            // (E3-1) mais reste une valeur que `subscription_tier` peut porter.
+            // Un compte qui l'a encore doit voir son abonnement, pas la carte
+            // du plan gratuit.
             if (tier === 'pro' && status === 'active') {
               const nextBilling = subscription?.current_period_end
                 ? new Intl.DateTimeFormat('fr-FR', {
@@ -357,11 +361,13 @@ export default function DashboardPage() {
                     Plan gratuit
                   </p>
                   <p className="mt-1 text-xs text-stone-500">
-                    Passez à Pro pour débloquer toutes les fonctionnalités.
+                    Le chiffrage est gratuit et sans limite de chantiers.
+                    L&apos;abonnement ouvre le devis PDF conforme, le fichier
+                    clients et la facturation.
                   </p>
                 </div>
                 <Button onClick={() => openCheckout()} className="shrink-0">
-                  Passer à Pro
+                  Voir l&apos;offre payante
                 </Button>
               </div>
             );

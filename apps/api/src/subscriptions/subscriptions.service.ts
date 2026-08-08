@@ -19,7 +19,7 @@ import { SubscriptionTier } from '../users/entities/user.entity';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 import { ReferralsService } from '../referrals/referrals.service';
-import { PLANS } from './plans.constants';
+import { getDefaultPlan, PLANS } from './plans.constants';
 
 /**
  * Au-delà de ce délai, une réservation d'event Stripe sans traitement abouti est
@@ -54,7 +54,14 @@ export interface BillingHistoryEntry {
 export class SubscriptionsService {
   private readonly stripeClient: Stripe | null;
   private readonly webhookSecret: string;
-  private readonly proPriceId: string;
+  /**
+   * Prix souscrit quand le checkout n'en désigne aucun. C'était le prix du
+   * palier DIY à 9,99 €, supprimé en E3-1 : un appel sans `price_id` souscrit
+   * désormais le seul palier payant. `undefined` si la variable n'est pas
+   * renseignée — l'API démarre quand même, et le checkout répond « Offre
+   * invalide » plutôt que de rediriger vers un prix inexistant.
+   */
+  private readonly defaultPriceId: string | undefined;
   private readonly priceIdToTier: Map<string, SubscriptionTier>;
   private readonly priceIdToTrialDays: Map<string, number>;
   private readonly contractorPriceIds: Set<string>;
@@ -85,7 +92,9 @@ export class SubscriptionsService {
       );
     }
     this.webhookSecret = this.config.get<string>('stripe.webhookSecret')!;
-    this.proPriceId = this.config.get<string>('stripe.proPriceId')!;
+    this.defaultPriceId = this.config.get<string>(
+      getDefaultPlan().priceIdConfigKey,
+    );
     this.publicUrl = this.config.get<string>('publicUrl')!;
 
     // Lu avec un repli, et non avec `!` : cette valeur a un défaut légitime et
@@ -124,10 +133,10 @@ export class SubscriptionsService {
 
     this.contractorPriceIds = new Set(this.priceIdToTier.keys());
 
-    this.allowedPriceIds = new Set<string>([
-      this.proPriceId,
-      ...this.contractorPriceIds,
-    ]);
+    // Les prix souscriptibles sont exactement ceux qui résolvent un palier.
+    // `proPriceId` y figurait en plus, et il ne résolvait aucun palier : c'est
+    // ce qui rendait possible de payer un prix sans rien débloquer.
+    this.allowedPriceIds = new Set<string>(this.contractorPriceIds);
 
     // La durée d'essai vient de `PLANS` et de nulle part ailleurs. Elle était
     // auparavant déduite de « ce prix est-il un prix contractor ? », ce qui
@@ -158,8 +167,8 @@ export class SubscriptionsService {
     user: { id: string; email: string | null },
     priceId?: string,
   ): Promise<{ url: string }> {
-    const selectedPriceId = priceId ?? this.proPriceId;
-    if (!this.allowedPriceIds.has(selectedPriceId)) {
+    const selectedPriceId = priceId ?? this.defaultPriceId;
+    if (!selectedPriceId || !this.allowedPriceIds.has(selectedPriceId)) {
       throw new BadRequestException('Offre invalide.');
     }
     const trialDays = this.priceIdToTrialDays.get(selectedPriceId) ?? 0;
@@ -673,9 +682,16 @@ export class SubscriptionsService {
       : (subDetails.subscription?.id ?? null);
   }
 
+  /**
+   * Libellé de palier pour l'analytique. Le repli était `'pro'` : un prix
+   * inconnu était rapporté comme une souscription au palier d'entrée, donc
+   * comptée dans un palier qui n'a peut-être rien encaissé. Un prix qu'on ne
+   * sait pas nommer se dit `unknown` — c'est une mesure, elle doit pouvoir
+   * signaler qu'elle ne sait pas.
+   */
   private resolvePlanName(priceId: string | null): string {
-    if (!priceId) return 'pro';
-    return this.priceIdToTier.get(priceId) ?? 'pro';
+    if (!priceId) return 'unknown';
+    return this.priceIdToTier.get(priceId) ?? 'unknown';
   }
 
   private async handleCheckoutCompleted(
@@ -993,10 +1009,25 @@ export class SubscriptionsService {
       return;
     }
 
-    const tier = stripePriceId
-      ? (this.priceIdToTier.get(stripePriceId) ?? SubscriptionTier.PRO)
-      : SubscriptionTier.PRO;
+    // Le repli valait `SubscriptionTier.PRO` : un prix inconnu accordait
+    // silencieusement le palier DIY, qui n'existe plus. Le repli reste un
+    // palier **payant** et non `free` — on n'arrive ici que sur un abonnement
+    // que Stripe déclare actif, donc sur un client qui paie ; le déclasser
+    // pour un prix qu'on ne sait pas lire ferait perdre l'accès à quelqu'un
+    // qui l'a acheté. Mais le cas n'est plus silencieux.
+    const mappedTier = stripePriceId
+      ? this.priceIdToTier.get(stripePriceId)
+      : undefined;
 
-    await this.usersService.updateSubscriptionTier(userId, tier);
+    if (!mappedTier) {
+      this.logger.warn(
+        `Abonnement ${stripeStatus} sans palier résoluble (price_id=${stripePriceId ?? 'absent'}) — repli sur ${SubscriptionTier.CONTRACTOR_ESSENTIEL}.`,
+      );
+    }
+
+    await this.usersService.updateSubscriptionTier(
+      userId,
+      mappedTier ?? SubscriptionTier.CONTRACTOR_ESSENTIEL,
+    );
   }
 }

@@ -51,13 +51,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 1,
     },
     {
-      // Landing de l'audience artisan : le récit « devis-minute » a sa propre
-      // surface depuis qu'il a quitté la page d'accueil.
-      url: `${BASE_URL}/artisans`,
-      changeFrequency: 'monthly',
-      priority: 0.8,
-    },
-    {
       url: `${BASE_URL}/pricing`,
       changeFrequency: 'monthly',
       priority: 0.8,

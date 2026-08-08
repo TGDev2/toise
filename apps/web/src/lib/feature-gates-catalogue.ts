@@ -4,7 +4,7 @@
  *
  * Pourquoi un miroir plutôt qu'un appel API : `GET /feature-gates` est derrière
  * `FirebaseAuthGuard` (apps/api/src/feature-gates/feature-gates.controller.ts) et
- * les pages d'offre (`/`, `/artisans`, `/pricing`) sont publiques et statiques.
+ * les pages d'offre (`/`, `/pricing`) sont publiques et statiques.
  * Les faire dépendre d'un endpoint authentifié dégraderait le SEO pour supprimer
  * un fichier.
  *
@@ -20,7 +20,17 @@
  * `feature_gates` (cf. CONTRIBUTING.md).
  */
 
-/** Paliers d'abonnement, alignés sur `SubscriptionTier` (apps/api/src/users/entities/user.entity.ts). */
+/**
+ * Paliers d'abonnement, alignés sur `SubscriptionTier`
+ * (apps/api/src/users/entities/user.entity.ts).
+ *
+ * Tous ne sont pas vendables : `pro` (E3-1, ADR 0002 D4), `contractor_standard`,
+ * `contractor_premium` et `enterprise` (E3-4, ADR 0001 D4) ne portent plus
+ * aucune offre. Leurs rangs restent ici parce que des comptes peuvent encore
+ * porter ces valeurs **en base** — on les retire par migration, jamais par
+ * suppression du rang, qui ferait silencieusement retomber ces comptes au
+ * rang 0.
+ */
 export const TIER_ORDER = [
   'free',
   'pro',
@@ -50,17 +60,21 @@ export interface KnownFeatureGate {
 }
 
 /**
- * Les 17 gates existantes, dans l'ordre de leur migration d'insertion, avec le
+ * Les 16 gates existantes, dans l'ordre de leur migration d'insertion, avec le
  * `min_tier` **effectif** après toutes les migrations ultérieures.
+ *
+ * Le socle historique du palier `pro` (017, 020, 049, 053, 060) est descendu à
+ * `free` par 099 : le chiffrage est gratuit, seule la production d'un document
+ * opposable est payante (ADR 0002 D4). Plus aucune gate ne pointe `pro`.
  */
 export const KNOWN_FEATURE_GATES: KnownFeatureGate[] = [
-  // 1711468800017 — socle Pro
-  { key: 'cv_analysis', label: 'Analyse photo automatique', minTier: 'pro', enabled: false, since: '065' },
-  { key: 'advanced_loss_factors', label: 'Facteurs de perte avancés', minTier: 'pro', enabled: true, since: '017' },
-  { key: 'unlimited_projects', label: 'Projets illimités', minTier: 'pro', enabled: true, since: '017' },
-  { key: 'budget_tracking', label: 'Suivi budgétaire', minTier: 'pro', enabled: true, since: '017' },
+  // 1711468800017 — socle Pro à l'origine, descendu à `free` par 099
+  { key: 'cv_analysis', label: 'Analyse photo automatique', minTier: 'free', enabled: false, since: '065' },
+  { key: 'advanced_loss_factors', label: 'Facteurs de perte avancés', minTier: 'free', enabled: true, since: '017' },
+  { key: 'unlimited_projects', label: 'Projets illimités', minTier: 'free', enabled: true, since: '017' },
+  { key: 'budget_tracking', label: 'Suivi budgétaire', minTier: 'free', enabled: true, since: '017' },
   // 1711468800020, éteinte en 027 (adaptateurs mock), rallumée en 036 (ManoMano + Leroy Merlin réels)
-  { key: 'price_comparison', label: 'Comparateur de prix', minTier: 'pro', enabled: true, since: '036' },
+  { key: 'price_comparison', label: 'Comparateur de prix', minTier: 'free', enabled: true, since: '036' },
   // 1711468800023 — `contractor` à l'origine, recalé sur `contractor_essentiel` par 037
   { key: 'export_devis', label: 'Export de devis PDF', minTier: 'contractor_essentiel', enabled: true, since: '037' },
   { key: 'client_management', label: 'Gestion de clients', minTier: 'contractor_essentiel', enabled: true, since: '037' },
@@ -75,9 +89,9 @@ export const KNOWN_FEATURE_GATES: KnownFeatureGate[] = [
   { key: 'multi_user', label: 'Multi-utilisateurs', minTier: 'contractor_essentiel', enabled: false, since: '065' },
   // 1711468800045 / 049 / 053 / 056 / 060
   { key: 'invoicing', label: 'Facturation', minTier: 'contractor_essentiel', enabled: true, since: '045' },
-  { key: 'logbook', label: 'Carnet du logement', minTier: 'pro', enabled: true, since: '049' },
-  { key: 'eco_materials', label: 'Matériaux éco-responsables', minTier: 'pro', enabled: false, since: '065' },
-  { key: 'cost_benchmark', label: 'Benchmark de coûts', minTier: 'pro', enabled: false, since: '065' },
+  { key: 'logbook', label: 'Carnet du logement', minTier: 'free', enabled: true, since: '049' },
+  { key: 'eco_materials', label: 'Matériaux éco-responsables', minTier: 'free', enabled: false, since: '065' },
+  { key: 'cost_benchmark', label: 'Benchmark de coûts', minTier: 'free', enabled: false, since: '065' },
   // 1711468800064 — DATA-5. Seule gate `free` en dehors de la galerie : la
   // clôture est l'unique source de DATA-3, DATA-4, COM-1 et PLAT-1, et un
   // volant de données qui ne tourne que sur les abonnés n'apprend rien des

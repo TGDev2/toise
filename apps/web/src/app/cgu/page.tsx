@@ -92,9 +92,9 @@ export default function CguPage() {
 
       <Section title="5. Comptes gratuits et abonnements payants">
         <P>
-          Le Service est proposé selon une offre gratuite (limitée en nombre de
-          projets actifs) et des offres payantes (Pro et Contractor). Le détail
-          et le prix des offres figurent sur la page{' '}
+          Le Service est proposé selon une offre gratuite, sans limite de
+          chantiers pour un compte inscrit, et une offre payante. Le détail et
+          le prix des offres figurent sur la page{' '}
           <LegalLink href="/pricing">tarifs</LegalLink>. La souscription et le
           paiement d’une offre payante sont régis par les{' '}
           <LegalLink href="/cgv">

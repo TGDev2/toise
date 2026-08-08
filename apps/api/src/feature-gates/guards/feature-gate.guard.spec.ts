@@ -58,7 +58,7 @@ describe('FeatureGateGuard', () => {
     (reflector.get as jest.Mock).mockReturnValue('multi_user');
     orgContext.resolveForFirebaseUid.mockResolvedValue({
       user: { id: 'user-1' },
-      effectiveTier: SubscriptionTier.PRO,
+      effectiveTier: SubscriptionTier.FREE,
     });
     featureGates.isFeatureAllowed.mockResolvedValue(false);
     featureGates.getGateConfig.mockResolvedValue({
@@ -69,7 +69,7 @@ describe('FeatureGateGuard', () => {
       response: {
         error: 'FEATURE_GATED',
         required_tier: SubscriptionTier.CONTRACTOR_PREMIUM,
-        current_tier: SubscriptionTier.PRO,
+        current_tier: SubscriptionTier.FREE,
       },
     });
   });

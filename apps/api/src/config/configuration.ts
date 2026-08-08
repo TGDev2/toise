@@ -51,7 +51,10 @@ export default () => ({
   stripe: {
     secretKey: process.env.STRIPE_SECRET_KEY,
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
-    proPriceId: process.env.STRIPE_PRO_PRICE_ID,
+    // `proPriceId` (STRIPE_PRO_PRICE_ID) a disparu avec le palier DIY à
+    // 9,99 €/mois (E3-1, ADR 0002 §D4). Elle était exigée au démarrage en
+    // production, ce qui obligeait à créer dans Stripe un prix qu'aucune
+    // surface ne vendait — le contournement décrit en DEPLOY.md §4.2.
     contractorEssentielPriceId:
       process.env.STRIPE_CONTRACTOR_ESSENTIEL_PRICE_ID,
     contractorStandardPriceId: process.env.STRIPE_CONTRACTOR_STANDARD_PRICE_ID,

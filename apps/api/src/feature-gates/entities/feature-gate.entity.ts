@@ -20,7 +20,12 @@ export class FeatureGate {
   @Column({ type: 'varchar', length: 255, nullable: true })
   description_fr!: string | null;
 
-  @Column({ type: 'varchar', length: 20, default: 'pro' })
+  /**
+   * Défaut aligné sur celui de la colonne (migration 1711468800099) : une gate
+   * insérée sans palier explicite est fermée, et le seul palier payant est
+   * `contractor_essentiel`. Il valait `pro`, retiré de l'offre en E3-1.
+   */
+  @Column({ type: 'varchar', length: 20, default: 'contractor_essentiel' })
   min_tier!: string;
 
   @Column({ type: 'boolean', default: true })

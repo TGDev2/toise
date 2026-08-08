@@ -29,7 +29,7 @@ export default function CalculatorsHubPage() {
   return (
     <main className="flex-1 px-4 pb-16 sm:px-6 lg:px-8">
       <div className="mx-auto w-full max-w-6xl">
-        <MarketingHeader audience="diy" />
+        <MarketingHeader />
 
         <section className="mt-6 text-center">
           <h1 className="mx-auto max-w-2xl text-4xl font-semibold leading-tight text-stone-950 sm:text-5xl">

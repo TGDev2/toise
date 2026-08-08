@@ -709,6 +709,8 @@ Les gates qui portaient min_tier pro doivent recevoir un nouveau palier cohéren
 Vérifie : migration up et down, pnpm test:api, pnpm test:web, pnpm build:web, pnpm lint, offer-catalogue.spec.ts au vert, et donne-moi la liste des routes dont l'accès change.
 ```
 
+**Livré** (migration `…099`). Aucun abonné à protéger : `subscriptions` vide, aucun compte au palier `pro`, aucun prix Stripe configuré. Le palier `pro` disparaît de l'offre (`pricing.ts`, `plans.constants.ts`), de la configuration (`STRIPE_PRO_PRICE_ID` n'est plus exigée au démarrage) et de la liste blanche d'administration des gates ; il **reste** un rang de `SubscriptionTier` et de `TIER_ORDER`, parce que `users.subscription_tier` peut encore le porter. Les huit gates qui l'exigeaient passent à `free` — aucune ne produit de document opposable — si bien qu'un compte `pro` résiduel ne perd aucun accès. `/artisans` devient `/` (308 permanent, sitemap et canonicals recalés), le CTA invité est conservé sur la nouvelle page d'accueil. `offer-catalogue.spec.ts` est renforcé de deux garde-fous : aucune gate ne peut pointer un palier qu'aucun plan ne porte, et le plafond de prix se mesure sur le palier **payant** le moins cher (il portait sur le premier plan de la liste, devenu le gratuit — assertion vacuue). Effet de bord assumé, en avance sur E3-2 : `unlimited_projects` étant `free`, la limite de deux projets ne s'applique plus à un compte inscrit (le plafond invité, indépendant de la gate, tient).
+
 ---
 
 ### E3-2 · Rendre le chiffrage gratuit et illimité

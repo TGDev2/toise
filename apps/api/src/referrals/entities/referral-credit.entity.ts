@@ -12,7 +12,7 @@ export enum ReferralCreditStatus {
 }
 
 /**
- * Ledger local du crédit « 1 mois Pro offert » (COM-3). Le crédit réel est un
+ * Ledger local du crédit « 1 mois offert » (COM-3). Le crédit réel est un
  * `Stripe.CustomerBalanceTransaction` négatif sur le compte du parrain ; cette
  * table trace la tentative (idempotence, audit) et porte l'état `pending` tant
  * que le parrain n'a pas encore de `stripe_customer_id` (cf. ReferralsService).

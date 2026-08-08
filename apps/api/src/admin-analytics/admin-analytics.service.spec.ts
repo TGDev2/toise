@@ -20,7 +20,6 @@ const planPrice = (key: string): number => {
 };
 
 const CONFIG_VALUES: Record<string, string> = {
-  'stripe.proPriceId': 'price_pro',
   'stripe.contractorEssentielPriceId': 'price_contractor_essentiel',
   'stripe.contractorStandardPriceId': 'price_contractor_standard',
   'stripe.contractorPremiumPriceId': 'price_contractor_premium',
@@ -352,7 +351,6 @@ describe('AdminAnalyticsService', () => {
   describe('mrr', () => {
     it('resolves price_id to its own tier per contractor plan (BACKLOG PRO-1), and ignores an unknown price_id without throwing', async () => {
       subscriptionsQueryBuilderMock.getRawMany.mockResolvedValue([
-        { price_id: 'price_pro', count: '3' },
         { price_id: 'price_contractor_essentiel', count: '2' },
         { price_id: 'price_contractor_standard', count: '1' },
         { price_id: 'price_unknown_legacy', count: '4' },
@@ -362,16 +360,14 @@ describe('AdminAnalyticsService', () => {
 
       const result = await service.getDashboard(4, 30);
 
-      const proMrr = 3 * planPrice('pro');
       const essentielMrr = 2 * planPrice('contractor_essentiel');
       const standardMrr = 1 * planPrice('contractor_standard');
 
       expect(result.mrr).toEqual({
         statuses_included: ['active', 'past_due'],
         currency: 'EUR',
-        total_mrr: proMrr + essentielMrr + standardMrr,
+        total_mrr: essentielMrr + standardMrr,
         by_tier: [
-          { tier: 'pro', subscriber_count: 3, mrr: proMrr },
           {
             tier: 'contractor_essentiel',
             subscriber_count: 2,
@@ -387,6 +383,22 @@ describe('AdminAnalyticsService', () => {
         free_users_count: 512,
         trialing_count: 8,
       });
+    });
+
+    it('ne publie aucune ligne pour un palier retiré de l’offre', async () => {
+      // `pro` a été retiré en E3-1. La liste des paliers rapportés est dérivée
+      // de `PLANS` : un palier supprimé disparaît du tableau de bord au lieu
+      // d'y publier indéfiniment un zéro qui finirait par se lire comme une
+      // mesure.
+      subscriptionsQueryBuilderMock.getRawMany.mockResolvedValue([]);
+      subscriptionsRepoMock.count.mockResolvedValue(0);
+      usersRepoMock.count.mockResolvedValue(0);
+
+      const result = await service.getDashboard(4, 30);
+
+      expect(result.mrr.by_tier.map((row) => row.tier)).toEqual(
+        PLANS.map((plan) => plan.key),
+      );
     });
   });
 });

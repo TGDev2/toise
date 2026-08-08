@@ -84,7 +84,11 @@ export function PlanCtaButton({
     );
   }
 
-  if (apiPlanKey === 'pro' && appUser.subscription_tier === 'pro') {
+  // La clé de plan de l'API est aussi le nom du palier qu'elle attribue. La
+  // comparaison était figée sur `pro` des deux côtés : le palier supprimé
+  // (E3-1), un abonné au palier payant se serait vu proposer de souscrire une
+  // seconde fois, pour être refusé par « Vous avez déjà un abonnement actif ».
+  if (apiPlanKey && appUser.subscription_tier === apiPlanKey) {
     return (
       <button type="button" disabled className={buttonClasses}>
         Votre offre actuelle

@@ -374,7 +374,7 @@ describe('ShoppingListsController (e2e)', () => {
       featureGatesServiceMock.isFeatureAllowed.mockResolvedValueOnce(false);
       featureGatesServiceMock.getGateConfig.mockResolvedValueOnce({
         feature_key: 'eco_materials',
-        min_tier: 'pro',
+        min_tier: 'free',
       });
 
       await request(app.getHttpServer())

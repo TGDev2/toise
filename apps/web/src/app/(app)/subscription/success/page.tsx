@@ -4,6 +4,16 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAnalytics } from '@/hooks/useAnalytics';
+import { OFFER_PLANS } from '@/lib/pricing';
+
+/**
+ * Le plan que ce retour de checkout concerne, dérivé de l'offre plutôt
+ * qu'écrit en dur. Il valait `'pro'` — palier supprimé en E3-1 — et
+ * l'événement a donc rapporté pendant un temps un plan que personne ne
+ * souscrivait.
+ */
+const CHECKOUT_PLAN_KEY =
+  OFFER_PLANS.find((plan) => plan.apiPlanKey)?.apiPlanKey ?? 'unknown';
 
 export default function SubscriptionSuccessPage() {
   const router = useRouter();
@@ -13,7 +23,10 @@ export default function SubscriptionSuccessPage() {
 
   useEffect(() => {
     syncWithBackend();
-    track('subscription_started', { plan: 'pro', source: 'checkout' });
+    track('subscription_started', {
+      plan: CHECKOUT_PLAN_KEY,
+      source: 'checkout',
+    });
   }, [syncWithBackend, track]);
 
   useEffect(() => {
@@ -51,11 +64,11 @@ export default function SubscriptionSuccessPage() {
         </div>
 
         <h1 className="text-2xl font-bold text-stone-900">
-          Bienvenue dans Chiffréo Pro !
+          Votre abonnement est actif !
         </h1>
         <p className="mt-3 text-sm text-stone-600">
-          Votre essai gratuit de 7 jours a commencé. Toutes les fonctionnalités
-          Pro sont maintenant déverrouillées.
+          Votre essai gratuit de 7 jours a commencé. Devis PDF conformes,
+          fichier clients et facturation sont maintenant déverrouillés.
         </p>
 
         <button

@@ -204,8 +204,12 @@ export class ProjectsService {
     );
     if (!writable) {
       throw new ForbiddenException({
+        // Ne nomme plus de palier : « Passez à Pro » désignait une offre
+        // supprimée en E3-1. Ce refus n'a d'ailleurs plus de chemin nominal —
+        // `unlimited_projects` est ouverte au palier gratuit — il ne subsiste
+        // que si la gate est gelée ou absente, cas où aucun achat ne le lève.
         message:
-          'Ce projet est en lecture seule. Passez à Pro pour modifier tous vos projets.',
+          'Ce projet est en lecture seule : seuls vos chantiers les plus récents sont modifiables.',
         error: 'PROJECT_READ_ONLY',
       });
     }

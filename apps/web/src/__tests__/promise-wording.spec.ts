@@ -227,9 +227,17 @@ describe('vocabulaire de la promesse produit (web)', () => {
     const texts = collectDisplayableText(
       path.join(REPO_ROOT, 'apps/web/src/app/page.tsx'),
     ).map(normalize);
+    // Le <h1> de `/` a changé avec la fusion des deux landings (E3-1) : la page
+    // d'accueil porte désormais le récit artisan. On asserte la formulation en
+    // vigueur **et** l'absence de l'ancienne : une assertion positive seule se
+    // recalerait à chaque réécriture sans rien dire, une négative seule
+    // deviendrait muette le jour où l'ancienne phrase quitte le dépôt.
+    expect(
+      texts.some((t) => t.includes('Chiffrez chez le client, pas le soir au bureau')),
+    ).toBe(true);
     expect(
       texts.some((t) => t.includes('Chiffrez vos matériaux sur la pièce réelle')),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it('aucune chaîne affichable ne promet l’exactitude, l’unicité ou une économie chiffrée', () => {

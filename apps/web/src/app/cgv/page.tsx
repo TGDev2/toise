@@ -63,8 +63,9 @@ export default function CgvPage() {
         <P>
           Le détail des offres et leurs prix figurent sur la page{' '}
           <LegalLink href="/pricing">tarifs</LegalLink>, qui fait foi. À titre
-          indicatif à la date de publication : offre Pro à 9,99 €/mois (avec 7
-          jours d’essai gratuit) et offre Contractor à 19 €/mois.
+          indicatif à la date de publication : une offre gratuite sans limite de
+          chantiers, et une offre payante à 19 €/mois avec 7 jours d’essai
+          gratuit.
         </P>
         <P>
           Les prix sont indiqués en euros.{' '}

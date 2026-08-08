@@ -25,7 +25,6 @@ const VALID_PRODUCTION_CONFIG: Record<string, string> = {
     '-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----',
   STRIPE_SECRET_KEY: 'sk_live_xxx',
   STRIPE_WEBHOOK_SECRET: 'whsec_xxx',
-  STRIPE_PRO_PRICE_ID: 'price_xxx',
   BREVO_API_KEY: 'xkeysib-xxx',
   BREVO_SENDER_EMAIL: 'contact@chiffreo.fr',
   NEXT_PUBLIC_API_URL: 'https://api.chiffreo.fr/api/v1',
@@ -35,6 +34,24 @@ const VALID_PRODUCTION_CONFIG: Record<string, string> = {
 describe('validate (env.validation)', () => {
   it('accepts a fully-configured production environment', () => {
     expect(() => validate({ ...VALID_PRODUCTION_CONFIG })).not.toThrow();
+  });
+
+  it("n'exige plus le prix d'un palier retiré de l'offre", () => {
+    // `STRIPE_PRO_PRICE_ID` était requise au démarrage. Le palier supprimé
+    // (E3-1), l'exiger obligeait à créer chez Stripe un prix qu'aucune surface
+    // ne vend, sous peine de refus de démarrage — le contournement décrit dans
+    // DEPLOY.md §4.2, qui disparaît avec sa cause.
+    //
+    // L'assertion « une configuration sans elle démarre » ne prouverait rien
+    // seule : la même ligne est verte si la validation ne regarde plus rien.
+    // Le second cas montre que le mécanisme rougit encore.
+    expect(() =>
+      validate({ ...VALID_PRODUCTION_CONFIG, STRIPE_PRO_PRICE_ID: undefined }),
+    ).not.toThrow();
+
+    const withoutSecretKey = { ...VALID_PRODUCTION_CONFIG };
+    delete withoutSecretKey.STRIPE_SECRET_KEY;
+    expect(() => validate(withoutSecretKey)).toThrow(/STRIPE_SECRET_KEY/);
   });
 
   it('does not validate production-only rules outside production', () => {

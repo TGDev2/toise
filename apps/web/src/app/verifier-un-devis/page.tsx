@@ -67,7 +67,6 @@ export default function QuoteCheckPage() {
       />
       <div className="mx-auto w-full max-w-6xl">
         <MarketingHeader
-          audience="diy"
           extraLink={{ href: '/calculateurs', label: 'Calculateurs gratuits' }}
         />
 
