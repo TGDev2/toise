@@ -961,17 +961,120 @@ alternatives documentées. Faire suivre le SKU à `joint_width_mm` serait un
 mécanisme nouveau (sélection de matériau par paramètre) que le moteur n'a
 pas ; la **quantité**, elle, est identique quel que soit le SKU.
 
-## Temps unitaires de main-d'œuvre : statut (E2-3)
+## Temps de pose unitaires (E2-1)
 
-`work_types.labor_minutes_per_m2` (migration `…072`) propose, par ouvrage, un
-temps de pose indicatif en minutes par m² — utilisé pour préremplir une ligne
-de MO du devis à partir de la surface de l'ouvrage. **Ce ne sont pas des
-rendements sourcés au sens du registre ci-dessus** : il n'existe pas de fiche
-technique fabricant pour un temps de pose, contrairement à un rendement
-matière. Ces valeurs ont le même statut que les `waste_factors` de la section
-précédente — des ordres de grandeur métier, sans référence normative — et sont
-documentées ici pour la même raison : ne jamais laisser croire qu'un chiffre
-métier est une donnée sourcée.
+Le registre des temps de main-d'œuvre par ouvrage, pose et niveau — la donnée
+que `labor_times` (migration `…097`) seede depuis
+`apps/api/src/projects/labor-times.data.ts`, et que
+`labor-sources-catalogue.spec.ts` confronte à ce tableau, comme
+`sources-catalogue.spec.ts` le fait pour les rendements matière.
+
+**Doctrine.** Chaque ligne cite un document librement consultable :
+organisation professionnelle, référentiel de formation, guide de mise en
+œuvre, presse spécialisée, retour public de professionnel. Contrairement à un
+rendement matière, un temps de pose n'est jamais définitionnel : les cinq
+champs de source sont obligatoires. La fourchette basse-haute est l'étalement
+des chiffres publiés sur l'hypothèse d'ouvrage écrite dans « Conditions »,
+jamais la valeur retenue ± une tolérance (même doctrine que les encadrements
+de consommation).
+
+**Axes.** `Pose` est une pose de `POSES_BY_WORK_TYPE` (`standard` pour les
+ouvrages sans variante de calepinage). `Niveau` vaut `—` quand la ligne vaut
+pour tous les niveaux — le cas normal : les sources libres publient des temps
+de professionnel confirmé. Une ligne par niveau n'existe que si une source la
+différencie réellement. Contrat de résolution (E2-2) : `(pose, niveau)` exact,
+sinon `(pose, —)`, sinon la ligne de base `(pose par défaut, —)` que le spec
+garantit pour chaque ouvrage.
+
+Les cadences journalières publiées sont converties à 7–8 h effectives par
+jour selon ce que la source précise ; la conversion est écrite dans le
+`source_basis_fr` de chaque ligne du fichier de données.
+
+| Ouvrage | Pose | Niveau | Unité | Basse (h) | Haute (h) | Valeur retenue (h) | Conditions | Source | URL | Consulté le |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `wall_painting` | `standard` | — | m² | 0.22 | 0.40 | 0.25 | 2 couches acryliques au rouleau, mur sain, rechampi courant compris, h ≤ 2,60 m ; hors impression, préparation, protection | Hougard — Bibliothèque de temps unitaires | https://hougard.fr/bibliotheque-de-temps-unitaires | 2026-08-08 |
+| `wall_painting` | `standard` | `beginner` | m² | — | — | 0.60 | Idem base, poseur débutant — facteur ≈ 2,4 sourcé appliqué au temps de base | Omizi — Combien de temps faut-il pour peindre une pièce | https://omizi.com/guides/peintres/combien-de-temps-faut-il-pour-peindre-une-piece | 2026-08-08 |
+| `ceiling_painting` | `standard` | — | m² | 0.24 | 0.44 | 0.28 | 2 couches au rouleau sur perche, plafond sain, accessible sans échafaudage ; hors impression, préparation, protection | Hougard — Bibliothèque de temps unitaires | https://hougard.fr/bibliotheque-de-temps-unitaires | 2026-08-08 |
+| `ceiling_painting` | `standard` | `beginner` | m² | — | — | 0.70 | Idem base, poseur débutant — facteur ≈ 2,5 sourcé (1–3 h pro contre 5–8 h débutant pour 20 m²) | Cap-BTP — Combien de temps pour peindre un plafond de 20 m² | https://www.cap-btp.com/combien-de-temps-pour-peindre-un-plafond-de-20m2/ | 2026-08-08 |
+| `floor_tiling` | `straight` | — | m² | 0.45 | 1.25 | 0.80 | Grès cérame 45 × 45, double encollage, support préparé plan, joints compris ; hors ragréage, primaire, plinthes, étanchéité | Meilleur-Artisan — Quel temps met un carreleur professionnel pour poser un m² | https://www.meilleur-artisan.com/discussion/quel-temps-met-un-carreleur-professionnel-pour-poser-un-m2-de-carrelage.41877.html | 2026-08-08 |
+| `floor_tiling` | `straight` | `beginner` | m² | — | — | 1.60 | Idem base, poseur débutant — 5 à 8 m²/jour publiés en pose pure | Esprit Brico — Temps de pose du carrelage | https://espritbrico.fr/temps-pose-carrelage/ | 2026-08-08 |
+| `floor_tiling` | `diagonal` | — | m² | 0.95 | 1.60 | 1.20 | Idem pose droite, traçage préalable et découpes d'angle sur toute la périphérie — +50 % retenu | Rénovation Habitat — Pose de carrelage en diagonale | https://www.renovation-habitat.info/pose-carrelage-en-diagonale | 2026-08-08 |
+| `wall_tiling` | `straight` | — | m² | 0.80 | 1.60 | 1.20 | Faïence 25 × 40, local humide, découpes autour des points d'eau, joints compris ; hors étanchéité, préparation | BG Habitat Conseil — Combien de m² pose un carreleur par jour | https://www.bghabitatconseil.fr/combien-m2-pose-carreleur-jour/ | 2026-08-08 |
+| `wall_tiling` | `straight` | `beginner` | m² | 1.60 | 2.70 | 2.20 | Idem base, poseur débutant — 3 à 5 m² par journée publiés | Ain Carrelages — Combien de temps pour poser du carrelage | https://www.ain-carrelages.com/blog/combien-de-temps-pour-poser-du-carrelage-n101 | 2026-08-08 |
+| `parquet_flooring` | `straight` | — | m² | 0.15 | 0.45 | 0.30 | Stratifié/contrecollé clipsé flottant sur sous-couche, support plan ; hors préparation, plinthes, barres de seuil | Ynspir — Prix de pose du parquet au m² | https://ynspir.com/conseils-decoration/renovation/prix-renovation/prix-de-pose-du-parquet-au-m2/ | 2026-08-08 |
+| `parquet_flooring` | `straight` | `beginner` | m² | 0.35 | 0.80 | 0.50 | Idem base, poseur débutant | Fait Pour Vous — Comment poser du parquet flottant | https://www.faitpourvous.fr/bricolage/poser-parquet-flottant | 2026-08-08 |
+| `parquet_flooring` | `herringbone` | — | m² | 0.47 | 1.75 | 1.00 | Bâton rompu collé ou clipsé, produit dédié, support plan ; hors préparation, plinthes, seuils | Domindo — Parquet bâton rompu : pourquoi la pose est-elle plus chère | https://www.domindo.fr/parquet-baton-rupt-pose-coute | 2026-08-08 |
+| `drywall` | `standard` | — | m² | 0.80 | 1.10 | 0.95 | Cloison 72/48, montants entraxe 60, laine 45 mm, 1 BA13 par face, bandes 2 faces comprises, par m² de cloison ; séchages non comptés | Matiso — Combien de temps pour monter une cloison | https://www.matiso.fr/combien-de-temps-pour-monter-une-cloison | 2026-08-08 |
+| `drywall` | `standard` | `beginner` | m² | 1.20 | 1.70 | 1.50 | Idem base, poseur débutant | Matiso — Combien de temps pour monter une cloison | https://www.matiso.fr/combien-de-temps-pour-monter-une-cloison | 2026-08-08 |
+| `wall_covering` | `standard` | — | m² | 0.15 | 0.35 | 0.25 | Intissé, colle appliquée au mur, raccord simple, mur préparé ; hors dépose, préparation, séchage | Mon Papier Peint — Guide de pose du papier peint intissé | https://www.monpapierpeint.com/blogs/journal/guide-pose-papier-peint-intisse | 2026-08-08 |
+| `wall_covering` | `standard` | `beginner` | m² | 0.40 | 0.60 | 0.50 | Idem base, poseur débutant — barème expérimenté/débutant publié | Le Monde du Papier Peint — Combien de temps pour poser du papier peint | https://lemondedupapierpeint.fr/blogs/blog/combien-de-temps-pour-poser-du-papier-peint | 2026-08-08 |
+
+**Poses et niveaux non chiffrés.** Aucune source libre ne chiffre la
+diagonale en parquet, la diagonale en faïence murale, le raccord sauté en
+papier peint, ni le niveau `expert` d'aucun ouvrage : pas de ligne plutôt
+qu'une ligne inventée. Le contrat de résolution fait retomber ces cas sur la
+ligne applicable — `(pose, —)` puis `(pose par défaut, —)`.
+
+### Ce que ces temps n'incluent pas
+
+Quatre postes restent hors des temps unitaires, et chacun a un traitement
+proposé plutôt qu'un silence :
+
+- **Préparation du support** (rebouchage, ponçage, ragréage, primaire, dépose
+  de l'ancien revêtement) : déjà partiellement matérialisée côté matériaux
+  (E1-10 : ragréage, primaire, SEL conditionnés au support déclaré). Le temps
+  de préparation correspondant est un candidat à des lignes sourcées
+  supplémentaires de ce registre — pas une majoration cachée des temps de
+  pose.
+- **Protection et bâchage** de la pièce : forfait par pièce, proposé comme
+  ligne de MO distincte au devis (E2-2), pas un temps au m².
+- **Nettoyage de fin de chantier** : forfait par chantier, même traitement.
+- **Déplacement** : dépend de l'entreprise et non de l'ouvrage — sa place est
+  au profil d'entreprise (frais de déplacement), jamais dans un temps
+  unitaire.
+
+### Note légale — bases commerciales
+
+Batiprix et BatiChiffrage commercialisent précisément cette donnée. Aucune
+valeur de ce registre n'en provient, directement ou via un site qui les
+republie ; le spec refuse toute ligne qui les cite. Quand la seule source
+trouvable pour une valeur est une base commerciale, la valeur est écartée et
+le cas consigné ici plutôt que repris.
+
+Cas écartés à ce jour :
+
+- **Temps unitaires normatifs du carrelage** : aucune organisation
+  professionnelle (CAPEB, FFB, OPPBTP) ne publie de cadence librement
+  consultable — les temps « officiels » de ce corps d'état n'existent qu'en
+  bordereaux commerciaux. Les valeurs du registre viennent donc de cadences
+  publiées par des artisans en exercice et de guides éditoriaux
+  indépendants, en fourchette large.
+- **UPMF-FFB, « outils pratiques »** (peinture et revêtements muraux) :
+  réservés aux adhérents — non consultés, non repris.
+- **Blog technique d'un éditeur de bordereau** (chiffrage des cloisons sur
+  ossature métallique) : écarté sans lecture des valeurs.
+- **Support de cours « étude de prix » hébergé sur une plateforme de
+  partage** créditant explicitement un extrait de bordereau commercial :
+  écarté.
+- **Pages marketing d'éditeurs de logiciels de devis** adossés à ces bases
+  (calculateurs, blogs) : écartées d'office, sans en extraire de chiffre.
+
+Recherche non aboutie côté institutions : CAPEB, FFB, SNIP et OPPBTP ne
+publient pas de temps unitaires en libre accès (l'OPPBTP traite la
+pénibilité, pas les cadences) ; les référentiels CAP/BP/AFPA décrivent des
+compétences, pas des rendements. Deux exceptions librement consultables ont
+été retenues : un sujet officiel de BTS Aménagement Finition (temps unitaire
+d'étude de prix d'une cloison, borne haute du registre) et la fiche conseil
+SNIP n° 18 (quantitatifs par m² de cloison, utilisée pour convertir les
+cadences « m² de plaque » en « m² de cloison »,
+https://www.lesindustriesduplatre.org/wp-content/uploads/2025/03/SNIP-FICHE-CONSEIL-18-VERSIONS-2025_V6-13fevrier.pdf).
+
+### Coexistence avec `labor_minutes_per_m2` (E2-3)
+
+`work_types.labor_minutes_per_m2` (migration `…072`) préremplit aujourd'hui
+les lignes de MO du devis (`GET /quotes/labor-proposal`). Ces valeurs restent
+en place, **non sourcées** — des ordres de grandeur métier, sans référence
+normative — jusqu'à ce qu'E2-2 câble le devis sur le registre ci-dessus :
 
 | Ouvrage | min/m² | Hypothèse |
 | --- | --- | --- |

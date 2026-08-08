@@ -77,6 +77,11 @@ export const EXCLUDED_ENTITIES: { table: string; reason: string }[] = [
   },
   { table: 'waste_factors', reason: 'Catalogue produit/matériaux global.' },
   {
+    table: 'labor_times',
+    reason:
+      'Registre de référence global des temps de pose (E2-1), identique pour tous les comptes.',
+  },
+  {
     table: 'material_eco_equivalences',
     reason: 'Catalogue produit/matériaux global.',
   },
