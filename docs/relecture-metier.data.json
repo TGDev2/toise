@@ -1,0 +1,712 @@
+[
+  {
+    "work_type_code": "wall_painting",
+    "work_type_label_fr": "Peinture murale",
+    "category": "painting",
+    "skill_level": "intermediate",
+    "pose_type": "standard",
+    "pose_declared": false,
+    "custom_params": {},
+    "room": {
+      "length_cm": 400,
+      "width_cm": 350,
+      "height_cm": 250,
+      "openings": [
+        {
+          "width_cm": 83,
+          "height_cm": 204,
+          "count": 1,
+          "type": "door"
+        },
+        {
+          "width_cm": 120,
+          "height_cm": 100,
+          "count": 1,
+          "type": "window"
+        }
+      ]
+    },
+    "basis": {
+      "work_surface_m2": 34.6068,
+      "gross_surface_m2": 37.5,
+      "excluded_surface_m2": 0,
+      "clad_surface_m2": 34.6068,
+      "clad_faces": 1,
+      "frame": null
+    },
+    "lines": [
+      {
+        "material_name": "Peinture acrylique mate",
+        "role": "principal",
+        "material_unit": "L",
+        "waste_factor_percent": 10,
+        "waste_factor_source": "catalog",
+        "number_of_coats": 2,
+        "adjusted_qty": 6.921,
+        "packaging_label": "Pot 10 L",
+        "units_needed": 1,
+        "justification_text_fr": "≈ 11 m²/L par couche, en peinture acrylique mate selon la fiche technique Dulux Valentine Crème de Couleur Mat Velouté consultée le 03/08/2026.",
+        "justification_text_unbranded_fr": "≈ 11 m²/L par couche, en peinture acrylique mate selon la fiche technique du fabricant consultée le 03/08/2026.",
+        "justification_source_url": "https://www.duluxvalentine.com/fr/produits/cr%C3%A8me-de-couleur-mat-velout%C3%A9"
+      },
+      {
+        "material_name": "Sous-couche universelle",
+        "role": "sous_couche",
+        "material_unit": "L",
+        "waste_factor_percent": 10,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 3.807,
+        "packaging_label": "Pot 5 L",
+        "units_needed": 1,
+        "justification_text_fr": "10 m²/L, en sous-couche universelle selon la fiche technique Ripolin Sous-Couche Universelle Mat consultée le 03/08/2026.",
+        "justification_text_unbranded_fr": "10 m²/L, en sous-couche universelle selon la fiche technique du fabricant consultée le 03/08/2026.",
+        "justification_source_url": "https://ripolin.fr/produit/sous-couche-universelle-mat"
+      }
+    ],
+    "exclusions": []
+  },
+  {
+    "work_type_code": "ceiling_painting",
+    "work_type_label_fr": "Peinture plafond",
+    "category": "painting",
+    "skill_level": "intermediate",
+    "pose_type": "standard",
+    "pose_declared": false,
+    "custom_params": {},
+    "room": {
+      "length_cm": 400,
+      "width_cm": 350,
+      "height_cm": 250,
+      "openings": [
+        {
+          "width_cm": 83,
+          "height_cm": 204,
+          "count": 1,
+          "type": "door"
+        },
+        {
+          "width_cm": 120,
+          "height_cm": 100,
+          "count": 1,
+          "type": "window"
+        }
+      ]
+    },
+    "basis": {
+      "work_surface_m2": 14,
+      "gross_surface_m2": 14,
+      "excluded_surface_m2": 0,
+      "clad_surface_m2": 14,
+      "clad_faces": 1,
+      "frame": null
+    },
+    "lines": [
+      {
+        "material_name": "Peinture plafond mate",
+        "role": "principal",
+        "material_unit": "L",
+        "waste_factor_percent": 10,
+        "waste_factor_source": "catalog",
+        "number_of_coats": 2,
+        "adjusted_qty": 3.08,
+        "packaging_label": "Pot 5 L",
+        "units_needed": 1,
+        "justification_text_fr": "10 m²/L par couche (NF 30 073), en peinture plafond mate selon la fiche technique Ripolin Peinture Plafonds Cuisine & Salle de Bain Mat consultée le 03/08/2026.",
+        "justification_text_unbranded_fr": "10 m²/L par couche (NF 30 073), en peinture plafond mate selon la fiche technique du fabricant consultée le 03/08/2026.",
+        "justification_source_url": "https://ripolin.fr/produit/peinture-plafonds-cuisine-salle-de-bain-mat"
+      },
+      {
+        "material_name": "Sous-couche universelle",
+        "role": "sous_couche",
+        "material_unit": "L",
+        "waste_factor_percent": 10,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 1.54,
+        "packaging_label": "Pot 2.5 L",
+        "units_needed": 1,
+        "justification_text_fr": "10 m²/L, en sous-couche universelle selon la fiche technique Ripolin Sous-Couche Universelle Mat consultée le 03/08/2026.",
+        "justification_text_unbranded_fr": "10 m²/L, en sous-couche universelle selon la fiche technique du fabricant consultée le 03/08/2026.",
+        "justification_source_url": "https://ripolin.fr/produit/sous-couche-universelle-mat"
+      }
+    ],
+    "exclusions": []
+  },
+  {
+    "work_type_code": "floor_tiling",
+    "work_type_label_fr": "Carrelage sol",
+    "category": "tiling",
+    "skill_level": "intermediate",
+    "pose_type": "straight",
+    "pose_declared": false,
+    "custom_params": {
+      "tile_format": "45x45",
+      "joint_width_mm": "3",
+      "water_exposure": "wet_room",
+      "floor_flatness": "flat"
+    },
+    "room": {
+      "length_cm": 300,
+      "width_cm": 220,
+      "height_cm": 250,
+      "openings": [
+        {
+          "width_cm": 73,
+          "height_cm": 204,
+          "count": 1,
+          "type": "door"
+        }
+      ]
+    },
+    "basis": {
+      "work_surface_m2": 6.6,
+      "gross_surface_m2": 6.6,
+      "excluded_surface_m2": 0,
+      "clad_surface_m2": 6.6,
+      "clad_faces": 1,
+      "frame": null
+    },
+    "lines": [
+      {
+        "material_name": "Carrelage sol 45x45 cm",
+        "role": "principal",
+        "material_unit": "m2",
+        "waste_factor_percent": 10,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 7.26,
+        "packaging_label": "Boîte 1.5 m²",
+        "units_needed": 5,
+        "justification_text_fr": "Vendu et posé au m² : rendement définitionnel.",
+        "justification_text_unbranded_fr": "Vendu et posé au m² : rendement définitionnel."
+      },
+      {
+        "material_name": "Mortier-colle flexible (C2)",
+        "role": "consommable",
+        "material_unit": "kg",
+        "waste_factor_percent": 3,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 48.557,
+        "packaging_label": "Sac 25 kg",
+        "units_needed": 2,
+        "justification_text_fr": "7 kg/m² en U9, sol intérieur selon la fiche technique Cermix CERMIPLUS 2.0 (C2) consultée le 07/08/2026. Double encollage obligatoire au-delà de 1 200 cm² (NF DTU 52.2) : votre carreau fait 2 025 cm².",
+        "justification_text_unbranded_fr": "7 kg/m² en U9, sol intérieur selon la fiche technique du fabricant consultée le 07/08/2026. Double encollage obligatoire au-delà de 1 200 cm² (NF DTU 52.2) : votre carreau fait 2 025 cm².",
+        "justification_source_url": "https://www.cermix.com/wp-content/uploads/2020/02/FT_CERMIPLUS-2.0_V2.pdf"
+      },
+      {
+        "material_name": "Joint fin 1-6mm",
+        "role": "consommable",
+        "material_unit": "kg",
+        "waste_factor_percent": 3,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 1.36,
+        "packaging_label": "Sac 5 kg",
+        "units_needed": 1,
+        "justification_text_fr": "0,2 kg/m² pour un carreau 45x45 cm à joint de 3 mm, épaisseur 9 mm — rendement exprimé à la géométrie de référence du modèle selon la fiche technique Cermix CERMIJOINT COLOR (CG2WA, 1-6 mm) consultée le 07/08/2026.",
+        "justification_text_unbranded_fr": "0,2 kg/m² pour un carreau 45x45 cm à joint de 3 mm, épaisseur 9 mm — rendement exprimé à la géométrie de référence du modèle selon la fiche technique du fabricant consultée le 07/08/2026.",
+        "justification_source_url": "https://www.cermix.com/wp-content/uploads/2020/02/FT_CERMIJOINT_COLOR.pdf"
+      },
+      {
+        "material_name": "Croisillons 3mm (x200)",
+        "role": "consommable",
+        "material_unit": "unit",
+        "waste_factor_percent": 5,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 0.171,
+        "packaging_label": "Sachet 200 pcs",
+        "units_needed": 1,
+        "justification_text_fr": "Dérivation géométrique : un croisillon par intersection de joints (sachet de 200), à la géométrie de référence 45x45 cm — aucun fabricant ne publie de table de consommation.",
+        "justification_text_unbranded_fr": "Dérivation géométrique : un croisillon par intersection de joints (sachet de 200), à la géométrie de référence 45x45 cm — aucun fabricant ne publie de table de consommation."
+      },
+      {
+        "material_name": "Joint souple silicone",
+        "role": "consommable",
+        "material_unit": "unit",
+        "waste_factor_percent": 3,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 3.32,
+        "packaging_label": "Cartouche 300 ml",
+        "units_needed": 4,
+        "justification_text_fr": "3 m de joint périphérique par cartouche de 300 ml, cordon 10x10 mm — la section la plus défavorable publiée selon la fiche technique Sika Sanisil consultée le 08/08/2026.",
+        "justification_text_unbranded_fr": "3 m de joint périphérique par cartouche de 300 ml, cordon 10x10 mm — la section la plus défavorable publiée selon la fiche technique du fabricant consultée le 08/08/2026.",
+        "justification_source_url": "https://fra.sika.com/dms/getdocument.get/4bf61a71-0ba4-45cb-95e6-0d7c3ab8cb48/sika_sanisil_.pdf"
+      },
+      {
+        "material_name": "Plinthe carrelage 8x30 cm",
+        "role": "accessoire",
+        "material_unit": "m",
+        "waste_factor_percent": 7,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 10.347,
+        "packaging_label": "Lot de 10 (3 m)",
+        "units_needed": 4,
+        "justification_text_fr": "Vendue et posée au mètre le long des murs : rendement définitionnel.",
+        "justification_text_unbranded_fr": "Vendue et posée au mètre le long des murs : rendement définitionnel."
+      },
+      {
+        "material_name": "SEL (Système d'Étanchéité Liquide)",
+        "role": "sous_couche",
+        "material_unit": "kg",
+        "waste_factor_percent": 3,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 20.396,
+        "packaging_label": "Kit 32 kg",
+        "units_needed": 1,
+        "inclusion_reason_fr": "Local déclaré salle d'eau : protection à l'eau sous carrelage requise (SEL, NF DTU 52.2).",
+        "justification_text_fr": "3 kg de mélange/m² en 2 couches (milieu de plage 2,5 à 3,5 kg/m², kit de 32 kg), corroboré par une fiche concurrente (3 kg/m²) selon la fiche technique PRB CEL CÉRAMIC consultée le 08/08/2026. Local déclaré salle d'eau : protection à l'eau sous carrelage requise (SEL, NF DTU 52.2).",
+        "justification_text_unbranded_fr": "3 kg de mélange/m² en 2 couches (milieu de plage 2,5 à 3,5 kg/m², kit de 32 kg), corroboré par une fiche concurrente (3 kg/m²) selon la fiche technique du fabricant consultée le 08/08/2026. Local déclaré salle d'eau : protection à l'eau sous carrelage requise (SEL, NF DTU 52.2).",
+        "justification_source_url": "https://pim.prb.fr/PRB/Fiches%20Techniques/fr/ft_prb_cel_ceramic_fr_4_04_2024.pdf"
+      },
+      {
+        "material_name": "Bande d'étanchéité 120mm",
+        "role": "consommable",
+        "material_unit": "m",
+        "waste_factor_percent": 7,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 10.347,
+        "packaging_label": "Rouleau 10 m",
+        "units_needed": 2,
+        "inclusion_reason_fr": "Local déclaré salle d'eau : protection à l'eau sous carrelage requise (SEL, NF DTU 52.2).",
+        "justification_text_fr": "Marouflée en continu dans la première couche du SEL, le long des jonctions sol/mur : un mètre de bande par mètre de jonction (rouleau de 10 m) — rendement définitionnel. Local déclaré salle d'eau : protection à l'eau sous carrelage requise (SEL, NF DTU 52.2).",
+        "justification_text_unbranded_fr": "Marouflée en continu dans la première couche du SEL, le long des jonctions sol/mur : un mètre de bande par mètre de jonction (rouleau de 10 m) — rendement définitionnel. Local déclaré salle d'eau : protection à l'eau sous carrelage requise (SEL, NF DTU 52.2)."
+      },
+      {
+        "material_name": "Barre de seuil alu 93cm",
+        "role": "accessoire",
+        "material_unit": "unit",
+        "waste_factor_percent": 0,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 1,
+        "packaging_label": "Unité",
+        "units_needed": 1,
+        "justification_text_fr": "Une barre par passage de porte (largeur standard 83 cm ≤ 93 cm) : rendement définitionnel.",
+        "justification_text_unbranded_fr": "Une barre par passage de porte (largeur standard 83 cm ≤ 93 cm) : rendement définitionnel."
+      }
+    ],
+    "exclusions": [
+      {
+        "material_name": "Ragréage autolissant",
+        "reason_fr": "Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires."
+      },
+      {
+        "material_name": "Primaire d'accrochage carrelage",
+        "reason_fr": "Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires."
+      }
+    ]
+  },
+  {
+    "work_type_code": "wall_tiling",
+    "work_type_label_fr": "Carrelage mural",
+    "category": "tiling",
+    "skill_level": "intermediate",
+    "pose_type": "straight",
+    "pose_declared": false,
+    "custom_params": {
+      "water_exposure": "wet_room"
+    },
+    "room": {
+      "length_cm": 200,
+      "width_cm": 180,
+      "height_cm": 220,
+      "openings": [
+        {
+          "width_cm": 73,
+          "height_cm": 204,
+          "count": 1,
+          "type": "door"
+        }
+      ]
+    },
+    "basis": {
+      "work_surface_m2": 15.2308,
+      "gross_surface_m2": 16.72,
+      "excluded_surface_m2": 0,
+      "clad_surface_m2": 15.2308,
+      "clad_faces": 1,
+      "frame": null
+    },
+    "lines": [
+      {
+        "material_name": "Faïence murale 25x40 cm",
+        "role": "principal",
+        "material_unit": "m2",
+        "waste_factor_percent": 10,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 16.754,
+        "packaging_label": "Boîte 1 m²",
+        "units_needed": 17,
+        "justification_text_fr": "Vendu et posé au m² : rendement définitionnel.",
+        "justification_text_unbranded_fr": "Vendu et posé au m² : rendement définitionnel."
+      },
+      {
+        "material_name": "Colle en pâte prête à l'emploi",
+        "role": "consommable",
+        "material_unit": "kg",
+        "waste_factor_percent": 3,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 71.308,
+        "packaging_label": "Seau 15 kg",
+        "units_needed": 5,
+        "justification_text_fr": "4,5 kg/m² en U6, mur intérieur, carreau 500-1 200 cm², double encollage selon la fiche technique Cermix CERMIFIX (D2ET) consultée le 03/08/2026.",
+        "justification_text_unbranded_fr": "4,5 kg/m² en U6, mur intérieur, carreau 500-1 200 cm², double encollage selon la fiche technique du fabricant consultée le 03/08/2026.",
+        "justification_source_url": "https://www.cermix.com/wp-content/uploads/2020/02/FT_CERMIFIX.pdf"
+      },
+      {
+        "material_name": "Joint fin 1-6mm",
+        "role": "consommable",
+        "material_unit": "kg",
+        "waste_factor_percent": 3,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 3.569,
+        "packaging_label": "Sac 5 kg",
+        "units_needed": 1,
+        "justification_text_fr": "0,2 kg/m² pour un carreau 45x45 cm à joint de 3 mm, épaisseur 9 mm — rendement exprimé à la géométrie de référence du modèle selon la fiche technique Cermix CERMIJOINT COLOR (CG2WA, 1-6 mm) consultée le 07/08/2026.",
+        "justification_text_unbranded_fr": "0,2 kg/m² pour un carreau 45x45 cm à joint de 3 mm, épaisseur 9 mm — rendement exprimé à la géométrie de référence du modèle selon la fiche technique du fabricant consultée le 07/08/2026.",
+        "justification_source_url": "https://www.cermix.com/wp-content/uploads/2020/02/FT_CERMIJOINT_COLOR.pdf"
+      },
+      {
+        "material_name": "Croisillons 3mm (x200)",
+        "role": "consommable",
+        "material_unit": "unit",
+        "waste_factor_percent": 5,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 0.8,
+        "packaging_label": "Sachet 200 pcs",
+        "units_needed": 1,
+        "justification_text_fr": "Dérivation géométrique : un croisillon par intersection de joints (sachet de 200), à la géométrie de référence 45x45 cm — aucun fabricant ne publie de table de consommation.",
+        "justification_text_unbranded_fr": "Dérivation géométrique : un croisillon par intersection de joints (sachet de 200), à la géométrie de référence 45x45 cm — aucun fabricant ne publie de table de consommation."
+      },
+      {
+        "material_name": "SEL (Système d'Étanchéité Liquide)",
+        "role": "sous_couche",
+        "material_unit": "kg",
+        "waste_factor_percent": 3,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 47.068,
+        "packaging_label": "Kit 32 kg",
+        "units_needed": 2,
+        "inclusion_reason_fr": "Local déclaré salle d'eau : protection à l'eau sous carrelage requise (SEL, NF DTU 52.2).",
+        "justification_text_fr": "3 kg de mélange/m² en 2 couches (milieu de plage 2,5 à 3,5 kg/m², kit de 32 kg), corroboré par une fiche concurrente (3 kg/m²) selon la fiche technique PRB CEL CÉRAMIC consultée le 08/08/2026. Local déclaré salle d'eau : protection à l'eau sous carrelage requise (SEL, NF DTU 52.2).",
+        "justification_text_unbranded_fr": "3 kg de mélange/m² en 2 couches (milieu de plage 2,5 à 3,5 kg/m², kit de 32 kg), corroboré par une fiche concurrente (3 kg/m²) selon la fiche technique du fabricant consultée le 08/08/2026. Local déclaré salle d'eau : protection à l'eau sous carrelage requise (SEL, NF DTU 52.2).",
+        "justification_source_url": "https://pim.prb.fr/PRB/Fiches%20Techniques/fr/ft_prb_cel_ceramic_fr_4_04_2024.pdf"
+      }
+    ],
+    "exclusions": []
+  },
+  {
+    "work_type_code": "parquet_flooring",
+    "work_type_label_fr": "Parquet ou stratifie",
+    "category": "flooring",
+    "skill_level": "intermediate",
+    "pose_type": "straight",
+    "pose_declared": false,
+    "custom_params": {
+      "subfloor_type": "concrete_screed",
+      "floor_flatness": "flat"
+    },
+    "room": {
+      "length_cm": 500,
+      "width_cm": 400,
+      "height_cm": 250,
+      "openings": [
+        {
+          "width_cm": 83,
+          "height_cm": 204,
+          "count": 1,
+          "type": "door"
+        },
+        {
+          "width_cm": 150,
+          "height_cm": 120,
+          "count": 1,
+          "type": "window"
+        }
+      ]
+    },
+    "basis": {
+      "work_surface_m2": 20,
+      "gross_surface_m2": 20,
+      "excluded_surface_m2": 0,
+      "clad_surface_m2": 20,
+      "clad_faces": 1,
+      "frame": null
+    },
+    "lines": [
+      {
+        "material_name": "Stratifié 8mm AC4",
+        "role": "principal",
+        "material_unit": "m2",
+        "waste_factor_percent": 7,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 21.4,
+        "packaging_label": "Paquet 2.49 m²",
+        "units_needed": 9,
+        "justification_text_fr": "Vendu et posé au m² : rendement définitionnel.",
+        "justification_text_unbranded_fr": "Vendu et posé au m² : rendement définitionnel."
+      },
+      {
+        "material_name": "Sous-couche mousse 3mm",
+        "role": "sous_couche",
+        "material_unit": "m2",
+        "waste_factor_percent": 7,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 21.4,
+        "packaging_label": "Rouleau 15 m²",
+        "units_needed": 2,
+        "justification_text_fr": "Pose bord à bord sans chevauchement ; 1 rouleau = 15 m² — rendement définitionnel selon la fiche technique Quick-Step Basic Plus + NETAPE50 consultée le 03/08/2026.",
+        "justification_text_unbranded_fr": "Pose bord à bord sans chevauchement ; 1 rouleau = 15 m² — rendement définitionnel selon la fiche technique du fabricant consultée le 03/08/2026.",
+        "justification_source_url": "https://www.quick-step.fr/-/media/Imported%20Assets/Flooring/9/6/5/TDSAccNETAPE50SelfadhesiveTapeFRpdf49942.ashx?rev=867c7b1de3ff4881ace0453be4832f00&type=original&filename=Informations+techniques.pdf"
+      },
+      {
+        "material_name": "Film pare-vapeur PE",
+        "role": "sous_couche",
+        "material_unit": "m2",
+        "waste_factor_percent": 7,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 26.75,
+        "packaging_label": "Rouleau 20 m²",
+        "units_needed": 2,
+        "inclusion_reason_fr": "Support béton ou chape et sous-couche sans pare-vapeur intégré : le film est nécessaire (NF DTU 51.11).",
+        "justification_text_fr": "Lé de 1,00 m, recouvrement ≥ 20 cm imposé par la fiche → 0,8 m² utile par m² de sol posé (corroboré par une fiche concurrente) selon la fiche technique Wineo PE-Dampfbremse consultée le 03/08/2026. Support béton ou chape et sous-couche sans pare-vapeur intégré : le film est nécessaire (NF DTU 51.11).",
+        "justification_text_unbranded_fr": "Lé de 1,00 m, recouvrement ≥ 20 cm imposé par la fiche → 0,8 m² utile par m² de sol posé (corroboré par une fiche concurrente) selon la fiche technique du fabricant consultée le 03/08/2026. Support béton ou chape et sous-couche sans pare-vapeur intégré : le film est nécessaire (NF DTU 51.11).",
+        "justification_source_url": "https://www.wineo.de/content/Dokumente/Zubehoer/Technische%20Datenblaetter/DE/PE-Dampfbremse-02-2019.pdf"
+      },
+      {
+        "material_name": "Plinthe MDF 60mm 2.4m",
+        "role": "accessoire",
+        "material_unit": "m",
+        "waste_factor_percent": 7,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 18.372,
+        "packaging_label": "Barre 2.4 m",
+        "units_needed": 8,
+        "justification_text_fr": "Vendue et posée au mètre le long des murs, en barres de 2,40 m (longueur du commerce, confirmée par la fiche technique) : rendement définitionnel.",
+        "justification_text_unbranded_fr": "Vendue et posée au mètre le long des murs, en barres de 2,40 m (longueur du commerce, confirmée par la fiche technique) : rendement définitionnel."
+      },
+      {
+        "material_name": "Barre de seuil alu 93cm",
+        "role": "accessoire",
+        "material_unit": "unit",
+        "waste_factor_percent": 0,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 1,
+        "packaging_label": "Unité",
+        "units_needed": 1,
+        "justification_text_fr": "Une barre par passage de porte (largeur standard 83 cm ≤ 93 cm) : rendement définitionnel.",
+        "justification_text_unbranded_fr": "Une barre par passage de porte (largeur standard 83 cm ≤ 93 cm) : rendement définitionnel."
+      }
+    ],
+    "exclusions": [
+      {
+        "material_name": "Ragréage fibré sol",
+        "reason_fr": "Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires."
+      },
+      {
+        "material_name": "Primaire d'accrochage sol",
+        "reason_fr": "Support déclaré plan (défauts ≤ 5 mm sous la règle de 2 m, NF DTU 52.2 / 51.11) : ni ragréage ni primaire nécessaires."
+      }
+    ]
+  },
+  {
+    "work_type_code": "drywall",
+    "work_type_label_fr": "Cloison seche",
+    "category": "partition",
+    "skill_level": "intermediate",
+    "pose_type": "standard",
+    "pose_declared": false,
+    "custom_params": {},
+    "room": {
+      "length_cm": 400,
+      "width_cm": 350,
+      "height_cm": 250,
+      "openings": []
+    },
+    "basis": {
+      "work_surface_m2": 10,
+      "gross_surface_m2": 10,
+      "excluded_surface_m2": 0,
+      "clad_surface_m2": 20,
+      "clad_faces": 2,
+      "frame": {
+        "stud_count": 8,
+        "stud_length_m": 20,
+        "runner_length_m": 8
+      }
+    },
+    "lines": [
+      {
+        "material_name": "Plaque BA13 standard 2.5x1.2m",
+        "role": "principal",
+        "material_unit": "m2",
+        "waste_factor_percent": 8,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 22.5,
+        "packaging_label": "Plaque (3 m²)",
+        "units_needed": 8,
+        "justification_text_fr": "2,10 m² de plaque par m² de cloison, deux faces (quantitatif système 72/48) : 1,05 m² par m² de parement selon la fiche technique Placo Fiche Solution Placostil® 72/48 BA13 consultée le 03/08/2026.",
+        "justification_text_unbranded_fr": "2,10 m² de plaque par m² de cloison, deux faces (quantitatif système 72/48) : 1,05 m² par m² de parement selon la fiche technique du fabricant consultée le 03/08/2026.",
+        "justification_source_url": "https://www.placo.fr/sites/mac3.placo.fr/files/files/forum/Maison_Cloison_Placostil_Ep_72_BA13_39dB.pdf"
+      },
+      {
+        "material_name": "Rail R48 3m",
+        "role": "consommable",
+        "material_unit": "m",
+        "waste_factor_percent": 8,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 8.64,
+        "packaging_label": "Barre 3 m",
+        "units_needed": 3,
+        "justification_text_fr": "Un mètre de rail couvre un mètre de lisse — rendement définitionnel, l'assiette étant le linéaire réel de l'ouvrage selon la fiche technique Placo Fiche Solution Placostil® 72/48 consultée le 03/08/2026.",
+        "justification_text_unbranded_fr": "Un mètre de rail couvre un mètre de lisse — rendement définitionnel, l'assiette étant le linéaire réel de l'ouvrage selon la fiche technique du fabricant consultée le 03/08/2026.",
+        "justification_source_url": "https://www.placo.fr/sites/mac3.placo.fr/files/files/forum/Maison_Cloison_Placostil_Ep_72_BA13_39dB.pdf"
+      },
+      {
+        "material_name": "Montant M48 2.7m",
+        "role": "consommable",
+        "material_unit": "m",
+        "waste_factor_percent": 0,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 20,
+        "packaging_label": "Barre 2.7 m",
+        "units_needed": 8,
+        "pieces_needed": 8,
+        "piece_length_m": 2.5,
+        "pieces_per_bar": 1,
+        "justification_text_fr": "Un mètre de montant couvre un mètre de trame — rendement définitionnel, le nombre de montants se comptant sur l'entraxe déclaré selon la fiche technique Placo Fiche Solution Placostil® 72/48 consultée le 03/08/2026.",
+        "justification_text_unbranded_fr": "Un mètre de montant couvre un mètre de trame — rendement définitionnel, le nombre de montants se comptant sur l'entraxe déclaré selon la fiche technique du fabricant consultée le 03/08/2026.",
+        "justification_source_url": "https://www.placo.fr/sites/mac3.placo.fr/files/files/forum/Maison_Cloison_Placostil_Ep_72_BA13_39dB.pdf"
+      },
+      {
+        "material_name": "Vis placo 25mm (x500)",
+        "role": "consommable",
+        "material_unit": "unit",
+        "waste_factor_percent": 5,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 0.463,
+        "packaging_label": "Boîte 500 pcs",
+        "units_needed": 1,
+        "justification_text_fr": "22 vis par m² de cloison, deux faces : 11 vis par m² de parement selon la fiche technique Placo Fiche Solution Placostil® 72/48 consultée le 03/08/2026.",
+        "justification_text_unbranded_fr": "22 vis par m² de cloison, deux faces : 11 vis par m² de parement selon la fiche technique du fabricant consultée le 03/08/2026.",
+        "justification_source_url": "https://www.placo.fr/sites/mac3.placo.fr/files/files/forum/Maison_Cloison_Placostil_Ep_72_BA13_39dB.pdf"
+      },
+      {
+        "material_name": "Bande à joint papier 23m",
+        "role": "consommable",
+        "material_unit": "m",
+        "waste_factor_percent": 8,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 30,
+        "packaging_label": "Rouleau 23 m",
+        "units_needed": 2,
+        "justification_text_fr": "2,80 m par m² de cloison, deux faces (joints, cueillies et angles inclus) : 1,40 m par m² de parement selon la fiche technique Placo Fiche Solution Placostil® 72/48 consultée le 03/08/2026.",
+        "justification_text_unbranded_fr": "2,80 m par m² de cloison, deux faces (joints, cueillies et angles inclus) : 1,40 m par m² de parement selon la fiche technique du fabricant consultée le 03/08/2026.",
+        "justification_source_url": "https://www.placo.fr/sites/mac3.placo.fr/files/files/forum/Maison_Cloison_Placostil_Ep_72_BA13_39dB.pdf"
+      },
+      {
+        "material_name": "Enduit à joint prêt 7kg",
+        "role": "consommable",
+        "material_unit": "kg",
+        "waste_factor_percent": 8,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 10.8,
+        "packaging_label": "Seau 20 kg",
+        "units_needed": 1,
+        "justification_text_fr": "Consommation minimum 470 g/m² de parement, corroboré par une fiche concurrente (0,40-0,45 kg/m²) ; 0,50 kg/m² retenu selon la fiche technique Placo Placomix® consultée le 03/08/2026.",
+        "justification_text_unbranded_fr": "Consommation minimum 470 g/m² de parement, corroboré par une fiche concurrente (0,40-0,45 kg/m²) ; 0,50 kg/m² retenu selon la fiche technique du fabricant consultée le 03/08/2026.",
+        "justification_source_url": "https://www.placo.fr/Produits/enduits-joint/placomixr-5kg"
+      },
+      {
+        "material_name": "Laine de verre 45mm",
+        "role": "consommable",
+        "material_unit": "m2",
+        "waste_factor_percent": 8,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 11.34,
+        "packaging_label": "Rouleau 9.6 m²",
+        "units_needed": 2,
+        "justification_text_fr": "1,05 m² d'isolant par m² de cloison (quantitatif système, une seule trame quel que soit le nombre de faces parementées) selon la fiche technique Placo Fiche Solution Placostil® 72/48 39 dB consultée le 08/08/2026.",
+        "justification_text_unbranded_fr": "1,05 m² d'isolant par m² de cloison (quantitatif système, une seule trame quel que soit le nombre de faces parementées) selon la fiche technique du fabricant consultée le 08/08/2026.",
+        "justification_source_url": "https://www.placo.fr/sites/mac3.placo.fr/files/files/forum/Maison_Cloison_Placostil_Ep_72_BA13_39dB.pdf"
+      },
+      {
+        "material_name": "Bande résiliente 50mm",
+        "role": "consommable",
+        "material_unit": "m",
+        "waste_factor_percent": 8,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 8.64,
+        "packaging_label": "Rouleau 30 m",
+        "units_needed": 1,
+        "justification_text_fr": "Collée sous les rails, en course continue : un mètre de bande couvre un mètre de lisse (rouleau de 30 m) — rendement définitionnel.",
+        "justification_text_unbranded_fr": "Collée sous les rails, en course continue : un mètre de bande couvre un mètre de lisse (rouleau de 30 m) — rendement définitionnel."
+      }
+    ],
+    "exclusions": []
+  },
+  {
+    "work_type_code": "wall_covering",
+    "work_type_label_fr": "Revetement mural",
+    "category": "wall_covering",
+    "skill_level": "intermediate",
+    "pose_type": "standard",
+    "pose_declared": false,
+    "custom_params": {
+      "pattern_repeat_cm": "32",
+      "cut_margin_cm": "10"
+    },
+    "room": {
+      "length_cm": 350,
+      "width_cm": 300,
+      "height_cm": 250,
+      "openings": [
+        {
+          "width_cm": 83,
+          "height_cm": 204,
+          "count": 1,
+          "type": "door"
+        },
+        {
+          "width_cm": 120,
+          "height_cm": 100,
+          "count": 1,
+          "type": "window"
+        }
+      ]
+    },
+    "basis": {
+      "work_surface_m2": 29.6068,
+      "gross_surface_m2": 32.5,
+      "excluded_surface_m2": 0,
+      "clad_surface_m2": 29.6068,
+      "clad_faces": 1,
+      "frame": null
+    },
+    "lines": [
+      {
+        "material_name": "Papier peint intissé uni",
+        "role": "principal",
+        "material_unit": "m2",
+        "waste_factor_percent": 8,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 49.856,
+        "packaging_label": "Rouleau 10.05m x 0.53m (5.33 m²)",
+        "units_needed": 10,
+        "justification_text_fr": "Rouleau standard européen 10,05 x 0,53 m, posé bord à bord (lés adjacents, sans chevauchement) — quantité dérivée de la découpe en lés, pas d'un rendement au m² selon la fiche technique Bricoflor Norme rouleau standard européen consultée le 07/08/2026.",
+        "justification_text_unbranded_fr": "Rouleau standard européen 10,05 x 0,53 m, posé bord à bord (lés adjacents, sans chevauchement) — quantité dérivée de la découpe en lés, pas d'un rendement au m² selon la fiche technique du fabricant consultée le 07/08/2026.",
+        "justification_source_url": "https://www.bricoflor.fr/blog/2020/02/14/calcul-rouleau-papier-peint-quelle-quantite-me-faut-il"
+      },
+      {
+        "material_name": "Colle papier peint intissé",
+        "role": "consommable",
+        "material_unit": "kg",
+        "waste_factor_percent": 3,
+        "waste_factor_source": "catalog",
+        "adjusted_qty": 3.812,
+        "packaging_label": "Seau 5 kg",
+        "units_needed": 1,
+        "justification_text_fr": "Envers intissés : 11 rouleaux pour 55 m² par seau de 7 kg (≈ 7,9 m²/kg) — lecture en colle prête à l'emploi selon la fiche technique Quelyd Perfect (guide Bostik 2024) consultée le 03/08/2026.",
+        "justification_text_unbranded_fr": "Envers intissés : 11 rouleaux pour 55 m² par seau de 7 kg (≈ 7,9 m²/kg) — lecture en colle prête à l'emploi selon la fiche technique du fabricant consultée le 03/08/2026.",
+        "justification_source_url": "https://www.bostik.com/files/live/sites/shared_bostik/files/documents-brochures/France/Brochures/C&C/GUIDE%20SOLUTIONS%20PRO%202024%20QUELYD%20COLLES%20MURALES.pdf"
+      }
+    ],
+    "exclusions": []
+  }
+]

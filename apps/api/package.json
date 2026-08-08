@@ -27,7 +27,8 @@
     "verify:stripe": "ts-node -r tsconfig-paths/register src/scripts/verify-stripe-cycle.ts",
     "validate:affiliate-feed": "ts-node -r tsconfig-paths/register src/scripts/validate-affiliate-feed.ts",
     "purge:retention": "ts-node -r tsconfig-paths/register src/scripts/purge-retention.ts",
-    "migration:revert": "pnpm typeorm migration:revert"
+    "migration:revert": "pnpm typeorm migration:revert",
+    "extract:relecture-metier": "ts-node -r tsconfig-paths/register src/scripts/relecture-metier-extract.ts"
   },
   "dependencies": {
     "@nestjs/axios": "^4.0.1",
