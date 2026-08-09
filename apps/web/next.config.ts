@@ -34,6 +34,12 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Le contrôle de types du build ignore les fichiers de test — voir
+  // `tsconfig.build.json` pour le pourquoi et la mesure. Les tests restent
+  // vérifiés par le `tsc --noEmit` qui précède `next build`.
+  typescript: {
+    tsconfigPath: 'tsconfig.build.json',
+  },
   experimental: {
     cpus: 1,
     workerThreads: true,

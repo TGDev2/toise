@@ -1,0 +1,31 @@
+{
+  // Configuration lue par `next build` **uniquement** — l'IDE, `tsc --noEmit` et
+  // Jest continuent d'utiliser `tsconfig.json`, qui couvre tout le dépôt.
+  //
+  // `next build` vérifie les types dans un *worker thread* (`experimental.cpus: 1`,
+  // `workerThreads: true`). Ce fil a moins de mémoire que le processus principal,
+  // et le graphe de types de l'application en occupait déjà l'essentiel : ajouter
+  // un fichier de test qui monte une page entière suffisait à le faire tomber en
+  // faute de segmentation — pas à chaque fois, environ deux fois sur cinq.
+  // Mesuré : 0 échec sur 5 sans le fichier, 2 sur 5 avec, sur un dépôt par
+  // ailleurs identique.
+  //
+  // Écarter les tests **du build** est de toute façon la bonne réponse : ils ne
+  // sont pas livrés, et leur nombre ne doit pas décider si la production compile.
+  // Ils restent intégralement vérifiés par le `tsc --noEmit` qui précède
+  // `next build` dans la même commande — y compris les assertions de type qui
+  // servent de garde-fous (`AllFieldsListed` de `guest-drafts.ts`, la table
+  // exhaustive `Record<GuestDraftField, …>` de la migration invité). Les exclure
+  // de `tsconfig.json` les aurait éteintes en silence.
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "node_modules",
+    "e2e",
+    "jest.config.ts",
+    "jest.setup.ts",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/*.test.ts",
+    "**/*.test.tsx"
+  ]
+}
