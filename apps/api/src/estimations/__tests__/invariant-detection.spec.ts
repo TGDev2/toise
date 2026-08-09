@@ -177,9 +177,8 @@ describe('Harnais — ce que les invariants attrapent', () => {
   });
 
   /**
-   * I4 — le défaut d'E1-5, tel quel : un format unique, le plus petit. Pour les
-   * 6,661 L de peinture de la chambre de référence, c'est exactement les
-   * 14 pots de 0,5 L que citait `docs/REPRISE_PROJET.md`, là où 5 L + 2,5 L
+   * I4 — un format unique, le plus petit. Pour les 6,661 L de peinture de la
+   * chambre de référence, c'est exactement 14 pots de 0,5 L, là où 5 L + 2,5 L
    * suffisent en deux contenants.
    */
   it('I4 nomme le panachage qui fait mieux, et de combien', () => {

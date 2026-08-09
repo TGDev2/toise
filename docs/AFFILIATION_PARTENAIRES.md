@@ -150,10 +150,10 @@ périmètre demandé (documenter, pas activer).
       (§8) et taux de rapprochement jugé suffisant sur le sous-ensemble V1
 - [ ] Mention légale visible ajoutée à côté du bouton « Acheter chez X »
       (§5, non faite dans ce lot)
-- [ ] Épopée E1 (`docs/BACKLOG_V1.md`) clôturée et son harnais de
-      non-régression E1-9 vert sur le catalogue réel
+- [ ] Le moteur d'estimation corrigé, son harnais de non-régression
+      (`estimations/__tests__/`) vert sur le catalogue réel
 - [ ] `SHOPPING_LIST_ENGINE_CORRECTED` (§9) repassé à `true`, avec le commit
-      qui l'accompagne référençant la clôture d'E1
+      qui l'accompagne référençant cette correction
 
 ## 8. Mesurer le taux de rapprochement avant de s'engager
 

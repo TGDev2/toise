@@ -81,7 +81,7 @@ base à conserver.
 
 ## `src/estimations/__tests__/` — le harnais du moteur, et ses instantanés
 
-Le défaut fondateur du dépôt, documenté dans `docs/REPRISE_PROJET.md` §1 : pour
+Le défaut fondateur du dépôt : pour
 repeindre les murs d'une pièce de 4 × 3 m sous 2,50 m — le cas le plus banal du
 produit — le moteur produisait **54 lignes et 1 486 unités à acheter**, dont
 70 pinceaux, 70 bâches et 3 pots de peinture plafond sur un ouvrage « peinture

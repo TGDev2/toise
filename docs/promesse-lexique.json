@@ -1,5 +1,5 @@
 {
-  "$comment": "Liste canonique du vocabulaire interdit dans les chaînes affichées à l'utilisateur. Lue à l'exécution par apps/web/src/__tests__/promise-wording.spec.ts et apps/api/src/common/__tests__/promise-wording.spec.ts. Les motifs sont compilés avec les drapeaux 'iu' ; le texte scanné est normalisé au préalable (apostrophes typographiques et entités JSX). Sa raison d'être est dans docs/PROMESSE_PRODUIT.md — ne pas modifier ce fichier sans mettre ce document à jour.",
+  "$comment": "Liste canonique du vocabulaire interdit dans les chaînes affichées à l'utilisateur. Lue à l'exécution par apps/web/src/__tests__/promise-wording.spec.ts et apps/api/src/common/__tests__/promise-wording.spec.ts. Les motifs sont compilés avec les drapeaux 'iu' ; le texte scanné est normalisé au préalable (apostrophes typographiques et entités JSX). Chaque interdiction porte son 'why' : la raison juridique ou factuelle prime sur ce fichier lui-même.",
   "forbidden": [
     {
       "id": "exactitude",
@@ -14,7 +14,7 @@
     {
       "id": "unicite",
       "pattern": "(?<!\\p{L})(?:le seul|la seule|l'unique|seul|seule)\\s+(?:outil|logiciel|produit|service|application|[àa] calculer|dont)",
-      "why": "« Le seul outil qui calcule les quantités » est faux depuis ArtisanSmart, ChantierFlow, JLogiciels et Obat (docs/VEILLE_CONCURRENTIELLE.md §5.2). Une affirmation fausse est un risque en soi, indépendant du risque contractuel — et un superlatif borné à un panel reste invérifiable par le lecteur."
+      "why": "« Le seul outil qui calcule les quantités » est faux dès qu'un concurrent existe. Une affirmation fausse est un risque en soi, indépendant du risque contractuel — et un superlatif borné à un panel reste invérifiable par le lecteur."
     },
     {
       "id": "zero-perte",
@@ -29,7 +29,7 @@
     {
       "id": "economie-promise",
       "pattern": "(?<!\\p{L})(?:[ée]conomisez|vous [ée]conomiserez|[ée]conomies garanties|jusqu'[àa]\\s*\\d+\\s*%)",
-      "why": "Promesse chiffrée d'économie tournée vers l'avenir. Un montant d'économie CONSTATÉ sur les données réelles de l'utilisateur reste permis — voir la section « Ce qui reste autorisé » de docs/PROMESSE_PRODUIT.md."
+      "why": "Promesse chiffrée d'économie tournée vers l'avenir. Un montant d'économie CONSTATÉ sur les données réelles de l'utilisateur reste permis : c'est un fait passé, pas une promesse de résultat futur."
     },
     {
       "id": "surplus-chiffre",

@@ -8,11 +8,10 @@ import {
 } from './seeded-catalog-harness';
 
 /**
- * Géométrie 1 — chambre rectangulaire 400 × 300 × 250 cm, une porte.
- *
- * C'est le cas de `docs/REPRISE_PROJET.md` §1 : celui sur lequel le moteur
- * produisait 54 lignes et 1 486 unités pour une peinture murale. Il est ici
- * rejoué sur les 7 ouvrages, les 3 niveaux et toutes les poses disponibles.
+ * Géométrie 1 — chambre rectangulaire 400 × 300 × 250 cm, une porte. Le moteur
+ * produisait 54 lignes et 1 486 unités pour une peinture murale sur ce cas. Il
+ * est ici rejoué sur les 7 ouvrages, les 3 niveaux et toutes les poses
+ * disponibles.
  *
  * `it.each` sur une liste vide lève (`.each called with an empty Array`) : une
  * énumération qui se viderait ne peut donc pas passer en silence.

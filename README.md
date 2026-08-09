@@ -3,8 +3,8 @@
 Application d'estimation de matériaux pour projets de rénovation. Scannez votre pièce ou saisissez ses dimensions, sélectionnez vos travaux, et obtenez une base de commande chiffrée — pertes, découpes et niveau de compétence compris — que vous validez avant d'acheter.
 
 > La promesse produit est encadrée : Chiffréo ne promet nulle part une quantité exacte.
-> Le vocabulaire interdit, sa raison juridique et le test qui le fait respecter sont
-> décrits dans [`docs/PROMESSE_PRODUIT.md`](docs/PROMESSE_PRODUIT.md).
+> Le vocabulaire interdit est listé dans [`docs/promesse-lexique.json`](docs/promesse-lexique.json)
+> et vérifié à l'exécution par `promise-wording.spec.ts` (api et web).
 
 ## Architecture
 
@@ -27,9 +27,7 @@ Application d'estimation de matériaux pour projets de rénovation. Scannez votr
 ```
 
 `apps/cv-service` (vision par ordinateur) reste dans le dépôt mais n'est plus
-déployé en production (débranché, voir
-[`docs/adr/0001-cible-et-perimetre-v1.md`](docs/adr/0001-cible-et-perimetre-v1.md)
-pour la condition de réouverture).
+déployé en production (débranché, `CV_ENABLED=false`).
 
 **3 applications** dans un monorepo pnpm :
 
@@ -117,9 +115,8 @@ Chiffreo/
 ├── apps/
 │   ├── api/                # Backend NestJS (16 modules, 27 migrations)
 │   ├── web/                # Frontend Next.js (App Router)
-│   └── cv-service/         # Microservice Python — débranché de la prod (ADR 0001)
+│   └── cv-service/         # Microservice Python — débranché de la prod (CV_ENABLED=false)
 ├── docs/
-│   ├── CONTEXT.md          # État courant et pointeurs vers les ADR/BACKLOG_V1
 │   ├── ARCHITECTURE.md     # Architecture technique détaillée
 │   └── API.md              # Référence API REST complète
 ├── .env.example            # Template des variables d'environnement
@@ -146,7 +143,7 @@ Copier `.env.example` vers `.env` et renseigner les valeurs :
 | `FIREBASE_CLIENT_EMAIL` | Email du service account | — |
 | `FIREBASE_PRIVATE_KEY` | Clé privée Firebase | — |
 | `NEXT_PUBLIC_FIREBASE_*` | Config Firebase client (4 variables) | — |
-| `CV_ENABLED` | Active le pipeline d'analyse photo (débranché en prod, ADR 0001) | `false` |
+| `CV_ENABLED` | Active le pipeline d'analyse photo (débranché en prod) | `false` |
 | `CV_SERVICE_URL` | URL du CV service (utile seulement si `CV_ENABLED=true`) | `http://localhost:8000` |
 | `CV_SERVICE_TIMEOUT_MS` | Timeout du CV service | `60000` |
 | `NEXT_PUBLIC_API_URL` | URL de l'API pour le frontend | `http://localhost:3001/api/v1` |
@@ -155,18 +152,12 @@ Copier `.env.example` vers `.env` et renseigner les valeurs :
 
 ## Documentation
 
-- [Cible et périmètre V1 (ADR 0001)](docs/adr/0001-cible-et-perimetre-v1.md)
-- [Modèle économique, facturation, distribution (ADR 0002)](docs/adr/0002-modele-economique-facturation-distribution.md)
-- [Backlog V1](docs/BACKLOG_V1.md)
 - [Architecture technique](docs/ARCHITECTURE.md)
 - [Référence API REST](docs/API.md)
-- [Contexte produit](docs/CONTEXT.md)
 - [Backend API](apps/api/README.md)
 - [Frontend Web](apps/web/README.md)
 - [CV Service](apps/cv-service/README.md)
 - [Guide de contribution](CONTRIBUTING.md)
-- [Reprise de projet — audit daté du 3 août 2026, périmé, conservé pour l'historique](docs/REPRISE_PROJET.md)
-- [Archives (documents produit périmés, non sources)](docs/archive/)
 
 ## Modèle économique
 
@@ -175,6 +166,5 @@ Copier `.env.example` vers `.env` et renseigner les valeurs :
 | **Gratuit** | **Tout le chiffrage, sans limite de chantiers** : métré, quantités, facteurs de perte par pose et par niveau, liste d'achat en conditionnements commerciaux |
 | **Conformité** — 279 €/an, annuel uniquement, 30 jours satisfait ou remboursé | Tout le gratuit, plus : devis PDF conforme, fichier clients, historique de prix, facturation |
 
-Décidé par l'[ADR 0002](docs/adr/0002-modele-economique-facturation-distribution.md) :
-le calcul est ce qui est difficile à copier et coûte zéro à servir — il est
+Le calcul est ce qui est difficile à copier et coûte zéro à servir — il est
 donné ; la conformité est ce qu'on ne quitte pas — elle est vendue.

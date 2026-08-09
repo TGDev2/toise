@@ -12,8 +12,8 @@ import { CsvRowParser } from '../price-comparison/adapters/shared/csv-row-parser
 import { toFeedProduct } from '../price-comparison/adapters/manomano/manomano-feed.client';
 
 /**
- * E5-4 (docs/BACKLOG_V1.md) : avant d'ouvrir un compte marchand, mesurer
- * combien de lignes d'une vraie liste d'achat porteraient réellement un
+ * Avant d'ouvrir un compte marchand, mesurer combien de lignes d'une vraie
+ * liste d'achat porteraient réellement un
  * lien commissionné. Prend un extrait de flux produits obtenu du
  * partenaire (CSV, colonnes Awin/Effiliation/Kwanko — cf.
  * `docs/AFFILIATION_PARTENAIRES.md`) et le confronte au catalogue matériaux

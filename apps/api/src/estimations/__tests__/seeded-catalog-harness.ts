@@ -27,11 +27,11 @@ import { SkillLevel } from '../../projects/entities/project-work-item.entity';
 import { seedWorkTypes, SeedWorkType } from '../../projects/work-types.data';
 
 /**
- * Harnais de non-régression du moteur d'estimation (E1-9).
+ * Harnais de non-régression du moteur d'estimation.
  *
- * Il existe à cause d'un défaut précis, documenté dans `docs/REPRISE_PROJET.md`
- * (§1) : pour repeindre les murs d'une pièce de 4 × 3 m — le cas le plus banal du
- * produit — le moteur produisait **54 lignes et 1 486 unités à acheter**, dont
+ * Il existe à cause d'un défaut précis : pour repeindre les murs d'une pièce
+ * de 4 × 3 m — le cas le plus banal du produit — le moteur produisait
+ * **54 lignes et 1 486 unités à acheter**, dont
  * 70 pinceaux et 3 pots de peinture plafond sur un ouvrage « peinture murale ».
  * Les 1 619 tests du dépôt étaient verts. Ils l'étaient parce qu'aucun
  * n'exécutait le moteur sur le catalogue réel : `estimations.service.spec.ts`

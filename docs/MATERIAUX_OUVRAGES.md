@@ -203,8 +203,7 @@ registre depuis E1-7, et en dérive la consommation de joint (0,228 kg/m² au
 lieu des 0,25 kg/m² constants d'avant). La colle en pâte, elle, ne bouge pas :
 c'est un adhésif D2 dont la fiche est distincte de celle des mortiers, et sans
 question de format sa valeur ne pourrait de toute façon pas varier. Ajouter le
-format au carrelage mural relèverait d'une mise à jour de
-`docs/BACKLOG_V1.md`.
+format au carrelage mural resterait à planifier.
 
 **Réintégrés par E1-10** : croisillons (dérivation géométrique) et SEL
 (conditionnel par `water_exposure` — le mur d'une douche est aussi exposé que
@@ -266,7 +265,7 @@ comptées), ragréage fibré + primaire (conditionnels par `floor_flatness`).
 
 **Écartés qu'on pourrait croire nécessaires** :
 
-- **Cornière de protection d'angle — écartée, et voici pourquoi (arbitrage E1-10)** : elle ne protège que les **angles sortants**, et le modèle n'en connaît aucun — une cloison est saisie en linéaire × hauteur, une cloison droite n'a pas d'angle sortant, et ni la pièce ni l'ouvrage ne portent cette grandeur. Une question « nombre d'angles sortants » à défaut 0 produirait une ligne à zéro sur presque tous les chantiers — du bruit, pas un achat ; la lier en optionnel exigerait au registre une assiette qu'aucun driver ne peut dire honnêtement. Si le besoin se confirme, la porte d'entrée est une question dédiée sur l'ouvrage (mise à jour de `docs/BACKLOG_V1.md` requise).
+- **Cornière de protection d'angle — écartée, et voici pourquoi (arbitrage E1-10)** : elle ne protège que les **angles sortants**, et le modèle n'en connaît aucun — une cloison est saisie en linéaire × hauteur, une cloison droite n'a pas d'angle sortant, et ni la pièce ni l'ouvrage ne portent cette grandeur. Une question « nombre d'angles sortants » à défaut 0 produirait une ligne à zéro sur presque tous les chantiers — du bruit, pas un achat ; la lier en optionnel exigerait au registre une assiette qu'aucun driver ne peut dire honnêtement. Si le besoin se confirme, la porte d'entrée est une question dédiée sur l'ouvrage.
 - Vis placo 35mm / 45mm — double peau ou rechargement uniquement.
 - Enduit de finition placo — selon le niveau de finition exigé ; la finition courante avant peinture s'arrête à l'enduit à joint.
 - Bande armée fibre — angles exposés aux chocs, pas les joints courants ; même grandeur inconnue que la cornière.

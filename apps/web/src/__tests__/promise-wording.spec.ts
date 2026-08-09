@@ -3,10 +3,10 @@ import * as path from 'path';
 import * as ts from 'typescript';
 
 /**
- * Garde-fou du vocabulaire de la promesse produit (E2-3).
+ * Garde-fou du vocabulaire de la promesse produit.
  *
- * Le lexique vit dans `docs/promesse-lexique.json` et sa raison d'être dans
- * `docs/PROMESSE_PRODUIT.md`. Le fichier est lu à l'exécution plutôt que
+ * Le lexique vit dans `docs/promesse-lexique.json`, avec le `why` de chaque
+ * interdiction en commentaire. Le fichier est lu à l'exécution plutôt que
  * recopié ici : l'API porte le même garde-fou, et deux listes concurrentes
  * finiraient par diverger — c'est la plus permissive des deux qui ferait alors
  * autorité, ce qui vaut absence de garde-fou (leçon 15).

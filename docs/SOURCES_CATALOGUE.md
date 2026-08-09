@@ -1104,7 +1104,7 @@ la source éclaire la proposition, elle ne suit pas le devis émis.
 
 ## Réintégrer un matériau retiré
 
-Deux portes (mise à jour de `docs/BACKLOG_V1.md` requise) :
+Deux portes :
 
 - **Rappel d'achat forfaitaire** : `complementary_materials` porte des
   quantités par défaut indépendantes de la géométrie — depuis E1-10, il ne
