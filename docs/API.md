@@ -1232,7 +1232,7 @@ Mettre à jour le profil entreprise.
 
 ## Clients
 
-> Toutes les routes clients nécessitent la feature gate `client_management` (tier Contractor).
+> Toutes les routes clients nécessitent la feature gate `client_management` (tier Chiffréo Pro).
 
 ### `POST /clients`
 
@@ -1316,7 +1316,7 @@ Supprimer un client.
 
 ## Quotes
 
-> Toutes les routes devis nécessitent la feature gate `export_devis` (tier Contractor).
+> Toutes les routes devis nécessitent la feature gate `export_devis` (tier Chiffréo Pro).
 
 ### `POST /quotes`
 
@@ -1499,7 +1499,7 @@ Supprimer un devis.
 
 ## Invoices
 
-> Toutes les routes factures nécessitent la feature gate `invoicing` (tier Contractor Essentiel).
+> Toutes les routes factures nécessitent la feature gate `invoicing` (tier Chiffréo Pro).
 >
 > **Une facture émise est immuable** : il n'existe ni route de modification de contenu, ni route de suppression. Seul l'état de règlement évolue. Voir [CONFORMITE_FACTURATION.md](CONFORMITE_FACTURATION.md).
 

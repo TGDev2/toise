@@ -307,7 +307,7 @@ export default function DashboardPage() {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="text-sm font-semibold text-stone-900">
-                      Plan Contractor
+                      Plan Chiffréo Pro
                       {subscription?.cancel_at_period_end && (
                         <span className="ml-2 text-xs font-normal text-amber-600">
                           (annulation prévue)

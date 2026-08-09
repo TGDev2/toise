@@ -52,10 +52,10 @@ const FUNNEL_LABELS: Record<string, string> = {
 };
 
 const TIER_LABELS: Record<string, string> = {
-  pro: 'Pro',
-  contractor_essentiel: 'Contractor Essentiel',
-  contractor_standard: 'Contractor Standard',
-  contractor_premium: 'Contractor Premium',
+  pro: 'Pro (retiré)',
+  contractor_essentiel: 'Chiffréo Pro',
+  contractor_standard: 'Standard (jamais vendu)',
+  contractor_premium: 'Premium (jamais vendu)',
 };
 
 const eurFormatter = new Intl.NumberFormat('fr-FR', {
@@ -149,7 +149,7 @@ export default function AdminAnalyticsPage() {
         <StatTile
           label="Abonnés payants"
           value={`${paidSubscribers}`}
-          hint="Pro + Contractor"
+          hint="Tous paliers payants"
         />
         <StatTile
           label="Utilisateurs gratuits"

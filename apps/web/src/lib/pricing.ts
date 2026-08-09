@@ -209,7 +209,7 @@ export const OFFER_PLANS: OfferPlan[] = [
     apiPlanKey: 'contractor_essentiel',
     tier: 'contractor_essentiel',
     audience: 'artisan',
-    name: 'Essentiel',
+    name: 'Chiffréo Pro',
     priceLabel: '279 € HT',
     priceNumber: 279,
     period: '/an',

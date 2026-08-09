@@ -40,7 +40,7 @@ export interface PlanDefinition {
 export const PLANS: PlanDefinition[] = [
   {
     key: 'contractor_essentiel',
-    label: 'Contractor Essentiel',
+    label: 'Chiffréo Pro',
     price: 279,
     currency: 'EUR',
     interval: 'year',

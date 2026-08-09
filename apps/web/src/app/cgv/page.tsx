@@ -27,7 +27,7 @@ export default function CgvPage() {
         <P>
           Les présentes conditions générales de vente (les « CGV ») régissent la
           souscription et le paiement des offres payantes du service Chiffréo
-          (les offres « Pro » et « Contractor »). Elles complètent les{' '}
+          (l’offre « Chiffréo Pro »). Elles complètent les{' '}
           <LegalLink href="/cgu">
             conditions générales d’utilisation
           </LegalLink>{' '}

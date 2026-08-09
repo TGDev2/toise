@@ -45,7 +45,7 @@ export function buildQuoteReminderContractorEmail(
       <a href="${data.quoteUrl}" style="color:#0369a1;">Voir le devis</a>
     </p>
     <p style="font-size:12px;color:#a8a29e;margin-top:32px;">
-      Relance automatique Chiffréo (relances devis, palier Contractor Standard+).
+      Relance automatique Chiffréo (relances devis, palier Chiffréo Pro).
     </p>
   </div>
 </body></html>`;

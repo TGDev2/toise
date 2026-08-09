@@ -79,8 +79,8 @@ AppModule
 ├── FeatureGatesModule      # Feature flags par tier d'abonnement
 ├── SubscriptionsModule     # Intégration Stripe (checkout, webhooks, portail)
 ├── PriceComparisonModule   # Comparaison de prix fournisseurs (mock/réel)
-├── CompanyProfilesModule   # Profils entreprise (tier Contractor)
-├── ClientsModule           # Gestion clients (tier Contractor)
+├── CompanyProfilesModule   # Profils entreprise (tier Chiffréo Pro)
+├── ClientsModule           # Gestion clients (tier Chiffréo Pro)
 ├── QuotesModule            # Génération de devis + export PDF
 ├── CommunityModule         # Galerie communautaire, commentaires, likes
 ├── DataRetentionModule     # Effacement des fichiers et purge des suppressions logiques (E6-1)
