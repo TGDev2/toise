@@ -141,6 +141,10 @@ export const GATES_NOT_MARKETED: Record<string, string> = {
     "Gelée (ADR 0001 D3) : différenciateur du palier Standard, disparu avec la réduction à un palier payant unique (D4). Rien du parcours V1 — chiffrer, acheter, devis — n'en dépend.",
   quote_reminders:
     "Gelée (ADR 0001 D3) : même raison que `site_tracking`, et une relance automatique suppose un volume de devis envoyés qu'aucun compte n'a encore.",
+
+  // ── Vivante en base, mais rien à comparer ──────────────────────────────
+  price_comparison:
+    "Gate `free` activée en base (036), mais les adaptateurs ManoMano et Leroy Merlin sont désactivés par défaut (`MANOMANO_ENABLED` / `LEROY_MERLIN_ENABLED` à `false`, .env.example) et sans flux fournisseur provisionné : aucun compte réel ne peut aujourd'hui comparer un prix entre enseignes.",
 };
 
 export function getKnownGate(key: string): KnownFeatureGate | undefined {

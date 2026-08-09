@@ -170,7 +170,12 @@ export const OFFER_PLANS: OfferPlan[] = [
         nonGateReason: 'quota',
       },
       {
-        label: 'Estimation complète des quantités',
+        label: 'Géométries de pièces en L, T et U',
+        gateKey: null,
+        nonGateReason: 'socle',
+      },
+      {
+        label: 'Déduction automatique des ouvertures',
         gateKey: null,
         nonGateReason: 'socle',
       },
@@ -179,19 +184,20 @@ export const OFFER_PLANS: OfferPlan[] = [
         gateKey: 'advanced_loss_factors',
       },
       {
-        label: 'Liste d’achats avec export PDF',
+        label: 'Liste d’achats en conditionnements commerciaux',
         gateKey: null,
         nonGateReason: 'socle',
       },
-      { label: 'Suivi budgétaire', gateKey: 'budget_tracking' },
       {
-        // Volontairement sans nom d'enseigne : les adaptateurs ManoMano et
-        // Leroy Merlin existent mais sont derrière `MANOMANO_ENABLED` /
-        // `LEROY_MERLIN_ENABLED`, à `false` par défaut et sans flux configuré
-        // (.env.example). Citer les marques promettrait ce qu'un déploiement
-        // non provisionné ne tient pas.
-        label: 'Comparateur de prix entre enseignes',
-        gateKey: 'price_comparison',
+        label: 'Sources fabricants affichées sur chaque matériau',
+        gateKey: null,
+        nonGateReason: 'socle',
+      },
+      { label: 'Saisie des prix et suivi budgétaire', gateKey: 'budget_tracking' },
+      {
+        label: 'Export de la liste d’achats en PDF',
+        gateKey: null,
+        nonGateReason: 'socle',
       },
       {
         label: 'Carnet du logement : l’historique des pièces mesurées',
@@ -222,7 +228,7 @@ export const OFFER_PLANS: OfferPlan[] = [
         nonGateReason: 'heritage',
       },
       {
-        label: 'Devis PDF conformes (TVA, HT/TTC, mentions)',
+        label: 'Devis PDF conforme, avec les mentions obligatoires',
         gateKey: 'export_devis',
       },
       {
