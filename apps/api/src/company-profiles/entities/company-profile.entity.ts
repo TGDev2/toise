@@ -17,16 +17,13 @@ export class CompanyProfile {
   id!: string;
 
   /**
-   * Auteur de la saisie. L'identité légale appartient à `organization_id`
-   * (PLAT-4) : `null` quand l'auteur a supprimé son compte, l'identité de
-   * l'entreprise ne dépendant pas de la personne qui l'a renseignée.
+   * Titulaire de l'identité légale. Auteur et propriétaire sont de nouveau la
+   * même personne depuis la suppression des organisations (E4-1) : un profil
+   * d'entreprise par compte, garanti par `UQ_company_profiles_user`.
    */
-  @Column({ type: 'uuid', nullable: true })
-  user_id!: string | null;
-
   @Index()
   @Column({ type: 'uuid' })
-  organization_id!: string;
+  user_id!: string;
 
   @Column({ type: 'varchar', length: 255 })
   raison_sociale!: string;

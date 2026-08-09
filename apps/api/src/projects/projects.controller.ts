@@ -19,8 +19,8 @@ import type { DecodedIdToken } from 'firebase-admin/auth';
 import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
 import { isGuestToken } from '../auth/guest-token';
-import { OrgContextService } from '../organizations/org-context.service';
-import type { OrgScope } from '../organizations/org-context.service';
+import { UserContextService } from '../users/user-context.service';
+import type { UserScope } from '../users/user-context.service';
 import { ProjectsService } from './projects.service';
 import { CvCorrectionService } from '../analysis/cv-correction.service';
 import { CreateProjectDto } from './dto/create-project.dto';
@@ -54,13 +54,13 @@ function openingSnapshot(o: Opening) {
 export class ProjectsController {
   constructor(
     private readonly projectsService: ProjectsService,
-    private readonly orgContext: OrgContextService,
+    private readonly userContext: UserContextService,
     private readonly cvCorrectionService: CvCorrectionService,
   ) {}
 
-  private async resolveScope(firebaseUser: DecodedIdToken): Promise<OrgScope> {
+  private async resolveScope(firebaseUser: DecodedIdToken): Promise<UserScope> {
     try {
-      return await this.orgContext.resolveForFirebaseUid(firebaseUser.uid);
+      return await this.userContext.resolveForFirebaseUid(firebaseUser.uid);
     } catch {
       throw new UnauthorizedException('Utilisateur non authentifié.');
     }
@@ -81,7 +81,6 @@ export class ProjectsController {
   ) {
     const scope = await this.resolveScope(firebaseUser);
     const project = await this.projectsService.createProject(
-      scope.organizationId,
       scope.userId,
       dto,
       isGuestToken(firebaseUser),
@@ -103,7 +102,7 @@ export class ProjectsController {
   ) {
     const scope = await this.resolveScope(firebaseUser);
     const { data, meta } = await this.projectsService.findByOrg(
-      scope.organizationId,
+      scope.userId,
       query,
     );
 
@@ -145,7 +144,7 @@ export class ProjectsController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     const scope = await this.resolveScope(firebaseUser);
-    await this.projectsService.softDeleteProject(id, scope.organizationId);
+    await this.projectsService.softDeleteProject(id, scope.userId);
   }
 
   @Get('work-types')
@@ -159,10 +158,7 @@ export class ProjectsController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     const scope = await this.resolveScope(firebaseUser);
-    const project = await this.projectsService.findOneForOrg(
-      id,
-      scope.organizationId,
-    );
+    const project = await this.projectsService.findOneForUser(id, scope.userId);
     return {
       id: project.id,
       name: project.name,
@@ -202,14 +198,13 @@ export class ProjectsController {
     // Check if current dimensions are CV-sourced for correction logging
     const currentDims = await this.projectsService.getDimensions(
       id,
-      scope.organizationId,
+      scope.userId,
       roomId,
     );
     const wasCvSourced = currentDims?.source === DimensionSource.CV;
 
     const dimensions = await this.projectsService.updateDimensions(
       id,
-      scope.organizationId,
       scope.userId,
       dto,
       undefined,
@@ -257,7 +252,7 @@ export class ProjectsController {
     const scope = await this.resolveScope(firebaseUser);
     const dimensions = await this.projectsService.getDimensions(
       id,
-      scope.organizationId,
+      scope.userId,
       roomId,
     );
     if (!dimensions) {
@@ -287,7 +282,7 @@ export class ProjectsController {
     const scope = await this.resolveScope(firebaseUser);
     const opening = await this.projectsService.addOpening(
       id,
-      scope.organizationId,
+      scope.userId,
       dto,
       undefined,
       roomId,
@@ -327,7 +322,7 @@ export class ProjectsController {
     const scope = await this.resolveScope(firebaseUser);
     const openings = await this.projectsService.getOpenings(
       id,
-      scope.organizationId,
+      scope.userId,
       roomId,
     );
     return openings.map((o) => ({
@@ -348,15 +343,15 @@ export class ProjectsController {
   ) {
     const scope = await this.resolveScope(firebaseUser);
     // État avant mutation, pour le log de correction (pattern dimensions)
-    const before = await this.projectsService.findOpeningForOrg(
+    const before = await this.projectsService.findOpeningForUser(
       id,
-      scope.organizationId,
+      scope.userId,
       openingId,
     );
 
     const opening = await this.projectsService.updateOpening(
       id,
-      scope.organizationId,
+      scope.userId,
       openingId,
       dto,
     );
@@ -395,17 +390,13 @@ export class ProjectsController {
     @Param('openingId', ParseUUIDPipe) openingId: string,
   ) {
     const scope = await this.resolveScope(firebaseUser);
-    const before = await this.projectsService.findOpeningForOrg(
+    const before = await this.projectsService.findOpeningForUser(
       id,
-      scope.organizationId,
+      scope.userId,
       openingId,
     );
 
-    await this.projectsService.removeOpening(
-      id,
-      scope.organizationId,
-      openingId,
-    );
+    await this.projectsService.removeOpening(id, scope.userId, openingId);
 
     // Suppression d'une détection CV : signal pour le rapport de précision
     // et le triage CV-6 (jamais converti en négatif d'entraînement).
@@ -429,7 +420,7 @@ export class ProjectsController {
     const scope = await this.resolveScope(firebaseUser);
     const items = await this.projectsService.saveWorkItems(
       id,
-      scope.organizationId,
+      scope.userId,
       dto,
       roomId,
     );
@@ -461,7 +452,7 @@ export class ProjectsController {
     const scope = await this.resolveScope(firebaseUser);
     const items = await this.projectsService.getWorkItems(
       id,
-      scope.organizationId,
+      scope.userId,
       roomId,
     );
     return items.map((item) => ({
@@ -484,7 +475,7 @@ export class ProjectsController {
   }
 
   /**
-   * E4-4 — sélection d'ouvrages du dernier chantier de l'organisation, pour
+   * E4-4 — sélection d'ouvrages du dernier chantier du compte, pour
    * pré-remplir l'étape « Travaux » d'un chantier neuf. Chantier courant exclu :
    * à l'intérieur d'un chantier, le web reprend la pièce précédente depuis les
    * pièces qu'il a déjà chargées.
@@ -496,7 +487,7 @@ export class ProjectsController {
   ) {
     const scope = await this.resolveScope(firebaseUser);
     const items = await this.projectsService.findLastWorkSelection(
-      scope.organizationId,
+      scope.userId,
       id,
     );
     return items.map((item) => ({
@@ -516,7 +507,7 @@ export class ProjectsController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     const scope = await this.resolveScope(firebaseUser);
-    const rooms = await this.projectsService.getRooms(id, scope.organizationId);
+    const rooms = await this.projectsService.getRooms(id, scope.userId);
     return rooms.map((r) => this.mapRoom(r));
   }
 
@@ -527,11 +518,7 @@ export class ProjectsController {
     @Body() dto: CreateRoomDto,
   ) {
     const scope = await this.resolveScope(firebaseUser);
-    const room = await this.projectsService.createRoom(
-      id,
-      scope.organizationId,
-      dto,
-    );
+    const room = await this.projectsService.createRoom(id, scope.userId, dto);
     return this.mapRoom(room);
   }
 
@@ -545,7 +532,7 @@ export class ProjectsController {
     const scope = await this.resolveScope(firebaseUser);
     const room = await this.projectsService.renameRoom(
       id,
-      scope.organizationId,
+      scope.userId,
       roomId,
       dto,
     );
@@ -560,7 +547,7 @@ export class ProjectsController {
     @Param('roomId', ParseUUIDPipe) roomId: string,
   ) {
     const scope = await this.resolveScope(firebaseUser);
-    await this.projectsService.deleteRoom(id, scope.organizationId, roomId);
+    await this.projectsService.deleteRoom(id, scope.userId, roomId);
   }
 
   private mapRoom(room: Room) {

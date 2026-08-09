@@ -2,7 +2,6 @@ import { DataSource } from 'typeorm';
 import type Stripe from 'stripe';
 import { migratedDataSource, truncateUserData } from './test-database';
 import { User } from '../../src/users/entities/user.entity';
-import { Organization } from '../../src/organizations/entities/organization.entity';
 import {
   Project,
   ProjectStatus,
@@ -72,7 +71,6 @@ function materialItem(
 
 interface Fixture {
   userId: string;
-  organizationId: string;
   projectId: string;
   roomId: string;
   estimationId: string;
@@ -87,14 +85,8 @@ async function seedProject(
     email: `int-${suffix}@chiffreo.test`,
     firebase_uid: `firebase-int-${suffix}`,
   });
-  const organization = await dataSource.getRepository(Organization).save({
-    name: `Org ${suffix}`,
-    owner_user_id: user.id,
-    is_personal: true,
-  });
   const project = await dataSource.getRepository(Project).save({
     user_id: user.id,
-    organization_id: organization.id,
     name: `Chantier ${suffix}`,
     room_name: 'Salon',
     work_type: ProjectWorkType.PAINTING,
@@ -145,7 +137,6 @@ async function seedProject(
 
   return {
     userId: user.id,
-    organizationId: organization.id,
     projectId: project.id,
     roomId: room.id,
     estimationId: estimation.id,
@@ -226,45 +217,23 @@ describe('Persistance (intégration, PostgreSQL réel)', () => {
       ).toBe(0);
 
       // Volet « destructrice » : la cascade ne doit pas déborder sur un projet
-      // voisin, ni sur l'utilisateur/l'organisation qui restent propriétaires.
+      // voisin, ni sur l'utilisateur qui reste propriétaire.
       expect(
         await countWhere(dataSource, 'rooms', 'project_id', other.projectId),
       ).toBe(1);
       expect(await countWhere(dataSource, 'users', 'id', mine.userId)).toBe(1);
-      expect(
-        await countWhere(
-          dataSource,
-          'organizations',
-          'id',
-          mine.organizationId,
-        ),
-      ).toBe(1);
     });
 
-    it("refuse d'effacer un utilisateur qui possède encore une organisation", async () => {
-      const mine = await seedProject(dataSource, 'user-a');
-
-      // `FK_organizations_owner` est passé en RESTRICT : la suppression nue
-      // n'est plus un chemin praticable, c'est le service de suppression de
-      // compte qui doit démonter l'organisation en premier.
-      await expect(
-        dataSource.query('DELETE FROM users WHERE id = $1', [mine.userId]),
-      ).rejects.toThrow(/FK_organizations_owner/);
-
-      // Le refus est total : rien n'a été effacé au passage.
-      expect(await countWhere(dataSource, 'users', 'id', mine.userId)).toBe(1);
-      expect(
-        await countWhere(dataSource, 'projects', 'id', mine.projectId),
-      ).toBe(1);
-    });
-
-    it("efface les projets d'un utilisateur avec son organisation, sans toucher aux autres", async () => {
+    it("efface les projets d'un utilisateur avec lui, sans toucher aux autres", async () => {
       const mine = await seedProject(dataSource, 'user-a');
       const other = await seedProject(dataSource, 'user-b');
 
-      await dataSource.query('DELETE FROM organizations WHERE id = $1', [
-        mine.organizationId,
-      ]);
+      // Avant E4-1, ce `DELETE` échouait sur `FK_organizations_owner`, passée en
+      // `RESTRICT` par la migration 1711468800061 pour qu'une suppression de
+      // compte individuelle ne détruise pas les données d'une organisation
+      // partagée. Sans organisation, il n'y a plus de donnée collective à
+      // protéger : `FK_projects_user` est en `CASCADE` et la suppression du
+      // compte emporte ses propres lignes, et elles seules.
       await dataSource.query('DELETE FROM users WHERE id = $1', [mine.userId]);
 
       expect(
@@ -841,7 +810,7 @@ describe('Persistance (intégration, PostgreSQL réel)', () => {
             }),
         } as unknown as EstimationsService,
         {
-          findOneForOrg: () => Promise.resolve({ id: fixture.projectId }),
+          findOneForUser: () => Promise.resolve({ id: fixture.projectId }),
         } as unknown as ProjectsService,
         { track: () => undefined } as unknown as AnalyticsService,
         {} as LogbookService,
@@ -877,22 +846,12 @@ describe('Persistance (intégration, PostgreSQL réel)', () => {
       const service = buildService(fixture);
 
       await Promise.all([
-        service.update(
-          fixture.projectId,
-          fixture.organizationId,
-          fixture.userId,
-          {
-            material_items: [{ material_id: PEINTURE, units_needed: 7 }],
-          },
-        ),
-        service.update(
-          fixture.projectId,
-          fixture.organizationId,
-          fixture.userId,
-          {
-            material_items: [{ material_id: ENDUIT, units_needed: 9 }],
-          },
-        ),
+        service.update(fixture.projectId, fixture.userId, {
+          material_items: [{ material_id: PEINTURE, units_needed: 7 }],
+        }),
+        service.update(fixture.projectId, fixture.userId, {
+          material_items: [{ material_id: ENDUIT, units_needed: 9 }],
+        }),
       ]);
 
       const stored = await dataSource
@@ -928,21 +887,12 @@ describe('Persistance (intégration, PostgreSQL réel)', () => {
       });
 
       await Promise.all([
-        service.regenerate(
-          fixture.projectId,
-          fixture.organizationId,
-          fixture.userId,
-        ),
-        service.update(
-          fixture.projectId,
-          fixture.organizationId,
-          fixture.userId,
-          {
-            material_items: [
-              { material_id: PEINTURE, units_needed: 4, real_unit_price: 31.5 },
-            ],
-          },
-        ),
+        service.regenerate(fixture.projectId, fixture.userId),
+        service.update(fixture.projectId, fixture.userId, {
+          material_items: [
+            { material_id: PEINTURE, units_needed: 4, real_unit_price: 31.5 },
+          ],
+        }),
       ]);
 
       const after = await repo.findOneByOrFail({

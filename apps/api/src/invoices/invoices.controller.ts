@@ -16,8 +16,8 @@ import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { FeatureGateGuard } from '../feature-gates/guards/feature-gate.guard';
 import { RequireFeature } from '../feature-gates/decorators/require-feature.decorator';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
-import { OrgContextService } from '../organizations/org-context.service';
-import type { OrgScope } from '../organizations/org-context.service';
+import { UserContextService } from '../users/user-context.service';
+import type { UserScope } from '../users/user-context.service';
 import { InvoicesService } from './invoices.service';
 import { InvoicePdfService } from './invoice-pdf.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
@@ -41,11 +41,11 @@ export class InvoicesController {
   constructor(
     private readonly invoicesService: InvoicesService,
     private readonly invoicePdfService: InvoicePdfService,
-    private readonly orgContext: OrgContextService,
+    private readonly userContext: UserContextService,
   ) {}
 
-  private resolveScope(firebaseUser: DecodedIdToken): Promise<OrgScope> {
-    return this.orgContext.resolveForFirebaseUid(firebaseUser.uid);
+  private resolveScope(firebaseUser: DecodedIdToken): Promise<UserScope> {
+    return this.userContext.resolveForFirebaseUid(firebaseUser.uid);
   }
 
   @Post()
@@ -55,11 +55,7 @@ export class InvoicesController {
     @Body() dto: CreateInvoiceDto,
   ) {
     const scope = await this.resolveScope(firebaseUser);
-    return this.invoicesService.createFromQuote(
-      scope.organizationId,
-      scope.userId,
-      dto,
-    );
+    return this.invoicesService.createFromQuote(scope.userId, dto);
   }
 
   @Get()
@@ -69,7 +65,7 @@ export class InvoicesController {
     @Query('quote_id') quoteId?: string,
   ) {
     const scope = await this.resolveScope(firebaseUser);
-    return this.invoicesService.findAllForOrg(scope.organizationId, {
+    return this.invoicesService.findAllForUser(scope.userId, {
       status,
       quote_id: quoteId,
     });
@@ -81,7 +77,7 @@ export class InvoicesController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     const scope = await this.resolveScope(firebaseUser);
-    return this.invoicesService.findOneForOrg(id, scope.organizationId);
+    return this.invoicesService.findOneForUser(id, scope.userId);
   }
 
   @Get(':id/export/pdf')
@@ -91,10 +87,7 @@ export class InvoicesController {
     @Res() res: Response,
   ): Promise<void> {
     const scope = await this.resolveScope(firebaseUser);
-    const invoice = await this.invoicesService.findOneForOrg(
-      id,
-      scope.organizationId,
-    );
+    const invoice = await this.invoicesService.findOneForUser(id, scope.userId);
 
     const buffer = await this.invoicePdfService.generatePdf(invoice);
 
@@ -116,6 +109,6 @@ export class InvoicesController {
     @Body() dto: UpdateInvoiceStatusDto,
   ) {
     const scope = await this.resolveScope(firebaseUser);
-    return this.invoicesService.updateStatus(id, scope.organizationId, dto);
+    return this.invoicesService.updateStatus(id, scope.userId, dto);
   }
 }

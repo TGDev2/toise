@@ -61,7 +61,7 @@ function makeReport(groups: CvAccuracyReport['groups'] = []): CvAccuracyReport {
 const jobRepoMock = { findOne: jest.fn(), update: jest.fn() };
 const cvClientMock = { analyze: jest.fn() };
 const projectsServiceMock = {
-  findOneForOrg: jest.fn(),
+  findOneForUser: jest.fn(),
   applyCvAnalysis: jest.fn(),
   getDimensions: jest.fn(),
 };
@@ -75,7 +75,9 @@ describe('AnalysisService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     jobRepoMock.update.mockResolvedValue({});
-    projectsServiceMock.findOneForOrg.mockResolvedValue({ id: 'project-uuid' });
+    projectsServiceMock.findOneForUser.mockResolvedValue({
+      id: 'project-uuid',
+    });
     projectsServiceMock.applyCvAnalysis.mockResolvedValue(undefined);
     cvAccuracyServiceMock.getReport.mockResolvedValue(makeReport());
     // `processAnalysis`/`getJobStatus` ne passent pas par le coupure-circuit
@@ -348,7 +350,7 @@ describe('AnalysisService', () => {
         "L'analyse photo par intelligence artificielle n'est pas disponible actuellement. Merci de saisir les dimensions manuellement.",
       );
 
-      expect(projectsServiceMock.findOneForOrg).not.toHaveBeenCalled();
+      expect(projectsServiceMock.findOneForUser).not.toHaveBeenCalled();
       expect(photosServiceMock.getProjectPhotos).not.toHaveBeenCalled();
       expect(cvClientMock.analyze).not.toHaveBeenCalled();
     });

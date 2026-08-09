@@ -20,7 +20,7 @@ const DATA_RETENTION_LOCK_KEY = 4_071_205_005;
 /** Ce qu'une passe a fait (ou ferait) d'un projet. */
 export interface PurgedProject {
   project_id: string;
-  organization_id: string;
+  user_id: string;
   deleted_at: Date | null;
   files: number;
   bytes: number;
@@ -42,7 +42,7 @@ export interface PurgeSummary {
 
 interface ExpiredProjectRow {
   id: string;
-  organization_id: string;
+  user_id: string;
   deleted_at: Date | null;
 }
 
@@ -61,8 +61,8 @@ interface ExpiredProjectRow {
  *
  * - `purgeExpiredProjects` — passe planifiée, efface les projets dont la
  *   rétention après suppression logique est expirée (lignes **et** fichiers) ;
- * - `eraseOrganizationFiles` — effacement immédiat au moment où un compte part,
- *   pour les organisations que la suppression emporte.
+ * - `eraseUserFiles` — effacement immédiat au moment où un compte part,
+ *   pour les projets que la suppression emporte.
  *
  * **L'ordre est la décision structurante : fichiers d'abord, base ensuite.**
  * L'inverse est le seul ordre irréparable — la ligne partie, plus rien ne
@@ -148,32 +148,27 @@ export class DataRetentionService {
   }
 
   /**
-   * Effacement immédiat des fichiers des projets portés par les organisations
-   * qu'une suppression de compte emporte (`AuthService.deleteAccount`).
+   * Effacement immédiat des fichiers des projets qu'une suppression de compte
+   * emporte (`AuthService.deleteAccount`).
    *
-   * Le périmètre est **l'organisation, pas l'utilisateur** : depuis PLAT-4 la
-   * propriété d'un projet est portée par `organization_id`, `user_id` n'étant
-   * que la trace de l'auteur. Les projets d'une organisation à laquelle le
-   * partant n'était que membre lui survivent — la migration 1711468800061 a
-   * tranché ce point pour les lignes, les fichiers suivent la même règle.
+   * Le périmètre est l'utilisateur : depuis E4-1 la propriété d'un projet est
+   * de nouveau portée par `user_id`, et il n'existe plus de projet qui
+   * survivrait à son propriétaire.
    *
    * Contrairement à la passe nocturne, **toute erreur remonte** : cet appel
    * précède la suppression des lignes, et continuer après un échec reviendrait à
    * annoncer un effacement qui n'a pas eu lieu, en supprimant du même coup ce qui
    * permettait de le rattraper.
    */
-  async eraseOrganizationFiles(
-    organizationIds: string[],
-  ): Promise<PurgeSummary> {
+  async eraseUserFiles(userId: string): Promise<PurgeSummary> {
     const summary = this.emptySummary(false, null);
-    if (organizationIds.length === 0) return summary;
 
     const rows = await this.projectRepo
       .createQueryBuilder('p')
       .select('p.id', 'id')
-      .addSelect('p.organization_id', 'organization_id')
+      .addSelect('p.user_id', 'user_id')
       .addSelect('p.deleted_at', 'deleted_at')
-      .where('p.organization_id IN (:...organizationIds)', { organizationIds })
+      .where('p.user_id = :userId', { userId })
       // Les projets déjà supprimés logiquement gardent leurs fichiers jusqu'à la
       // fin de leur rétention. Le compte partant, cette rétention n'a plus
       // d'objet : ils partent avec les autres.
@@ -190,7 +185,7 @@ export class DataRetentionService {
     this.logger.log(
       `Suppression de compte : ${summary.files} fichier(s) effacé(s) (${formatBytes(
         summary.bytes,
-      )}) sur ${rows.length} projet(s) de ${organizationIds.length} organisation(s)`,
+      )}) sur ${rows.length} projet(s) du compte ${userId}`,
     );
     return summary;
   }
@@ -232,7 +227,7 @@ export class DataRetentionService {
 
     return {
       project_id: row.id,
-      organization_id: row.organization_id,
+      user_id: row.user_id,
       deleted_at: row.deleted_at,
       files: files.length,
       bytes: files.reduce((total, file) => total + file.bytes, 0),
@@ -244,7 +239,7 @@ export class DataRetentionService {
    * Sélection en colonnes brutes, sans hydrater l'entité : `Project.rooms` est en
    * `eager`, et charger la géométrie de chaque projet pour n'en lire que
    * l'identifiant ferait exploser la passe (même raison que
-   * `CostBenchmarkService.loadOrganizationIds`).
+   * `CostBenchmarkService.loadUserIds`).
    */
   private async findExpiredProjects(
     cutoff: Date,
@@ -252,7 +247,7 @@ export class DataRetentionService {
     return this.projectRepo
       .createQueryBuilder('p')
       .select('p.id', 'id')
-      .addSelect('p.organization_id', 'organization_id')
+      .addSelect('p.user_id', 'user_id')
       .addSelect('p.deleted_at', 'deleted_at')
       .where('p.deleted_at IS NOT NULL')
       .andWhere('p.deleted_at <= :cutoff', { cutoff })
@@ -326,8 +321,8 @@ export class DataRetentionService {
   private logProject(purged: PurgedProject, dryRun: boolean): void {
     const deletedAt = purged.deleted_at?.toISOString() ?? 'inconnu';
     this.logger.log(
-      `${prefixOf(dryRun)}Projet ${purged.project_id} (organisation ${
-        purged.organization_id
+      `${prefixOf(dryRun)}Projet ${purged.project_id} (compte ${
+        purged.user_id
       }, supprimé le ${deletedAt}) : ${purged.files} fichier(s), ${formatBytes(
         purged.bytes,
       )}${purged.community_withdrawn ? ', publication communautaire retirée' : ''}`,

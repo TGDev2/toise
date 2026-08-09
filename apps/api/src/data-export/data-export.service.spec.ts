@@ -8,9 +8,6 @@ import {
 } from './entities/data-export-request.entity';
 import { STORAGE_PROVIDER } from '../photos/storage/storage.interface';
 import { User } from '../users/entities/user.entity';
-import { Organization } from '../organizations/entities/organization.entity';
-import { OrganizationMembership } from '../organizations/entities/organization-membership.entity';
-import { OrganizationInvitation } from '../organizations/entities/organization-invitation.entity';
 import { Client } from '../clients/entities/client.entity';
 import { CompanyProfile } from '../company-profiles/entities/company-profile.entity';
 import { Project } from '../projects/entities/project.entity';
@@ -55,9 +52,6 @@ function emptyRepoMock() {
 
 const requestsRepoMock = emptyRepoMock();
 const usersRepoMock = emptyRepoMock();
-const organizationsRepoMock = emptyRepoMock();
-const membershipsRepoMock = emptyRepoMock();
-const invitationsRepoMock = emptyRepoMock();
 const clientsRepoMock = emptyRepoMock();
 const companyProfilesRepoMock = emptyRepoMock();
 const projectsRepoMock = emptyRepoMock();
@@ -111,18 +105,6 @@ async function buildService(): Promise<DataExportService> {
         useValue: requestsRepoMock,
       },
       { provide: getRepositoryToken(User), useValue: usersRepoMock },
-      {
-        provide: getRepositoryToken(Organization),
-        useValue: organizationsRepoMock,
-      },
-      {
-        provide: getRepositoryToken(OrganizationMembership),
-        useValue: membershipsRepoMock,
-      },
-      {
-        provide: getRepositoryToken(OrganizationInvitation),
-        useValue: invitationsRepoMock,
-      },
       { provide: getRepositoryToken(Client), useValue: clientsRepoMock },
       {
         provide: getRepositoryToken(CompanyProfile),
@@ -216,9 +198,6 @@ describe('DataExportService', () => {
     for (const repo of [
       requestsRepoMock,
       usersRepoMock,
-      organizationsRepoMock,
-      membershipsRepoMock,
-      invitationsRepoMock,
       clientsRepoMock,
       companyProfilesRepoMock,
       projectsRepoMock,
@@ -351,25 +330,21 @@ describe('DataExportService', () => {
       });
     });
 
-    it("énumère toutes les organisations dont le compte est membre, pas seulement celles qu'il possède", async () => {
+    it("expose le contenu du compte à la racine, sans niveau d'organisation", async () => {
       usersRepoMock.findOne.mockResolvedValueOnce({ id: 'user-1' } as User);
-      membershipsRepoMock.find.mockResolvedValueOnce([
-        {
-          organization_id: 'org-owned',
-          user_id: 'user-1',
-        } as OrganizationMembership,
-        {
-          organization_id: 'org-member-only',
-          user_id: 'user-1',
-        } as OrganizationMembership,
-      ]);
-      organizationsRepoMock.findOne.mockResolvedValue({
-        id: 'org-x',
-      } as Organization);
 
       const { manifest } = await service.buildManifest('user-1');
-      const organizations = manifest.organizations as Record<string, unknown>[];
-      expect(organizations).toHaveLength(2);
+
+      // Le format 1.0 groupait projets, clients et profil d'entreprise sous un
+      // tableau `organizations[]` et exportait chaque organisation en entier,
+      // membre ou propriétaire. E4-1 a supprimé ce niveau : la clé ne doit plus
+      // exister, et son contenu doit être remonté d'un cran.
+      expect(manifest.organizations).toBeUndefined();
+      expect(manifest).toHaveProperty('projects');
+      expect(manifest).toHaveProperty('clients');
+      expect(manifest).toHaveProperty('company_profile');
+      const documentation = manifest._documentation as Record<string, unknown>;
+      expect(documentation.format_version).toBe('2.0');
     });
 
     it('documente les entités exclues dans le JSON livré', async () => {

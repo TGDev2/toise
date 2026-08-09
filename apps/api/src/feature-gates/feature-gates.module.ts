@@ -1,17 +1,17 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { OrgContextModule } from '../organizations/org-context.module';
+import { UserContextModule } from '../users/user-context.module';
 import { FeatureGate } from './entities/feature-gate.entity';
 import { FeatureGatesService } from './feature-gates.service';
 import { FeatureGatesController } from './feature-gates.controller';
 import { FeatureGateGuard } from './guards/feature-gate.guard';
 
 /**
- * `OrgContextModule` est **ré-exporté**, et ce n'est pas une commodité.
+ * `UserContextModule` est **ré-exporté**, et ce n'est pas une commodité.
  *
  * `@UseGuards(FeatureGateGuard)` fait instancier le guard dans l'injecteur du
  * module qui l'applique, pas dans celui qui le fournit : chaque module appelant
- * devait donc importer `OrgContextModule` en plus de celui-ci, sous peine d'un
+ * devait donc importer `UserContextModule` en plus de celui-ci, sous peine d'un
  * échec de résolution **au démarrage de toute l'application**. Douze modules
  * portaient cette parade ; `CommunityModule` l'avait oubliée, et l'API ne
  * démarrait plus du tout.
@@ -22,9 +22,9 @@ import { FeatureGateGuard } from './guards/feature-gate.guard';
  * quatorzième à écrire.
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([FeatureGate]), OrgContextModule],
+  imports: [TypeOrmModule.forFeature([FeatureGate]), UserContextModule],
   controllers: [FeatureGatesController],
   providers: [FeatureGatesService, FeatureGateGuard],
-  exports: [FeatureGatesService, FeatureGateGuard, OrgContextModule],
+  exports: [FeatureGatesService, FeatureGateGuard, UserContextModule],
 })
 export class FeatureGatesModule {}

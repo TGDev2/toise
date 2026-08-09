@@ -34,19 +34,15 @@ export class LogbookService {
    */
   async recordChantierCompletion(
     projectId: string,
-    organizationId: string,
     userId: string,
     estimation: EstimationResult,
     shoppingList: ShoppingList,
   ): Promise<void> {
-    const project = await this.projectsService.findOneForOrg(
+    const project = await this.projectsService.findOneForUser(
       projectId,
-      organizationId,
+      userId,
     );
-    const rooms = await this.projectsService.getRooms(
-      projectId,
-      organizationId,
-    );
+    const rooms = await this.projectsService.getRooms(projectId, userId);
 
     const infoByMaterialId = new Map(
       shoppingList.items_json.material_items.map((item) => [

@@ -40,10 +40,6 @@ import {
   buildRenewalNoticeEmail,
   RenewalNoticeEmailData,
 } from './templates/renewal-notice.template';
-import {
-  buildOrganizationInvitationEmail,
-  OrganizationInvitationEmailData,
-} from './templates/organization-invitation.template';
 
 @Injectable()
 export class EmailService {
@@ -126,14 +122,6 @@ export class EmailService {
     data: RenewalNoticeEmailData,
   ): Promise<void> {
     const { subject, html, text } = buildRenewalNoticeEmail(data);
-    await this.brevoClient.sendTransactionalEmail({ to, subject, html, text });
-  }
-
-  async sendOrganizationInvitationEmail(
-    to: string,
-    data: OrganizationInvitationEmailData,
-  ): Promise<void> {
-    const { subject, html, text } = buildOrganizationInvitationEmail(data);
     await this.brevoClient.sendTransactionalEmail({ to, subject, html, text });
   }
 }

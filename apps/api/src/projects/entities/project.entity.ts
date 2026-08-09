@@ -36,17 +36,13 @@ export class Project {
   id!: string;
 
   /**
-   * Auteur du projet. La propriété, elle, est portée par `organization_id`
-   * (PLAT-4) : `null` quand l'auteur a supprimé son compte, le projet restant
-   * acquis à son organisation.
+   * Propriétaire du projet. Redevenu l'axe de propriété avec la suppression
+   * des organisations (E4-1) : c'est sur cette colonne que se filtre toute
+   * lecture et toute écriture du module.
    */
   @Index()
-  @Column({ type: 'uuid', nullable: true })
-  user_id!: string | null;
-
-  @Index()
   @Column({ type: 'uuid' })
-  organization_id!: string;
+  user_id!: string;
 
   @Column({ type: 'varchar', length: 255 })
   name!: string;
@@ -69,9 +65,9 @@ export class Project {
   @DeleteDateColumn({ type: 'timestamptz', nullable: true })
   deleted_at!: Date | null;
 
-  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
-  user!: User | null;
+  user!: User;
 
   @OneToMany(() => Room, (r) => r.project, { eager: true })
   rooms!: Room[];

@@ -17,9 +17,9 @@ import { median } from '../waste-learning/waste-learning';
  *
  * Trois seuils, écrits avant toute collecte pour qu'ils ne se rationalisent pas
  * après coup (cf. `tasks/lessons.md` n°1) :
- *  - `minOrganizations` — le k proprement dit ;
+ *  - `minAccounts` — le k proprement dit ;
  *  - `minObservations` — le seuil de volume ;
- *  - `maxObservationsPerOrg` — pour qu'aucune organisation ne constitue à elle
+ *  - `maxObservationsPerOrg` — pour qu'aucun compte ne constitue à elle
  *    seule la cohorte, et donc ne puisse relire sa propre dépense dans la
  *    médiane publiée.
  *
@@ -68,8 +68,8 @@ export interface CostObservation {
   surface_m2: number;
   /** Coût matériaux réel de cet ouvrage rapporté au m² (> 0). */
   cost_per_m2: number;
-  /** Organisation propriétaire — plafonnement et comptage du k-anonymat. */
-  organization_id: string;
+  /** Compte propriétaire — plafonnement et comptage du k-anonymat. */
+  user_id: string;
   /** Date de finalisation du budget — départage le plafonnement. */
   observed_at: Date;
 }
@@ -85,7 +85,7 @@ export interface BenchmarkCell {
   status: BenchmarkCellStatus;
   /** Non nul **si et seulement si** `status === 'published'`. */
   median_cost_per_m2: number | null;
-  /** Observations retenues, après plafonnement par organisation. */
+  /** Observations retenues, après plafonnement par compte. */
   sample_size: number;
   organization_count: number;
 }
@@ -93,9 +93,9 @@ export interface BenchmarkCell {
 export interface CostBenchmarkOptions {
   /** Seuil de volume : en deçà, une médiane ne décrit rien. */
   minObservations: number;
-  /** Le k du k-anonymat : organisations distinctes derrière une médiane. */
-  minOrganizations: number;
-  /** Observations retenues par organisation et par cellule (les plus récentes). */
+  /** Le k du k-anonymat : comptes distincts derrière une médiane. */
+  minAccounts: number;
+  /** Observations retenues par compte et par cellule (les plus récentes). */
   maxObservationsPerOrg: number;
   /** En deçà en valeur absolue, on annonce « dans la médiane » (%). */
   neutralBandPercent: number;
@@ -103,7 +103,7 @@ export interface CostBenchmarkOptions {
 
 export const DEFAULT_COST_BENCHMARK_OPTIONS: CostBenchmarkOptions = {
   minObservations: 10,
-  minOrganizations: 5,
+  minAccounts: 5,
   maxObservationsPerOrg: 3,
   neutralBandPercent: 3,
 };
@@ -111,15 +111,15 @@ export const DEFAULT_COST_BENCHMARK_OPTIONS: CostBenchmarkOptions = {
 /** Ce qui manque à une cellule pour devenir publiable. */
 export interface BenchmarkShortfall {
   missing_observations: number;
-  missing_organizations: number;
+  missing_accounts: number;
 }
 
 /**
  * Distance d'une cellule aux seuils, dans les deux unités qui la commandent.
- * Le k-anonymat n'est pas le seul plancher d'organisations : le plafond par
- * organisation en impose un second, `⌈minObservations / maxObservationsPerOrg⌉`.
+ * Le k-anonymat n'est pas le seul plancher de comptes : le plafond par
+ * compte en impose un second, `⌈minObservations / maxObservationsPerOrg⌉`.
  * C'est le plus exigeant des deux qui décide — à 3 observations par
- * organisation, dix observations réclament au moins quatre contributeurs, et le
+ * compte, dix observations réclament au moins quatre contributeurs, et le
  * k en réclame cinq.
  *
  * Publier ce calcul ne rouvre pas le k-anonymat : il ne parle que de comptages
@@ -129,8 +129,8 @@ export function benchmarkShortfall(
   cell: Pick<BenchmarkCell, 'sample_size' | 'organization_count'>,
   options: CostBenchmarkOptions = DEFAULT_COST_BENCHMARK_OPTIONS,
 ): BenchmarkShortfall {
-  const requiredOrganizations = Math.max(
-    options.minOrganizations,
+  const requiredAccounts = Math.max(
+    options.minAccounts,
     Math.ceil(
       options.minObservations / Math.max(1, options.maxObservationsPerOrg),
     ),
@@ -140,10 +140,7 @@ export function benchmarkShortfall(
       0,
       options.minObservations - cell.sample_size,
     ),
-    missing_organizations: Math.max(
-      0,
-      requiredOrganizations - cell.organization_count,
-    ),
+    missing_accounts: Math.max(0, requiredAccounts - cell.organization_count),
   };
 }
 
@@ -156,20 +153,20 @@ export function benchmarkCellKey(cell: {
 }
 
 /**
- * Plafonne le nombre d'observations qu'une même organisation pèse dans une
+ * Plafonne le nombre d'observations qu'un même compte pèse dans une
  * cellule. Double effet : une entreprise qui enchaîne les chantiers ne devient
  * pas à elle seule « la médiane du marché », et elle ne peut pas relire sa
  * propre dépense dans le chiffre publié. Les plus récentes sont conservées.
  */
-function capPerOrganization(
+function capPerAccount(
   observations: CostObservation[],
   maxPerOrg: number,
 ): CostObservation[] {
   const byOrg = new Map<string, CostObservation[]>();
   for (const obs of observations) {
-    const group = byOrg.get(obs.organization_id);
+    const group = byOrg.get(obs.user_id);
     if (group) group.push(obs);
-    else byOrg.set(obs.organization_id, [obs]);
+    else byOrg.set(obs.user_id, [obs]);
   }
 
   const kept: CostObservation[] = [];
@@ -209,17 +206,16 @@ export function buildCostBenchmarks(
   const results: BenchmarkCell[] = [];
 
   for (const group of cells.values()) {
-    const retained = capPerOrganization(group, options.maxObservationsPerOrg);
-    const organizationCount = new Set(retained.map((o) => o.organization_id))
-      .size;
+    const retained = capPerAccount(group, options.maxObservationsPerOrg);
+    const accountCount = new Set(retained.map((o) => o.user_id)).size;
     const cell = {
       work_type_code: group[0].work_type_code,
       surface_band: resolveSurfaceBand(group[0].surface_m2),
       sample_size: retained.length,
-      organization_count: organizationCount,
+      organization_count: accountCount,
     };
 
-    if (organizationCount < options.minOrganizations) {
+    if (accountCount < options.minAccounts) {
       results.push({
         ...cell,
         status: 'insufficient_anonymity',

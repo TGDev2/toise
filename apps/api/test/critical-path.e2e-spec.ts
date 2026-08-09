@@ -16,7 +16,7 @@ import { EstimationsService } from '../src/estimations/estimations.service';
 import { ShoppingListsController } from '../src/shopping-lists/shopping-lists.controller';
 import { ShoppingListsService } from '../src/shopping-lists/shopping-lists.service';
 import { UsersService } from '../src/users/users.service';
-import { OrgContextService } from '../src/organizations/org-context.service';
+import { UserContextService } from '../src/users/user-context.service';
 import { CompanyProfilesService } from '../src/company-profiles/company-profiles.service';
 import { FeatureGatesService } from '../src/feature-gates/feature-gates.service';
 import { CvCorrectionService } from '../src/analysis/cv-correction.service';
@@ -94,7 +94,6 @@ const projectsServiceMock = {
   updateDimensions: jest.fn().mockImplementation(
     (
       _id: string,
-      _organizationId: string,
       _userId: string,
       dto: {
         length_cm: number;
@@ -231,8 +230,7 @@ const shoppingListsServiceMock = {
   update: jest.fn().mockImplementation(
     (
       _projectId: string,
-      _organizationId: string,
-      _userId: string | null,
+      _userId: string,
       dto: {
         material_items?: { material_id: string; units_needed: number }[];
       },
@@ -262,22 +260,14 @@ const usersServiceMock = {
 
 // PLAT-4 : les contrôleurs résolvent désormais la portée (organisation + auteur)
 // au lieu de recharger l'utilisateur ; le guard de feature gates lit le palier
-// effectif de l'organisation via ce même service.
-const mockOrgId = '00000000-0000-4000-8000-0000000000aa';
-const orgContextMock = {
+// effectif via ce même service.
+const userContextMock = {
   resolveForFirebaseUid: jest.fn().mockResolvedValue({
     user: { id: mockUserId, subscription_tier: SubscriptionTier.FREE },
     userId: mockUserId,
-    organization: { id: mockOrgId, name: 'Mon espace', is_personal: true },
-    organizationId: mockOrgId,
-    role: 'owner',
     effectiveTier: SubscriptionTier.FREE,
   }),
   resolveForUser: jest.fn(),
-  getOrCreatePersonalOrganization: jest
-    .fn()
-    .mockResolvedValue({ id: mockOrgId }),
-  findMembership: jest.fn(),
 };
 
 const featureGatesServiceMock = {
@@ -293,7 +283,7 @@ const cvCorrectionServiceMock = {
 // `null` ⇒ défaut `true`, exactement le comportement d'une organisation sans
 // profil entreprise renseigné.
 const companyProfilesServiceMock = {
-  findByOrganizationId: jest.fn().mockResolvedValue(null),
+  findByUserId: jest.fn().mockResolvedValue(null),
 };
 
 describe('Critical path (e2e): project → dimensions → work-items → estimate → shopping-list', () => {
@@ -317,7 +307,7 @@ describe('Critical path (e2e): project → dimensions → work-items → estimat
         { provide: EstimationsService, useValue: estimationsServiceMock },
         { provide: ShoppingListsService, useValue: shoppingListsServiceMock },
         { provide: UsersService, useValue: usersServiceMock },
-        { provide: OrgContextService, useValue: orgContextMock },
+        { provide: UserContextService, useValue: userContextMock },
         { provide: FeatureGatesService, useValue: featureGatesServiceMock },
         { provide: CvCorrectionService, useValue: cvCorrectionServiceMock },
         {

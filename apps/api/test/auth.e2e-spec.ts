@@ -11,7 +11,7 @@ import { AuthController } from '../src/auth/auth.controller';
 import { AuthService } from '../src/auth/auth.service';
 import { FirebaseAuthGuard } from '../src/auth/guards/firebase-auth.guard';
 import { CompanyProfilesService } from '../src/company-profiles/company-profiles.service';
-import { OrgContextService } from '../src/organizations/org-context.service';
+import { UserContextService } from '../src/users/user-context.service';
 import {
   AuthProvider,
   SubscriptionTier,
@@ -30,7 +30,6 @@ const mockUser: User = {
   referral_code: null,
   referred_by_user_id: null,
   referral_converted_at: null,
-  active_organization_id: null,
   created_at: new Date('2026-03-26T00:00:00.000Z'),
   updated_at: new Date('2026-03-26T00:00:00.000Z'),
 };
@@ -44,14 +43,14 @@ const authServiceMock = {
   mergeGuestAccount: jest.fn(),
 };
 
-const orgContextMock = {
+const userContextMock = {
   resolveForUser: jest
     .fn()
-    .mockResolvedValue({ organizationId: 'org-uuid', role: 'owner' }),
+    .mockResolvedValue({ userId: 'user-uuid', role: 'owner' }),
 };
 
 const companyProfilesServiceMock = {
-  findByOrganizationId: jest.fn(),
+  findByUserId: jest.fn(),
 };
 
 describe('AuthController (e2e)', () => {
@@ -69,7 +68,7 @@ describe('AuthController (e2e)', () => {
     authServiceMock.getProfile.mockResolvedValue(mockUser);
     authServiceMock.deleteAccount.mockResolvedValue(undefined);
     authServiceMock.mergeGuestAccount.mockResolvedValue(mockUser);
-    companyProfilesServiceMock.findByOrganizationId.mockResolvedValue(null);
+    companyProfilesServiceMock.findByUserId.mockResolvedValue(null);
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
@@ -83,8 +82,8 @@ describe('AuthController (e2e)', () => {
           useValue: companyProfilesServiceMock,
         },
         {
-          provide: OrgContextService,
-          useValue: orgContextMock,
+          provide: UserContextService,
+          useValue: userContextMock,
         },
       ],
     })

@@ -12,7 +12,7 @@ import type { DecodedIdToken } from 'firebase-admin/auth';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { CompanyProfilesService } from '../company-profiles/company-profiles.service';
-import { OrgContextService } from '../organizations/org-context.service';
+import { UserContextService } from '../users/user-context.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { MergeGuestDto } from './dto/merge-guest.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -24,7 +24,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly companyProfilesService: CompanyProfilesService,
-    private readonly orgContext: OrgContextService,
+    private readonly userContext: UserContextService,
   ) {}
 
   @Post('register')
@@ -41,11 +41,10 @@ export class AuthController {
   @UseGuards(FirebaseAuthGuard)
   async sync(@CurrentFirebaseUser() firebaseUser: DecodedIdToken) {
     const user = await this.authService.syncUser(firebaseUser);
-    const scope = await this.orgContext.resolveForUser(user);
-    const companyProfile =
-      await this.companyProfilesService.findByOrganizationId(
-        scope.organizationId,
-      );
+    const scope = this.userContext.resolveForUser(user);
+    const companyProfile = await this.companyProfilesService.findByUserId(
+      scope.userId,
+    );
     return {
       id: user.id,
       email: user.email,
@@ -70,11 +69,10 @@ export class AuthController {
   @UseGuards(FirebaseAuthGuard)
   async getProfile(@CurrentFirebaseUser() firebaseUser: DecodedIdToken) {
     const user = await this.authService.getProfile(firebaseUser.uid);
-    const scope = await this.orgContext.resolveForUser(user);
-    const companyProfile =
-      await this.companyProfilesService.findByOrganizationId(
-        scope.organizationId,
-      );
+    const scope = this.userContext.resolveForUser(user);
+    const companyProfile = await this.companyProfilesService.findByUserId(
+      scope.userId,
+    );
     return {
       id: user.id,
       email: user.email,

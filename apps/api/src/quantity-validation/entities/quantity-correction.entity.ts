@@ -46,9 +46,10 @@ export class QuantityCorrection {
   @Column({ type: 'uuid' })
   project_id!: string;
 
-  @Column({ type: 'uuid' })
-  organization_id!: string;
-
+  /**
+   * Trace d'auteur, `NULL` après suppression du compte. La portée de lecture
+   * passe par `project_id` (cf. `QuantityValidation.user_id`).
+   */
   @Column({ type: 'uuid', nullable: true })
   user_id!: string | null;
 

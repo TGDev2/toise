@@ -10,7 +10,6 @@ import { DecodedIdToken } from 'firebase-admin/auth';
 import { FirebaseConfig } from '../config/firebase.config';
 import { UsersService } from '../users/users.service';
 import { CompanyProfilesService } from '../company-profiles/company-profiles.service';
-import { OrgContextService } from '../organizations/org-context.service';
 import { AuthProvider, User } from '../users/entities/user.entity';
 import { RegisterDto } from './dto/register.dto';
 import { isGuestToken } from './guest-token';
@@ -30,7 +29,6 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly companyProfilesService: CompanyProfilesService,
     private readonly analyticsService: AnalyticsService,
-    private readonly orgContext: OrgContextService,
     private readonly subscriptions: SubscriptionsService,
     private readonly dataRetention: DataRetentionService,
     @Inject(STORAGE_PROVIDER)
@@ -62,15 +60,7 @@ export class AuthService {
       );
 
       if (dto.company_profile) {
-        // Le profil d'entreprise appartient à l'organisation (PLAT-4) : on
-        // matérialise l'espace personnel du nouveau compte avant de l'y poser.
-        const organization =
-          await this.orgContext.getOrCreatePersonalOrganization(user);
-        await this.companyProfilesService.create(
-          organization.id,
-          user.id,
-          dto.company_profile,
-        );
+        await this.companyProfilesService.create(user.id, dto.company_profile);
       }
 
       if (isNewAccount) {
@@ -143,8 +133,8 @@ export class AuthService {
   }
 
   /**
-   * Suppression d'un compte : identité, facturation et propriété
-   * organisationnelle traitées comme un tout, dans un ordre qui a un sens.
+   * Suppression d'un compte : identité, facturation et données métier
+   * traitées comme un tout, dans un ordre qui a un sens.
    *
    * L'implémentation précédente enchaînait deux suppressions — Firebase, puis
    * la ligne `users` — et laissait les clés étrangères faire le reste. Trois
@@ -156,10 +146,10 @@ export class AuthService {
    *   `stripe_customer_id` partait en cascade, supprimant le seul moyen
    *   d'ouvrir le portail. La résiliation est désormais le premier geste, et
    *   son échec interrompt tout.
-   * - **Les données collectives ensuite.** Supprimer un propriétaire effaçait
-   *   son organisation et, de cascade en cascade, les données de tous ses
-   *   membres. La précondition refuse maintenant le cas d'une organisation
-   *   partagée.
+   * - **Les fichiers ensuite.** Les lignes partaient en cascade avec leurs
+   *   `storage_url`, seul moyen de désigner les fichiers : ils survivaient au
+   *   volume sans plus rien pour les nommer. L'effacement des fichiers
+   *   précède donc celui des lignes, et son échec interrompt tout.
    * - **L'identité en dernier.** L'ordre était inversé : une panne SQL après
    *   la suppression Firebase laissait les données locales sans principal pour
    *   se réauthentifier, donc sans reprise possible. En terminant par
@@ -187,15 +177,12 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
-    const ownedOrganizationIds =
-      await this.orgContext.collectOrganizationsRemovableWithOwner(user.id);
-
     await this.subscriptions.cancelForAccountDeletion(user.id);
 
-    await this.dataRetention.eraseOrganizationFiles(ownedOrganizationIds);
+    await this.dataRetention.eraseUserFiles(user.id);
     await this.storage.deletePrefix(`exports/${user.id}`);
 
-    await this.usersService.deleteAccountData(user.id, ownedOrganizationIds);
+    await this.usersService.deleteAccountData(user.id);
 
     try {
       await this.firebase.getAuth().deleteUser(firebaseUid);
@@ -271,38 +258,18 @@ export class AuthService {
       throw new ConflictException('Cannot merge an account into itself');
     }
 
-    // La propriété d'un projet est désormais l'organisation (PLAT-4) : ne
-    // repointer que `user_id` laisserait le projet fusionné dans l'org de
-    // l'invité, donc invisible pour le compte cible.
-    const targetOrganization =
-      await this.orgContext.getOrCreatePersonalOrganization(targetUser);
-    await this.usersService.transferProjects(
-      anonymousUser.id,
-      targetUser.id,
-      targetOrganization.id,
-    );
+    await this.usersService.transferProjects(anonymousUser.id, targetUser.id);
 
-    // Le compte invité s'efface par le même chemin que n'importe quel compte :
-    // son espace personnel, désormais vide de projets, ne peut plus partir en
-    // cascade depuis `users` (`FK_organizations_owner` est en `RESTRICT` depuis
-    // la migration 1711468800061) et doit donc être supprimé explicitement.
-    const ownedOrganizationIds =
-      await this.orgContext.collectOrganizationsRemovableWithOwner(
-        anonymousUser.id,
-      );
     // « Vide de projets » n'est vrai que des projets vivants : `transferProjects`
     // filtre sur `deleted_at IS NULL`, donc un projet que l'invité avait supprimé
-    // reste dans son organisation et part avec elle. Sans cet appel, ses photos
+    // reste le sien et part avec son compte. Sans cet appel, ses photos
     // survivraient au volume sans plus aucune ligne pour les désigner — le même
     // défaut que `deleteAccount`, par un chemin plus discret.
-    await this.dataRetention.eraseOrganizationFiles(ownedOrganizationIds);
+    await this.dataRetention.eraseUserFiles(anonymousUser.id);
     // Même geste que `deleteAccount` (E6-2) : un invité authentifié peut avoir
     // demandé son propre export avant la fusion.
     await this.storage.deletePrefix(`exports/${anonymousUser.id}`);
-    await this.usersService.deleteAccountData(
-      anonymousUser.id,
-      ownedOrganizationIds,
-    );
+    await this.usersService.deleteAccountData(anonymousUser.id);
 
     try {
       await this.firebase.getAuth().deleteUser(anonymousFirebaseUid);

@@ -7,7 +7,7 @@ import Stripe from 'stripe';
 import { AppModule } from '../app.module';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { FeatureGatesService } from '../feature-gates/feature-gates.service';
-import { OrgContextService } from '../organizations/org-context.service';
+import { UserContextService } from '../users/user-context.service';
 import {
   getDefaultPlan,
   REFUND_WINDOW_DAYS,
@@ -227,7 +227,7 @@ async function main(): Promise<void> {
 
   const subscriptions = app.get(SubscriptionsService);
   const featureGates = app.get(FeatureGatesService);
-  const orgContext = app.get(OrgContextService);
+  const userContext = app.get(UserContextService);
   const dataSource = app.get(DataSource);
   const usersRepo = dataSource.getRepository(User);
   const subscriptionsRepo = dataSource.getRepository(Subscription);
@@ -389,9 +389,9 @@ async function main(): Promise<void> {
     check('stripe_price_id en base', row?.stripe_price_id, expected.priceId);
 
     // Le palier effectif passe par le même chemin que le guard de production :
-    // organisation active → palier de son propriétaire → décision de la gate.
+    // palier du compte → décision de la gate.
     const fresh = await usersRepo.findOneOrFail({ where: { id: user.id } });
-    const scope = await orgContext.resolveForUser(fresh);
+    const scope = userContext.resolveForUser(fresh);
     check('palier effectif', scope.effectiveTier, expected.tier);
 
     check(
@@ -735,10 +735,6 @@ async function main(): Promise<void> {
     await dataSource.query('DELETE FROM subscriptions WHERE user_id = $1', [
       user.id,
     ]);
-    await dataSource.query(
-      'DELETE FROM organizations WHERE owner_user_id = $1',
-      [user.id],
-    );
     await dataSource.query('DELETE FROM users WHERE id = $1', [user.id]);
     await dataSource.query(
       `DELETE FROM stripe_events WHERE event_id = ANY($1::varchar[])`,

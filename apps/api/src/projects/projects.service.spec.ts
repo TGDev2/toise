@@ -28,7 +28,6 @@ import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 const mockProject: Project = {
   id: 'project-uuid',
   user_id: 'user-uuid',
-  organization_id: 'org-uuid',
   name: 'Renovation salon',
   room_name: 'Salon',
   work_type: WorkType.PAINTING,
@@ -251,14 +250,13 @@ describe('ProjectsService', () => {
 
   describe('createProject', () => {
     it('creates a project and its default room', async () => {
-      const result = await service.createProject('org-uuid', 'user-uuid', {
+      const result = await service.createProject('user-uuid', {
         name: 'Renovation salon',
         room_name: 'Salon',
         work_type: WorkType.PAINTING,
       });
 
       expect(projectsRepoMock.create).toHaveBeenCalledWith({
-        organization_id: 'org-uuid',
         user_id: 'user-uuid',
         name: 'Renovation salon',
         room_name: 'Salon',
@@ -286,7 +284,6 @@ describe('ProjectsService', () => {
 
       await expect(
         service.createProject(
-          'org-uuid',
           'user-uuid',
           {
             name: 'Renovation salon',
@@ -304,7 +301,6 @@ describe('ProjectsService', () => {
       projectsRepoMock.count.mockClear();
 
       await service.createProject(
-        'org-uuid',
         'user-uuid',
         {
           name: 'Renovation salon',
@@ -336,12 +332,12 @@ describe('ProjectsService', () => {
 
         // Compte inscrit : plus aucun plafond.
         await expect(
-          service.createProject('org-uuid', 'user-uuid', guestDto, false),
+          service.createProject('user-uuid', guestDto, false),
         ).resolves.toEqual(mockProject);
 
         // Même organisation, même compte : seul l'invité est refusé.
         await expect(
-          service.createProject('org-uuid', 'user-uuid', guestDto, true),
+          service.createProject('user-uuid', guestDto, true),
         ).rejects.toThrow(ForbiddenException);
       });
 
@@ -349,7 +345,7 @@ describe('ProjectsService', () => {
         projectsRepoMock.count.mockResolvedValue(0);
 
         await expect(
-          service.createProject('org-uuid', 'user-uuid', guestDto, true),
+          service.createProject('user-uuid', guestDto, true),
         ).resolves.toEqual(mockProject);
       });
 
@@ -363,7 +359,7 @@ describe('ProjectsService', () => {
 
         let thrown: unknown;
         try {
-          await service.createProject('org-uuid', 'user-uuid', guestDto, true);
+          await service.createProject('user-uuid', guestDto, true);
         } catch (error) {
           thrown = error;
         }
@@ -378,9 +374,9 @@ describe('ProjectsService', () => {
 
   describe('findByOrg', () => {
     it('returns paginated projects for the organization', async () => {
-      const result = await service.findByOrg('org-uuid', {});
+      const result = await service.findByOrg('user-uuid', {});
       expect(projectsRepoMock.findAndCount).toHaveBeenCalledWith({
-        where: { organization_id: 'org-uuid' },
+        where: { user_id: 'user-uuid' },
         order: { updated_at: 'DESC' },
         skip: 0,
         take: 12,
@@ -395,45 +391,45 @@ describe('ProjectsService', () => {
     });
 
     it('applies page and limit from query', async () => {
-      await service.findByOrg('org-uuid', { page: 2, limit: 5 });
+      await service.findByOrg('user-uuid', { page: 2, limit: 5 });
       expect(projectsRepoMock.findAndCount).toHaveBeenCalledWith(
         expect.objectContaining({ skip: 5, take: 5 }),
       );
     });
 
     it('filters by status when provided', async () => {
-      await service.findByOrg('org-uuid', { status: ProjectStatus.DRAFT });
+      await service.findByOrg('user-uuid', { status: ProjectStatus.DRAFT });
       expect(projectsRepoMock.findAndCount).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { organization_id: 'org-uuid', status: ProjectStatus.DRAFT },
+          where: { user_id: 'user-uuid', status: ProjectStatus.DRAFT },
         }),
       );
     });
   });
 
-  describe('findOneForOrg', () => {
+  describe('findOneForUser', () => {
     it('returns the project if owned by the organization', async () => {
-      const result = await service.findOneForOrg('project-uuid', 'org-uuid');
+      const result = await service.findOneForUser('project-uuid', 'user-uuid');
       expect(result).toEqual(mockProject);
     });
 
     it('throws NotFoundException if project does not exist', async () => {
       projectsRepoMock.findOne.mockResolvedValueOnce(null);
       await expect(
-        service.findOneForOrg('missing-uuid', 'org-uuid'),
+        service.findOneForUser('missing-uuid', 'user-uuid'),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('throws ForbiddenException if user does not own project', async () => {
       await expect(
-        service.findOneForOrg('project-uuid', 'other-user'),
+        service.findOneForUser('project-uuid', 'other-user'),
       ).rejects.toThrow(ForbiddenException);
     });
   });
 
   describe('getRooms', () => {
     it('returns all rooms of a project with geometry and work items loaded', async () => {
-      const result = await service.getRooms('project-uuid', 'org-uuid');
+      const result = await service.getRooms('project-uuid', 'user-uuid');
       expect(roomsRepoMock.find).toHaveBeenCalledWith({
         where: { project_id: 'project-uuid' },
         relations: [
@@ -458,7 +454,7 @@ describe('ProjectsService', () => {
     it('creates a room with an auto name and appended sort_order', async () => {
       roomsRepoMock.count.mockResolvedValueOnce(1);
 
-      await service.createRoom('project-uuid', 'org-uuid', {});
+      await service.createRoom('project-uuid', 'user-uuid', {});
 
       expect(roomsRepoMock.create).toHaveBeenCalledWith({
         project_id: 'project-uuid',
@@ -471,7 +467,7 @@ describe('ProjectsService', () => {
     it('uses the provided (trimmed) name', async () => {
       roomsRepoMock.count.mockResolvedValueOnce(0);
 
-      await service.createRoom('project-uuid', 'org-uuid', {
+      await service.createRoom('project-uuid', 'user-uuid', {
         name: '  Chambre  ',
       });
 
@@ -495,7 +491,7 @@ describe('ProjectsService', () => {
       roomsRepoMock.count.mockResolvedValueOnce(MAX_ROOMS_PER_PROJECT);
 
       await expect(
-        service.createRoom('project-uuid', 'org-uuid', {}),
+        service.createRoom('project-uuid', 'user-uuid', {}),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -503,7 +499,7 @@ describe('ProjectsService', () => {
       roomsRepoMock.count.mockResolvedValueOnce(MAX_ROOMS_PER_PROJECT - 1);
 
       await expect(
-        service.createRoom('project-uuid', 'org-uuid', {}),
+        service.createRoom('project-uuid', 'user-uuid', {}),
       ).resolves.toBeDefined();
     });
   });
@@ -512,7 +508,7 @@ describe('ProjectsService', () => {
     it('renames an existing room', async () => {
       roomsRepoMock.findOne.mockResolvedValueOnce({ ...mockRoom });
 
-      await service.renameRoom('project-uuid', 'org-uuid', 'room-uuid', {
+      await service.renameRoom('project-uuid', 'user-uuid', 'room-uuid', {
         name: 'Cuisine',
       });
 
@@ -525,7 +521,7 @@ describe('ProjectsService', () => {
       roomsRepoMock.findOne.mockResolvedValueOnce(null);
 
       await expect(
-        service.renameRoom('project-uuid', 'org-uuid', 'missing', {
+        service.renameRoom('project-uuid', 'user-uuid', 'missing', {
           name: 'X',
         }),
       ).rejects.toThrow(NotFoundException);
@@ -538,7 +534,7 @@ describe('ProjectsService', () => {
       const room = { ...mockRoom };
       roomsRepoMock.findOne.mockResolvedValueOnce(room);
 
-      await service.deleteRoom('project-uuid', 'org-uuid', 'room-uuid');
+      await service.deleteRoom('project-uuid', 'user-uuid', 'room-uuid');
 
       expect(roomsRepoMock.remove).toHaveBeenCalledWith(room);
     });
@@ -547,7 +543,7 @@ describe('ProjectsService', () => {
       roomsRepoMock.count.mockResolvedValueOnce(1);
 
       await expect(
-        service.deleteRoom('project-uuid', 'org-uuid', 'room-uuid'),
+        service.deleteRoom('project-uuid', 'user-uuid', 'room-uuid'),
       ).rejects.toThrow(BadRequestException);
       expect(roomsRepoMock.remove).not.toHaveBeenCalled();
     });
@@ -557,7 +553,7 @@ describe('ProjectsService', () => {
       roomsRepoMock.findOne.mockResolvedValueOnce(null);
 
       await expect(
-        service.deleteRoom('project-uuid', 'org-uuid', 'missing'),
+        service.deleteRoom('project-uuid', 'user-uuid', 'missing'),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -569,7 +565,7 @@ describe('ProjectsService', () => {
 
       const result = await service.getDimensions(
         'project-uuid',
-        'org-uuid',
+        'user-uuid',
         'room-uuid',
       );
 
@@ -583,7 +579,7 @@ describe('ProjectsService', () => {
       roomsRepoMock.findOne.mockResolvedValueOnce(null);
 
       await expect(
-        service.getDimensions('project-uuid', 'org-uuid', 'foreign-room'),
+        service.getDimensions('project-uuid', 'user-uuid', 'foreign-room'),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -593,7 +589,6 @@ describe('ProjectsService', () => {
 
       await service.updateDimensions(
         'project-uuid',
-        'org-uuid',
         'user-uuid',
         { length_cm: 300, width_cm: 300, height_cm: 250 },
         undefined,
@@ -610,7 +605,7 @@ describe('ProjectsService', () => {
     it('creates dimensions on the default room when none exist', async () => {
       dimensionsRepoMock.findOne.mockResolvedValueOnce(null);
 
-      await service.updateDimensions('project-uuid', 'org-uuid', 'user-uuid', {
+      await service.updateDimensions('project-uuid', 'user-uuid', {
         length_cm: 500,
         width_cm: 400,
         height_cm: 250,
@@ -636,7 +631,7 @@ describe('ProjectsService', () => {
     it('tracks dimensions_entered (BACKLOG_V1 revenue funnel)', async () => {
       dimensionsRepoMock.findOne.mockResolvedValueOnce(null);
 
-      await service.updateDimensions('project-uuid', 'org-uuid', 'user-uuid', {
+      await service.updateDimensions('project-uuid', 'user-uuid', {
         length_cm: 500,
         width_cm: 400,
         height_cm: 250,
@@ -656,7 +651,6 @@ describe('ProjectsService', () => {
 
       await service.updateDimensions(
         'project-uuid',
-        'org-uuid',
         'user-uuid',
         { length_cm: 420, width_cm: 310, height_cm: 250 },
         {
@@ -687,7 +681,7 @@ describe('ProjectsService', () => {
 
       // Appel manuel : aucun override d'incertitude, comme le fait le
       // contrôleur sur PUT /:id/dimensions.
-      await service.updateDimensions('project-uuid', 'org-uuid', 'user-uuid', {
+      await service.updateDimensions('project-uuid', 'user-uuid', {
         length_cm: 421,
         width_cm: 311,
         height_cm: 250,
@@ -706,7 +700,7 @@ describe('ProjectsService', () => {
     it('updates existing dimensions', async () => {
       dimensionsRepoMock.findOne.mockResolvedValueOnce({ ...mockDimensions });
 
-      await service.updateDimensions('project-uuid', 'org-uuid', 'user-uuid', {
+      await service.updateDimensions('project-uuid', 'user-uuid', {
         length_cm: 600,
         width_cm: 500,
         height_cm: 300,
@@ -725,7 +719,7 @@ describe('ProjectsService', () => {
     it('persists exclusions_json when exclusions are provided', async () => {
       dimensionsRepoMock.findOne.mockResolvedValueOnce(null);
 
-      await service.updateDimensions('project-uuid', 'org-uuid', 'user-uuid', {
+      await service.updateDimensions('project-uuid', 'user-uuid', {
         length_cm: 500,
         width_cm: 400,
         height_cm: 250,
@@ -755,7 +749,7 @@ describe('ProjectsService', () => {
         ],
       });
 
-      await service.updateDimensions('project-uuid', 'org-uuid', 'user-uuid', {
+      await service.updateDimensions('project-uuid', 'user-uuid', {
         length_cm: 600,
         width_cm: 500,
         height_cm: 300,
@@ -771,28 +765,28 @@ describe('ProjectsService', () => {
     it('returns dimensions for the default room', async () => {
       dimensionsRepoMock.findOne.mockResolvedValueOnce(mockDimensions);
 
-      const result = await service.getDimensions('project-uuid', 'org-uuid');
+      const result = await service.getDimensions('project-uuid', 'user-uuid');
       expect(result).toEqual(mockDimensions);
     });
 
     it('returns null when no dimensions exist', async () => {
       dimensionsRepoMock.findOne.mockResolvedValueOnce(null);
 
-      const result = await service.getDimensions('project-uuid', 'org-uuid');
+      const result = await service.getDimensions('project-uuid', 'user-uuid');
       expect(result).toBeNull();
     });
 
     it('returns null when the project has no room yet', async () => {
       roomsRepoMock.findOne.mockResolvedValueOnce(null);
 
-      const result = await service.getDimensions('project-uuid', 'org-uuid');
+      const result = await service.getDimensions('project-uuid', 'user-uuid');
       expect(result).toBeNull();
     });
   });
 
   describe('addOpening', () => {
     it('creates and returns an opening on the default room', async () => {
-      const result = await service.addOpening('project-uuid', 'org-uuid', {
+      const result = await service.addOpening('project-uuid', 'user-uuid', {
         type: OpeningType.DOOR,
         width_cm: 90,
         height_cm: 204,
@@ -813,7 +807,7 @@ describe('ProjectsService', () => {
     });
 
     it('defaults count to 1 when not provided', async () => {
-      await service.addOpening('project-uuid', 'org-uuid', {
+      await service.addOpening('project-uuid', 'user-uuid', {
         type: OpeningType.WINDOW,
         width_cm: 120,
         height_cm: 100,
@@ -825,13 +819,13 @@ describe('ProjectsService', () => {
     });
   });
 
-  describe('findOpeningForOrg', () => {
+  describe('findOpeningForUser', () => {
     it('returns the opening with its room', async () => {
       openingsRepoMock.findOne.mockResolvedValueOnce({ ...mockOpening });
 
-      const result = await service.findOpeningForOrg(
+      const result = await service.findOpeningForUser(
         'project-uuid',
-        'org-uuid',
+        'user-uuid',
         'opening-uuid',
       );
 
@@ -846,7 +840,7 @@ describe('ProjectsService', () => {
       openingsRepoMock.findOne.mockResolvedValueOnce(null);
 
       await expect(
-        service.findOpeningForOrg('project-uuid', 'org-uuid', 'missing'),
+        service.findOpeningForUser('project-uuid', 'user-uuid', 'missing'),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -857,7 +851,7 @@ describe('ProjectsService', () => {
       });
 
       await expect(
-        service.findOpeningForOrg('project-uuid', 'org-uuid', 'opening-uuid'),
+        service.findOpeningForUser('project-uuid', 'user-uuid', 'opening-uuid'),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -868,7 +862,7 @@ describe('ProjectsService', () => {
 
       const result = await service.updateOpening(
         'project-uuid',
-        'org-uuid',
+        'user-uuid',
         'opening-uuid',
         { width_cm: 100 },
       );
@@ -883,7 +877,7 @@ describe('ProjectsService', () => {
       openingsRepoMock.findOne.mockResolvedValueOnce(null);
 
       await expect(
-        service.updateOpening('project-uuid', 'org-uuid', 'missing-uuid', {
+        service.updateOpening('project-uuid', 'user-uuid', 'missing-uuid', {
           width_cm: 100,
         }),
       ).rejects.toThrow(NotFoundException);
@@ -896,7 +890,7 @@ describe('ProjectsService', () => {
       });
 
       await expect(
-        service.updateOpening('project-uuid', 'org-uuid', 'opening-uuid', {
+        service.updateOpening('project-uuid', 'user-uuid', 'opening-uuid', {
           width_cm: 100,
         }),
       ).rejects.toThrow(NotFoundException);
@@ -908,7 +902,7 @@ describe('ProjectsService', () => {
       const opening = { ...mockOpening };
       openingsRepoMock.findOne.mockResolvedValueOnce(opening);
 
-      await service.removeOpening('project-uuid', 'org-uuid', 'opening-uuid');
+      await service.removeOpening('project-uuid', 'user-uuid', 'opening-uuid');
       expect(openingsRepoMock.remove).toHaveBeenCalledWith(opening);
     });
 
@@ -916,7 +910,7 @@ describe('ProjectsService', () => {
       openingsRepoMock.findOne.mockResolvedValueOnce(null);
 
       await expect(
-        service.removeOpening('project-uuid', 'org-uuid', 'missing-uuid'),
+        service.removeOpening('project-uuid', 'user-uuid', 'missing-uuid'),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -925,7 +919,7 @@ describe('ProjectsService', () => {
     it('returns openings of the default room', async () => {
       openingsRepoMock.find.mockResolvedValueOnce([mockOpening]);
 
-      const result = await service.getOpenings('project-uuid', 'org-uuid');
+      const result = await service.getOpenings('project-uuid', 'user-uuid');
       expect(result).toEqual([mockOpening]);
       expect(openingsRepoMock.find).toHaveBeenCalledWith({
         where: { room_id: 'room-uuid' },
@@ -936,7 +930,7 @@ describe('ProjectsService', () => {
     it('returns an empty list when the project has no room yet', async () => {
       roomsRepoMock.findOne.mockResolvedValueOnce(null);
 
-      const result = await service.getOpenings('project-uuid', 'org-uuid');
+      const result = await service.getOpenings('project-uuid', 'user-uuid');
       expect(result).toEqual([]);
     });
   });
@@ -961,7 +955,7 @@ describe('ProjectsService', () => {
       workTypesRepoMock.find.mockResolvedValueOnce([mockWorkType]);
       workItemsRepoMock.find.mockResolvedValueOnce([mockWorkItem]);
 
-      const result = await service.saveWorkItems('project-uuid', 'org-uuid', {
+      const result = await service.saveWorkItems('project-uuid', 'user-uuid', {
         items: [
           {
             work_type_id: 'wt-wall-painting',
@@ -991,7 +985,7 @@ describe('ProjectsService', () => {
       workTypesRepoMock.find.mockResolvedValueOnce([]);
 
       await expect(
-        service.saveWorkItems('project-uuid', 'org-uuid', {
+        service.saveWorkItems('project-uuid', 'user-uuid', {
           items: [
             {
               work_type_id: 'invalid-uuid',
@@ -1006,7 +1000,7 @@ describe('ProjectsService', () => {
       workTypesRepoMock.find.mockResolvedValueOnce([mockFloorTilingWorkType]);
 
       await expect(
-        service.saveWorkItems('project-uuid', 'org-uuid', {
+        service.saveWorkItems('project-uuid', 'user-uuid', {
           items: [
             {
               work_type_id: 'wt-floor-tiling',
@@ -1029,7 +1023,7 @@ describe('ProjectsService', () => {
       };
       workItemsRepoMock.find.mockResolvedValueOnce([tilingWorkItem]);
 
-      const result = await service.saveWorkItems('project-uuid', 'org-uuid', {
+      const result = await service.saveWorkItems('project-uuid', 'user-uuid', {
         items: [
           {
             work_type_id: 'wt-floor-tiling',
@@ -1063,7 +1057,7 @@ describe('ProjectsService', () => {
     it('returns work items of the default room', async () => {
       workItemsRepoMock.find.mockResolvedValueOnce([mockWorkItem]);
 
-      const result = await service.getWorkItems('project-uuid', 'org-uuid');
+      const result = await service.getWorkItems('project-uuid', 'user-uuid');
       expect(result).toEqual([mockWorkItem]);
       expect(workItemsRepoMock.find).toHaveBeenCalledWith({
         where: { room_id: 'room-uuid' },
@@ -1075,7 +1069,7 @@ describe('ProjectsService', () => {
     it('returns an empty list when the project has no room yet', async () => {
       roomsRepoMock.findOne.mockResolvedValueOnce(null);
 
-      const result = await service.getWorkItems('project-uuid', 'org-uuid');
+      const result = await service.getWorkItems('project-uuid', 'user-uuid');
       expect(result).toEqual([]);
     });
 
@@ -1098,7 +1092,7 @@ describe('ProjectsService', () => {
     });
 
     it('soft-deletes the project after ownership check', async () => {
-      await service.softDeleteProject('project-uuid', 'org-uuid');
+      await service.softDeleteProject('project-uuid', 'user-uuid');
 
       expect(managerMock.softDelete).toHaveBeenCalledWith(
         Project,
@@ -1112,7 +1106,7 @@ describe('ProjectsService', () => {
      * ne regardent `projects.deleted_at`.
      */
     it("withdraws the project's community publication in the same transaction", async () => {
-      await service.softDeleteProject('project-uuid', 'org-uuid');
+      await service.softDeleteProject('project-uuid', 'user-uuid');
 
       expect(managerMock.softDelete).toHaveBeenNthCalledWith(
         1,
@@ -1135,7 +1129,7 @@ describe('ProjectsService', () => {
     it('throws NotFoundException for missing project', async () => {
       projectsRepoMock.findOne.mockResolvedValueOnce(null);
       await expect(
-        service.softDeleteProject('missing-uuid', 'org-uuid'),
+        service.softDeleteProject('missing-uuid', 'user-uuid'),
       ).rejects.toThrow(NotFoundException);
     });
   });

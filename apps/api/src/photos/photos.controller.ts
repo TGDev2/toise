@@ -22,8 +22,8 @@ import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { RegisteredAccountGuard } from '../auth/guards/registered-account.guard';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
 import { RequiresRegisteredAccount } from '../auth/decorators/requires-registered-account.decorator';
-import { OrgContextService } from '../organizations/org-context.service';
-import type { OrgScope } from '../organizations/org-context.service';
+import { UserContextService } from '../users/user-context.service';
+import type { UserScope } from '../users/user-context.service';
 import { PhotosService } from './photos.service';
 import { PhotoResponseDto } from './dto/photo-response.dto';
 import { ProjectPhoto } from './entities/project-photo.entity';
@@ -84,12 +84,12 @@ function mimeFilter(
 export class PhotosController {
   constructor(
     private readonly photosService: PhotosService,
-    private readonly orgContext: OrgContextService,
+    private readonly userContext: UserContextService,
   ) {}
 
-  private async resolveScope(firebaseUser: DecodedIdToken): Promise<OrgScope> {
+  private async resolveScope(firebaseUser: DecodedIdToken): Promise<UserScope> {
     try {
-      return await this.orgContext.resolveForFirebaseUid(firebaseUser.uid);
+      return await this.userContext.resolveForFirebaseUid(firebaseUser.uid);
     } catch {
       throw new UnauthorizedException('Utilisateur non authentifié.');
     }
@@ -138,9 +138,8 @@ export class PhotosController {
     const scope = await this.resolveScope(firebaseUser);
     const photo = await this.photosService.uploadPhoto(
       projectId,
-      scope.organizationId,
-      file,
       scope.userId,
+      file,
     );
     return this.toDto(photo);
   }
@@ -153,7 +152,7 @@ export class PhotosController {
     const scope = await this.resolveScope(firebaseUser);
     const photos = await this.photosService.getProjectPhotos(
       projectId,
-      scope.organizationId,
+      scope.userId,
     );
     return photos.map((p) => this.toDto(p));
   }
@@ -166,11 +165,7 @@ export class PhotosController {
     @Param('photoId', ParseUUIDPipe) photoId: string,
   ): Promise<void> {
     const scope = await this.resolveScope(firebaseUser);
-    await this.photosService.deletePhoto(
-      projectId,
-      scope.organizationId,
-      photoId,
-    );
+    await this.photosService.deletePhoto(projectId, scope.userId, photoId);
   }
 
   @Get(PHOTO_FILE_ROUTE)
@@ -183,7 +178,7 @@ export class PhotosController {
     const scope = await this.resolveScope(firebaseUser);
     const photo = await this.photosService.findPhotoForServing(
       projectId,
-      scope.organizationId,
+      scope.userId,
       photoId,
     );
 
@@ -208,7 +203,7 @@ export class PhotosController {
     const scope = await this.resolveScope(firebaseUser);
     const photo = await this.photosService.findPhotoForServing(
       projectId,
-      scope.organizationId,
+      scope.userId,
       photoId,
     );
 

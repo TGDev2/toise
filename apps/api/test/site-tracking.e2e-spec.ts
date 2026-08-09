@@ -11,7 +11,7 @@ import { SiteTrackingController } from '../src/site-tracking/site-tracking.contr
 import { SiteTrackingService } from '../src/site-tracking/site-tracking.service';
 import { MilestoneStatus } from '../src/site-tracking/entities/site-milestone.entity';
 import { UsersService } from '../src/users/users.service';
-import { OrgContextService } from '../src/organizations/org-context.service';
+import { UserContextService } from '../src/users/user-context.service';
 import { FeatureGatesService } from '../src/feature-gates/feature-gates.service';
 import { FirebaseAuthGuard } from '../src/auth/guards/firebase-auth.guard';
 import { SubscriptionTier } from '../src/users/entities/user.entity';
@@ -49,22 +49,14 @@ const usersServiceMock = {
 
 // PLAT-4 : les contrôleurs résolvent désormais la portée (organisation + auteur)
 // au lieu de recharger l'utilisateur ; le guard de feature gates lit le palier
-// effectif de l'organisation via ce même service.
-const mockOrgId = '00000000-0000-4000-8000-0000000000aa';
-const orgContextMock = {
+// effectif via ce même service.
+const userContextMock = {
   resolveForFirebaseUid: jest.fn().mockResolvedValue({
     user: { id: mockUserId, subscription_tier: SubscriptionTier.FREE },
     userId: mockUserId,
-    organization: { id: mockOrgId, name: 'Mon espace', is_personal: true },
-    organizationId: mockOrgId,
-    role: 'owner',
     effectiveTier: SubscriptionTier.FREE,
   }),
   resolveForUser: jest.fn(),
-  getOrCreatePersonalOrganization: jest
-    .fn()
-    .mockResolvedValue({ id: mockOrgId }),
-  findMembership: jest.fn(),
 };
 
 const featureGatesServiceMock = {
@@ -97,7 +89,7 @@ describe('SiteTrackingController (e2e)', () => {
       providers: [
         { provide: SiteTrackingService, useValue: siteTrackingServiceMock },
         { provide: UsersService, useValue: usersServiceMock },
-        { provide: OrgContextService, useValue: orgContextMock },
+        { provide: UserContextService, useValue: userContextMock },
         { provide: FeatureGatesService, useValue: featureGatesServiceMock },
       ],
     })
@@ -144,7 +136,7 @@ describe('SiteTrackingController (e2e)', () => {
 
       expect(siteTrackingServiceMock.findAllForProject).toHaveBeenCalledWith(
         mockProjectId,
-        mockOrgId,
+        mockUserId,
       );
     });
 
@@ -183,7 +175,7 @@ describe('SiteTrackingController (e2e)', () => {
 
       expect(siteTrackingServiceMock.create).toHaveBeenCalledWith(
         mockProjectId,
-        mockOrgId,
+        mockUserId,
         { label: 'Démolition', planned_date: '2026-08-15' },
       );
     });
@@ -234,7 +226,7 @@ describe('SiteTrackingController (e2e)', () => {
 
       expect(siteTrackingServiceMock.update).toHaveBeenCalledWith(
         mockProjectId,
-        mockOrgId,
+        mockUserId,
         mockMilestoneId,
         { status: 'done' },
       );
@@ -258,7 +250,7 @@ describe('SiteTrackingController (e2e)', () => {
 
       expect(siteTrackingServiceMock.remove).toHaveBeenCalledWith(
         mockProjectId,
-        mockOrgId,
+        mockUserId,
         mockMilestoneId,
       );
     });

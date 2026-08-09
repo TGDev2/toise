@@ -12,7 +12,7 @@ import type { App } from 'supertest/types';
 import { EstimationsController } from '../src/estimations/estimations.controller';
 import { EstimationsService } from '../src/estimations/estimations.service';
 import { UsersService } from '../src/users/users.service';
-import { OrgContextService } from '../src/organizations/org-context.service';
+import { UserContextService } from '../src/users/user-context.service';
 import { FirebaseAuthGuard } from '../src/auth/guards/firebase-auth.guard';
 import { SubscriptionTier } from '../src/users/entities/user.entity';
 import { EstimationLineItem } from '../src/estimations/entities/estimation-result.entity';
@@ -69,22 +69,14 @@ const usersServiceMock = {
 
 // PLAT-4 : les contrôleurs résolvent désormais la portée (organisation + auteur)
 // au lieu de recharger l'utilisateur ; le guard de feature gates lit le palier
-// effectif de l'organisation via ce même service.
-const mockOrgId = '00000000-0000-4000-8000-0000000000aa';
-const orgContextMock = {
+// effectif via ce même service.
+const userContextMock = {
   resolveForFirebaseUid: jest.fn().mockResolvedValue({
     user: { id: mockUserId, subscription_tier: SubscriptionTier.FREE },
     userId: mockUserId,
-    organization: { id: mockOrgId, name: 'Mon espace', is_personal: true },
-    organizationId: mockOrgId,
-    role: 'owner',
     effectiveTier: SubscriptionTier.FREE,
   }),
   resolveForUser: jest.fn(),
-  getOrCreatePersonalOrganization: jest
-    .fn()
-    .mockResolvedValue({ id: mockOrgId }),
-  findMembership: jest.fn(),
 };
 
 describe('EstimationsController (e2e)', () => {
@@ -105,7 +97,7 @@ describe('EstimationsController (e2e)', () => {
       providers: [
         { provide: EstimationsService, useValue: estimationsServiceMock },
         { provide: UsersService, useValue: usersServiceMock },
-        { provide: OrgContextService, useValue: orgContextMock },
+        { provide: UserContextService, useValue: userContextMock },
       ],
     })
       .overrideGuard(FirebaseAuthGuard)
@@ -161,7 +153,6 @@ describe('EstimationsController (e2e)', () => {
 
     expect(estimationsServiceMock.estimate).toHaveBeenCalledWith(
       mockProjectId,
-      mockOrgId,
       mockUserId,
       undefined,
       // E2-1 : le service applique un plafond d'estimations persistées aux
@@ -179,7 +170,6 @@ describe('EstimationsController (e2e)', () => {
 
     expect(estimationsServiceMock.estimate).toHaveBeenCalledWith(
       mockProjectId,
-      mockOrgId,
       mockUserId,
       'expert',
       false,
@@ -278,7 +268,7 @@ describe('EstimationsController (e2e)', () => {
 
     expect(estimationsServiceMock.getHistory).toHaveBeenCalledWith(
       mockProjectId,
-      mockOrgId,
+      mockUserId,
     );
   });
 

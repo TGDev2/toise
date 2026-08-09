@@ -13,8 +13,8 @@ import { Throttle } from '@nestjs/throttler';
 import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
 import { isGuestToken } from '../auth/guest-token';
-import { OrgContextService } from '../organizations/org-context.service';
-import type { OrgScope } from '../organizations/org-context.service';
+import { UserContextService } from '../users/user-context.service';
+import type { UserScope } from '../users/user-context.service';
 import { EstimationsService } from './estimations.service';
 import { EstimateRequestDto } from './dto/estimate-request.dto';
 import { EstimationResponseDto } from './dto/estimation-response.dto';
@@ -24,12 +24,12 @@ import { EstimationResponseDto } from './dto/estimation-response.dto';
 export class EstimationsController {
   constructor(
     private readonly estimationsService: EstimationsService,
-    private readonly orgContext: OrgContextService,
+    private readonly userContext: UserContextService,
   ) {}
 
-  private async resolveScope(firebaseUser: DecodedIdToken): Promise<OrgScope> {
+  private async resolveScope(firebaseUser: DecodedIdToken): Promise<UserScope> {
     try {
-      return await this.orgContext.resolveForFirebaseUid(firebaseUser.uid);
+      return await this.userContext.resolveForFirebaseUid(firebaseUser.uid);
     } catch {
       throw new UnauthorizedException('Utilisateur non authentifié.');
     }
@@ -55,7 +55,6 @@ export class EstimationsController {
     const scope = await this.resolveScope(firebaseUser);
     const result = await this.estimationsService.estimate(
       projectId,
-      scope.organizationId,
       scope.userId,
       dto.skill_level,
       isGuestToken(firebaseUser),
@@ -71,7 +70,7 @@ export class EstimationsController {
     const scope = await this.resolveScope(firebaseUser);
     const result = await this.estimationsService.getLatest(
       projectId,
-      scope.organizationId,
+      scope.userId,
     );
     return EstimationResponseDto.fromEntity(result);
   }
@@ -84,7 +83,7 @@ export class EstimationsController {
     const scope = await this.resolveScope(firebaseUser);
     const results = await this.estimationsService.getHistory(
       projectId,
-      scope.organizationId,
+      scope.userId,
     );
     return results.map((result) => EstimationResponseDto.fromEntity(result));
   }

@@ -86,7 +86,7 @@ const estimationsServiceMock = {
 };
 
 const projectsServiceMock = {
-  findOneForOrg: jest.fn(),
+  findOneForUser: jest.fn(),
   getWorkItems: jest.fn(),
   getRooms: jest.fn().mockResolvedValue([]),
   updateStatus: jest.fn(),
@@ -154,7 +154,7 @@ describe('ShoppingListsService.generate', () => {
   });
 
   it('builds material items from the latest estimation and persists them', async () => {
-    const result = await service.generate('project-1', 'org-1', 'user-1');
+    const result = await service.generate('project-1', 'user-1');
 
     // La liste n'est plus détruite puis recréée : une panne entre les deux
     // n'en laissait aucune. Elle est écrite en une fois, sous verrou.
@@ -168,7 +168,7 @@ describe('ShoppingListsService.generate', () => {
   });
 
   it('tracks a shopping_list_generated analytics event with the item count', async () => {
-    await service.generate('project-1', 'org-1', 'user-1');
+    await service.generate('project-1', 'user-1');
 
     expect(analyticsServiceMock.track).toHaveBeenCalledWith(
       AnalyticsEventName.SHOPPING_LIST_GENERATED,
@@ -202,7 +202,7 @@ describe('ShoppingListsService.generate', () => {
       ],
     });
 
-    const result = await service.generate('project-1', 'org-1', 'user-1');
+    const result = await service.generate('project-1', 'user-1');
 
     // Une seule ligne malgré deux pièces contributrices.
     expect(result.items_json.material_items).toHaveLength(1);
@@ -239,7 +239,7 @@ describe('ShoppingListsService.generate', () => {
       ],
     });
 
-    const result = await service.generate('project-1', 'org-1', 'user-1');
+    const result = await service.generate('project-1', 'user-1');
 
     expect(result.items_json.material_items[0]).toMatchObject({
       units_needed_low: 1,
@@ -256,7 +256,7 @@ describe('ShoppingListsService.generate', () => {
       aggregated_json: null,
     });
 
-    const result = await service.generate('project-1', 'org-1', 'user-1');
+    const result = await service.generate('project-1', 'user-1');
 
     expect(result.items_json.material_items[0]).toMatchObject({
       units_needed_low: 1,
@@ -265,7 +265,7 @@ describe('ShoppingListsService.generate', () => {
   });
 
   it('leaves units_needed_low/high undefined when the estimation carries no range', async () => {
-    const result = await service.generate('project-1', 'org-1', 'user-1');
+    const result = await service.generate('project-1', 'user-1');
 
     expect(
       result.items_json.material_items[0].units_needed_low,
@@ -316,11 +316,7 @@ describe('ShoppingListsService.generate', () => {
       },
     });
 
-    const { shoppingList } = await service.regenerate(
-      'project-1',
-      'org-1',
-      'user-1',
-    );
+    const { shoppingList } = await service.regenerate('project-1', 'user-1');
 
     expect(shoppingList.items_json.material_items[0]).toMatchObject({
       real_unit_price: 45.5,
@@ -350,7 +346,7 @@ describe('ShoppingListsService.getBudgetSummary', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
 
-    projectsServiceMock.findOneForOrg.mockResolvedValue({
+    projectsServiceMock.findOneForUser.mockResolvedValue({
       id: 'project-1',
       user_id: 'user-1',
     });
@@ -460,7 +456,7 @@ describe('ShoppingListsService.getEcoSuggestions', () => {
     materialCatalogRepoMock.find.mockResolvedValue([]);
     ecoEquivalenceRepoMock.find.mockResolvedValue([]);
 
-    projectsServiceMock.findOneForOrg.mockResolvedValue({
+    projectsServiceMock.findOneForUser.mockResolvedValue({
       id: 'project-1',
       user_id: 'user-1',
     });
@@ -614,7 +610,7 @@ describe('ShoppingListsService.finalizeBudgetSummary', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
 
-    projectsServiceMock.findOneForOrg.mockResolvedValue({
+    projectsServiceMock.findOneForUser.mockResolvedValue({
       id: 'project-1',
       user_id: 'user-1',
     });
@@ -676,7 +672,7 @@ describe('ShoppingListsService.finalizeBudgetSummary', () => {
     };
     shoppingListRepoMock.findOne.mockResolvedValue(shoppingList);
 
-    await service.finalizeBudgetSummary('project-1', 'org-1', 'user-1');
+    await service.finalizeBudgetSummary('project-1', 'user-1');
 
     // Le manager passé en 3e argument inscrit le changement de statut dans la
     // transaction du résumé : « budget finalisé » et « projet terminé » ne
@@ -688,7 +684,6 @@ describe('ShoppingListsService.finalizeBudgetSummary', () => {
     expect(typeof manager?.save).toBe('function');
     expect(logbookServiceMock.recordChantierCompletion).toHaveBeenCalledWith(
       'project-1',
-      'org-1',
       'user-1',
       expect.objectContaining({ id: 'estimation-1' }),
       expect.objectContaining({ id: 'shopping-list-1' }),
@@ -719,11 +714,7 @@ describe('ShoppingListsService.finalizeBudgetSummary', () => {
       budget_summary_json: null,
     });
 
-    const summary = await service.finalizeBudgetSummary(
-      'project-1',
-      'org-1',
-      'user-1',
-    );
+    const summary = await service.finalizeBudgetSummary('project-1', 'user-1');
 
     expect(summary.is_complete).toBe(false);
     expect(projectsServiceMock.updateStatus).toHaveBeenCalledWith(
@@ -765,11 +756,7 @@ describe('ShoppingListsService.finalizeBudgetSummary', () => {
       budget_summary_json: null,
     });
 
-    const summary = await service.finalizeBudgetSummary(
-      'project-1',
-      'org-1',
-      'user-1',
-    );
+    const summary = await service.finalizeBudgetSummary('project-1', 'user-1');
 
     expect(summary.items_priced).toBe(1);
     expect(summary.items_total).toBe(2);
@@ -803,11 +790,7 @@ describe('ShoppingListsService.finalizeBudgetSummary', () => {
       budget_summary_json: null,
     });
 
-    const summary = await service.finalizeBudgetSummary(
-      'project-1',
-      'org-1',
-      'user-1',
-    );
+    const summary = await service.finalizeBudgetSummary('project-1', 'user-1');
 
     expect(summary.is_complete).toBe(true);
     expect(projectsServiceMock.updateStatus).toHaveBeenCalled();
@@ -842,7 +825,7 @@ describe('ShoppingListsService.finalizeBudgetSummary', () => {
       budget_summary_json: null,
     });
 
-    await service.finalizeBudgetSummary('project-1', 'org-1', 'user-1');
+    await service.finalizeBudgetSummary('project-1', 'user-1');
 
     const [persisted] = shoppingListRepoMock.save.mock.calls[0] as [
       { budget_summary_json: { is_complete: boolean } },
@@ -953,14 +936,13 @@ describe('ShoppingListsService.update — trace des corrections', () => {
   });
 
   it("enregistre l'ancienne valeur, la nouvelle, le calcul et l'écart relatif", async () => {
-    await service.update('project-1', 'org-1', 'user-1', {
+    await service.update('project-1', 'user-1', {
       material_items: [{ material_id: 'mat-adhesive', units_needed: 5 }],
     });
 
     const [correction] = recordedCorrections();
     expect(correction).toMatchObject({
       project_id: 'project-1',
-      organization_id: 'org-1',
       user_id: 'user-1',
       material_id: 'mat-adhesive',
       work_type_code: 'floor_tiling',
@@ -980,7 +962,7 @@ describe('ShoppingListsService.update — trace des corrections', () => {
    * est confirmé (leçon 18).
    */
   it("n'enregistre rien quand seul le prix change", async () => {
-    await service.update('project-1', 'org-1', 'user-1', {
+    await service.update('project-1', 'user-1', {
       material_items: [
         { material_id: 'mat-adhesive', units_needed: 4, real_unit_price: 21 },
       ],
@@ -990,7 +972,7 @@ describe('ShoppingListsService.update — trace des corrections', () => {
   });
 
   it("porte la provenance déclarée par l'écran de devis", async () => {
-    await service.update('project-1', 'org-1', 'user-1', {
+    await service.update('project-1', 'user-1', {
       material_items: [{ material_id: 'mat-adhesive', units_needed: 6 }],
       source: QuantityCorrectionSource.QUOTE_VALIDATION,
     });

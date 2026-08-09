@@ -6,7 +6,7 @@ import { LearnedWasteFactor } from '../materials/entities/learned-waste-factor.e
 import { WorkTypeMaterial } from '../materials/entities/work-type-material.entity';
 import { WorkType } from '../projects/entities/work-type.entity';
 import { ProjectsModule } from '../projects/projects.module';
-import { OrgContextModule } from '../organizations/org-context.module';
+import { UserContextModule } from '../users/user-context.module';
 import { EmailModule } from '../email/email.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { EstimationEngine } from './estimation-engine';
@@ -25,7 +25,7 @@ import { PublicQuoteCheckController } from './public-quote-check.controller';
       EmailCapture,
     ]),
     ProjectsModule,
-    OrgContextModule,
+    UserContextModule,
     EmailModule,
     AnalyticsModule,
   ],

@@ -5,24 +5,26 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { OrgContextService } from '../../organizations/org-context.service';
-import type { OrgScope } from '../../organizations/org-context.service';
+import { UserContextService } from '../../users/user-context.service';
+import type { UserScope } from '../../users/user-context.service';
 import { FeatureGatesService } from '../feature-gates.service';
 import { SubscriptionTier } from '../../users/entities/user.entity';
 import { FEATURE_KEY } from '../decorators/require-feature.decorator';
 import type { Request } from 'express';
 
 /**
- * Le palier évalué est celui de l'**organisation active** (PLAT-4), c'est-à-dire
- * celui de son propriétaire — et non plus celui de l'utilisateur qui appelle.
- * C'est ce qui donne à un salarié `free` les capacités du Contractor Premium
- * qui l'a invité, tant qu'il travaille dans l'organisation de ce dernier.
+ * Le palier évalué est celui du compte appelant.
+ *
+ * PLAT-4 l'avait déplacé sur l'organisation active — donc sur son propriétaire —
+ * pour qu'un salarié `free` invité chez un abonné travaille avec les capacités
+ * de ce dernier. E4-1 ayant supprimé les organisations, il n'existe plus
+ * qu'un seul palier à évaluer : celui du compte.
  */
 @Injectable()
 export class FeatureGateGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    private readonly orgContext: OrgContextService,
+    private readonly userContext: UserContextService,
     private readonly featureGatesService: FeatureGatesService,
   ) {}
 
@@ -40,9 +42,9 @@ export class FeatureGateGuard implements CanActivate {
       throw new ForbiddenException('Authentication required');
     }
 
-    let scope: OrgScope;
+    let scope: UserScope;
     try {
-      scope = await this.orgContext.resolveForFirebaseUid(firebaseUser.uid);
+      scope = await this.userContext.resolveForFirebaseUid(firebaseUser.uid);
     } catch {
       throw new ForbiddenException('User not found');
     }

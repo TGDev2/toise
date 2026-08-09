@@ -101,12 +101,7 @@ export class ProjectsService {
     private readonly laborTimesRepo: Repository<LaborTime>,
   ) {}
 
-  /**
-   * `organizationId` porte la propriété (et donc le quota), `userId` l'auteur —
-   * les deux divergent dès qu'une organisation a plusieurs membres (PLAT-4).
-   */
   async createProject(
-    organizationId: string,
     userId: string,
     dto: CreateProjectDto,
     isGuest = false,
@@ -116,7 +111,7 @@ export class ProjectsService {
     // (ADR 0002 D4), et elle ne passe plus par une gate — une ligne absente de
     // `feature_gates` réimposait deux projets en silence.
     if (isGuest) {
-      const count = await this.countActiveProjects(organizationId);
+      const count = await this.countActiveProjects(userId);
       if (count >= this.GUEST_PROJECT_LIMIT) {
         throw new ForbiddenException({
           message:
@@ -129,7 +124,6 @@ export class ProjectsService {
     }
 
     const project = this.projectsRepo.create({
-      organization_id: organizationId,
       user_id: userId,
       name: dto.name,
       room_name: dto.room_name ?? '',
@@ -150,9 +144,9 @@ export class ProjectsService {
     return saved;
   }
 
-  async countActiveProjects(organizationId: string): Promise<number> {
+  async countActiveProjects(userId: string): Promise<number> {
     return this.projectsRepo.count({
-      where: { organization_id: organizationId, deleted_at: IsNull() },
+      where: { user_id: userId, deleted_at: IsNull() },
     });
   }
 
@@ -172,7 +166,7 @@ export class ProjectsService {
    */
 
   async findByOrg(
-    organizationId: string,
+    userId: string,
     query: ListProjectsQueryDto = {},
   ): Promise<{
     data: Project[];
@@ -182,7 +176,7 @@ export class ProjectsService {
     const limit = query.limit ?? 12;
 
     const where: FindOptionsWhere<Project> = {
-      organization_id: organizationId,
+      user_id: userId,
     };
     if (query.status) {
       where.status = query.status;
@@ -206,10 +200,7 @@ export class ProjectsService {
     };
   }
 
-  async findOneForOrg(
-    projectId: string,
-    organizationId: string,
-  ): Promise<Project> {
+  async findOneForUser(projectId: string, userId: string): Promise<Project> {
     const project = await this.projectsRepo.findOne({
       where: { id: projectId },
     });
@@ -218,7 +209,7 @@ export class ProjectsService {
       throw new NotFoundException('Project not found');
     }
 
-    if (project.organization_id !== organizationId) {
+    if (project.user_id !== userId) {
       throw new ForbiddenException('Access denied');
     }
 
@@ -260,8 +251,8 @@ export class ProjectsService {
    * Toutes les pièces d'un projet avec géométrie et travaux chargés, ordonnées.
    * Source de vérité de l'estimation multi-pièces.
    */
-  async getRooms(projectId: string, organizationId: string): Promise<Room[]> {
-    await this.findOneForOrg(projectId, organizationId);
+  async getRooms(projectId: string, userId: string): Promise<Room[]> {
+    await this.findOneForUser(projectId, userId);
     return this.roomsRepo.find({
       where: { project_id: projectId },
       relations: ['dimensions', 'openings', 'workItems', 'workItems.work_type'],
@@ -305,10 +296,10 @@ export class ProjectsService {
 
   async createRoom(
     projectId: string,
-    organizationId: string,
+    userId: string,
     dto: CreateRoomDto,
   ): Promise<Room> {
-    await this.findOneForOrg(projectId, organizationId);
+    await this.findOneForUser(projectId, userId);
     const count = await this.roomsRepo.count({
       where: { project_id: projectId },
     });
@@ -331,11 +322,11 @@ export class ProjectsService {
 
   async renameRoom(
     projectId: string,
-    organizationId: string,
+    userId: string,
     roomId: string,
     dto: UpdateRoomDto,
   ): Promise<Room> {
-    await this.findOneForOrg(projectId, organizationId);
+    await this.findOneForUser(projectId, userId);
     const room = await this.roomsRepo.findOne({
       where: { id: roomId, project_id: projectId },
     });
@@ -347,10 +338,10 @@ export class ProjectsService {
 
   async deleteRoom(
     projectId: string,
-    organizationId: string,
+    userId: string,
     roomId: string,
   ): Promise<void> {
-    await this.findOneForOrg(projectId, organizationId);
+    await this.findOneForUser(projectId, userId);
     // Garde-fou : un projet conserve toujours ≥ 1 pièce.
     const count = await this.roomsRepo.count({
       where: { project_id: projectId },
@@ -370,7 +361,6 @@ export class ProjectsService {
 
   async updateDimensions(
     projectId: string,
-    organizationId: string,
     userId: string,
     dto: UpdateDimensionsDto,
     overrides?: {
@@ -391,7 +381,7 @@ export class ProjectsService {
     },
     roomId?: string,
   ): Promise<RoomDimensions> {
-    await this.findOneForOrg(projectId, organizationId);
+    await this.findOneForUser(projectId, userId);
     const room = await this.resolveRoomForWrite(projectId, roomId);
 
     const dimensions = await this.writeDimensions(
@@ -493,7 +483,7 @@ export class ProjectsService {
    */
   async applyCvAnalysis(
     projectId: string,
-    organizationId: string,
+    userId: string,
     result: {
       dimensions: UpdateDimensionsDto;
       confidence_score: ConfidenceScore;
@@ -507,7 +497,7 @@ export class ProjectsService {
     },
     roomId?: string,
   ): Promise<void> {
-    await this.findOneForOrg(projectId, organizationId);
+    await this.findOneForUser(projectId, userId);
     const room = await this.resolveRoomForWrite(projectId, roomId);
     const rooms = await this.roomsRepo.find({
       where: { project_id: projectId },
@@ -553,10 +543,10 @@ export class ProjectsService {
 
   async getDimensions(
     projectId: string,
-    organizationId: string,
+    userId: string,
     roomId?: string,
   ): Promise<RoomDimensions | null> {
-    await this.findOneForOrg(projectId, organizationId);
+    await this.findOneForUser(projectId, userId);
 
     const room = await this.resolveRoomForRead(projectId, roomId);
     if (!room) return null;
@@ -568,12 +558,12 @@ export class ProjectsService {
 
   async addOpening(
     projectId: string,
-    organizationId: string,
+    userId: string,
     dto: CreateOpeningDto,
     overrides?: { source?: OpeningSource; cv_confidence?: number },
     roomId?: string,
   ): Promise<Opening> {
-    await this.findOneForOrg(projectId, organizationId);
+    await this.findOneForUser(projectId, userId);
     const room = await this.resolveRoomForWrite(projectId, roomId);
 
     const opening = this.openingsRepo.create({
@@ -589,12 +579,12 @@ export class ProjectsService {
     return this.openingsRepo.save(opening);
   }
 
-  async findOpeningForOrg(
+  async findOpeningForUser(
     projectId: string,
-    organizationId: string,
+    userId: string,
     openingId: string,
   ): Promise<Opening> {
-    await this.findOneForOrg(projectId, organizationId);
+    await this.findOneForUser(projectId, userId);
 
     const opening = await this.openingsRepo.findOne({
       where: { id: openingId },
@@ -610,15 +600,11 @@ export class ProjectsService {
 
   async updateOpening(
     projectId: string,
-    organizationId: string,
+    userId: string,
     openingId: string,
     dto: UpdateOpeningDto,
   ): Promise<Opening> {
-    const opening = await this.findOpeningForOrg(
-      projectId,
-      organizationId,
-      openingId,
-    );
+    const opening = await this.findOpeningForUser(projectId, userId, openingId);
 
     if (dto.type !== undefined) opening.type = dto.type;
     if (dto.width_cm !== undefined) opening.width_cm = dto.width_cm;
@@ -630,24 +616,20 @@ export class ProjectsService {
 
   async removeOpening(
     projectId: string,
-    organizationId: string,
+    userId: string,
     openingId: string,
   ): Promise<void> {
-    const opening = await this.findOpeningForOrg(
-      projectId,
-      organizationId,
-      openingId,
-    );
+    const opening = await this.findOpeningForUser(projectId, userId, openingId);
 
     await this.openingsRepo.remove(opening);
   }
 
   async getOpenings(
     projectId: string,
-    organizationId: string,
+    userId: string,
     roomId?: string,
   ): Promise<Opening[]> {
-    await this.findOneForOrg(projectId, organizationId);
+    await this.findOneForUser(projectId, userId);
 
     const room = await this.resolveRoomForRead(projectId, roomId);
     if (!room) return [];
@@ -670,7 +652,7 @@ export class ProjectsService {
    * Rend une forme étroite plutôt que l'entité : la résolution
    * (`labor-time-resolution.ts`) est une fonction pure que son spec alimente
    * avec `seedLaborTimes`, et l'entité y ferait entrer un dépôt. Le registre
-   * est un catalogue global, sans donnée d'organisation — comme
+   * est un catalogue global, sans donnée de compte — comme
    * `getWorkTypes()`, il se lit sans filtre de propriété.
    */
   async getLaborTimes(): Promise<LaborTimeRow[]> {
@@ -691,11 +673,11 @@ export class ProjectsService {
 
   async saveWorkItems(
     projectId: string,
-    organizationId: string,
+    userId: string,
     dto: SaveWorkItemsDto,
     roomId?: string,
   ): Promise<ProjectWorkItem[]> {
-    await this.findOneForOrg(projectId, organizationId);
+    await this.findOneForUser(projectId, userId);
     const room = await this.resolveRoomForWrite(projectId, roomId);
 
     // Validate all work_type_ids exist
@@ -774,7 +756,7 @@ export class ProjectsService {
 
   /**
    * E4-4 — les ouvrages et le niveau de compétence du dernier chantier de
-   * l'organisation, pour pré-remplir l'étape « Travaux » d'un chantier neuf.
+   * le compte, pour pré-remplir l'étape « Travaux » d'un chantier neuf.
    *
    * L'artisan de finition refait les mêmes ouvrages, et son niveau ne change
    * pas d'un chantier à l'autre : la sélection était pourtant repartie de zéro
@@ -790,14 +772,14 @@ export class ProjectsService {
    * que `skill_level` pilote le facteur de perte, donc les quantités.
    */
   async findLastWorkSelection(
-    organizationId: string,
+    userId: string,
     excludeProjectId: string,
   ): Promise<ProjectWorkItem[]> {
     const latest = await this.workItemsRepo
       .createQueryBuilder('wi')
       .innerJoin(Room, 'r', 'r.id = wi.room_id')
       .innerJoin(Project, 'p', 'p.id = r.project_id')
-      .where('p.organization_id = :organizationId', { organizationId })
+      .where('p.user_id = :userId', { userId })
       .andWhere('p.deleted_at IS NULL')
       .andWhere('r.project_id != :excludeProjectId', { excludeProjectId })
       .orderBy('wi.created_at', 'DESC')
@@ -816,10 +798,10 @@ export class ProjectsService {
 
   async getWorkItems(
     projectId: string,
-    organizationId: string,
+    userId: string,
     roomId?: string,
   ): Promise<ProjectWorkItem[]> {
-    await this.findOneForOrg(projectId, organizationId);
+    await this.findOneForUser(projectId, userId);
 
     const room = await this.resolveRoomForRead(projectId, roomId);
     if (!room) return [];
@@ -851,11 +833,8 @@ export class ProjectsService {
    * Les fichiers, eux, restent jusqu'à l'expiration de la rétention
    * (`DataRetentionService`, `docs/RETENTION_DONNEES.md`).
    */
-  async softDeleteProject(
-    projectId: string,
-    organizationId: string,
-  ): Promise<void> {
-    await this.findOneForOrg(projectId, organizationId);
+  async softDeleteProject(projectId: string, userId: string): Promise<void> {
+    await this.findOneForUser(projectId, userId);
 
     await this.dataSource.transaction(async (manager) => {
       await manager.softDelete(CommunityProject, { project_id: projectId });

@@ -4,7 +4,7 @@ import {
   learnWasteFactors,
   median,
   medianAbsoluteDeviation,
-  organizationObservationCap,
+  accountObservationCap,
   wasteLearningShortfall,
   overlayLearnedWasteFactors,
   WasteObservation,
@@ -23,19 +23,19 @@ function makeObservation(
     applied_percent: BASELINE,
     estimated_units: 10,
     actual_units: 10,
-    organization_id: 'org-1',
+    user_id: 'user-1',
     observed_at: new Date('2026-07-01T00:00:00.000Z'),
     ...overrides,
   };
 }
 
-/** n observations identiques, réparties sur autant d'organisations distinctes. */
+/** n observations identiques, réparties sur autant d'comptes distincts. */
 function spread(
   count: number,
   overrides: Partial<WasteObservation> = {},
 ): WasteObservation[] {
   return Array.from({ length: count }, (_, i) =>
-    makeObservation({ organization_id: `org-${i}`, ...overrides }),
+    makeObservation({ user_id: `org-${i}`, ...overrides }),
   );
 }
 
@@ -102,21 +102,21 @@ describe('learnWasteFactors — garde-fous', () => {
     expect(outcome.factor_percent).toBeNull();
   });
 
-  // Le cas déterminant : une organisation majoritaire dans une cellule choisit la
+  // Le cas déterminant : un compte majoritaire dans une cellule choisit la
   // médiane, et son unanimité rend le MAD nul — le test de dispersion, seul autre
   // garde-fou, ne peut donc pas la rattraper.
-  it('refuses to let one organisation hold the majority of a cell', () => {
+  it('refuses to let one account hold the majority of a cell', () => {
     const observations = [
-      // 5 chantiers d'une même organisation déclarant une consommation extrême.
+      // 5 chantiers d'un même compte déclarant une consommation extrême.
       ...Array.from({ length: 5 }, (_, i) =>
         makeObservation({
-          organization_id: 'org-dominante',
+          user_id: 'user-dominante',
           estimated_units: 10,
           actual_units: 30, // perte impliquée : 1,10 × 3 − 1 = 230 %
           observed_at: new Date(2026, 0, i + 1),
         }),
       ),
-      // 3 observations honnêtes d'organisations distinctes : achat = estimation.
+      // 3 observations honnêtes d'comptes distincts : achat = estimation.
       ...spread(3, { estimated_units: 10, actual_units: 10 }),
     ];
 
@@ -126,11 +126,11 @@ describe('learnWasteFactors — garde-fous', () => {
     expect(outcome.factor_percent).toBeNull();
   });
 
-  it('keeps the median inside the honest range when one organisation is loud', () => {
+  it('keeps the median inside the honest range when one account is loud', () => {
     const observations = [
       ...Array.from({ length: 5 }, (_, i) =>
         makeObservation({
-          organization_id: 'org-dominante',
+          user_id: 'user-dominante',
           estimated_units: 10,
           actual_units: 30,
           observed_at: new Date(2026, 0, i + 1),
@@ -141,17 +141,17 @@ describe('learnWasteFactors — garde-fous', () => {
 
     const [outcome] = learnWasteFactors(observations, baselineResolver);
 
-    // 3 retenus pour l'organisation bruyante contre 5 honnêtes : la médiane des 8
+    // 3 retenus pour le compte bruyant contre 5 honnêtes : la médiane des 8
     // tombe entre deux observations honnêtes, donc sur la valeur catalogue.
     expect(outcome.observed_percent).toBeCloseTo(BASELINE);
     expect(outcome.status).toBe('no_change');
   });
 
-  it('caps how much a single organisation weighs in a cell', () => {
-    // 20 chantiers d'une seule organisation → 3 retenus, sous le minimum de 8.
+  it('caps how much a single account weighs in a cell', () => {
+    // 20 chantiers d'un seul compte → 3 retenus, sous le minimum de 8.
     const observations = Array.from({ length: 20 }, (_, i) =>
       makeObservation({
-        organization_id: 'org-dominante',
+        user_id: 'user-dominante',
         actual_units: 14,
         observed_at: new Date(2026, 0, i + 1),
       }),
@@ -160,24 +160,22 @@ describe('learnWasteFactors — garde-fous', () => {
     const [outcome] = learnWasteFactors(observations, baselineResolver);
 
     expect(outcome.sample_size).toBe(
-      organizationObservationCap(DEFAULT_WASTE_LEARNING_OPTIONS),
+      accountObservationCap(DEFAULT_WASTE_LEARNING_OPTIONS),
     );
     expect(outcome.status).toBe('insufficient_volume');
   });
 
-  it('never lets one organisation reach half of the minimum sample', () => {
+  it('never lets one account reach half of the minimum sample', () => {
     // L'invariant qui porte le garde-fou, énoncé sur les options elles-mêmes :
     // le régler par deux constantes indépendantes est ce qui avait ouvert le trou.
-    expect(
-      organizationObservationCap(DEFAULT_WASTE_LEARNING_OPTIONS),
-    ).toBeLessThan(DEFAULT_WASTE_LEARNING_OPTIONS.minObservations / 2);
+    expect(accountObservationCap(DEFAULT_WASTE_LEARNING_OPTIONS)).toBeLessThan(
+      DEFAULT_WASTE_LEARNING_OPTIONS.minObservations / 2,
+    );
 
     // Y compris si quelqu'un desserre le minimum sans toucher au reste.
     for (const minObservations of [1, 2, 3, 5, 8, 9, 20, 41]) {
       const options = { ...DEFAULT_WASTE_LEARNING_OPTIONS, minObservations };
-      expect(organizationObservationCap(options)).toBeLessThan(
-        minObservations / 2,
-      );
+      expect(accountObservationCap(options)).toBeLessThan(minObservations / 2);
     }
   });
 
@@ -185,21 +183,21 @@ describe('learnWasteFactors — garde-fous', () => {
     const observations = [
       ...Array.from({ length: 6 }, (_, i) =>
         makeObservation({
-          organization_id: 'org-1',
+          user_id: 'user-1',
           actual_units: 20,
           observed_at: new Date(2026, 0, i + 1),
         }),
       ),
       ...Array.from({ length: 6 }, (_, i) =>
         makeObservation({
-          organization_id: 'org-1',
+          user_id: 'user-1',
           actual_units: 11,
           observed_at: new Date(2026, 6, i + 1),
         }),
       ),
       ...Array.from({ length: 6 }, (_, i) =>
         makeObservation({
-          organization_id: `org-autre-${i}`,
+          user_id: `org-autre-${i}`,
           actual_units: 11,
         }),
       ),
@@ -210,7 +208,7 @@ describe('learnWasteFactors — garde-fous', () => {
     // Les 3 achats récents (11) d'`org-1` sont conservés, les anciens (20)
     // écartés : la médiane vaut 21 % et non une valeur tirée vers le haut.
     expect(outcome.sample_size).toBe(
-      organizationObservationCap(DEFAULT_WASTE_LEARNING_OPTIONS) + 6,
+      accountObservationCap(DEFAULT_WASTE_LEARNING_OPTIONS) + 6,
     );
     expect(outcome.observed_percent).toBeCloseTo(21);
   });
@@ -226,11 +224,11 @@ describe('learnWasteFactors — garde-fous', () => {
     const observations = [
       ...spread(6, { actual_units: 20 }).map((o, i) => ({
         ...o,
-        organization_id: `org-haut-${i}`,
+        user_id: `org-haut-${i}`,
       })),
       ...spread(6, { actual_units: 5 }).map((o, i) => ({
         ...o,
-        organization_id: `org-bas-${i}`,
+        user_id: `org-bas-${i}`,
       })),
     ];
 
@@ -302,7 +300,7 @@ describe('learnWasteFactors — garde-fous', () => {
     // 60 observations dont une seule dévie → médiane = base, écart < 0,5 point.
     const observations = [
       ...spread(59),
-      makeObservation({ organization_id: 'org-99', actual_units: 11 }),
+      makeObservation({ user_id: 'user-99', actual_units: 11 }),
     ];
 
     const [outcome] = learnWasteFactors(observations, baselineResolver);
@@ -421,13 +419,13 @@ describe('overlayLearnedWasteFactors', () => {
 });
 
 describe("diagnostic d'une cellule qui n'apprend pas", () => {
-  it('rapporte le volume brut et les organisations, pas seulement le retenu', () => {
-    // Dix chantiers d'un seul client : le plafond par organisation n'en retient
-    // que trois. Sans le brut ni le compte d'organisations, la cellule stagne à
+  it('rapporte le volume brut et les comptes, pas seulement le retenu', () => {
+    // Dix chantiers d'un seul client : le plafond par compte n'en retient
+    // que trois. Sans le brut ni le compte de comptes, la cellule stagne à
     // `sample_size: 3` sans jamais dire que dix chantiers ont bien été vus.
     const observations = Array.from({ length: 10 }, (_, i) =>
       makeObservation({
-        organization_id: 'org-1',
+        user_id: 'user-1',
         observed_at: new Date(2026, 6, i + 1),
       }),
     );
@@ -440,7 +438,7 @@ describe("diagnostic d'une cellule qui n'apprend pas", () => {
     expect(outcome.organization_count).toBe(1);
   });
 
-  it('compte les organisations qui pèsent réellement dans la cellule', () => {
+  it('compte les comptes qui pèsent réellement dans la cellule', () => {
     const [outcome] = learnWasteFactors(spread(4), baselineResolver);
 
     expect(outcome.organization_count).toBe(4);
@@ -449,24 +447,24 @@ describe("diagnostic d'une cellule qui n'apprend pas", () => {
 });
 
 describe('wasteLearningShortfall', () => {
-  it('annonce les organisations manquantes quand le plafond borne la cellule', () => {
-    // Plafond dérivé à 3 pour `minObservations: 8` : deux organisations
+  it('annonce les comptes manquantes quand le plafond borne la cellule', () => {
+    // Plafond dérivé à 3 pour `minObservations: 8` : deux comptes
     // plafonnent à 6 observations retenues. Ne rapporter que « 2 observations
     // manquantes » laisserait attendre un déblocage qui n'arrivera jamais.
     expect(
       wasteLearningShortfall({ sample_size: 6, organization_count: 2 }),
-    ).toEqual({ missing_observations: 2, missing_organizations: 1 });
+    ).toEqual({ missing_observations: 2, missing_accounts: 1 });
   });
 
   it('ne réclame plus rien à une cellule qui a franchi le seuil', () => {
     expect(
       wasteLearningShortfall({ sample_size: 8, organization_count: 3 }),
-    ).toEqual({ missing_observations: 0, missing_organizations: 0 });
+    ).toEqual({ missing_observations: 0, missing_accounts: 0 });
   });
 
-  it('ne réclame aucune organisation de plus quand seul le volume manque', () => {
+  it('ne réclame aucun compte de plus quand seul le volume manque', () => {
     expect(
       wasteLearningShortfall({ sample_size: 5, organization_count: 5 }),
-    ).toEqual({ missing_observations: 3, missing_organizations: 0 });
+    ).toEqual({ missing_observations: 3, missing_accounts: 0 });
   });
 });

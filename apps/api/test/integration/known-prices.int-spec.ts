@@ -1,7 +1,6 @@
 import { DataSource } from 'typeorm';
 import { migratedDataSource, truncateUserData } from './test-database';
 import { User } from '../../src/users/entities/user.entity';
-import { Organization } from '../../src/organizations/entities/organization.entity';
 import {
   Project,
   ProjectStatus,
@@ -84,7 +83,7 @@ function buildService(dataSource: DataSource): ShoppingListsService {
     dataSource.getRepository(MaterialCatalog),
     dataSource.getRepository(MaterialEcoEquivalence),
     {} as EstimationsService,
-    { findOneForOrg: () => Promise.resolve({}) } as unknown as ProjectsService,
+    { findOneForUser: () => Promise.resolve({}) } as unknown as ProjectsService,
     { track: () => undefined } as unknown as AnalyticsService,
     {} as LogbookService,
   );
@@ -109,30 +108,19 @@ describe('Rappel des prix déjà saisis (intégration, PostgreSQL réel)', () =>
     await truncateUserData(dataSource);
   });
 
-  async function seedOrganization(suffix: string): Promise<{
+  async function seedAccount(suffix: string): Promise<{
     userId: string;
-    organizationId: string;
   }> {
     const user = await dataSource.getRepository(User).save({
       email: `int-known-prices-${suffix}@chiffreo.test`,
       firebase_uid: `firebase-known-prices-${suffix}`,
     });
-    const organization = await dataSource.getRepository(Organization).save({
-      name: `Org ${suffix}`,
-      owner_user_id: user.id,
-      is_personal: true,
-    });
-    return { userId: user.id, organizationId: organization.id };
+    return { userId: user.id };
   }
 
-  async function seedProject(
-    userId: string,
-    organizationId: string,
-    name: string,
-  ): Promise<Project> {
+  async function seedProject(userId: string, name: string): Promise<Project> {
     return dataSource.getRepository(Project).save({
       user_id: userId,
-      organization_id: organizationId,
       name,
       room_name: 'Salon',
       work_type: ProjectWorkType.PAINTING,
@@ -170,18 +158,10 @@ describe('Rappel des prix déjà saisis (intégration, PostgreSQL réel)', () =>
   }
 
   it('rend le prix le plus récent par article, hors chantier courant', async () => {
-    const { userId, organizationId } = await seedOrganization('recent');
-    const oldProject = await seedProject(userId, organizationId, 'Chantier 1');
-    const recentProject = await seedProject(
-      userId,
-      organizationId,
-      'Chantier 2',
-    );
-    const currentProject = await seedProject(
-      userId,
-      organizationId,
-      'En cours',
-    );
+    const { userId } = await seedAccount('recent');
+    const oldProject = await seedProject(userId, 'Chantier 1');
+    const recentProject = await seedProject(userId, 'Chantier 2');
+    const currentProject = await seedProject(userId, 'En cours');
 
     await seedShoppingList(
       oldProject,
@@ -207,10 +187,7 @@ describe('Rappel des prix déjà saisis (intégration, PostgreSQL réel)', () =>
       complementary_items: [],
     });
 
-    const result = await service.findKnownPrices(
-      currentProject.id,
-      organizationId,
-    );
+    const result = await service.findKnownPrices(currentProject.id, userId);
 
     expect(result.materials).toEqual([
       {
@@ -233,50 +210,27 @@ describe('Rappel des prix déjà saisis (intégration, PostgreSQL réel)', () =>
   });
 
   it("ne franchit jamais la frontière d'une organisation", async () => {
-    const mine = await seedOrganization('mine');
-    const other = await seedOrganization('other');
+    const mine = await seedAccount('mine');
+    const other = await seedAccount('other');
 
-    const theirProject = await seedProject(
-      other.userId,
-      other.organizationId,
-      'Chantier voisin',
-    );
+    const theirProject = await seedProject(other.userId, 'Chantier voisin');
     await seedShoppingList(theirProject, {
       material_items: [materialItem(MATERIAL_A, 45.9, 'Leroy Merlin')],
       complementary_items: [],
     });
 
-    const myProject = await seedProject(
-      mine.userId,
-      mine.organizationId,
-      'Mon chantier',
-    );
-    const result = await service.findKnownPrices(
-      myProject.id,
-      mine.organizationId,
-    );
+    const myProject = await seedProject(mine.userId, 'Mon chantier');
+    const result = await service.findKnownPrices(myProject.id, mine.userId);
 
     expect(result.materials).toEqual([]);
     expect(result.complements).toEqual([]);
   });
 
   it('ignore les lignes sans prix, les prix nuls et les chantiers supprimés', async () => {
-    const { userId, organizationId } = await seedOrganization('filters');
-    const unpricedProject = await seedProject(
-      userId,
-      organizationId,
-      'Sans prix',
-    );
-    const deletedProject = await seedProject(
-      userId,
-      organizationId,
-      'Supprimé',
-    );
-    const currentProject = await seedProject(
-      userId,
-      organizationId,
-      'En cours',
-    );
+    const { userId } = await seedAccount('filters');
+    const unpricedProject = await seedProject(userId, 'Sans prix');
+    const deletedProject = await seedProject(userId, 'Supprimé');
+    const currentProject = await seedProject(userId, 'En cours');
 
     await seedShoppingList(unpricedProject, {
       material_items: [
@@ -293,31 +247,16 @@ describe('Rappel des prix déjà saisis (intégration, PostgreSQL réel)', () =>
       .getRepository(Project)
       .softDelete({ id: deletedProject.id });
 
-    const result = await service.findKnownPrices(
-      currentProject.id,
-      organizationId,
-    );
+    const result = await service.findKnownPrices(currentProject.id, userId);
 
     expect(result.materials).toEqual([]);
   });
 
   it("survit à une liste dont le bloc d'articles n'est pas un tableau", async () => {
-    const { userId, organizationId } = await seedOrganization('malformed');
-    const goodProject = await seedProject(
-      userId,
-      organizationId,
-      'Bon chantier',
-    );
-    const brokenProject = await seedProject(
-      userId,
-      organizationId,
-      'Liste cassée',
-    );
-    const currentProject = await seedProject(
-      userId,
-      organizationId,
-      'En cours',
-    );
+    const { userId } = await seedAccount('malformed');
+    const goodProject = await seedProject(userId, 'Bon chantier');
+    const brokenProject = await seedProject(userId, 'Liste cassée');
+    const currentProject = await seedProject(userId, 'En cours');
 
     await seedShoppingList(goodProject, {
       material_items: [materialItem(MATERIAL_A, 45.9)],
@@ -334,10 +273,7 @@ describe('Rappel des prix déjà saisis (intégration, PostgreSQL réel)', () =>
       [brokenProject.id],
     );
 
-    const result = await service.findKnownPrices(
-      currentProject.id,
-      organizationId,
-    );
+    const result = await service.findKnownPrices(currentProject.id, userId);
 
     expect(result.materials).toHaveLength(1);
     expect(result.materials[0].item_id).toBe(MATERIAL_A);

@@ -11,7 +11,7 @@ import type { App } from 'supertest/types';
 import { ShoppingListsController } from '../src/shopping-lists/shopping-lists.controller';
 import { ShoppingListsService } from '../src/shopping-lists/shopping-lists.service';
 import { UsersService } from '../src/users/users.service';
-import { OrgContextService } from '../src/organizations/org-context.service';
+import { UserContextService } from '../src/users/user-context.service';
 import { CompanyProfilesService } from '../src/company-profiles/company-profiles.service';
 import { FeatureGatesService } from '../src/feature-gates/feature-gates.service';
 import { FirebaseAuthGuard } from '../src/auth/guards/firebase-auth.guard';
@@ -93,22 +93,14 @@ const usersServiceMock = {
 
 // PLAT-4 : les contrôleurs résolvent désormais la portée (organisation + auteur)
 // au lieu de recharger l'utilisateur ; le guard de feature gates lit le palier
-// effectif de l'organisation via ce même service.
-const mockOrgId = '00000000-0000-4000-8000-0000000000aa';
-const orgContextMock = {
+// effectif via ce même service.
+const userContextMock = {
   resolveForFirebaseUid: jest.fn().mockResolvedValue({
     user: { id: mockUserId, subscription_tier: SubscriptionTier.FREE },
     userId: mockUserId,
-    organization: { id: mockOrgId, name: 'Mon espace', is_personal: true },
-    organizationId: mockOrgId,
-    role: 'owner',
     effectiveTier: SubscriptionTier.FREE,
   }),
   resolveForUser: jest.fn(),
-  getOrCreatePersonalOrganization: jest
-    .fn()
-    .mockResolvedValue({ id: mockOrgId }),
-  findMembership: jest.fn(),
 };
 
 // Requis pour que Nest puisse instancier FeatureGateGuard (appliqué aux
@@ -122,7 +114,7 @@ const featureGatesServiceMock = {
 
 // E1-11 : `ShoppingListsController` lit le réglage marques via ce service.
 const companyProfilesServiceMock = {
-  findByOrganizationId: jest.fn().mockResolvedValue(null),
+  findByUserId: jest.fn().mockResolvedValue(null),
 };
 
 describe('ShoppingListsController (e2e)', () => {
@@ -157,7 +149,7 @@ describe('ShoppingListsController (e2e)', () => {
       providers: [
         { provide: ShoppingListsService, useValue: shoppingListsServiceMock },
         { provide: UsersService, useValue: usersServiceMock },
-        { provide: OrgContextService, useValue: orgContextMock },
+        { provide: UserContextService, useValue: userContextMock },
         { provide: FeatureGatesService, useValue: featureGatesServiceMock },
         {
           provide: CompanyProfilesService,
@@ -261,8 +253,6 @@ describe('ShoppingListsController (e2e)', () => {
 
     expect(shoppingListsServiceMock.update).toHaveBeenCalledWith(
       mockProjectId,
-      mockOrgId,
-      // E2-4 : l'auteur de la correction, pour la trace de l'écart au calcul.
       mockUserId,
       expect.objectContaining({
         material_items: [
@@ -366,7 +356,7 @@ describe('ShoppingListsController (e2e)', () => {
 
       expect(shoppingListsServiceMock.getEcoSuggestions).toHaveBeenCalledWith(
         mockProjectId,
-        mockOrgId,
+        mockUserId,
       );
     });
 
@@ -446,7 +436,6 @@ describe('ShoppingListsController (e2e)', () => {
 
       expect(shoppingListsServiceMock.recordCloseout).toHaveBeenCalledWith(
         mockProjectId,
-        mockOrgId,
         mockUserId,
         expect.objectContaining({
           purchased_on: '2026-07-15',
@@ -457,7 +446,7 @@ describe('ShoppingListsController (e2e)', () => {
 
     it('reste ouverte à un compte free', async () => {
       // Le guard réel est monté ici : c'est `isFeatureAllowed` qui tranche, et
-      // le palier du compte de test est `free` (cf. orgContextMock).
+      // le palier du compte de test est `free` (cf. userContextMock).
       shoppingListsServiceMock.recordCloseout.mockResolvedValueOnce(
         closeoutResult,
       );

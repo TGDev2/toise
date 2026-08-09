@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { OrgContextModule } from '../organizations/org-context.module';
+import { UserContextModule } from '../users/user-context.module';
 import { FeatureGatesModule } from '../feature-gates/feature-gates.module';
 import { ProjectsModule } from '../projects/projects.module';
 import { SiteMilestone } from './entities/site-milestone.entity';
@@ -10,7 +10,7 @@ import { SiteTrackingController } from './site-tracking.controller';
 @Module({
   imports: [
     TypeOrmModule.forFeature([SiteMilestone]),
-    OrgContextModule,
+    UserContextModule,
     FeatureGatesModule,
     ProjectsModule,
   ],

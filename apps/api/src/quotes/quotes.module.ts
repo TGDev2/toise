@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { OrgContextModule } from '../organizations/org-context.module';
+import { UserContextModule } from '../users/user-context.module';
 import { FeatureGatesModule } from '../feature-gates/feature-gates.module';
 import { ShoppingListsModule } from '../shopping-lists/shopping-lists.module';
 import { CompanyProfilesModule } from '../company-profiles/company-profiles.module';
@@ -17,7 +17,7 @@ import { QuotePdfService } from './quote-pdf.service';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Quote, EstimationResult]),
-    OrgContextModule,
+    UserContextModule,
     FeatureGatesModule,
     ShoppingListsModule,
     CompanyProfilesModule,

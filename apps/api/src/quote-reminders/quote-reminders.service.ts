@@ -65,10 +65,11 @@ export class QuoteRemindersService {
         status: QuoteStatus.SENT,
         sent_at: LessThanOrEqual(cutoff),
         // La relance est nominative de bout en bout : le palier lu est celui de
-        // l'auteur, l'expéditeur affiché au client est son e-mail, et le second
-        // e-mail lui est adressé. Un devis dont l'auteur a supprimé son compte
-        // reste acquis à son organisation mais sort du balayage — il n'y a plus
-        // personne à relancer.
+        // l'émetteur, l'expéditeur affiché au client est son e-mail, et le
+        // second e-mail lui est adressé. Le filtre est conservé par prudence :
+        // depuis E4-1 `quotes.user_id` est `NOT NULL` et le devis part avec son
+        // compte, donc il ne retire plus aucune ligne — mais il documente que
+        // ce balayage n'a de sens que sur un devis dont l'émetteur existe.
         user_id: Not(IsNull()),
         ...(days === 7
           ? { reminder_7d_sent_at: IsNull() }
@@ -101,10 +102,9 @@ export class QuoteRemindersService {
 
     if (quote.client?.email) {
       try {
-        const companyProfile =
-          await this.companyProfilesService.findByOrganizationId(
-            quote.organization_id,
-          );
+        const companyProfile = await this.companyProfilesService.findByUserId(
+          quote.user_id,
+        );
         await this.emailService.sendQuoteReminderClientEmail(
           quote.client.email,
           {

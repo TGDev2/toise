@@ -10,7 +10,6 @@ import { FirebaseConfig } from '../config/firebase.config';
 import { UsersService } from '../users/users.service';
 import { CompanyProfilesService } from '../company-profiles/company-profiles.service';
 import { AnalyticsService } from '../analytics/analytics.service';
-import { OrgContextService } from '../organizations/org-context.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { DataRetentionService } from '../data-retention/data-retention.service';
 import { STORAGE_PROVIDER } from '../photos/storage/storage.interface';
@@ -54,19 +53,12 @@ describe('AuthService', () => {
     track: jest.fn(),
   };
 
-  const orgContextMock = {
-    getOrCreatePersonalOrganization: jest
-      .fn()
-      .mockResolvedValue({ id: 'org-uuid' }),
-    collectOrganizationsRemovableWithOwner: jest.fn().mockResolvedValue([]),
-  };
-
   const subscriptionsMock = {
     cancelForAccountDeletion: jest.fn(),
   };
 
   const dataRetentionMock = {
-    eraseOrganizationFiles: jest.fn().mockResolvedValue(undefined),
+    eraseUserFiles: jest.fn().mockResolvedValue(undefined),
   };
 
   const storageMock = {
@@ -86,7 +78,6 @@ describe('AuthService', () => {
     referral_code: null,
     referred_by_user_id: null,
     referral_converted_at: null,
-    active_organization_id: null,
     created_at: new Date(),
     updated_at: new Date(),
   };
@@ -142,10 +133,6 @@ describe('AuthService', () => {
         {
           provide: AnalyticsService,
           useValue: analyticsServiceMock,
-        },
-        {
-          provide: OrgContextService,
-          useValue: orgContextMock,
         },
         {
           provide: SubscriptionsService,
@@ -439,11 +426,8 @@ describe('AuthService', () => {
       usersService.findByFirebaseUid.mockResolvedValue(mockUser);
       mockFirebaseAuth.deleteUser.mockResolvedValue(undefined);
       usersService.deleteAccountData.mockResolvedValue(undefined);
-      orgContextMock.collectOrganizationsRemovableWithOwner.mockResolvedValue([
-        'perso-org-uuid',
-      ]);
       subscriptionsMock.cancelForAccountDeletion.mockResolvedValue(undefined);
-      dataRetentionMock.eraseOrganizationFiles.mockResolvedValue(undefined);
+      dataRetentionMock.eraseUserFiles.mockResolvedValue(undefined);
     });
 
     it("résilie l'abonnement Stripe avant d'effacer quoi que ce soit", async () => {
@@ -452,7 +436,7 @@ describe('AuthService', () => {
         order.push('stripe');
         return Promise.resolve();
       });
-      dataRetentionMock.eraseOrganizationFiles.mockImplementation(() => {
+      dataRetentionMock.eraseUserFiles.mockImplementation(() => {
         order.push('files');
         return Promise.resolve();
       });
@@ -488,16 +472,16 @@ describe('AuthService', () => {
       );
     });
 
-    it('efface les fichiers des seules organisations réellement supprimées', async () => {
+    it('efface les fichiers du seul compte supprimé', async () => {
       await service.deleteAccount('firebase-uid-123');
 
-      expect(dataRetentionMock.eraseOrganizationFiles).toHaveBeenCalledWith([
-        'perso-org-uuid',
-      ]);
+      expect(dataRetentionMock.eraseUserFiles).toHaveBeenCalledWith(
+        mockUser.id,
+      );
     });
 
     it("n'efface aucune ligne si l'effacement des fichiers échoue", async () => {
-      dataRetentionMock.eraseOrganizationFiles.mockRejectedValue(
+      dataRetentionMock.eraseUserFiles.mockRejectedValue(
         new Error('volume indisponible'),
       );
 
@@ -524,28 +508,14 @@ describe('AuthService', () => {
       expect(mockFirebaseAuth.deleteUser).not.toHaveBeenCalled();
     });
 
-    it("refuse la suppression quand l'utilisateur possède une organisation partagée", async () => {
-      orgContextMock.collectOrganizationsRemovableWithOwner.mockRejectedValue(
-        new ConflictException('organisation partagée'),
-      );
-
-      await expect(service.deleteAccount('firebase-uid-123')).rejects.toThrow(
-        ConflictException,
-      );
-
-      // Aucune donnée collective touchée, et pas de résiliation d'un abonnement
-      // que l'utilisateur va conserver puisque son compte survit.
-      expect(subscriptionsMock.cancelForAccountDeletion).not.toHaveBeenCalled();
-      expect(usersService.deleteAccountData).not.toHaveBeenCalled();
-      expect(mockFirebaseAuth.deleteUser).not.toHaveBeenCalled();
-    });
-
-    it('supprime explicitement les organisations qui ne concernaient que lui', async () => {
+    it('supprime le compte sans étape préalable de tenancy', async () => {
       await service.deleteAccount('firebase-uid-123');
 
-      expect(usersService.deleteAccountData).toHaveBeenCalledWith(mockUser.id, [
-        'perso-org-uuid',
-      ]);
+      // La précondition « aucune organisation partagée » (un `ConflictException`
+      // levé avant toute écriture) a disparu avec les organisations : il n'y a
+      // plus de donnée collective à protéger d'une décision individuelle. La
+      // suppression prend donc le seul identifiant qui reste.
+      expect(usersService.deleteAccountData).toHaveBeenCalledWith(mockUser.id);
       expect(mockFirebaseAuth.deleteUser).toHaveBeenCalledWith(
         'firebase-uid-123',
       );
@@ -601,7 +571,7 @@ describe('AuthService', () => {
     const expectNothingDestroyed = () => {
       expect(usersService.transferProjects).not.toHaveBeenCalled();
       expect(usersService.deleteAccountData).not.toHaveBeenCalled();
-      expect(dataRetentionMock.eraseOrganizationFiles).not.toHaveBeenCalled();
+      expect(dataRetentionMock.eraseUserFiles).not.toHaveBeenCalled();
       expect(storageMock.deletePrefix).not.toHaveBeenCalled();
       expect(mockFirebaseAuth.deleteUser).not.toHaveBeenCalled();
     };
@@ -674,9 +644,6 @@ describe('AuthService', () => {
       usersService.transferProjects.mockResolvedValue(undefined);
       mockFirebaseAuth.deleteUser.mockResolvedValue(undefined);
       usersService.deleteAccountData.mockResolvedValue(undefined);
-      orgContextMock.collectOrganizationsRemovableWithOwner.mockResolvedValue([
-        'anon-org-uuid',
-      ]);
 
       const result = await service.mergeGuestAccount(
         'firebase-uid-123',
@@ -700,20 +667,14 @@ describe('AuthService', () => {
       expect(usersService.transferProjects).toHaveBeenCalledWith(
         'anon-db-id',
         mockUser.id,
-        'org-uuid',
       );
-      // L'espace personnel de l'invité ne peut plus disparaître en cascade
-      // (`FK_organizations_owner` en RESTRICT) : il est supprimé explicitement.
-      expect(usersService.deleteAccountData).toHaveBeenCalledWith(
-        'anon-db-id',
-        ['anon-org-uuid'],
-      );
+      expect(usersService.deleteAccountData).toHaveBeenCalledWith('anon-db-id');
       // `transferProjects` ne déplace que les projets vivants : ceux que
-      // l'invité avait supprimés restent dans son organisation et partent avec
-      // elle. Leurs fichiers doivent partir avant, comme pour un compte normal.
-      expect(dataRetentionMock.eraseOrganizationFiles).toHaveBeenCalledWith([
-        'anon-org-uuid',
-      ]);
+      // l'invité avait supprimés restent les siens et partent avec son compte.
+      // Leurs fichiers doivent partir avant, comme pour un compte normal.
+      expect(dataRetentionMock.eraseUserFiles).toHaveBeenCalledWith(
+        'anon-db-id',
+      );
       // Même geste que `deleteAccount` (E6-2) : purge du préfixe d'export de
       // l'invité, pas de celui du compte cible.
       expect(storageMock.deletePrefix).toHaveBeenCalledWith(

@@ -304,7 +304,6 @@ export class EstimationsService {
 
   async estimate(
     projectId: string,
-    organizationId: string,
     userId: string,
     skillLevelOverride?: SkillLevel,
     isGuest = false,
@@ -329,10 +328,7 @@ export class EstimationsService {
       }
     }
 
-    const rooms = await this.projectsService.getRooms(
-      projectId,
-      organizationId,
-    );
+    const rooms = await this.projectsService.getRooms(projectId, userId);
 
     // Une pièce est estimable si elle a des dimensions ET ≥ 1 work item.
     const estimableRooms = rooms.filter(
@@ -648,7 +644,7 @@ export class EstimationsService {
    * Estimation multi-pièces **sans persistance** (BACKLOG PLAT-5) : ni projet,
    * ni pièce, ni `estimation_results`. C'est ce qui rend l'API publique
    * utilisable par une intégration tierce ou un widget embarqué sans lui ouvrir
-   * la moindre surface sur les données métier de l'organisation.
+   * la moindre surface sur les données métier du compte.
    *
    * Elle vit ici, et non dans le module `api-keys`, pour ne pas dupliquer
    * `loadMaterialInputs` : en recopier le corps forkerait l'invariant
@@ -830,9 +826,9 @@ export class EstimationsService {
 
   async getLatest(
     projectId: string,
-    organizationId: string,
+    userId: string,
   ): Promise<EstimationResult> {
-    await this.projectsService.findOneForOrg(projectId, organizationId);
+    await this.projectsService.findOneForUser(projectId, userId);
 
     const result = await this.estimationRepo.findOne({
       where: { project_id: projectId },
@@ -860,9 +856,9 @@ export class EstimationsService {
 
   async getHistory(
     projectId: string,
-    organizationId: string,
+    userId: string,
   ): Promise<EstimationResult[]> {
-    await this.projectsService.findOneForOrg(projectId, organizationId);
+    await this.projectsService.findOneForUser(projectId, userId);
 
     return this.estimationRepo.find({
       where: { project_id: projectId },

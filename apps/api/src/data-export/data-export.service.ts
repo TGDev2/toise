@@ -12,9 +12,6 @@ import {
 import type { StorageProvider } from '../photos/storage/storage.interface';
 import { STORAGE_PROVIDER } from '../photos/storage/storage.interface';
 import { User } from '../users/entities/user.entity';
-import { Organization } from '../organizations/entities/organization.entity';
-import { OrganizationMembership } from '../organizations/entities/organization-membership.entity';
-import { OrganizationInvitation } from '../organizations/entities/organization-invitation.entity';
 import { Client } from '../clients/entities/client.entity';
 import { CompanyProfile } from '../company-profiles/entities/company-profile.entity';
 import { Project } from '../projects/entities/project.entity';
@@ -95,7 +92,7 @@ export const EXCLUDED_ENTITIES: { table: string; reason: string }[] = [
   {
     table: 'learned_waste_factors',
     reason:
-      'Agrégat statistique inter-organisations (sample_size), non attribuable à un compte individuel.',
+      'Agrégat statistique inter-comptes (sample_size), non attribuable à un compte individuel.',
   },
   {
     table: 'cost_benchmarks',
@@ -135,9 +132,6 @@ export const EXCLUDED_ENTITIES: { table: string; reason: string }[] = [
 /** Tables couvertes par l'export, dans le même vocabulaire que `EXCLUDED_ENTITIES`. */
 export const EXPORTED_ENTITIES: string[] = [
   'users',
-  'organizations',
-  'organization_memberships',
-  'organization_invitations',
   'projects',
   'rooms',
   'room_dimensions',
@@ -234,12 +228,6 @@ export class DataExportService {
     private readonly requestsRepo: Repository<DataExportRequest>,
     @InjectRepository(User)
     private readonly usersRepo: Repository<User>,
-    @InjectRepository(Organization)
-    private readonly organizationsRepo: Repository<Organization>,
-    @InjectRepository(OrganizationMembership)
-    private readonly membershipsRepo: Repository<OrganizationMembership>,
-    @InjectRepository(OrganizationInvitation)
-    private readonly invitationsRepo: Repository<OrganizationInvitation>,
     @InjectRepository(Client)
     private readonly clientsRepo: Repository<Client>,
     @InjectRepository(CompanyProfile)
@@ -491,11 +479,12 @@ export class DataExportService {
   /**
    * Assemble la donnée exportée pour un compte, sans rien écrire sur disque.
    *
-   * Périmètre d'une organisation : **entier**, pas seulement ce que
-   * l'utilisateur y a lui-même créé — décision validée avec le produit : un
-   * membre voit déjà toute la donnée de ses organisations dans l'application,
-   * l'export ne révèle donc rien de nouveau, et c'est ce que promet l'énoncé
-   * (« organisations dont il est membre, projets... »).
+   * Le périmètre est le compte, et rien d'autre. Jusqu'à E4-1 le manifeste
+   * exposait un tableau `organizations[]` et exportait chacune **dans son
+   * intégralité**, y compris celles où le compte n'était que membre. Les
+   * organisations supprimées, cette indirection n'a plus d'objet : le contenu
+   * de l'espace de travail est remonté à la racine du manifeste. C'est un
+   * changement de forme du JSON, d'où le passage de `format_version` à `2.0`.
    */
   async buildManifest(userId: string): Promise<ExportBundle> {
     const user = await this.usersRepo.findOne({ where: { id: userId } });
@@ -512,21 +501,11 @@ export class DataExportService {
     });
     const billingHistory = await this.buildBillingHistory(subscription);
 
-    const memberships = await this.membershipsRepo.find({
-      where: { user_id: userId },
-    });
-    const organizationIds = memberships.map((m) => m.organization_id);
-
-    const organizations = await Promise.all(
-      organizationIds.map((organizationId) =>
-        this.buildOrganizationManifest(
-          organizationId,
-          userId,
-          photoRefs,
-          quotePdfRefs,
-          invoicePdfRefs,
-        ),
-      ),
+    const workspace = await this.buildWorkspaceManifest(
+      userId,
+      photoRefs,
+      quotePdfRefs,
+      invoicePdfRefs,
     );
 
     const [
@@ -552,11 +531,11 @@ export class DataExportService {
     const manifest: Record<string, unknown> = {
       _documentation: {
         generated_at: new Date().toISOString(),
-        format_version: '1.0',
+        format_version: '2.0',
         purpose:
           "Export des données personnelles du compte Chiffréo, au titre de l'article 20 du RGPD (droit à la portabilité).",
         scope_notes: [
-          "Chaque organisation listée sous « organizations » est exportée dans son intégralité (projets, clients, devis, factures…), y compris pour les organisations où ce compte n'est que membre — cohérent avec ce que l'application montre déjà à tout membre.",
+          "Le périmètre est le compte : projets, clients, devis et factures sont ceux dont ce compte est propriétaire, et il n'en existe pas d'autres. Les versions antérieures du format (1.0) groupaient ces données sous « organizations » ; la notion d'organisation a été supprimée du produit.",
           "L'activité communautaire (« community_activity ») ne recense que les likes et commentaires posés PAR ce compte. Les likes/commentaires posés par d'autres comptes sur une publication de ce compte ne sont pas énumérés nominativement ; seul le compteur agrégé déjà public (community_projects[].likes_count) est repris.",
           "Les vignettes de photo ne sont pas incluses (fichier dérivé) ; seule la photo originale l'est, sous documents/photos/.",
           "Les PDF de devis/factures sont regénérés au moment de l'export, à l'identique de ceux téléchargeables depuis l'application.",
@@ -564,7 +543,7 @@ export class DataExportService {
         excluded_entities: EXCLUDED_ENTITIES,
       },
       profile: this.toUserManifest(user, subscription, billingHistory),
-      organizations,
+      ...workspace,
       community_activity: {
         likes: ownLikes.map((like) => ({
           id: like.id,
@@ -627,32 +606,23 @@ export class DataExportService {
     return { manifest, photoRefs, quotePdfRefs, invoicePdfRefs };
   }
 
-  private async buildOrganizationManifest(
-    organizationId: string,
-    exportedUserId: string,
+  private async buildWorkspaceManifest(
+    userId: string,
     photoRefs: PhotoArchiveRef[],
     quotePdfRefs: QuotePdfRef[],
     invoicePdfRefs: InvoicePdfRef[],
   ): Promise<Record<string, unknown>> {
-    const [organization, allMemberships, invitations, clients, companyProfile] =
-      await Promise.all([
-        this.organizationsRepo.findOne({ where: { id: organizationId } }),
-        this.membershipsRepo.find({
-          where: { organization_id: organizationId },
-        }),
-        this.invitationsRepo.find({
-          where: { organization_id: organizationId },
-        }),
-        this.clientsRepo.find({ where: { organization_id: organizationId } }),
-        this.companyProfilesRepo.findOne({
-          where: { organization_id: organizationId },
-        }),
-      ]);
+    const [clients, companyProfile] = await Promise.all([
+      this.clientsRepo.find({ where: { user_id: userId } }),
+      this.companyProfilesRepo.findOne({
+        where: { user_id: userId },
+      }),
+    ]);
 
     const clientsById = new Map(clients.map((c) => [c.id, c]));
 
     const projects = await this.projectsRepo.find({
-      where: { organization_id: organizationId },
+      where: { user_id: userId },
       withDeleted: true,
     });
     const projectIds = projects.map((p) => p.id);
@@ -698,8 +668,8 @@ export class DataExportService {
         : Promise.resolve([]),
       // Contrairement aux devis, une facture peut survivre à la suppression de
       // son projet (`project_id` en SET NULL, conservation légale art. L102 B
-      // LPF) : on la récupère par organisation, pas par projet.
-      this.invoicesRepo.find({ where: { organization_id: organizationId } }),
+      // LPF) : on la récupère par compte, pas par projet.
+      this.invoicesRepo.find({ where: { user_id: userId } }),
       projectIds.length
         ? this.communityProjectsRepo.find({
             where: { project_id: In(projectIds) },
@@ -782,34 +752,6 @@ export class DataExportService {
     }
 
     return {
-      organization: organization
-        ? {
-            id: organization.id,
-            name: organization.name,
-            owner_user_id: organization.owner_user_id,
-            is_personal: organization.is_personal,
-            created_at: organization.created_at,
-            updated_at: organization.updated_at,
-          }
-        : null,
-      my_role:
-        allMemberships.find((m) => m.user_id === exportedUserId)?.role ?? null,
-      memberships: allMemberships.map((m) => ({
-        id: m.id,
-        user_id: m.user_id,
-        role: m.role,
-        created_at: m.created_at,
-        updated_at: m.updated_at,
-      })),
-      invitations: invitations.map((inv) => ({
-        id: inv.id,
-        email: inv.email,
-        role: inv.role,
-        invited_by_user_id: inv.invited_by_user_id,
-        expires_at: inv.expires_at,
-        accepted_at: inv.accepted_at,
-        created_at: inv.created_at,
-      })),
       company_profile: companyProfile
         ? this.toCompanyProfileManifest(companyProfile)
         : null,
@@ -862,7 +804,6 @@ export class DataExportService {
     return {
       id: project.id,
       user_id: project.user_id,
-      organization_id: project.organization_id,
       name: project.name,
       room_name: project.room_name,
       work_type: project.work_type,
@@ -983,7 +924,6 @@ export class DataExportService {
   ): Record<string, unknown> {
     return {
       id: validation.id,
-      organization_id: validation.organization_id,
       user_id: validation.user_id,
       user_email: validation.user_email,
       quantities_fingerprint: validation.quantities_fingerprint,
@@ -998,7 +938,6 @@ export class DataExportService {
   ): Record<string, unknown> {
     return {
       id: correction.id,
-      organization_id: correction.organization_id,
       user_id: correction.user_id,
       material_id: correction.material_id,
       material_name: correction.material_name,
@@ -1244,7 +1183,6 @@ export class DataExportService {
         referral_code: user.referral_code,
         referred_by_user_id: user.referred_by_user_id,
         referral_converted_at: user.referral_converted_at,
-        active_organization_id: user.active_organization_id,
         created_at: user.created_at,
         updated_at: user.updated_at,
       },

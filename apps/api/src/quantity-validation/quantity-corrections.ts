@@ -16,8 +16,7 @@ import {
 
 export interface QuantityCorrectionContext {
   projectId: string;
-  organizationId: string;
-  userId: string | null;
+  userId: string;
   /** Niveau de compétence de la dernière estimation, `null` si inconnu. */
   skillLevel: string | null;
   source: QuantityCorrectionSource;
@@ -54,7 +53,6 @@ export function buildQuantityCorrection(
   const computedUnits = itemBefore.original_units_needed;
   return {
     project_id: context.projectId,
-    organization_id: context.organizationId,
     user_id: context.userId,
     material_id: itemBefore.material_id,
     material_name: itemBefore.material_name,

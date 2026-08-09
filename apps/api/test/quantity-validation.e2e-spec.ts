@@ -9,14 +9,13 @@ import request from 'supertest';
 import type { App } from 'supertest/types';
 import { QuantityValidationsController } from '../src/quantity-validation/quantity-validations.controller';
 import { QuantityValidationsService } from '../src/quantity-validation/quantity-validations.service';
-import { OrgContextService } from '../src/organizations/org-context.service';
+import { UserContextService } from '../src/users/user-context.service';
 import { FeatureGatesService } from '../src/feature-gates/feature-gates.service';
 import { FirebaseAuthGuard } from '../src/auth/guards/firebase-auth.guard';
 import { SubscriptionTier } from '../src/users/entities/user.entity';
 
 const mockUserId = '123e4567-e89b-12d3-a456-426614174000';
 const mockProjectId = '223e4567-e89b-12d3-a456-426614174000';
-const mockOrgId = '00000000-0000-4000-8000-0000000000aa';
 const mockFirebaseUid = 'firebase-uid-123';
 
 const FINGERPRINT = 'a'.repeat(64);
@@ -43,13 +42,10 @@ const serviceMock = {
   assertValidated: jest.fn(),
 };
 
-const orgContextMock = {
+const userContextMock = {
   resolveForFirebaseUid: jest.fn().mockResolvedValue({
     user: { id: mockUserId, email: 'artisan@chiffreo.test' },
     userId: mockUserId,
-    organization: { id: mockOrgId, name: 'Mon espace', is_personal: true },
-    organizationId: mockOrgId,
-    role: 'owner',
     effectiveTier: SubscriptionTier.CONTRACTOR_ESSENTIEL,
   }),
 };
@@ -80,7 +76,7 @@ describe('QuantityValidationsController (e2e)', () => {
       controllers: [QuantityValidationsController],
       providers: [
         { provide: QuantityValidationsService, useValue: serviceMock },
-        { provide: OrgContextService, useValue: orgContextMock },
+        { provide: UserContextService, useValue: userContextMock },
         { provide: FeatureGatesService, useValue: featureGatesServiceMock },
       ],
     })
@@ -122,7 +118,6 @@ describe('QuantityValidationsController (e2e)', () => {
     });
     expect(serviceMock.getState).toHaveBeenCalledWith(
       mockProjectId,
-      mockOrgId,
       mockUserId,
     );
   });
@@ -137,7 +132,7 @@ describe('QuantityValidationsController (e2e)', () => {
     expect(body.validated_at).toBe('2026-08-08T12:00:00.000Z');
     expect(serviceMock.validate).toHaveBeenCalledWith(
       mockProjectId,
-      expect.objectContaining({ organizationId: mockOrgId }),
+      expect.objectContaining({ userId: mockUserId }),
       { fingerprint: FINGERPRINT },
     );
   });

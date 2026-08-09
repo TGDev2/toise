@@ -11,7 +11,7 @@ import { QuotesController } from '../src/quotes/quotes.controller';
 import { QuotesService } from '../src/quotes/quotes.service';
 import { QuotePdfService } from '../src/quotes/quote-pdf.service';
 import { QuoteStatus } from '../src/quotes/entities/quote.entity';
-import { OrgContextService } from '../src/organizations/org-context.service';
+import { UserContextService } from '../src/users/user-context.service';
 import { FeatureGatesService } from '../src/feature-gates/feature-gates.service';
 import { CompanyProfilesService } from '../src/company-profiles/company-profiles.service';
 import { ClientsService } from '../src/clients/clients.service';
@@ -59,8 +59,8 @@ const mockLaborProposal = [
 
 const quotesServiceMock = {
   create: jest.fn(),
-  findAllForOrg: jest.fn(),
-  findOneForOrg: jest.fn(),
+  findAllForUser: jest.fn(),
+  findOneForUser: jest.fn(),
   update: jest.fn(),
   updateStatus: jest.fn(),
   remove: jest.fn(),
@@ -69,24 +69,16 @@ const quotesServiceMock = {
 };
 
 const quotePdfServiceMock = { generatePdf: jest.fn() };
-const companyProfilesServiceMock = { findByOrganizationId: jest.fn() };
-const clientsServiceMock = { findOneForOrg: jest.fn() };
+const companyProfilesServiceMock = { findByUserId: jest.fn() };
+const clientsServiceMock = { findOneForUser: jest.fn() };
 
-const mockOrgId = '00000000-0000-4000-8000-0000000000aa';
-const orgContextMock = {
+const userContextMock = {
   resolveForFirebaseUid: jest.fn().mockResolvedValue({
     user: { id: mockUserId, subscription_tier: SubscriptionTier.FREE },
     userId: mockUserId,
-    organization: { id: mockOrgId, name: 'Mon espace', is_personal: true },
-    organizationId: mockOrgId,
-    role: 'owner',
     effectiveTier: SubscriptionTier.FREE,
   }),
   resolveForUser: jest.fn(),
-  getOrCreatePersonalOrganization: jest
-    .fn()
-    .mockResolvedValue({ id: mockOrgId }),
-  findMembership: jest.fn(),
 };
 
 const featureGatesServiceMock = {
@@ -100,8 +92,8 @@ describe('QuotesController (e2e)', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     quotesServiceMock.create.mockResolvedValue(mockQuote);
-    quotesServiceMock.findAllForOrg.mockResolvedValue([mockQuote]);
-    quotesServiceMock.findOneForOrg.mockResolvedValue(mockQuote);
+    quotesServiceMock.findAllForUser.mockResolvedValue([mockQuote]);
+    quotesServiceMock.findOneForUser.mockResolvedValue(mockQuote);
     quotesServiceMock.update.mockResolvedValue(mockQuote);
     quotesServiceMock.proposeLaborLines.mockResolvedValue(mockLaborProposal);
     quotesServiceMock.getCoveredRoomNames.mockResolvedValue(['Salon']);
@@ -116,7 +108,7 @@ describe('QuotesController (e2e)', () => {
       providers: [
         { provide: QuotesService, useValue: quotesServiceMock },
         { provide: QuotePdfService, useValue: quotePdfServiceMock },
-        { provide: OrgContextService, useValue: orgContextMock },
+        { provide: UserContextService, useValue: userContextMock },
         { provide: FeatureGatesService, useValue: featureGatesServiceMock },
         {
           provide: CompanyProfilesService,
@@ -186,7 +178,7 @@ describe('QuotesController (e2e)', () => {
         });
 
       expect(quotesServiceMock.proposeLaborLines).toHaveBeenCalledWith(
-        mockOrgId,
+        mockUserId,
         mockProjectId,
         mockEstimationId,
       );
@@ -217,7 +209,7 @@ describe('QuotesController (e2e)', () => {
 
     function lastCreateDto(): { labor_items?: { label: string }[] } {
       const calls = quotesServiceMock.create.mock.calls as unknown[][];
-      return calls[calls.length - 1][2] as {
+      return calls[calls.length - 1][1] as {
         labor_items?: { label: string }[];
       };
     }
@@ -347,7 +339,7 @@ describe('QuotesController (e2e)', () => {
 
       expect(quotesServiceMock.update).toHaveBeenCalledWith(
         mockQuoteId,
-        mockOrgId,
+        mockUserId,
         expect.objectContaining({ labor_items: [] }),
       );
     });
@@ -365,7 +357,7 @@ describe('QuotesController (e2e)', () => {
   describe('feature gate export_devis', () => {
     beforeEach(() => {
       featureGatesServiceMock.isFeatureAllowed.mockResolvedValue(false);
-      companyProfilesServiceMock.findByOrganizationId.mockResolvedValue({
+      companyProfilesServiceMock.findByUserId.mockResolvedValue({
         id: 'company-1',
       });
       quotePdfServiceMock.generatePdf.mockResolvedValue(

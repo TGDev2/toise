@@ -4,7 +4,7 @@ import { Invoice } from './entities/invoice.entity';
 import { InvoicesService } from './invoices.service';
 import { InvoicePdfService } from './invoice-pdf.service';
 import { InvoicesController } from './invoices.controller';
-import { OrgContextModule } from '../organizations/org-context.module';
+import { UserContextModule } from '../users/user-context.module';
 import { FeatureGatesModule } from '../feature-gates/feature-gates.module';
 import { QuotesModule } from '../quotes/quotes.module';
 import { CompanyProfilesModule } from '../company-profiles/company-profiles.module';
@@ -19,7 +19,7 @@ import { ClientsModule } from '../clients/clients.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Invoice]),
-    OrgContextModule,
+    UserContextModule,
     FeatureGatesModule,
     QuotesModule,
     CompanyProfilesModule,

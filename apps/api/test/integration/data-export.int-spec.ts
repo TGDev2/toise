@@ -8,12 +8,6 @@ import { DataSource } from 'typeorm';
 import AdmZip from 'adm-zip';
 import { migratedDataSource, truncateUserData } from './test-database';
 import { User } from '../../src/users/entities/user.entity';
-import { Organization } from '../../src/organizations/entities/organization.entity';
-import {
-  OrganizationMembership,
-  OrganizationRole,
-} from '../../src/organizations/entities/organization-membership.entity';
-import { OrganizationInvitation } from '../../src/organizations/entities/organization-invitation.entity';
 import {
   Project,
   ProjectStatus,
@@ -93,9 +87,8 @@ import type { SubscriptionsService } from '../../src/subscriptions/subscriptions
 
 /**
  * E6-2 — portabilité RGPD, vérifiée là où l'exhaustivité se joue : un compte
- * réellement peuplé, deux organisations (dont une où le compte exporté n'est
- * que membre — la politique validée avec le produit), et une archive
- * réellement rouverte.
+ * réellement peuplé, un second compte voisin pour éprouver la frontière, et
+ * une archive réellement rouverte.
  *
  * Firebase et Stripe sont les seules doublures ici (dépendances externes que
  * ce test n'a pas vocation à exercer) ; `QuotePdfService`/`InvoicePdfService`
@@ -141,9 +134,6 @@ describe('Export RGPD (intégration, PostgreSQL et volume réels)', () => {
     service = new DataExportService(
       dataSource.getRepository(DataExportRequest),
       dataSource.getRepository(User),
-      dataSource.getRepository(Organization),
-      dataSource.getRepository(OrganizationMembership),
-      dataSource.getRepository(OrganizationInvitation),
       dataSource.getRepository(Client),
       dataSource.getRepository(CompanyProfile),
       dataSource.getRepository(Project),
@@ -192,11 +182,11 @@ describe('Export RGPD (intégration, PostgreSQL et volume réels)', () => {
   });
 
   /**
-   * Compte peuplé : deux organisations (une possédée, une où le compte
-   * exporté n'est que membre), chaque entité exportable de l'inventaire
-   * représentée au moins une fois, et de l'activité d'un second compte pour
-   * prouver la frontière de scope (E6-2, décision validée : organisation
-   * entière ; activité communautaire d'autrui non énumérée nominativement).
+   * Compte peuplé : chaque entité exportable de l'inventaire représentée au
+   * moins une fois, et un second compte doté de ses propres projet, devis et
+   * publication — c'est lui qui prouve la frontière de portée (E6-2 : rien
+   * d'un autre compte ; activité communautaire d'autrui non énumérée
+   * nominativement).
    */
   async function seedPopulatedAccount() {
     const [user1, user2, user3]: User[] = await dataSource
@@ -207,29 +197,9 @@ describe('Export RGPD (intégration, PostgreSQL et volume réels)', () => {
         { email: 'export-3@chiffreo.test', firebase_uid: 'firebase-export-3' },
       ]);
 
-    // ── Organisation A : possédée par user1 ──
-    const orgA = await dataSource.getRepository(Organization).save({
-      name: 'Org A',
-      owner_user_id: user1.id,
-      is_personal: true,
-    });
-    await dataSource.getRepository(OrganizationMembership).save({
-      organization_id: orgA.id,
-      user_id: user1.id,
-      role: OrganizationRole.OWNER,
-    });
-    const invitation = await dataSource
-      .getRepository(OrganizationInvitation)
-      .save({
-        organization_id: orgA.id,
-        email: 'invite@chiffreo.test',
-        token_hash: 'hash-test',
-        invited_by_user_id: user1.id,
-        expires_at: new Date(Date.now() + 86_400_000),
-      });
+    // ── Compte A : le compte exporté ──
     const companyProfile = await dataSource.getRepository(CompanyProfile).save({
       user_id: user1.id,
-      organization_id: orgA.id,
       raison_sociale: 'Chiffréo Test SARL',
       siret: '12345678900011',
       address_line1: '1 rue du Test',
@@ -240,7 +210,6 @@ describe('Export RGPD (intégration, PostgreSQL et volume réels)', () => {
     });
     const client = await dataSource.getRepository(Client).save({
       user_id: user1.id,
-      organization_id: orgA.id,
       name: 'Client Test',
       email: 'client@example.com',
     });
@@ -257,7 +226,6 @@ describe('Export RGPD (intégration, PostgreSQL et volume réels)', () => {
 
     const projectA = await dataSource.getRepository(Project).save({
       user_id: user1.id,
-      organization_id: orgA.id,
       name: 'Chantier A',
       room_name: 'Salon',
       work_type: ProjectWorkTypeEnum.PAINTING,
@@ -320,7 +288,6 @@ describe('Export RGPD (intégration, PostgreSQL et volume réels)', () => {
     });
     const quote = await dataSource.getRepository(Quote).save({
       user_id: user1.id,
-      organization_id: orgA.id,
       project_id: projectA.id,
       client_id: client.id,
       estimation_id: estimation.id,
@@ -330,7 +297,6 @@ describe('Export RGPD (intégration, PostgreSQL et volume réels)', () => {
     });
     const invoice = await dataSource.getRepository(Invoice).save({
       user_id: user1.id,
-      organization_id: orgA.id,
       project_id: projectA.id,
       client_id: client.id,
       invoice_number: 'F-TEST-1',
@@ -368,35 +334,21 @@ describe('Export RGPD (intégration, PostgreSQL et volume réels)', () => {
       content: 'Beau chantier',
     });
 
-    // ── Organisation B : user1 n'y est que membre (politique « org entière ») ──
-    const orgB = await dataSource.getRepository(Organization).save({
-      name: 'Org B',
-      owner_user_id: user2.id,
-      is_personal: false,
-    });
-    await dataSource.getRepository(OrganizationMembership).save([
-      {
-        organization_id: orgB.id,
-        user_id: user2.id,
-        role: OrganizationRole.OWNER,
-      },
-      {
-        organization_id: orgB.id,
-        user_id: user1.id,
-        role: OrganizationRole.MEMBER,
-      },
-    ]);
-    // Pas de CompanyProfile pour orgB : prouve la dégradation « pdf_file: null ».
+    // ── Compte B : un autre compte, sa frontière ──
+    // Jusqu'à E4-1 ce bloc était « l'organisation B, où user1 n'est que
+    // membre », et l'export de user1 devait la contenir *en entier*. Sans
+    // organisation, la règle s'inverse et devient celle qui protège
+    // réellement : l'export de user1 ne doit rien contenir de user2.
+    // Le compte B n'a délibérément pas de profil d'entreprise — c'est lui qui
+    // porte la démonstration de la dégradation « pdf_file: null ».
     const projectB = await dataSource.getRepository(Project).save({
       user_id: user2.id,
-      organization_id: orgB.id,
       name: 'Chantier B',
       room_name: 'Cuisine',
       status: ProjectStatus.DRAFT,
     });
     const quoteB = await dataSource.getRepository(Quote).save({
       user_id: user2.id,
-      organization_id: orgB.id,
       project_id: projectB.id,
       estimation_id: (
         await dataSource.getRepository(EstimationResult).save({
@@ -494,7 +446,6 @@ describe('Export RGPD (intégration, PostgreSQL et volume réels)', () => {
       .getRepository(QuantityValidation)
       .save({
         project_id: projectA.id,
-        organization_id: orgA.id,
         user_id: user1.id,
         user_email: user1.email,
         quantities_fingerprint: 'b'.repeat(64),
@@ -514,7 +465,6 @@ describe('Export RGPD (intégration, PostgreSQL et volume réels)', () => {
       .getRepository(QuantityCorrection)
       .save({
         project_id: projectA.id,
-        organization_id: orgA.id,
         user_id: user1.id,
         material_id: '00000000-0000-4000-8000-0000000000f1',
         material_name: 'Mortier-colle C2',
@@ -534,9 +484,6 @@ describe('Export RGPD (intégration, PostgreSQL et volume réels)', () => {
       user1,
       user2,
       user3,
-      orgA,
-      orgB,
-      invitation,
       companyProfile,
       client,
       projectA,
@@ -574,9 +521,6 @@ describe('Export RGPD (intégration, PostgreSQL et volume réels)', () => {
     const serialized = JSON.stringify(manifest);
 
     const expectedIds: string[] = [
-      fixture.orgA.id,
-      fixture.orgB.id,
-      fixture.invitation.id,
       fixture.companyProfile.id,
       fixture.client.id,
       fixture.projectA.id,
@@ -591,8 +535,6 @@ describe('Export RGPD (intégration, PostgreSQL et volume réels)', () => {
       fixture.quote.id,
       fixture.invoice.id,
       fixture.communityA.id,
-      fixture.projectB.id,
-      fixture.quoteB.id,
       fixture.ownLike.id,
       fixture.ownComment.id,
       fixture.asReferrer.id,
@@ -614,11 +556,8 @@ describe('Export RGPD (intégration, PostgreSQL et volume réels)', () => {
     const fixture = await seedPopulatedAccount();
     const { manifest } = await service.buildManifest(fixture.user1.id);
 
-    const orgAManifest = (
-      manifest.organizations as Record<string, unknown>[]
-    ).find((o) => (o.organization as { id: string }).id === fixture.orgA.id)!;
     const projectAManifest = (
-      orgAManifest.projects as Record<string, unknown>[]
+      manifest.projects as Record<string, unknown>[]
     ).find((p) => p.id === fixture.projectA.id)!;
     const publication = projectAManifest.community_publication as Record<
       string,
@@ -651,15 +590,14 @@ describe('Export RGPD (intégration, PostgreSQL et volume réels)', () => {
 
   it('dégrade le PDF du devis sans compte-fournisseur avec la raison exacte', async () => {
     const fixture = await seedPopulatedAccount();
+    // C'est le compte B qu'on exporte ici : il a un devis mais pas de profil
+    // d'entreprise, donc pas de mentions légales d'émetteur à imprimer.
     const { manifest, quotePdfRefs } = await service.buildManifest(
-      fixture.user1.id,
+      fixture.user2.id,
     );
 
-    const orgBManifest = (
-      manifest.organizations as Record<string, unknown>[]
-    ).find((o) => (o.organization as { id: string }).id === fixture.orgB.id)!;
     const projectBManifest = (
-      orgBManifest.projects as Record<string, unknown>[]
+      manifest.projects as Record<string, unknown>[]
     ).find((p) => p.id === fixture.projectB.id)!;
     const quoteBManifest = (
       projectBManifest.quotes as Record<string, unknown>[]
@@ -670,6 +608,20 @@ describe('Export RGPD (intégration, PostgreSQL et volume réels)', () => {
     expect(quotePdfRefs.some((r) => r.quote.id === fixture.quoteB.id)).toBe(
       false,
     );
+  });
+
+  it("n'inclut jamais les données d'un autre compte", async () => {
+    const fixture = await seedPopulatedAccount();
+
+    const { manifest } = await service.buildManifest(fixture.user1.id);
+    const serialized = JSON.stringify(manifest);
+
+    // Avant E4-1 l'export incluait délibérément l'intégralité des
+    // organisations où le compte n'était que membre. Sans organisation, la
+    // frontière redevient le compte, et elle doit être étanche.
+    for (const id of [fixture.projectB.id, fixture.quoteB.id]) {
+      expect(serialized).not.toContain(id);
+    }
   });
 
   it('déclare les entités exclues et documente le format', async () => {

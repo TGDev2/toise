@@ -101,7 +101,7 @@ const workTypesRepoMock = {
 };
 
 const projectsServiceMock = {
-  findOneForOrg: jest.fn(),
+  findOneForUser: jest.fn(),
   getRooms: jest.fn(),
   getWorkItems: jest.fn(),
   updateStatus: jest.fn(),
@@ -789,9 +789,9 @@ describe('EstimationsService.estimate', () => {
       },
     ]);
 
-    await expect(
-      service.estimate('project-1', 'org-1', 'user-1'),
-    ).rejects.toThrow(BadRequestException);
+    await expect(service.estimate('project-1', 'user-1')).rejects.toThrow(
+      BadRequestException,
+    );
   });
 
   it('throws BadRequestException when no estimable room has work items', async () => {
@@ -810,13 +810,13 @@ describe('EstimationsService.estimate', () => {
       },
     ]);
 
-    await expect(
-      service.estimate('project-1', 'org-1', 'user-1'),
-    ).rejects.toThrow(BadRequestException);
+    await expect(service.estimate('project-1', 'user-1')).rejects.toThrow(
+      BadRequestException,
+    );
   });
 
   it('persists the estimation and marks the project as ESTIMATED', async () => {
-    const result = await service.estimate('project-1', 'org-1', 'user-1');
+    const result = await service.estimate('project-1', 'user-1');
 
     expect(result.project_id).toBe('project-1');
     expect(projectsServiceMock.updateStatus).toHaveBeenCalledWith(
@@ -826,7 +826,7 @@ describe('EstimationsService.estimate', () => {
   });
 
   it('tracks an estimate_created analytics event', async () => {
-    const result = await service.estimate('project-1', 'org-1', 'user-1');
+    const result = await service.estimate('project-1', 'user-1');
 
     expect(analyticsServiceMock.track).toHaveBeenCalledWith(
       AnalyticsEventName.ESTIMATE_CREATED,
@@ -837,7 +837,7 @@ describe('EstimationsService.estimate', () => {
 
   // ENG-3: surfaces à exclure (déduction manuelle simple)
   it('deducts room exclusions from the net surface', async () => {
-    const baseline = await service.estimate('project-1', 'org-1', 'user-1');
+    const baseline = await service.estimate('project-1', 'user-1');
 
     projectsServiceMock.getRooms.mockResolvedValue([
       {
@@ -857,11 +857,7 @@ describe('EstimationsService.estimate', () => {
       },
     ]);
 
-    const withExclusion = await service.estimate(
-      'project-1',
-      'org-1',
-      'user-1',
-    );
+    const withExclusion = await service.estimate('project-1', 'user-1');
 
     expect(withExclusion.items_json[0].surface_m2).toBeLessThan(
       baseline.items_json[0].surface_m2,
@@ -890,7 +886,7 @@ describe('EstimationsService.estimate', () => {
       },
     ]);
 
-    const result = await service.estimate('project-1', 'org-1', 'user-1');
+    const result = await service.estimate('project-1', 'user-1');
 
     expect(result.items_json[0].surface_m2_low).toBeDefined();
     expect(result.items_json[0].surface_m2_high).toBeDefined();
@@ -910,7 +906,7 @@ describe('EstimationsService.estimate', () => {
       estimationRepoMock.count.mockResolvedValue(GUEST_ESTIMATION_LIMIT - 1);
 
       await expect(
-        service.estimate('project-1', 'org-1', 'user-1', undefined, true),
+        service.estimate('project-1', 'user-1', undefined, true),
       ).resolves.toBeDefined();
     });
 
@@ -918,12 +914,12 @@ describe('EstimationsService.estimate', () => {
       estimationRepoMock.count.mockResolvedValue(GUEST_ESTIMATION_LIMIT);
 
       await expect(
-        service.estimate('project-1', 'org-1', 'user-1', undefined, true),
+        service.estimate('project-1', 'user-1', undefined, true),
       ).rejects.toThrow(ForbiddenException);
 
       // Même projet, même volume déjà persisté : un compte inscrit passe.
       await expect(
-        service.estimate('project-1', 'org-1', 'user-1', undefined, false),
+        service.estimate('project-1', 'user-1', undefined, false),
       ).resolves.toBeDefined();
     });
 
@@ -935,7 +931,7 @@ describe('EstimationsService.estimate', () => {
       estimationRepoMock.count.mockResolvedValue(GUEST_ESTIMATION_LIMIT);
 
       await expect(
-        service.estimate('project-1', 'org-1', 'user-1', undefined, true),
+        service.estimate('project-1', 'user-1', undefined, true),
       ).rejects.toThrow(ForbiddenException);
 
       expect(projectsServiceMock.getRooms).not.toHaveBeenCalled();
@@ -947,7 +943,7 @@ describe('EstimationsService.estimate', () => {
 
       let thrown: unknown;
       try {
-        await service.estimate('project-1', 'org-1', 'user-1', undefined, true);
+        await service.estimate('project-1', 'user-1', undefined, true);
       } catch (error) {
         thrown = error;
       }
@@ -966,7 +962,7 @@ describe('EstimationsService.estimate', () => {
       estimationRepoMock.count.mockResolvedValue(GUEST_ESTIMATION_LIMIT * 10);
 
       await expect(
-        service.estimate('project-1', 'org-1', 'user-1'),
+        service.estimate('project-1', 'user-1'),
       ).resolves.toBeDefined();
       expect(estimationRepoMock.count).not.toHaveBeenCalled();
     });

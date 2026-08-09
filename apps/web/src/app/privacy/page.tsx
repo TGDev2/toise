@@ -69,13 +69,10 @@ export default function PrivacyPage() {
           effacement, soit 44 jours au pire cas après la suppression d’un projet.
         </P>
         <P>
-          Deux exceptions, imposées par la loi ou par la nature des données. Les{' '}
-          <strong>factures</strong> émises depuis Chiffréo sont conservées au
-          titre des obligations comptables et fiscales (10 ans, code de commerce
-          art. L123-22) ; elles ne contiennent ni photo ni donnée de chantier.
-          Les projets appartenant à une <strong>organisation</strong> dont vous
-          n’êtes pas le propriétaire lui restent acquis lorsque vous la quittez :
-          votre nom en est détaché, les données restent celles de l’entreprise.
+          Une exception, imposée par la loi. Les <strong>factures</strong>{' '}
+          émises depuis Chiffréo sont conservées au titre des obligations
+          comptables et fiscales (10 ans, code de commerce art. L123-22) ; elles
+          ne contiennent ni photo ni donnée de chantier.
         </P>
       </Section>
 
@@ -89,7 +86,7 @@ export default function PrivacyPage() {
         <P>
           Depuis votre tableau de bord, le bouton « Télécharger mes données »
           génère une archive contenant tout ce que porte votre compte : profil,
-          organisations, projets (pièces, dimensions, ouvertures, exclusions et
+          projets (pièces, dimensions, ouvertures, exclusions et
           ouvrages), estimations, listes d’achat, clients, devis et factures
           (avec leurs PDF), abonnement et historique de facturation, sous la
           forme d’un fichier structuré et documenté. La génération peut prendre

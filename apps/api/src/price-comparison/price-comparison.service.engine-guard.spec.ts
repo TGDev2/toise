@@ -99,13 +99,13 @@ describe('PriceComparisonService — E5-4 engine guard (real constant)', () => {
   });
 
   it('returns no buy links even when a match would otherwise be found', async () => {
-    const result = await service.getBuyLinks('project-1', 'org-1', 'user-1');
+    const result = await service.getBuyLinks('project-1', 'user-1');
 
     expect(result).toEqual([]);
   });
 
   it('short-circuits before generating or fetching the shopping list at all', async () => {
-    await service.getBuyLinks('project-1', 'org-1', 'user-1');
+    await service.getBuyLinks('project-1', 'user-1');
 
     expect(shoppingListsServiceMock.getOrGenerate).not.toHaveBeenCalled();
     expect(lookupPrices).not.toHaveBeenCalled();

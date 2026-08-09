@@ -114,7 +114,7 @@ describe('DataRetentionService', () => {
 
   const expiredRow = {
     id: 'project-1',
-    organization_id: 'org-1',
+    user_id: 'user-1',
     deleted_at: new Date('2026-06-01T00:00:00.000Z'),
   };
 
@@ -265,15 +265,15 @@ describe('DataRetentionService', () => {
     });
   });
 
-  describe('eraseOrganizationFiles', () => {
-    it('erases the files of every project of the organizations, deleted ones included', async () => {
+  describe('eraseUserFiles', () => {
+    it('erases the files of every project of the account, deleted ones included', async () => {
       queryBuilderMock.getRawMany.mockResolvedValue([
         expiredRow,
         { ...expiredRow, id: 'project-2', deleted_at: null },
       ]);
       const service = await buildService({ days: 30 });
 
-      const summary = await service.eraseOrganizationFiles(['org-1']);
+      const summary = await service.eraseUserFiles('user-1');
 
       expect(queryBuilderMock.withDeleted).toHaveBeenCalled();
       expect(storageMock.deletePrefix).toHaveBeenCalledWith('project-1');
@@ -285,7 +285,7 @@ describe('DataRetentionService', () => {
       queryBuilderMock.getRawMany.mockResolvedValue([expiredRow]);
       const service = await buildService({ days: 30 });
 
-      await service.eraseOrganizationFiles(['org-1']);
+      await service.eraseUserFiles('user-1');
 
       expect(projectRepoMock.delete).not.toHaveBeenCalled();
     });
@@ -295,27 +295,17 @@ describe('DataRetentionService', () => {
       storageMock.deletePrefix.mockRejectedValue(new Error('EACCES'));
       const service = await buildService({ days: 30 });
 
-      await expect(service.eraseOrganizationFiles(['org-1'])).rejects.toThrow(
-        'EACCES',
-      );
-    });
-
-    it('does not query anything when the account owned no organization', async () => {
-      const service = await buildService({ days: 30 });
-
-      const summary = await service.eraseOrganizationFiles([]);
-
-      expect(projectRepoMock.createQueryBuilder).not.toHaveBeenCalled();
-      expect(summary.files).toBe(0);
+      await expect(service.eraseUserFiles('user-1')).rejects.toThrow('EACCES');
     });
 
     it('runs whatever the configured retention is — it is not a retention pass', async () => {
       queryBuilderMock.getRawMany.mockResolvedValue([expiredRow]);
       const service = await buildService({ days: 0 });
 
-      await expect(
-        service.eraseOrganizationFiles(['org-1']),
-      ).resolves.toMatchObject({ files: 1, cutoff: null });
+      await expect(service.eraseUserFiles('user-1')).resolves.toMatchObject({
+        files: 1,
+        cutoff: null,
+      });
     });
   });
 

@@ -135,15 +135,11 @@ export class ShoppingListsService {
 
   async getOrGenerate(
     projectId: string,
-    organizationId: string,
     userId: string,
   ): Promise<{ shoppingList: ShoppingList; latestEstimationId: string }> {
-    await this.projectsService.findOneForOrg(projectId, organizationId);
+    await this.projectsService.findOneForUser(projectId, userId);
 
-    const latest = await this.estimationsService.getLatest(
-      projectId,
-      organizationId,
-    );
+    const latest = await this.estimationsService.getLatest(projectId, userId);
 
     const existing = await this.shoppingListRepo.findOne({
       where: { project_id: projectId },
@@ -153,16 +149,12 @@ export class ShoppingListsService {
       return { shoppingList: existing, latestEstimationId: latest.id };
     }
 
-    const generated = await this.generate(projectId, organizationId, userId);
+    const generated = await this.generate(projectId, userId);
     return { shoppingList: generated, latestEstimationId: latest.id };
   }
 
-  async generate(
-    projectId: string,
-    organizationId: string,
-    userId: string,
-  ): Promise<ShoppingList> {
-    return this.buildAndPersist(projectId, organizationId, userId, false);
+  async generate(projectId: string, userId: string): Promise<ShoppingList> {
+    return this.buildAndPersist(projectId, userId, false);
   }
 
   /**
@@ -173,14 +165,10 @@ export class ShoppingListsService {
    */
   private async buildAndPersist(
     projectId: string,
-    organizationId: string,
     userId: string,
     preserveRealPrices: boolean,
   ): Promise<ShoppingList> {
-    const latest = await this.estimationsService.getLatest(
-      projectId,
-      organizationId,
-    );
+    const latest = await this.estimationsService.getLatest(projectId, userId);
 
     // Build work_type_code → category map
     const codes = [
@@ -353,20 +341,16 @@ export class ShoppingListsService {
 
   async update(
     projectId: string,
-    organizationId: string,
-    userId: string | null,
+    userId: string,
     dto: UpdateShoppingListDto,
   ): Promise<{ shoppingList: ShoppingList; latestEstimationId: string }> {
-    await this.projectsService.findOneForOrg(projectId, organizationId);
+    await this.projectsService.findOneForUser(projectId, userId);
 
     // Lu **avant** la transaction, et plus après : la trace des corrections
     // (E2-4) a besoin du niveau déclaré, et le rattacher à l'estimation
     // courante depuis l'intérieur du verrou allongerait sa durée pour une
     // lecture qui ne dépend pas de lui.
-    const latest = await this.estimationsService.getLatest(
-      projectId,
-      organizationId,
-    );
+    const latest = await this.estimationsService.getLatest(projectId, userId);
 
     // `items_json` est **une seule colonne** : toute correction de ligne est une
     // lecture-modification-écriture du blob entier. Sans verrou, deux PATCH
@@ -378,7 +362,6 @@ export class ShoppingListsService {
     const saved = await this.shoppingListRepo.manager.transaction((manager) =>
       this.applyUpdateLocked(manager, projectId, dto, {
         projectId,
-        organizationId,
         userId,
         skillLevel: latest.skill_level ?? null,
         source: dto.source ?? QuantityCorrectionSource.SHOPPING_LIST,
@@ -489,7 +472,7 @@ export class ShoppingListsService {
   }
 
   /**
-   * E4-4 — dernier prix relevé par l'organisation pour chaque article, hors
+   * E4-4 — dernier prix relevé par le compte pour chaque article, hors
    * chantier courant.
    *
    * L'étape « Prix » pèse 57 % du temps d'écran d'un chantier à trois corps
@@ -505,22 +488,17 @@ export class ShoppingListsService {
    */
   async findKnownPrices(
     projectId: string,
-    organizationId: string,
+    userId: string,
   ): Promise<{ materials: KnownPriceDto[]; complements: KnownPriceDto[] }> {
-    await this.projectsService.findOneForOrg(projectId, organizationId);
+    await this.projectsService.findOneForUser(projectId, userId);
 
     const [materials, complements] = await Promise.all([
-      this.queryKnownPrices(
-        'material_items',
-        'material_id',
-        projectId,
-        organizationId,
-      ),
+      this.queryKnownPrices('material_items', 'material_id', projectId, userId),
       this.queryKnownPrices(
         'complementary_items',
         'complementary_material_id',
         projectId,
-        organizationId,
+        userId,
       ),
     ]);
     return { materials, complements };
@@ -530,7 +508,7 @@ export class ShoppingListsService {
    * `DISTINCT ON` + `ORDER BY … updated_at DESC` : un seul prix par article, le
    * plus récemment enregistré. Le `CASE` protège des listes dont le bloc
    * attendu ne serait pas un tableau — `jsonb_array_elements` lève sinon, et
-   * une seule ligne malformée priverait toute l'organisation du rappel.
+   * une seule ligne malformée priverait tout le compte du rappel.
    *
    * `collection` et `idKey` ne viennent jamais de l'utilisateur : ce sont les
    * deux littéraux passés par `findKnownPrices`.
@@ -539,7 +517,7 @@ export class ShoppingListsService {
     collection: 'material_items' | 'complementary_items',
     idKey: 'material_id' | 'complementary_material_id',
     projectId: string,
-    organizationId: string,
+    userId: string,
   ): Promise<KnownPriceDto[]> {
     const rows = await this.shoppingListRepo.query<KnownPriceRow[]>(
       `
@@ -558,14 +536,14 @@ export class ShoppingListsService {
           ELSE '[]'::jsonb
         END
       ) AS item
-      WHERE p.organization_id = $1
+      WHERE p.user_id = $1
         AND p.deleted_at IS NULL
         AND sl.project_id <> $2
         AND item->>'real_unit_price' IS NOT NULL
         AND (item->>'real_unit_price')::float8 > 0
       ORDER BY item->>'${idKey}', sl.updated_at DESC
       `,
-      [organizationId, projectId],
+      [userId, projectId],
     );
 
     return rows.map((row) => ({
@@ -579,28 +557,22 @@ export class ShoppingListsService {
 
   async regenerate(
     projectId: string,
-    organizationId: string,
     userId: string,
   ): Promise<{ shoppingList: ShoppingList; latestEstimationId: string }> {
-    await this.projectsService.findOneForOrg(projectId, organizationId);
+    await this.projectsService.findOneForUser(projectId, userId);
 
     // Relevés de prix et régénération dans la même écriture verrouillée :
     // cf. `persistGeneratedLocked`.
-    const shoppingList = await this.buildAndPersist(
-      projectId,
-      organizationId,
-      userId,
-      true,
-    );
+    const shoppingList = await this.buildAndPersist(projectId, userId, true);
 
     return { shoppingList, latestEstimationId: shoppingList.estimation_id };
   }
 
   async getBudgetSummary(
     projectId: string,
-    organizationId: string,
+    userId: string,
   ): Promise<{ summary: BudgetSummary; isFinalized: boolean }> {
-    await this.projectsService.findOneForOrg(projectId, organizationId);
+    await this.projectsService.findOneForUser(projectId, userId);
 
     const shoppingList = await this.shoppingListRepo.findOne({
       where: { project_id: projectId },
@@ -630,9 +602,9 @@ export class ShoppingListsService {
 
   async getEcoSuggestions(
     projectId: string,
-    organizationId: string,
+    userId: string,
   ): Promise<{ eco_items: EcoItemDto[]; suggestions: EcoSuggestionDto[] }> {
-    await this.projectsService.findOneForOrg(projectId, organizationId);
+    await this.projectsService.findOneForUser(projectId, userId);
 
     const shoppingList = await this.shoppingListRepo.findOne({
       where: { project_id: projectId },
@@ -700,10 +672,9 @@ export class ShoppingListsService {
    */
   async finalizeBudgetSummary(
     projectId: string,
-    organizationId: string,
     userId: string,
   ): Promise<BudgetSummary> {
-    await this.projectsService.findOneForOrg(projectId, organizationId);
+    await this.projectsService.findOneForUser(projectId, userId);
 
     const { summary, shoppingList, estimation } =
       await this.shoppingListRepo.manager.transaction((manager) =>
@@ -712,7 +683,6 @@ export class ShoppingListsService {
 
     await this.recordCompletionSideEffects(
       projectId,
-      organizationId,
       userId,
       estimation,
       shoppingList,
@@ -788,7 +758,6 @@ export class ShoppingListsService {
    */
   private async recordCompletionSideEffects(
     projectId: string,
-    organizationId: string,
     userId: string,
     estimation: Awaited<ReturnType<EstimationsService['findById']>>,
     shoppingList: ShoppingList,
@@ -800,7 +769,6 @@ export class ShoppingListsService {
     // connus pour tout utilisateur.
     await this.logbookService.recordChantierCompletion(
       projectId,
-      organizationId,
       userId,
       estimation,
       shoppingList,
@@ -819,14 +787,14 @@ export class ShoppingListsService {
    */
   async getCloseout(
     projectId: string,
-    organizationId: string,
+    userId: string,
     today: string = new Date().toISOString().slice(0, 10),
   ): Promise<{
     closeout: CloseoutSummary;
     budgetSummary: BudgetSummary | null;
     isFinalized: boolean;
   }> {
-    await this.projectsService.findOneForOrg(projectId, organizationId);
+    await this.projectsService.findOneForUser(projectId, userId);
 
     const shoppingList = await this.shoppingListRepo.findOne({
       where: { project_id: projectId },
@@ -857,7 +825,6 @@ export class ShoppingListsService {
    */
   async recordCloseout(
     projectId: string,
-    organizationId: string,
     userId: string,
     dto: CloseoutRequestDto,
     today: string = new Date().toISOString().slice(0, 10),
@@ -866,7 +833,7 @@ export class ShoppingListsService {
     budgetSummary: BudgetSummary | null;
     isFinalized: boolean;
   }> {
-    await this.projectsService.findOneForOrg(projectId, organizationId);
+    await this.projectsService.findOneForUser(projectId, userId);
 
     const { summary, shoppingList, estimation } =
       await this.shoppingListRepo.manager.transaction(async (manager) => {
@@ -876,7 +843,6 @@ export class ShoppingListsService {
 
     await this.recordCompletionSideEffects(
       projectId,
-      organizationId,
       userId,
       estimation,
       shoppingList,
@@ -1033,9 +999,9 @@ export class ShoppingListsService {
 
   async generateShareToken(
     projectId: string,
-    organizationId: string,
+    userId: string,
   ): Promise<{ share_token: string; expires_at: string }> {
-    await this.projectsService.findOneForOrg(projectId, organizationId);
+    await this.projectsService.findOneForUser(projectId, userId);
 
     const shoppingList = await this.shoppingListRepo.findOne({
       where: { project_id: projectId },
@@ -1068,11 +1034,8 @@ export class ShoppingListsService {
     };
   }
 
-  async revokeShareToken(
-    projectId: string,
-    organizationId: string,
-  ): Promise<void> {
-    await this.projectsService.findOneForOrg(projectId, organizationId);
+  async revokeShareToken(projectId: string, userId: string): Promise<void> {
+    await this.projectsService.findOneForUser(projectId, userId);
 
     const shoppingList = await this.shoppingListRepo.findOne({
       where: { project_id: projectId },

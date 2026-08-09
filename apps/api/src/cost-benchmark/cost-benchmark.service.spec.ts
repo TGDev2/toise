@@ -77,13 +77,13 @@ function makeShoppingList(
 }
 
 /**
- * 10 chantiers identiques portés par 10 organisations distinctes : le plus
- * petit jeu qui franchit les deux seuils (10 observations, 5 organisations).
+ * 10 chantiers identiques portés par 10 comptes distincts : le plus
+ * petit jeu qui franchit les deux seuils (10 observations, 5 comptes).
  */
 function makeQualifyingCohort(costPerM2: number, surfaceM2 = 20) {
   const lists: ShoppingList[] = [];
   const estimations: EstimationResult[] = [];
-  const orgRows: { id: string; organization_id: string }[] = [];
+  const orgRows: { id: string; user_id: string }[] = [];
 
   for (let i = 0; i < 10; i++) {
     lists.push(
@@ -98,7 +98,7 @@ function makeQualifyingCohort(costPerM2: number, surfaceM2 = 20) {
     estimations.push(
       makeEstimation(i, [{ material_id: 'mat-paint', surface_m2: surfaceM2 }]),
     );
-    orgRows.push({ id: `proj-${i}`, organization_id: `org-${i}` });
+    orgRows.push({ id: `proj-${i}`, user_id: `org-${i}` });
   }
 
   return { lists, estimations, orgRows };
@@ -143,7 +143,7 @@ describe('CostBenchmarkService', () => {
     estimationRepoMock.find.mockResolvedValue([]);
     projectQueryBuilderMock.getRawMany.mockResolvedValue([]);
     projectQueryBuilderMock.getRawOne.mockResolvedValue({
-      organization_id: 'org-mine',
+      user_id: 'user-mine',
     });
     benchmarkRepoMock.find.mockResolvedValue([]);
 
@@ -205,9 +205,9 @@ describe('CostBenchmarkService', () => {
       );
     });
 
-    it('écarte un projet supprimé — son organisation n’est plus résolue', async () => {
+    it('écarte un projet supprimé — son compte n’est plus résolu', async () => {
       const cohort = makeQualifyingCohort(12);
-      // `loadOrganizationIds` ne jointe pas les projets supprimés : deux
+      // `loadUserIds` ne jointe pas les projets supprimés : deux
       // chantiers disparaissent de la cohorte, qui repasse sous le volume.
       cohort.orgRows = cohort.orgRows.slice(0, 8);
       loadCohort(cohort);
@@ -250,7 +250,7 @@ describe('CostBenchmarkService', () => {
       shoppingListRepoMock.find.mockResolvedValue([list]);
       estimationRepoMock.find.mockResolvedValue([estimation]);
       projectQueryBuilderMock.getRawMany.mockResolvedValue([
-        { id: list.project_id, organization_id: 'org-1' },
+        { id: list.project_id, user_id: 'user-1' },
       ]);
       return service.run();
     }
@@ -427,7 +427,7 @@ describe('CostBenchmarkService', () => {
     });
 
     it('situe le projet sous la médiane de sa cohorte', async () => {
-      const result = await service.getForProject('proj-1', 'org-mine');
+      const result = await service.getForProject('proj-1', 'user-mine');
 
       expect(result.comparisons).toHaveLength(1);
       expect(result.comparisons[0]).toMatchObject({
@@ -471,7 +471,7 @@ describe('CostBenchmarkService', () => {
       shoppingListRepoMock.findOne.mockResolvedValue(shoppingList);
       estimationRepoMock.findOne.mockResolvedValue(estimation);
 
-      const result = await service.getForProject('proj-1', 'org-mine');
+      const result = await service.getForProject('proj-1', 'user-mine');
       const budget = computeBudgetSummary(
         shoppingList.items_json,
         estimation.items_json,
@@ -485,7 +485,7 @@ describe('CostBenchmarkService', () => {
     it('signale un ouvrage sans cohorte publiable au lieu de l’inventer', async () => {
       benchmarkRepoMock.find.mockResolvedValue([]);
 
-      const result = await service.getForProject('proj-1', 'org-mine');
+      const result = await service.getForProject('proj-1', 'user-mine');
 
       expect(result.comparisons).toEqual([]);
       expect(result.overall).toBeNull();
@@ -497,7 +497,7 @@ describe('CostBenchmarkService', () => {
         makeEstimation(1, [{ material_id: 'mat-paint', surface_m2: 4 }]),
       );
 
-      const result = await service.getForProject('proj-1', 'org-mine');
+      const result = await service.getForProject('proj-1', 'user-mine');
 
       expect(result.comparisons).toEqual([]);
       expect(result.work_types_without_reference).toEqual(['Label painting']);
@@ -506,7 +506,7 @@ describe('CostBenchmarkService', () => {
     it('ne rend rien sans liste d’achats', async () => {
       shoppingListRepoMock.findOne.mockResolvedValue(null);
 
-      const result = await service.getForProject('proj-1', 'org-mine');
+      const result = await service.getForProject('proj-1', 'user-mine');
 
       expect(result).toEqual({
         comparisons: [],
@@ -516,13 +516,13 @@ describe('CostBenchmarkService', () => {
       });
     });
 
-    it('refuse un projet d’une autre organisation', async () => {
+    it('refuse un projet d’un autre compte', async () => {
       projectQueryBuilderMock.getRawOne.mockResolvedValue({
-        organization_id: 'org-other',
+        user_id: 'user-other',
       });
 
       await expect(
-        service.getForProject('proj-1', 'org-mine'),
+        service.getForProject('proj-1', 'user-mine'),
       ).rejects.toBeInstanceOf(ForbiddenException);
     });
 
@@ -530,7 +530,7 @@ describe('CostBenchmarkService', () => {
       projectQueryBuilderMock.getRawOne.mockResolvedValue(undefined);
 
       await expect(
-        service.getForProject('proj-1', 'org-mine'),
+        service.getForProject('proj-1', 'user-mine'),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
   });

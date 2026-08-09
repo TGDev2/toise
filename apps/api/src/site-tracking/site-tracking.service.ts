@@ -23,9 +23,9 @@ export class SiteTrackingService {
 
   async findAllForProject(
     projectId: string,
-    organizationId: string,
+    userId: string,
   ): Promise<SiteMilestone[]> {
-    await this.projectsService.findOneForOrg(projectId, organizationId);
+    await this.projectsService.findOneForUser(projectId, userId);
     return this.repo.find({
       where: { project_id: projectId },
       order: { sort_order: 'ASC', created_at: 'ASC' },
@@ -34,10 +34,10 @@ export class SiteTrackingService {
 
   async create(
     projectId: string,
-    organizationId: string,
+    userId: string,
     dto: CreateMilestoneDto,
   ): Promise<SiteMilestone> {
-    await this.projectsService.findOneForOrg(projectId, organizationId);
+    await this.projectsService.findOneForUser(projectId, userId);
 
     const sortOrder =
       dto.sort_order ??
@@ -55,10 +55,10 @@ export class SiteTrackingService {
 
   private async findOneForProject(
     projectId: string,
-    organizationId: string,
+    userId: string,
     milestoneId: string,
   ): Promise<SiteMilestone> {
-    await this.projectsService.findOneForOrg(projectId, organizationId);
+    await this.projectsService.findOneForUser(projectId, userId);
 
     const milestone = await this.repo.findOne({
       where: { id: milestoneId, project_id: projectId },
@@ -71,13 +71,13 @@ export class SiteTrackingService {
 
   async update(
     projectId: string,
-    organizationId: string,
+    userId: string,
     milestoneId: string,
     dto: UpdateMilestoneDto,
   ): Promise<SiteMilestone> {
     const milestone = await this.findOneForProject(
       projectId,
-      organizationId,
+      userId,
       milestoneId,
     );
 
@@ -107,12 +107,12 @@ export class SiteTrackingService {
 
   async remove(
     projectId: string,
-    organizationId: string,
+    userId: string,
     milestoneId: string,
   ): Promise<void> {
     const milestone = await this.findOneForProject(
       projectId,
-      organizationId,
+      userId,
       milestoneId,
     );
     await this.repo.remove(milestone);

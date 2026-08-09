@@ -32,7 +32,6 @@ const mockUser: User = {
   referral_code: null,
   referred_by_user_id: null,
   referral_converted_at: null,
-  active_organization_id: null,
   created_at: new Date('2026-03-26T00:00:00.000Z'),
   updated_at: new Date('2026-03-26T00:00:00.000Z'),
 };

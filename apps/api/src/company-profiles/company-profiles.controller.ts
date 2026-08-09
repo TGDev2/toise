@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
-import { OrgContextService } from '../organizations/org-context.service';
+import { UserContextService } from '../users/user-context.service';
 import { CompanyProfilesService } from './company-profiles.service';
 import { CreateCompanyProfileDto } from './dto/create-company-profile.dto';
 import { UpdateCompanyProfileDto } from './dto/update-company-profile.dto';
@@ -20,7 +20,7 @@ import type { DecodedIdToken } from 'firebase-admin/auth';
 export class CompanyProfilesController {
   constructor(
     private readonly companyProfilesService: CompanyProfilesService,
-    private readonly orgContext: OrgContextService,
+    private readonly userContext: UserContextService,
   ) {}
 
   @Post()
@@ -28,19 +28,19 @@ export class CompanyProfilesController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Body() dto: CreateCompanyProfileDto,
   ) {
-    const scope = await this.orgContext.resolveForFirebaseUid(firebaseUser.uid);
-    return this.companyProfilesService.create(
-      scope.organizationId,
-      scope.userId,
-      dto,
+    const scope = await this.userContext.resolveForFirebaseUid(
+      firebaseUser.uid,
     );
+    return this.companyProfilesService.create(scope.userId, dto);
   }
 
   @Get('me')
   async getMyProfile(@CurrentFirebaseUser() firebaseUser: DecodedIdToken) {
-    const scope = await this.orgContext.resolveForFirebaseUid(firebaseUser.uid);
-    const profile = await this.companyProfilesService.findByOrganizationId(
-      scope.organizationId,
+    const scope = await this.userContext.resolveForFirebaseUid(
+      firebaseUser.uid,
+    );
+    const profile = await this.companyProfilesService.findByUserId(
+      scope.userId,
     );
     if (!profile) throw new NotFoundException('Aucun profil entreprise trouve');
     return profile;
@@ -51,7 +51,9 @@ export class CompanyProfilesController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
     @Body() dto: UpdateCompanyProfileDto,
   ) {
-    const scope = await this.orgContext.resolveForFirebaseUid(firebaseUser.uid);
-    return this.companyProfilesService.update(scope.organizationId, dto);
+    const scope = await this.userContext.resolveForFirebaseUid(
+      firebaseUser.uid,
+    );
+    return this.companyProfilesService.update(scope.userId, dto);
   }
 }

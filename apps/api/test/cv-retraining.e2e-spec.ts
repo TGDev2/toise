@@ -11,7 +11,7 @@ import { CvRetrainingController } from '../src/analysis/cv-retraining.controller
 import { CvRetrainingService } from '../src/analysis/cv-retraining.service';
 import { PhotosService } from '../src/photos/photos.service';
 import { UsersService } from '../src/users/users.service';
-import { OrgContextService } from '../src/organizations/org-context.service';
+import { UserContextService } from '../src/users/user-context.service';
 import { FirebaseAuthGuard } from '../src/auth/guards/firebase-auth.guard';
 import { UserRole } from '../src/users/entities/user.entity';
 
@@ -38,23 +38,15 @@ const usersServiceMock = {
 
 // PLAT-4 : les contrôleurs résolvent désormais la portée (organisation + auteur)
 // au lieu de recharger l'utilisateur ; le guard de feature gates lit le palier
-// effectif de l'organisation via ce même service.
+// effectif via ce même service.
 const mockUserId = '00000000-0000-4000-8000-0000000000bb';
-const mockOrgId = '00000000-0000-4000-8000-0000000000aa';
-const orgContextMock = {
+const userContextMock = {
   resolveForFirebaseUid: jest.fn().mockResolvedValue({
     user: { id: mockUserId, subscription_tier: 'free' },
     userId: mockUserId,
-    organization: { id: mockOrgId, name: 'Mon espace', is_personal: true },
-    organizationId: mockOrgId,
-    role: 'owner',
     effectiveTier: 'free',
   }),
   resolveForUser: jest.fn(),
-  getOrCreatePersonalOrganization: jest
-    .fn()
-    .mockResolvedValue({ id: mockOrgId }),
-  findMembership: jest.fn(),
 };
 
 // AdminGuard volontairement RÉEL (résolu via les providers) : ce spec vérifie
@@ -71,7 +63,7 @@ describe('CvRetrainingController (e2e) — accès admin', () => {
         { provide: CvRetrainingService, useValue: cvRetrainingServiceMock },
         { provide: PhotosService, useValue: photosServiceMock },
         { provide: UsersService, useValue: usersServiceMock },
-        { provide: OrgContextService, useValue: orgContextMock },
+        { provide: UserContextService, useValue: userContextMock },
       ],
     })
       .overrideGuard(FirebaseAuthGuard)

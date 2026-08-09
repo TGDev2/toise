@@ -39,12 +39,12 @@ describe('SiteTrackingService', () => {
   };
 
   const projectsServiceMock = {
-    findOneForOrg: jest.fn(),
+    findOneForUser: jest.fn(),
   };
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    projectsServiceMock.findOneForOrg.mockResolvedValue({
+    projectsServiceMock.findOneForUser.mockResolvedValue({
       id: mockProjectId,
       user_id: mockUserId,
     });
@@ -66,7 +66,7 @@ describe('SiteTrackingService', () => {
 
       const result = await service.findAllForProject(mockProjectId, mockUserId);
 
-      expect(projectsServiceMock.findOneForOrg).toHaveBeenCalledWith(
+      expect(projectsServiceMock.findOneForUser).toHaveBeenCalledWith(
         mockProjectId,
         mockUserId,
       );
@@ -78,7 +78,7 @@ describe('SiteTrackingService', () => {
     });
 
     it("propage le rejet d'accès quand le projet n'appartient pas à l'utilisateur", async () => {
-      projectsServiceMock.findOneForOrg.mockRejectedValue(
+      projectsServiceMock.findOneForUser.mockRejectedValue(
         new ForbiddenException('Access denied'),
       );
 

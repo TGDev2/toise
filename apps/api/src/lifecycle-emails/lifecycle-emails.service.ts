@@ -354,9 +354,9 @@ export class LifecycleEmailsService {
       relations: ['user'],
     });
 
-    // Un projet dont l'auteur a supprimé son compte reste acquis à son
-    // organisation, mais la relance est nominative : il n'y a plus personne à
-    // relancer, ni de `user_id` à horodater dans `lifecycle_email_sends`.
+    // Depuis E4-1 un projet part avec son compte : il ne reste donc plus de
+    // projet orphelin à écarter. Le filtre sur l'e-mail demeure — un compte
+    // invité n'en a pas, et la relance est nominative.
     const candidates = projects.filter(
       (p): p is Project & { user: User } =>
         Boolean(p.user?.email) &&

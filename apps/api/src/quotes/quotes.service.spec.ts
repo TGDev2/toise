@@ -23,7 +23,6 @@ import { AnalyticsService } from '../analytics/analytics.service';
 import { QuantityValidationsService } from '../quantity-validation/quantity-validations.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 
-const ORG_ID = 'org-1';
 const USER_ID = 'user-1';
 const PROJECT_ID = 'project-1';
 const ESTIMATION_ID = 'estimation-1';
@@ -103,7 +102,7 @@ function makeEstimation(
 function makeCompanyProfile(defaultLaborHourlyRate: number | null) {
   return {
     id: 'profile-1',
-    organization_id: ORG_ID,
+    user_id: USER_ID,
     default_labor_hourly_rate: defaultLaborHourlyRate,
   };
 }
@@ -145,11 +144,11 @@ describe('QuotesService', () => {
   const estimationRepoMock = { findOne: jest.fn() };
   const shoppingListsServiceMock = { getOrGenerate: jest.fn() };
   const projectsServiceMock = {
-    findOneForOrg: jest.fn(),
+    findOneForUser: jest.fn(),
     getLaborTimes: jest.fn(),
   };
-  const clientsServiceMock = { findOneForOrg: jest.fn() };
-  const companyProfilesServiceMock = { findByOrganizationId: jest.fn() };
+  const clientsServiceMock = { findOneForUser: jest.fn() };
+  const companyProfilesServiceMock = { findByUserId: jest.fn() };
   const analyticsServiceMock = { track: jest.fn() };
   // La garde d'émission (E2-4) est neutre par défaut : chaque test qui ne
   // porte pas sur elle décrit un chantier dont les quantités ont été validées.
@@ -173,13 +172,13 @@ describe('QuotesService', () => {
     };
 
     quantityValidationsMock.assertValidated.mockResolvedValue(undefined);
-    projectsServiceMock.findOneForOrg.mockResolvedValue({ id: PROJECT_ID });
+    projectsServiceMock.findOneForUser.mockResolvedValue({ id: PROJECT_ID });
     projectsServiceMock.getLaborTimes.mockResolvedValue(LABOR_TIMES);
     estimationRepoMock.findOne.mockResolvedValue(makeEstimation());
     shoppingListsServiceMock.getOrGenerate.mockResolvedValue(
       makeShoppingList(),
     );
-    companyProfilesServiceMock.findByOrganizationId.mockResolvedValue(
+    companyProfilesServiceMock.findByUserId.mockResolvedValue(
       makeCompanyProfile(45),
     );
 
@@ -221,7 +220,7 @@ describe('QuotesService', () => {
 
   describe("create — devis sans main-d'oeuvre explicite", () => {
     it('cree un devis a labor_items_json vide quand labor_items est absent', async () => {
-      const quote = await service.create(ORG_ID, USER_ID, baseDto());
+      const quote = await service.create(USER_ID, baseDto());
 
       expect(quote.labor_items_json).toEqual([]);
       expect(Number(quote.subtotal_labor_ht)).toBe(0);
@@ -229,17 +228,13 @@ describe('QuotesService', () => {
     });
 
     it('cree un devis a labor_items_json vide quand labor_items est []', async () => {
-      const quote = await service.create(
-        ORG_ID,
-        USER_ID,
-        baseDto({ labor_items: [] }),
-      );
+      const quote = await service.create(USER_ID, baseDto({ labor_items: [] }));
 
       expect(quote.labor_items_json).toEqual([]);
     });
 
     it('tracks quote_generated (BACKLOG_V1 revenue funnel)', async () => {
-      await service.create(ORG_ID, USER_ID, baseDto());
+      await service.create(USER_ID, baseDto());
 
       expect(analyticsServiceMock.track).toHaveBeenCalledWith(
         AnalyticsEventName.QUOTE_GENERATED,
@@ -278,7 +273,7 @@ describe('QuotesService', () => {
         ],
       });
 
-      const quote = await service.create(ORG_ID, USER_ID, dto);
+      const quote = await service.create(USER_ID, dto);
 
       expect(quote.labor_items_json).toHaveLength(2);
       const sum = quote.labor_items_json.reduce(
@@ -296,7 +291,6 @@ describe('QuotesService', () => {
   describe('create — le serveur ne fait jamais confiance au client', () => {
     it('recalcule line_total_ht et ignore la valeur envoyee', async () => {
       const quote = await service.create(
-        ORG_ID,
         USER_ID,
         baseDto({
           labor_items: [
@@ -319,7 +313,6 @@ describe('QuotesService', () => {
 
     it('force quantity a 1 sur un forfait quel que soit ce qui est envoye', async () => {
       const quote = await service.create(
-        ORG_ID,
         USER_ID,
         baseDto({
           labor_items: [
@@ -346,7 +339,7 @@ describe('QuotesService', () => {
    */
   describe('create — validation des quantités', () => {
     it("soumet à la garde les lignes de la liste d'achats, pas un identifiant", async () => {
-      await service.create(ORG_ID, USER_ID, baseDto());
+      await service.create(USER_ID, baseDto());
 
       const calls = quantityValidationsMock.assertValidated.mock.calls as [
         string,
@@ -364,9 +357,9 @@ describe('QuotesService', () => {
         new ConflictException('Les quantités doivent être validées.'),
       );
 
-      await expect(
-        service.create(ORG_ID, USER_ID, baseDto()),
-      ).rejects.toBeInstanceOf(ConflictException);
+      await expect(service.create(USER_ID, baseDto())).rejects.toBeInstanceOf(
+        ConflictException,
+      );
 
       // Ni numéro consommé, ni ligne insérée : le refus est en amont de la
       // transaction qui alloue le numéro de devis.
@@ -379,7 +372,7 @@ describe('QuotesService', () => {
     function makeExistingQuote(overrides: Partial<Quote> = {}): Quote {
       return {
         id: 'quote-1',
-        organization_id: ORG_ID,
+        user_id: USER_ID,
         project_id: PROJECT_ID,
         client_id: null,
         estimation_id: ESTIMATION_ID,
@@ -413,7 +406,7 @@ describe('QuotesService', () => {
     it('ne touche pas le tableau existant quand labor_items est absent', async () => {
       repoMock.findOne.mockResolvedValue(makeExistingQuote());
 
-      const quote = await service.update('quote-1', ORG_ID, {
+      const quote = await service.update('quote-1', USER_ID, {
         tva_rate: 10,
       });
 
@@ -425,7 +418,7 @@ describe('QuotesService', () => {
     it('remplace entierement le tableau quand labor_items est fourni', async () => {
       repoMock.findOne.mockResolvedValue(makeExistingQuote());
 
-      const quote = await service.update('quote-1', ORG_ID, {
+      const quote = await service.update('quote-1', USER_ID, {
         labor_items: [
           {
             label: 'Peinture murale',
@@ -445,7 +438,7 @@ describe('QuotesService', () => {
     it('vide le tableau quand labor_items est []', async () => {
       repoMock.findOne.mockResolvedValue(makeExistingQuote());
 
-      const quote = await service.update('quote-1', ORG_ID, {
+      const quote = await service.update('quote-1', USER_ID, {
         labor_items: [],
       });
 
@@ -459,7 +452,7 @@ describe('QuotesService', () => {
       );
 
       await expect(
-        service.update('quote-1', ORG_ID, { labor_items: [] }),
+        service.update('quote-1', USER_ID, { labor_items: [] }),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
   });
@@ -477,7 +470,7 @@ describe('QuotesService', () => {
       );
 
       const lines = await service.proposeLaborLines(
-        ORG_ID,
+        USER_ID,
         PROJECT_ID,
         ESTIMATION_ID,
       );
@@ -505,7 +498,7 @@ describe('QuotesService', () => {
       );
 
       const lines = await service.proposeLaborLines(
-        ORG_ID,
+        USER_ID,
         PROJECT_ID,
         ESTIMATION_ID,
       );
@@ -552,7 +545,7 @@ describe('QuotesService', () => {
       );
 
       const lines = await service.proposeLaborLines(
-        ORG_ID,
+        USER_ID,
         PROJECT_ID,
         ESTIMATION_ID,
       );
@@ -587,7 +580,7 @@ describe('QuotesService', () => {
       );
 
       const lines = await service.proposeLaborLines(
-        ORG_ID,
+        USER_ID,
         PROJECT_ID,
         ESTIMATION_ID,
       );
@@ -604,7 +597,7 @@ describe('QuotesService', () => {
       );
 
       const lines = await service.proposeLaborLines(
-        ORG_ID,
+        USER_ID,
         PROJECT_ID,
         ESTIMATION_ID,
       );
@@ -614,7 +607,7 @@ describe('QuotesService', () => {
 
     it('expose la source du temps retenu, sans jamais la persister sur le devis', async () => {
       const lines = await service.proposeLaborLines(
-        ORG_ID,
+        USER_ID,
         PROJECT_ID,
         ESTIMATION_ID,
       );
@@ -635,7 +628,7 @@ describe('QuotesService', () => {
       );
 
       const lines = await service.proposeLaborLines(
-        ORG_ID,
+        USER_ID,
         PROJECT_ID,
         ESTIMATION_ID,
       );
@@ -663,7 +656,7 @@ describe('QuotesService', () => {
       );
 
       const lines = await service.proposeLaborLines(
-        ORG_ID,
+        USER_ID,
         PROJECT_ID,
         ESTIMATION_ID,
       );
@@ -673,12 +666,12 @@ describe('QuotesService', () => {
     });
 
     it('propose un taux a 0 quand le profil ne porte pas de taux par defaut', async () => {
-      companyProfilesServiceMock.findByOrganizationId.mockResolvedValue(
+      companyProfilesServiceMock.findByUserId.mockResolvedValue(
         makeCompanyProfile(null),
       );
 
       const lines = await service.proposeLaborLines(
-        ORG_ID,
+        USER_ID,
         PROJECT_ID,
         ESTIMATION_ID,
       );
@@ -687,10 +680,10 @@ describe('QuotesService', () => {
     });
 
     it("propose un taux a 0 quand aucun profil entreprise n'existe", async () => {
-      companyProfilesServiceMock.findByOrganizationId.mockResolvedValue(null);
+      companyProfilesServiceMock.findByUserId.mockResolvedValue(null);
 
       const lines = await service.proposeLaborLines(
-        ORG_ID,
+        USER_ID,
         PROJECT_ID,
         ESTIMATION_ID,
       );
@@ -706,7 +699,7 @@ describe('QuotesService', () => {
       );
 
       const lines = await service.proposeLaborLines(
-        ORG_ID,
+        USER_ID,
         PROJECT_ID,
         ESTIMATION_ID,
       );
@@ -718,7 +711,7 @@ describe('QuotesService', () => {
       estimationRepoMock.findOne.mockResolvedValue(null);
 
       await expect(
-        service.proposeLaborLines(ORG_ID, PROJECT_ID, ESTIMATION_ID),
+        service.proposeLaborLines(USER_ID, PROJECT_ID, ESTIMATION_ID),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
   });

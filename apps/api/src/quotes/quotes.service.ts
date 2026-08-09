@@ -46,13 +46,9 @@ export class QuotesService {
     private readonly quantityValidations: QuantityValidationsService,
   ) {}
 
-  async create(
-    organizationId: string,
-    userId: string,
-    dto: CreateQuoteDto,
-  ): Promise<Quote> {
-    // Verify project belongs to the organization
-    await this.projectsService.findOneForOrg(dto.project_id, organizationId);
+  async create(userId: string, dto: CreateQuoteDto): Promise<Quote> {
+    // Verify project belongs to the user
+    await this.projectsService.findOneForUser(dto.project_id, userId);
 
     // Verify estimation exists and belongs to project
     const estimation = await this.estimationRepo.findOne({
@@ -62,15 +58,14 @@ export class QuotesService {
       throw new NotFoundException('Estimation non trouvee pour ce projet');
     }
 
-    // Verify client belongs to the organization when provided
+    // Verify client belongs to the user when provided
     if (dto.client_id) {
-      await this.clientsService.findOneForOrg(dto.client_id, organizationId);
+      await this.clientsService.findOneForUser(dto.client_id, userId);
     }
 
     // Get shopping list for prices
     const { shoppingList } = await this.shoppingListsService.getOrGenerate(
       dto.project_id,
-      organizationId,
       userId,
     );
 
@@ -127,12 +122,11 @@ export class QuotesService {
     const quote = await this.dataSource.transaction(async (manager) => {
       const quoteNumber = await this.allocateQuoteNumber(
         manager,
-        organizationId,
+        userId,
         new Date().getFullYear(),
       );
 
       const created = manager.create(Quote, {
-        organization_id: organizationId,
         user_id: userId,
         project_id: dto.project_id,
         client_id: dto.client_id ?? null,
@@ -166,11 +160,8 @@ export class QuotesService {
     return quote;
   }
 
-  async findAllForOrg(
-    organizationId: string,
-    status?: QuoteStatus,
-  ): Promise<Quote[]> {
-    const where: Record<string, unknown> = { organization_id: organizationId };
+  async findAllForUser(userId: string, status?: QuoteStatus): Promise<Quote[]> {
+    const where: Record<string, unknown> = { user_id: userId };
     if (status) {
       where.status = status;
     }
@@ -181,9 +172,9 @@ export class QuotesService {
     });
   }
 
-  async findOneForOrg(id: string, organizationId: string): Promise<Quote> {
+  async findOneForUser(id: string, userId: string): Promise<Quote> {
     const quote = await this.repo.findOne({
-      where: { id, organization_id: organizationId },
+      where: { id, user_id: userId },
       relations: ['project', 'client'],
     });
     if (!quote) {
@@ -212,16 +203,16 @@ export class QuotesService {
     return Array.from(new Set(names));
   }
 
-  async countForOrg(organizationId: string): Promise<number> {
-    return this.repo.count({ where: { organization_id: organizationId } });
+  async countForUser(userId: string): Promise<number> {
+    return this.repo.count({ where: { user_id: userId } });
   }
 
   async update(
     id: string,
-    organizationId: string,
+    userId: string,
     dto: UpdateQuoteDto,
   ): Promise<Quote> {
-    const quote = await this.findOneForOrg(id, organizationId);
+    const quote = await this.findOneForUser(id, userId);
 
     if (quote.status !== QuoteStatus.DRAFT) {
       throw new BadRequestException(
@@ -232,7 +223,7 @@ export class QuotesService {
     // Apply updates
     if (dto.client_id !== undefined) {
       if (dto.client_id !== null) {
-        await this.clientsService.findOneForOrg(dto.client_id, organizationId);
+        await this.clientsService.findOneForUser(dto.client_id, userId);
       }
       quote.client_id = dto.client_id;
     }
@@ -294,10 +285,10 @@ export class QuotesService {
 
   async updateStatus(
     id: string,
-    organizationId: string,
+    userId: string,
     status: QuoteStatus,
   ): Promise<Quote> {
-    const quote = await this.findOneForOrg(id, organizationId);
+    const quote = await this.findOneForUser(id, userId);
 
     quote.status = status;
     const now = new Date();
@@ -315,8 +306,8 @@ export class QuotesService {
     return this.repo.save(quote);
   }
 
-  async remove(id: string, organizationId: string): Promise<void> {
-    const quote = await this.findOneForOrg(id, organizationId);
+  async remove(id: string, userId: string): Promise<void> {
+    const quote = await this.findOneForUser(id, userId);
     if (quote.status !== QuoteStatus.DRAFT) {
       throw new BadRequestException(
         'Seul un devis en brouillon peut etre supprime',
@@ -333,18 +324,18 @@ export class QuotesService {
    * l'écriture). Exposée par `GET /quotes/labor-proposal`.
    */
   async proposeLaborLines(
-    organizationId: string,
+    userId: string,
     projectId: string,
     estimationId: string,
   ): Promise<ProposedQuoteLaborLine[]> {
-    await this.projectsService.findOneForOrg(projectId, organizationId);
+    await this.projectsService.findOneForUser(projectId, userId);
     const estimation = await this.estimationRepo.findOne({
       where: { id: estimationId, project_id: projectId },
     });
     if (!estimation) {
       throw new NotFoundException('Estimation non trouvee pour ce projet');
     }
-    return this.buildProposedLaborLines(organizationId, estimation);
+    return this.buildProposedLaborLines(userId, estimation);
   }
 
   /**
@@ -359,11 +350,10 @@ export class QuotesService {
    * antérieures — c'est le niveau du premier ouvrage, pas celui de chacun.
    */
   private async buildProposedLaborLines(
-    organizationId: string,
+    userId: string,
     estimation: EstimationResult,
   ): Promise<ProposedQuoteLaborLine[]> {
-    const profile =
-      await this.companyProfilesService.findByOrganizationId(organizationId);
+    const profile = await this.companyProfilesService.findByUserId(userId);
     const rate = Number(profile?.default_labor_hourly_rate) || 0;
 
     const laborTimes = await this.projectsService.getLaborTimes();
@@ -463,29 +453,30 @@ export class QuotesService {
   }
 
   /**
-   * Alloue le prochain numéro de devis de l'organisation, dans la transaction
-   * qui insère le devis.
+   * Alloue le prochain numéro de devis du compte, dans la transaction qui
+   * insère le devis.
    *
-   * Le `MAX(quote_number) … LIKE` d'origine convenait tant qu'un compte était
-   * mono-utilisateur : deux devis ne pouvaient pas naître en parallèle. Avec des
-   * membres (PLAT-4) c'est faux, et sans verrou deux allocations simultanées
-   * rendaient le même numéro — que `UQ_quotes_org_number` transformerait en 500.
-   * On reprend donc le compteur `ON CONFLICT … DO UPDATE … RETURNING` de PRO-4,
-   * qui sérialise les allocations sur un verrou de ligne. Les trous, interdits
-   * sur une facture, sont ici sans enjeu : c'est le verrou qu'on vient chercher.
+   * Le `MAX(quote_number) … LIKE` d'origine supposait qu'un compte ne pouvait
+   * pas émettre deux devis en parallèle. C'est redevenu vrai depuis E4-1, mais
+   * le compteur verrouillé reste le bon mécanisme : rien n'interdit deux
+   * requêtes concurrentes du même compte, et sans verrou elles rendraient le
+   * même numéro — que `UQ_quotes_user_number` transformerait en 500. On garde
+   * donc le `ON CONFLICT … DO UPDATE … RETURNING` de PRO-4, qui sérialise les
+   * allocations sur un verrou de ligne. Les trous, interdits sur une facture,
+   * sont ici sans enjeu : c'est le verrou qu'on vient chercher.
    */
   private async allocateQuoteNumber(
     manager: EntityManager,
-    organizationId: string,
+    userId: string,
     year: number,
   ): Promise<string> {
     const rows = await manager.query<{ last_number: number }[]>(
-      `INSERT INTO "quote_sequences" ("organization_id", "year", "last_number")
+      `INSERT INTO "quote_sequences" ("user_id", "year", "last_number")
        VALUES ($1, $2, 1)
-       ON CONFLICT ("organization_id", "year")
+       ON CONFLICT ("user_id", "year")
        DO UPDATE SET "last_number" = "quote_sequences"."last_number" + 1
        RETURNING "last_number"`,
-      [organizationId, year],
+      [userId, year],
     );
     return `D-${year}-${String(Number(rows[0].last_number)).padStart(3, '0')}`;
   }

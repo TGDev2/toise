@@ -13,8 +13,8 @@ import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { FeatureGateGuard } from '../feature-gates/guards/feature-gate.guard';
 import { RequireFeature } from '../feature-gates/decorators/require-feature.decorator';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
-import { OrgContextService } from '../organizations/org-context.service';
-import type { OrgScope } from '../organizations/org-context.service';
+import { UserContextService } from '../users/user-context.service';
+import type { UserScope } from '../users/user-context.service';
 import { AnalysisService } from './analysis.service';
 import { StartAnalysisRequestDto } from './dto/start-analysis-request.dto';
 import type {
@@ -27,12 +27,12 @@ import type {
 export class AnalysisController {
   constructor(
     private readonly analysisService: AnalysisService,
-    private readonly orgContext: OrgContextService,
+    private readonly userContext: UserContextService,
   ) {}
 
-  private async resolveScope(firebaseUser: DecodedIdToken): Promise<OrgScope> {
+  private async resolveScope(firebaseUser: DecodedIdToken): Promise<UserScope> {
     try {
-      return await this.orgContext.resolveForFirebaseUid(firebaseUser.uid);
+      return await this.userContext.resolveForFirebaseUid(firebaseUser.uid);
     } catch {
       throw new UnauthorizedException('Utilisateur non authentifié.');
     }
@@ -49,7 +49,7 @@ export class AnalysisController {
     const scope = await this.resolveScope(firebaseUser);
     const job = await this.analysisService.startAnalysis(
       projectId,
-      scope.organizationId,
+      scope.userId,
       body.reference_object,
     );
     return {
@@ -65,10 +65,6 @@ export class AnalysisController {
     @CurrentFirebaseUser() firebaseUser: DecodedIdToken,
   ): Promise<AnalysisStatusDto> {
     const scope = await this.resolveScope(firebaseUser);
-    return this.analysisService.getJobStatus(
-      projectId,
-      scope.organizationId,
-      jobId,
-    );
+    return this.analysisService.getJobStatus(projectId, scope.userId, jobId);
   }
 }

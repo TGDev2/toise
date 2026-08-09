@@ -121,16 +121,13 @@ export class Quote {
   id!: string;
 
   /**
-   * Auteur du devis. La propriété est portée par `organization_id` (PLAT-4) :
-   * `null` quand l'auteur a supprimé son compte, le devis restant acquis à
-   * l'organisation qui l'a émis.
+   * Émetteur du devis, et propriétaire. La numérotation `D-AAAA-NNN` est
+   * unique par émetteur (`UQ_quotes_user_number`) et sa séquence est clé sur
+   * `(user_id, year)` depuis E4-1.
    */
-  @Column({ type: 'uuid', nullable: true })
-  user_id!: string | null;
-
   @Index()
   @Column({ type: 'uuid' })
-  organization_id!: string;
+  user_id!: string;
 
   @Column({ type: 'uuid' })
   project_id!: string;
@@ -263,9 +260,9 @@ export class Quote {
   @Column({ type: 'timestamptz', nullable: true })
   reminder_14d_sent_at!: Date | null;
 
-  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
-  user!: User | null;
+  user!: User;
 
   @ManyToOne(() => Project, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'project_id' })

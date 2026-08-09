@@ -17,7 +17,7 @@ import { migratedDataSource, testDataSourceOptions } from './test-database';
  * La cause était la même deux fois : un guard appliqué par `@UseGuards` est instancié
  * dans l'injecteur du module **appelant**, pas dans celui qui le fournit. Chaque module
  * protégeant une route devait donc réimporter les dépendances du guard —
- * `OrgContextModule` pour `FeatureGateGuard`, `UsersModule` pour `AdminGuard`. Douze
+ * `UserContextModule` pour `FeatureGateGuard`, `UsersModule` pour `AdminGuard`. Douze
  * modules portaient la première parade, trois la seconde ; le premier oubli tuait
  * l'application entière, en production comme ici.
  *

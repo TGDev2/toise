@@ -20,8 +20,8 @@ import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { FeatureGateGuard } from '../feature-gates/guards/feature-gate.guard';
 import { RequireFeature } from '../feature-gates/decorators/require-feature.decorator';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
-import { OrgContextService } from '../organizations/org-context.service';
-import type { OrgScope } from '../organizations/org-context.service';
+import { UserContextService } from '../users/user-context.service';
+import type { UserScope } from '../users/user-context.service';
 import { CompanyProfilesService } from '../company-profiles/company-profiles.service';
 import { ClientsService } from '../clients/clients.service';
 import { QuotesService } from './quotes.service';
@@ -41,7 +41,7 @@ import { QuoteStatus } from './entities/quote.entity';
  * inatteignables pour cause de facturation serait une confiscation, et le
  * bandeau de relance qui promet le contraire deviendrait un mensonge.
  *
- * Le périmètre reste scopé par `FirebaseAuthGuard` et `scope.organizationId` :
+ * Le périmètre reste scopé par `FirebaseAuthGuard` et `scope.userId` :
  * ouvrir la lecture n'ouvre rien à qui n'a rien produit — un utilisateur jamais
  * abonné a une liste vide.
  */
@@ -51,13 +51,13 @@ export class QuotesController {
   constructor(
     private readonly quotesService: QuotesService,
     private readonly quotePdfService: QuotePdfService,
-    private readonly orgContext: OrgContextService,
+    private readonly userContext: UserContextService,
     private readonly companyProfilesService: CompanyProfilesService,
     private readonly clientsService: ClientsService,
   ) {}
 
-  private resolveScope(firebaseUser: DecodedIdToken): Promise<OrgScope> {
-    return this.orgContext.resolveForFirebaseUid(firebaseUser.uid);
+  private resolveScope(firebaseUser: DecodedIdToken): Promise<UserScope> {
+    return this.userContext.resolveForFirebaseUid(firebaseUser.uid);
   }
 
   @Post()
@@ -67,7 +67,7 @@ export class QuotesController {
     @Body() dto: CreateQuoteDto,
   ) {
     const scope = await this.resolveScope(firebaseUser);
-    return this.quotesService.create(scope.organizationId, scope.userId, dto);
+    return this.quotesService.create(scope.userId, dto);
   }
 
   // Déclarée avant `@Get(':id')` : sinon `ParseUUIDPipe` sur `:id` avale
@@ -81,7 +81,7 @@ export class QuotesController {
   ) {
     const scope = await this.resolveScope(firebaseUser);
     return this.quotesService.proposeLaborLines(
-      scope.organizationId,
+      scope.userId,
       projectId,
       estimationId,
     );
@@ -93,7 +93,7 @@ export class QuotesController {
     @Query('status') status?: QuoteStatus,
   ) {
     const scope = await this.resolveScope(firebaseUser);
-    return this.quotesService.findAllForOrg(scope.organizationId, status);
+    return this.quotesService.findAllForUser(scope.userId, status);
   }
 
   @Get(':id')
@@ -103,8 +103,8 @@ export class QuotesController {
   ) {
     const scope = await this.resolveScope(firebaseUser);
     const [quote, companyProfile] = await Promise.all([
-      this.quotesService.findOneForOrg(id, scope.organizationId),
-      this.companyProfilesService.findByOrganizationId(scope.organizationId),
+      this.quotesService.findOneForUser(id, scope.userId),
+      this.companyProfilesService.findByUserId(scope.userId),
     ]);
     const showBrands = companyProfile?.show_material_brands ?? true;
     // E2-5 — pièces réellement couvertes par ce devis, pour son
@@ -136,7 +136,7 @@ export class QuotesController {
     @Body() dto: UpdateQuoteDto,
   ) {
     const scope = await this.resolveScope(firebaseUser);
-    return this.quotesService.update(id, scope.organizationId, dto);
+    return this.quotesService.update(id, scope.userId, dto);
   }
 
   @Patch(':id/status')
@@ -147,11 +147,7 @@ export class QuotesController {
     @Body() dto: UpdateQuoteStatusDto,
   ) {
     const scope = await this.resolveScope(firebaseUser);
-    return this.quotesService.updateStatus(
-      id,
-      scope.organizationId,
-      dto.status,
-    );
+    return this.quotesService.updateStatus(id, scope.userId, dto.status);
   }
 
   // Non gaté : le devis existe déjà, le PDF n'en est qu'une vue. Le refuser
@@ -163,15 +159,11 @@ export class QuotesController {
     @Res() res: Response,
   ): Promise<void> {
     const scope = await this.resolveScope(firebaseUser);
-    const quote = await this.quotesService.findOneForOrg(
-      id,
-      scope.organizationId,
-    );
+    const quote = await this.quotesService.findOneForUser(id, scope.userId);
 
-    const companyProfile =
-      await this.companyProfilesService.findByOrganizationId(
-        scope.organizationId,
-      );
+    const companyProfile = await this.companyProfilesService.findByUserId(
+      scope.userId,
+    );
     if (!companyProfile) {
       throw new NotFoundException(
         'Profil entreprise requis pour generer un devis PDF',
@@ -180,9 +172,9 @@ export class QuotesController {
 
     let client = null;
     if (quote.client_id) {
-      client = await this.clientsService.findOneForOrg(
+      client = await this.clientsService.findOneForUser(
         quote.client_id,
-        scope.organizationId,
+        scope.userId,
       );
     }
 
@@ -211,6 +203,6 @@ export class QuotesController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     const scope = await this.resolveScope(firebaseUser);
-    await this.quotesService.remove(id, scope.organizationId);
+    await this.quotesService.remove(id, scope.userId);
   }
 }

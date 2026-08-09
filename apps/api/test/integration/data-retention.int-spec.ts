@@ -6,11 +6,6 @@ import { join } from 'path';
 import { DataSource } from 'typeorm';
 import { migratedDataSource, truncateUserData } from './test-database';
 import { User } from '../../src/users/entities/user.entity';
-import { Organization } from '../../src/organizations/entities/organization.entity';
-import {
-  OrganizationMembership,
-  OrganizationRole,
-} from '../../src/organizations/entities/organization-membership.entity';
 import {
   Project,
   ProjectStatus,
@@ -31,7 +26,6 @@ import {
 import { LocalStorageService } from '../../src/photos/storage/local-storage.service';
 import { DataRetentionService } from '../../src/data-retention/data-retention.service';
 import { UsersService } from '../../src/users/users.service';
-import { OrgContextService } from '../../src/organizations/org-context.service';
 import { AuthService } from '../../src/auth/auth.service';
 import type { FirebaseConfig } from '../../src/config/firebase.config';
 import type { CompanyProfilesService } from '../../src/company-profiles/company-profiles.service';
@@ -46,8 +40,8 @@ import type { SubscriptionsService } from '../../src/subscriptions/subscriptions
  * et ne touchent ni base ni disque ; les tests unitaires ne voient que des
  * doublures de stockage. Or la question posée est précisément « que reste-t-il
  * sur le volume après une suppression », et la réponse dépend de cascades SQL
- * réelles (`project_photos` part avec `projects`, qui part avec
- * `organizations`) et d'un `readdir` réel.
+ * réelles (`project_photos` part avec `projects`, qui part avec `users`)
+ * et d'un `readdir` réel.
  *
  * Firebase, Stripe et l'analytique sont les seules doublures : ce sont des
  * dépendances externes, et aucune n'intervient dans ce que le test observe.
@@ -58,7 +52,6 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 interface Fixture {
   userId: string;
   firebaseUid: string;
-  organizationId: string;
   projectId: string;
 }
 
@@ -99,19 +92,8 @@ describe('Rétention et effacement (intégration, PostgreSQL et volume réels)',
       email: `retention-${suffix}@chiffreo.test`,
       firebase_uid: `firebase-retention-${suffix}`,
     });
-    const organization = await dataSource.getRepository(Organization).save({
-      name: `Org ${suffix}`,
-      owner_user_id: user.id,
-      is_personal: true,
-    });
-    await dataSource.getRepository(OrganizationMembership).save({
-      organization_id: organization.id,
-      user_id: user.id,
-      role: OrganizationRole.OWNER,
-    });
     const project = await dataSource.getRepository(Project).save({
       user_id: user.id,
-      organization_id: organization.id,
       name: `Chantier ${suffix}`,
       room_name: 'Salon',
       work_type: ProjectWorkType.PAINTING,
@@ -124,7 +106,6 @@ describe('Rétention et effacement (intégration, PostgreSQL et volume réels)',
     return {
       userId: user.id,
       firebaseUid: user.firebase_uid,
-      organizationId: organization.id,
       projectId: project.id,
     };
   }
@@ -170,12 +151,6 @@ describe('Rétention et effacement (intégration, PostgreSQL et volume réels)',
       dataSource.getRepository(User),
       dataSource.getRepository(Project),
     );
-    const orgContext = new OrgContextService(
-      dataSource.getRepository(User),
-      dataSource.getRepository(Organization),
-      dataSource.getRepository(OrganizationMembership),
-    );
-
     auth = new AuthService(
       {
         getAuth: () => ({ deleteUser: firebaseDeleteUser }),
@@ -183,7 +158,6 @@ describe('Rétention et effacement (intégration, PostgreSQL et volume réels)',
       usersService,
       {} as CompanyProfilesService,
       { track: jest.fn() } as unknown as AnalyticsService,
-      orgContext,
       {
         cancelForAccountDeletion: jest.fn().mockResolvedValue(undefined),
       } as unknown as SubscriptionsService,
@@ -255,37 +229,19 @@ describe('Rétention et effacement (intégration, PostgreSQL et volume réels)',
       expect(await readdir(uploadsPath)).toEqual([]);
     });
 
-    it("laisse intacts les fichiers d'une organisation qui survit", async () => {
-      const owner = await seedAccount('proprietaire');
-      const member = await dataSource.getRepository(User).save({
-        email: 'membre@chiffreo.test',
-        firebase_uid: 'firebase-membre',
-      });
-      // Le membre a son propre espace personnel, vide, et rejoint celui du
-      // propriétaire : c'est son compte à lui qui part.
-      const memberOrg = await dataSource.getRepository(Organization).save({
-        name: 'Espace du membre',
-        owner_user_id: member.id,
-        is_personal: true,
-      });
-      await dataSource.getRepository(OrganizationMembership).save([
-        {
-          organization_id: memberOrg.id,
-          user_id: member.id,
-          role: OrganizationRole.OWNER,
-        },
-        {
-          organization_id: owner.organizationId,
-          user_id: member.id,
-          role: OrganizationRole.MEMBER,
-        },
-      ]);
+    it("laisse intacts les fichiers d'un autre compte", async () => {
+      const survivant = await seedAccount('survivant');
+      const partant = await seedAccount('partant');
 
-      await auth.deleteAccount('firebase-membre');
+      await auth.deleteAccount(partant.firebaseUid);
 
-      // Depuis PLAT-4 le projet appartient à l'organisation, pas à son auteur :
-      // il survit au départ d'un membre, ses fichiers aussi.
-      expect(await projectFiles(owner.projectId)).toHaveLength(4);
+      // L'effacement est borné au compte qui part. Avant E4-1 cet invariant
+      // était énoncé au niveau de l'organisation (« un projet survit au départ
+      // d'un membre ») ; sans organisation, la propriété qui reste — et la
+      // seule qui protégeait réellement des données tierces — est que la
+      // suppression d'un compte n'atteint jamais les fichiers d'un autre.
+      expect(await projectFiles(survivant.projectId)).toHaveLength(4);
+      expect(await projectFiles(partant.projectId)).toHaveLength(0);
     });
   });
 
@@ -432,10 +388,7 @@ describe('Rétention et effacement (intégration, PostgreSQL et volume réels)',
       const fixture = await seedAccount('communaute');
       const entry = await publish(fixture);
 
-      await projects.softDeleteProject(
-        fixture.projectId,
-        fixture.organizationId,
-      );
+      await projects.softDeleteProject(fixture.projectId, fixture.userId);
 
       // La galerie ne sert plus rien : `findOne` exclut nativement les lignes
       // retirées, ce qui ferme du même coup le service des photos.

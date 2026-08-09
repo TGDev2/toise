@@ -14,7 +14,7 @@ import { ShoppingListExportService } from '../src/shopping-lists/shopping-list-e
 import { EstimationsController } from '../src/estimations/estimations.controller';
 import { EstimationsService } from '../src/estimations/estimations.service';
 import { ProjectsService } from '../src/projects/projects.service';
-import { OrgContextService } from '../src/organizations/org-context.service';
+import { UserContextService } from '../src/users/user-context.service';
 import { FirebaseAuthGuard } from '../src/auth/guards/firebase-auth.guard';
 import { SubscriptionTier } from '../src/users/entities/user.entity';
 
@@ -28,7 +28,6 @@ import { SubscriptionTier } from '../src/users/entities/user.entity';
  */
 const mockUserId = '123e4567-e89b-12d3-a456-426614174000';
 const mockProjectId = '223e4567-e89b-12d3-a456-426614174000';
-const mockOrgId = '00000000-0000-4000-8000-0000000000aa';
 
 type TokenKind = 'guest' | 'registered' | 'converting';
 
@@ -56,13 +55,10 @@ let currentToken: TokenKind = 'registered';
 const orgScope = {
   user: { id: mockUserId, subscription_tier: SubscriptionTier.FREE },
   userId: mockUserId,
-  organization: { id: mockOrgId, name: 'Mon espace', is_personal: true },
-  organizationId: mockOrgId,
-  role: 'owner',
   effectiveTier: SubscriptionTier.FREE,
 };
 
-const orgContextMock = {
+const userContextMock = {
   resolveForFirebaseUid: jest.fn().mockResolvedValue(orgScope),
 };
 
@@ -85,7 +81,7 @@ const exportServiceMock = {
 };
 
 const projectsServiceMock = {
-  findOneForOrg: jest.fn().mockResolvedValue({ name: 'Salon' }),
+  findOneForUser: jest.fn().mockResolvedValue({ name: 'Salon' }),
 };
 
 const estimationsServiceMock = {
@@ -120,7 +116,7 @@ describe('Surface accessible à un compte invité (E2-1)', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     currentToken = 'registered';
-    orgContextMock.resolveForFirebaseUid.mockResolvedValue(orgScope);
+    userContextMock.resolveForFirebaseUid.mockResolvedValue(orgScope);
     exportServiceMock.generatePdf.mockResolvedValue(Buffer.from('%PDF-1.4'));
     shoppingListsServiceMock.getOrGenerate.mockResolvedValue({
       shoppingList: {
@@ -143,7 +139,7 @@ describe('Surface accessible à un compte invité (E2-1)', () => {
         },
         { provide: ProjectsService, useValue: projectsServiceMock },
         { provide: EstimationsService, useValue: estimationsServiceMock },
-        { provide: OrgContextService, useValue: orgContextMock },
+        { provide: UserContextService, useValue: userContextMock },
         { provide: ConfigService, useValue: configServiceMock },
       ],
     })
@@ -257,7 +253,6 @@ describe('Surface accessible à un compte invité (E2-1)', () => {
 
       expect(estimationsServiceMock.estimate).toHaveBeenLastCalledWith(
         mockProjectId,
-        mockOrgId,
         mockUserId,
         undefined,
         true,
@@ -271,7 +266,6 @@ describe('Surface accessible à un compte invité (E2-1)', () => {
 
       expect(estimationsServiceMock.estimate).toHaveBeenLastCalledWith(
         mockProjectId,
-        mockOrgId,
         mockUserId,
         undefined,
         false,

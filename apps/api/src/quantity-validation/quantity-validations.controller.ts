@@ -13,8 +13,8 @@ import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { FeatureGateGuard } from '../feature-gates/guards/feature-gate.guard';
 import { RequireFeature } from '../feature-gates/decorators/require-feature.decorator';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
-import { OrgContextService } from '../organizations/org-context.service';
-import type { OrgScope } from '../organizations/org-context.service';
+import { UserContextService } from '../users/user-context.service';
+import type { UserScope } from '../users/user-context.service';
 import { QuantityValidationsService } from './quantity-validations.service';
 import type { QuantityValidationState } from './quantity-validations.service';
 import { ValidateQuantitiesDto } from './dto/validate-quantities.dto';
@@ -31,12 +31,12 @@ import { ValidateQuantitiesDto } from './dto/validate-quantities.dto';
 export class QuantityValidationsController {
   constructor(
     private readonly service: QuantityValidationsService,
-    private readonly orgContext: OrgContextService,
+    private readonly userContext: UserContextService,
   ) {}
 
-  private async resolveScope(firebaseUser: DecodedIdToken): Promise<OrgScope> {
+  private async resolveScope(firebaseUser: DecodedIdToken): Promise<UserScope> {
     try {
-      return await this.orgContext.resolveForFirebaseUid(firebaseUser.uid);
+      return await this.userContext.resolveForFirebaseUid(firebaseUser.uid);
     } catch {
       throw new UnauthorizedException('Utilisateur non authentifié.');
     }
@@ -49,7 +49,7 @@ export class QuantityValidationsController {
     @Param('id', ParseUUIDPipe) projectId: string,
   ): Promise<QuantityValidationState> {
     const scope = await this.resolveScope(firebaseUser);
-    return this.service.getState(projectId, scope.organizationId, scope.userId);
+    return this.service.getState(projectId, scope.userId);
   }
 
   @Post(':id/quantity-validation')

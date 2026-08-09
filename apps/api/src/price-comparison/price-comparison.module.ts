@@ -14,7 +14,7 @@ import { LeroyMerlinAdapter } from './adapters/leroymerlin/leroymerlin.adapter';
 import { LeroyMerlinFeedClient } from './adapters/leroymerlin/leroymerlin-feed.client';
 import { LeroyMerlinFeedSyncService } from './adapters/leroymerlin/leroymerlin-feed-sync.service';
 import { ShoppingListsModule } from '../shopping-lists/shopping-lists.module';
-import { OrgContextModule } from '../organizations/org-context.module';
+import { UserContextModule } from '../users/user-context.module';
 import { FeatureGatesModule } from '../feature-gates/feature-gates.module';
 
 @Module({
@@ -26,7 +26,7 @@ import { FeatureGatesModule } from '../feature-gates/feature-gates.module';
     ]),
     HttpModule,
     ShoppingListsModule,
-    OrgContextModule,
+    UserContextModule,
     FeatureGatesModule,
   ],
   controllers: [PriceComparisonController],

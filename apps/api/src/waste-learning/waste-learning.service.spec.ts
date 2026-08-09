@@ -147,7 +147,7 @@ describe('WasteLearningService', () => {
     service = module.get(WasteLearningService);
   });
 
-  /** n chantiers terminés, un par organisation, achetant `actual` pour `estimated`. */
+  /** n chantiers terminés, un par compte, achetant `actual` pour `estimated`. */
   function seed(
     count: number,
     options: {
@@ -171,7 +171,7 @@ describe('WasteLearningService', () => {
     projectQueryBuilderMock.getRawMany.mockResolvedValue(
       Array.from({ length: count }, (_, i) => ({
         id: `proj-${i}`,
-        organization_id: `org-${i}`,
+        user_id: `org-${i}`,
       })),
     );
   }
@@ -293,7 +293,7 @@ describe('WasteLearningService', () => {
     shoppingListRepoMock.find.mockResolvedValue([list]);
     estimationRepoMock.find.mockResolvedValue([makeEstimation(0)]);
     projectQueryBuilderMock.getRawMany.mockResolvedValue([
-      { id: 'proj-0', organization_id: 'org-0' },
+      { id: 'proj-0', user_id: 'user-0' },
     ]);
 
     const summary = await service.run();
@@ -416,20 +416,20 @@ describe('WasteLearningService', () => {
           raw_sample_size: 4,
           organization_count: 4,
           missing_observations: 4,
-          missing_organizations: 0,
+          missing_accounts: 0,
         }),
       );
     });
 
     it('distingue le manque de chantiers du manque de clients distincts', async () => {
-      // Six chantiers, tous du meme client : le plafond par organisation en
+      // Six chantiers, tous du meme client : le plafond par compte en
       // retient 3. Aucun chantier supplementaire de ce client ne debloquera la
-      // cellule -- seul `missing_organizations` le dit.
+      // cellule -- seul `missing_accounts` le dit.
       seed(6, { estimated: 10, actual: 11 });
       projectQueryBuilderMock.getRawMany.mockResolvedValue(
         Array.from({ length: 6 }, (_, i) => ({
           id: `proj-${i}`,
-          organization_id: 'org-unique',
+          user_id: 'user-unique',
         })),
       );
 
@@ -440,7 +440,7 @@ describe('WasteLearningService', () => {
           sample_size: 3,
           raw_sample_size: 6,
           organization_count: 1,
-          missing_organizations: 2,
+          missing_accounts: 2,
         }),
       );
     });

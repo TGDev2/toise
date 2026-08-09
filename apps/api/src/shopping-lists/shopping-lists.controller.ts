@@ -13,8 +13,8 @@ import type { DecodedIdToken } from 'firebase-admin/auth';
 import { Throttle } from '@nestjs/throttler';
 import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
-import { OrgContextService } from '../organizations/org-context.service';
-import type { OrgScope } from '../organizations/org-context.service';
+import { UserContextService } from '../users/user-context.service';
+import type { UserScope } from '../users/user-context.service';
 import { CompanyProfilesService } from '../company-profiles/company-profiles.service';
 import { ShoppingListsService } from './shopping-lists.service';
 import { ShoppingListResponseDto } from './dto/shopping-list-response.dto';
@@ -31,25 +31,24 @@ import { FeatureGateGuard } from '../feature-gates/guards/feature-gate.guard';
 export class ShoppingListsController {
   constructor(
     private readonly shoppingListsService: ShoppingListsService,
-    private readonly orgContext: OrgContextService,
+    private readonly userContext: UserContextService,
     private readonly companyProfiles: CompanyProfilesService,
   ) {}
 
-  private async resolveScope(firebaseUser: DecodedIdToken): Promise<OrgScope> {
+  private async resolveScope(firebaseUser: DecodedIdToken): Promise<UserScope> {
     try {
-      return await this.orgContext.resolveForFirebaseUid(firebaseUser.uid);
+      return await this.userContext.resolveForFirebaseUid(firebaseUser.uid);
     } catch {
       throw new UnauthorizedException('Utilisateur non authentifié.');
     }
   }
 
   /**
-   * E1-11 — vrai par défaut : une organisation qui n'a pas encore renseigné
+   * E1-11 — vrai par défaut : un compte qui n'a pas encore renseigné
    * son profil entreprise voit les marques, comme le défaut de la colonne.
    */
-  private async resolveShowBrands(organizationId: string): Promise<boolean> {
-    const profile =
-      await this.companyProfiles.findByOrganizationId(organizationId);
+  private async resolveShowBrands(userId: string): Promise<boolean> {
+    const profile = await this.companyProfiles.findByUserId(userId);
     return profile?.show_material_brands ?? true;
   }
 
@@ -61,12 +60,8 @@ export class ShoppingListsController {
     const scope = await this.resolveScope(firebaseUser);
     const [{ shoppingList, latestEstimationId }, showBrands] =
       await Promise.all([
-        this.shoppingListsService.getOrGenerate(
-          projectId,
-          scope.organizationId,
-          scope.userId,
-        ),
-        this.resolveShowBrands(scope.organizationId),
+        this.shoppingListsService.getOrGenerate(projectId, scope.userId),
+        this.resolveShowBrands(scope.userId),
       ]);
     return ShoppingListResponseDto.fromEntity(
       shoppingList,
@@ -84,13 +79,8 @@ export class ShoppingListsController {
     const scope = await this.resolveScope(firebaseUser);
     const [{ shoppingList, latestEstimationId }, showBrands] =
       await Promise.all([
-        this.shoppingListsService.update(
-          projectId,
-          scope.organizationId,
-          scope.userId,
-          dto,
-        ),
-        this.resolveShowBrands(scope.organizationId),
+        this.shoppingListsService.update(projectId, scope.userId, dto),
+        this.resolveShowBrands(scope.userId),
       ]);
     return ShoppingListResponseDto.fromEntity(
       shoppingList,
@@ -114,12 +104,8 @@ export class ShoppingListsController {
     const scope = await this.resolveScope(firebaseUser);
     const [{ shoppingList, latestEstimationId }, showBrands] =
       await Promise.all([
-        this.shoppingListsService.regenerate(
-          projectId,
-          scope.organizationId,
-          scope.userId,
-        ),
-        this.resolveShowBrands(scope.organizationId),
+        this.shoppingListsService.regenerate(projectId, scope.userId),
+        this.resolveShowBrands(scope.userId),
       ]);
     return ShoppingListResponseDto.fromEntity(
       shoppingList,
@@ -137,15 +123,12 @@ export class ShoppingListsController {
   ): Promise<BudgetSummaryResponseDto> {
     const scope = await this.resolveScope(firebaseUser);
     const { summary, isFinalized } =
-      await this.shoppingListsService.getBudgetSummary(
-        projectId,
-        scope.organizationId,
-      );
+      await this.shoppingListsService.getBudgetSummary(projectId, scope.userId);
     return BudgetSummaryResponseDto.fromSummary(summary, isFinalized);
   }
 
   /**
-   * E4-4 — dernier prix relevé par l'organisation pour chaque article.
+   * E4-4 — dernier prix relevé par le compte pour chaque article.
    *
    * Même gate que la saisie qu'elle alimente (`budget_tracking`) : proposer un
    * rappel de prix à qui ne peut pas saisir de prix n'aurait pas de sens.
@@ -160,7 +143,7 @@ export class ShoppingListsController {
     const scope = await this.resolveScope(firebaseUser);
     const result = await this.shoppingListsService.findKnownPrices(
       projectId,
-      scope.organizationId,
+      scope.userId,
     );
     return KnownPricesResponseDto.fromResult(result);
   }
@@ -175,7 +158,7 @@ export class ShoppingListsController {
     const scope = await this.resolveScope(firebaseUser);
     const result = await this.shoppingListsService.getEcoSuggestions(
       projectId,
-      scope.organizationId,
+      scope.userId,
     );
     return EcoSuggestionsResponseDto.fromResult(result);
   }
@@ -195,10 +178,7 @@ export class ShoppingListsController {
   ): Promise<CloseoutResponseDto> {
     const scope = await this.resolveScope(firebaseUser);
     const { closeout, budgetSummary, isFinalized } =
-      await this.shoppingListsService.getCloseout(
-        projectId,
-        scope.organizationId,
-      );
+      await this.shoppingListsService.getCloseout(projectId, scope.userId);
     return CloseoutResponseDto.from(closeout, budgetSummary, isFinalized);
   }
 
@@ -214,7 +194,6 @@ export class ShoppingListsController {
     const { closeout, budgetSummary, isFinalized } =
       await this.shoppingListsService.recordCloseout(
         projectId,
-        scope.organizationId,
         scope.userId,
         dto,
       );
@@ -231,7 +210,6 @@ export class ShoppingListsController {
     const scope = await this.resolveScope(firebaseUser);
     const summary = await this.shoppingListsService.finalizeBudgetSummary(
       projectId,
-      scope.organizationId,
       scope.userId,
     );
     return BudgetSummaryResponseDto.fromSummary(summary);

@@ -43,13 +43,12 @@ export class QuantityValidation {
   @Column({ type: 'uuid' })
   project_id!: string;
 
-  @Column({ type: 'uuid' })
-  organization_id!: string;
-
   /**
    * `NULL` après suppression du compte. `user_email` reste : sans lui, la
    * suppression d'un compte effacerait l'identité que cette table existe pour
-   * établir.
+   * établir. La portée de lecture, elle, passe par `project_id` — c'est
+   * pourquoi E4-1 s'est contenté de retirer `organization_id` sans promouvoir
+   * cette colonne, qui est une trace d'auteur et non un axe de propriété.
    */
   @Column({ type: 'uuid', nullable: true })
   user_id!: string | null;

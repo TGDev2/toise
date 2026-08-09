@@ -72,7 +72,7 @@ export class AnalysisService {
 
   async startAnalysis(
     projectId: string,
-    organizationId: string,
+    userId: string,
     referenceObject?: CvAnalysisRequest['reference_object'],
   ): Promise<AnalysisJob> {
     // Coupe-circuit infra (ADR 0001 D2), indépendant de la gate DB
@@ -82,13 +82,10 @@ export class AnalysisService {
     }
 
     // Verify project ownership
-    await this.projectsService.findOneForOrg(projectId, organizationId);
+    await this.projectsService.findOneForUser(projectId, userId);
 
     // Verify project has photos
-    const photos = await this.photosService.getProjectPhotos(
-      projectId,
-      organizationId,
-    );
+    const photos = await this.photosService.getProjectPhotos(projectId, userId);
     if (photos.length === 0) {
       throw new BadRequestException(
         "Le projet doit avoir au moins une photo pour lancer l'analyse",
@@ -136,7 +133,7 @@ export class AnalysisService {
     this.processAnalysis(
       saved.id,
       projectId,
-      organizationId,
+      userId,
       imagePaths,
       referenceObject,
     ).catch((err: Error) =>
@@ -171,11 +168,11 @@ export class AnalysisService {
 
   async getJobStatus(
     projectId: string,
-    organizationId: string,
+    userId: string,
     jobId: string,
   ): Promise<AnalysisStatusDto> {
     // Verify project ownership
-    await this.projectsService.findOneForOrg(projectId, organizationId);
+    await this.projectsService.findOneForUser(projectId, userId);
 
     await this.reclaimStaleJobs(projectId);
 
@@ -210,7 +207,7 @@ export class AnalysisService {
       if (result.dimensions) {
         const persisted = await this.projectsService.getDimensions(
           projectId,
-          organizationId,
+          userId,
         );
         if (persisted?.source === DimensionSource.CV) {
           result.dimensions = {
@@ -233,7 +230,7 @@ export class AnalysisService {
   private async processAnalysis(
     jobId: string,
     projectId: string,
-    organizationId: string,
+    userId: string,
     imagePaths: string[],
     referenceObject?: CvAnalysisRequest['reference_object'],
   ): Promise<void> {
@@ -306,7 +303,7 @@ export class AnalysisService {
           ),
         };
 
-        await this.projectsService.applyCvAnalysis(projectId, organizationId, {
+        await this.projectsService.applyCvAnalysis(projectId, userId, {
           dimensions: dto,
           confidence_score: confidenceScore,
           raw_cv_output_json: cvResponse.raw_output,

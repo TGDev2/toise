@@ -40,8 +40,8 @@ export interface WasteObservation {
   estimated_units: number;
   /** Conditionnements réellement achetés (> 0). */
   actual_units: number;
-  /** Organisation propriétaire du chantier — plafonnement par organisation. */
-  organization_id: string;
+  /** Compte propriétaire du chantier — plafonnement par compte. */
+  user_id: string;
   /** Date de finalisation du budget — départage le plafonnement. */
   observed_at: Date;
 }
@@ -63,7 +63,7 @@ export interface WasteLearningOutcome {
   observed_percent: number | null;
   /** Valeur retenue, après crédibilité et bornes. Non nulle si `learned`. */
   factor_percent: number | null;
-  /** Observations retenues, après plafonnement par organisation. */
+  /** Observations retenues, après plafonnement par compte. */
   sample_size: number;
   /**
    * Observations **avant** plafonnement. Sans elle, une cellule bloquée est
@@ -77,22 +77,22 @@ export interface WasteLearningOutcome {
 
 /** Ce qui manque à une cellule pour franchir le seuil de volume. */
 export interface WasteLearningShortfall {
-  /** Observations manquantes, à nombre d'organisations constant. */
+  /** Observations manquantes, à nombre de comptes constant. */
   missing_observations: number;
   /**
    * Organisations manquantes. Non nul ⇒ **aucun chantier supplémentaire des
-   * organisations déjà présentes ne débloquera la cellule** : le plafond par
-   * organisation borne l'échantillon à `organization_count × cap`.
+   * comptes déjà présents ne débloquera la cellule** : le plafond par
+   * compte borne l'échantillon à `organization_count × cap`.
    */
-  missing_organizations: number;
+  missing_accounts: number;
 }
 
 export interface WasteLearningOptions {
   /** En deçà, aucune valeur apprise : le catalogue reste seul maître. */
   minObservations: number;
   /**
-   * Plafond de politique par organisation et par cellule (les plus récentes).
-   * Le plafond réellement appliqué est `organizationObservationCap`, qui ne
+   * Plafond de politique par compte et par cellule (les plus récentes).
+   * Le plafond réellement appliqué est `accountObservationCap`, qui ne
    * dépasse jamais celui-ci mais peut le resserrer.
    */
   maxObservationsPerOrg: number;
@@ -154,7 +154,7 @@ export function impliedWastePercent(observation: WasteObservation): number {
 }
 
 /**
- * Poids maximal d'une organisation dans une cellule, **dérivé** de
+ * Poids maximal d'un compte dans une cellule, **dérivé** de
  * `minObservations` et non réglé indépendamment.
  *
  * La médiane ne protège que tant qu'aucun contributeur ne détient la moitié de
@@ -168,17 +168,15 @@ export function impliedWastePercent(observation: WasteObservation): number {
  * fixé sous 3 donne un plafond nul et rend la cellule inapprenable — la panne
  * va dans le bon sens, celui du catalogue inchangé.
  */
-export function organizationObservationCap(
-  options: WasteLearningOptions,
-): number {
+export function accountObservationCap(options: WasteLearningOptions): number {
   const strictMinority = Math.ceil(options.minObservations / 2) - 1;
   return Math.max(0, Math.min(options.maxObservationsPerOrg, strictMinority));
 }
 
 /**
  * Distance d'une cellule au seuil de volume, exprimée dans les deux unités qui
- * la commandent réellement. Le plafond par organisation rend les deux
- * nécessaires : à 2 organisations et un cap de 3, une cellule plafonne à 6
+ * la commandent réellement. Le plafond par compte rend les deux
+ * nécessaires : à 2 comptes et un cap de 3, une cellule plafonne à 6
  * observations retenues et n'apprendra **jamais**, quel que soit le nombre de
  * chantiers ajoutés. Ne rapporter que les observations manquantes laisserait
  * croire à une attente qui n'aboutira pas.
@@ -191,35 +189,35 @@ export function wasteLearningShortfall(
   // sous 3) rend la cellule inapprenable de toute façon — `sample_size` y reste
   // à 0, donc les deux manques sortent au maximum. Pas de sentinelle à faire
   // traverser au JSON pour un cas qui n'a pas de vocabulaire à lui.
-  const cap = Math.max(1, organizationObservationCap(options));
-  const requiredOrganizations = Math.ceil(options.minObservations / cap);
+  const cap = Math.max(1, accountObservationCap(options));
+  const requiredAccounts = Math.ceil(options.minObservations / cap);
   return {
     missing_observations: Math.max(
       0,
       options.minObservations - outcome.sample_size,
     ),
-    missing_organizations: Math.max(
+    missing_accounts: Math.max(
       0,
-      requiredOrganizations - outcome.organization_count,
+      requiredAccounts - outcome.organization_count,
     ),
   };
 }
 
 /**
- * Plafonne le nombre d'observations qu'une même organisation peut peser dans
+ * Plafonne le nombre d'observations qu'un même compte peut peser dans
  * une cellule : sans cela, une entreprise qui enchaîne les mêmes chantiers
  * deviendrait à elle seule la vérité du catalogue pour tous les autres. Les
  * plus récentes sont conservées.
  */
-function capPerOrganization(
+function capPerAccount(
   observations: WasteObservation[],
   maxPerOrg: number,
 ): WasteObservation[] {
   const byOrg = new Map<string, WasteObservation[]>();
   for (const obs of observations) {
-    const group = byOrg.get(obs.organization_id);
+    const group = byOrg.get(obs.user_id);
     if (group) group.push(obs);
-    else byOrg.set(obs.organization_id, [obs]);
+    else byOrg.set(obs.user_id, [obs]);
   }
 
   const kept: WasteObservation[] = [];
@@ -267,10 +265,7 @@ export function learnWasteFactors(
   for (const group of cells.values()) {
     const { material_id, pose_type, skill_level } = group[0];
     const baseline = resolveBaseline({ material_id, pose_type, skill_level });
-    const retained = capPerOrganization(
-      group,
-      organizationObservationCap(options),
-    );
+    const retained = capPerAccount(group, accountObservationCap(options));
     const n = retained.length;
 
     const cell = {
@@ -279,7 +274,7 @@ export function learnWasteFactors(
       skill_level,
       sample_size: n,
       raw_sample_size: group.length,
-      organization_count: new Set(retained.map((o) => o.organization_id)).size,
+      organization_count: new Set(retained.map((o) => o.user_id)).size,
     };
 
     if (n < options.minObservations) {

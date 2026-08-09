@@ -26,23 +26,26 @@ Une seule voie de code, quel que soit le volume du compte, pour deux raisons :
   compte = asynchrone » doublerait le code pour un gain nul : l'écriture en
   flux rend déjà la voie asynchrone bon marché quel que soit le volume.
 
-## 2. Le périmètre : l'organisation entière, pas seulement ce que le compte a créé
+## 2. Le périmètre : le compte, et rien d'autre
 
-Pour chaque organisation dont le compte exporté est **membre** — pas
-seulement propriétaire — l'export reprend l'intégralité de la donnée de cette
-organisation : projets, clients, devis, factures, y compris ceux créés par
-d'autres membres.
+L'export reprend l'intégralité de la donnée dont le compte est propriétaire :
+projets, clients, devis, factures, profil d'entreprise. Il ne contient jamais
+la donnée d'un autre compte.
 
-Décision délibérée, pas un oubli de filtrage : depuis PLAT-4 un membre voit
-déjà cette donnée dans l'application (elle est scopée par organisation, pas
-par auteur). L'export ne révèle donc rien de nouveau ; le restreindre à «
-seulement ce que ce compte a personnellement créé » produirait un export
-incomplet pour l'usage professionnel à plusieurs comptes que le produit cible,
-et serait plus complexe à filtrer correctement — beaucoup d'entités n'ont pas
-toutes un `user_id` direct depuis que la propriété est portée par
-`organization_id`.
+**Ce point a changé avec E4-1** (ADR 0002 §2, D3 étendue). Jusque-là le
+périmètre était l'**organisation entière** : pour chaque organisation dont le
+compte était membre — pas seulement propriétaire — l'export reprenait tout, y
+compris ce qu'avaient créé les autres membres. C'était une décision délibérée
+et non un oubli de filtrage : un membre voyait déjà cette donnée dans
+l'application, l'export ne révélait donc rien de nouveau. Les organisations
+supprimées, la question ne se pose plus — la propriété est revenue sur
+`user_id` et la frontière du compte est étanche.
 
-**Ce qui reste borné à l'auteur, en dehors des organisations :**
+Le format du JSON change en conséquence : `format_version` passe de `1.0`
+à `2.0`, et le tableau `organizations[]` disparaît au profit d'un contenu
+remonté à la racine du manifeste.
+
+**Ce qui reste borné à l'auteur :**
 l'activité communautaire (`community_activity`) ne recense que les likes et
 commentaires posés **par** ce compte. Les likes/commentaires posés par
 d'autres comptes sur une publication de ce compte ne sont jamais énumérés
@@ -65,7 +68,7 @@ l'application (ils sont générés à la demande par `QuotePdfService`/
 `InvoicePdfService`) : l'export les régénère au moment de la demande, avec les
 mêmes services que le téléchargement direct d'un devis ou d'une facture.
 
-Un devis dont l'organisation n'a pas encore renseigné de profil d'entreprise
+Un devis dont le compte n'a pas encore renseigné de profil d'entreprise
 n'a pas de PDF possible (`QuotePdfService.generatePdf` exige un
 `CompanyProfile`) : `data.json` porte alors `pdf_file: null` et
 `pdf_skip_reason: "no_company_profile"` pour ce devis précis — jamais un
@@ -78,10 +81,9 @@ format, note par section, liste des entités exclues avec leur raison) plutôt
 que sur un `README` séparé : une seule pièce à distribuer, qui se comprend
 sans autre document.
 
-Sections principales : `profile` (compte, profil d'entreprise par
-organisation, abonnement, historique de facturation Stripe), `organizations[]`
-(une entrée par organisation dont le compte est membre — organisation,
-adhésions, invitations, clients, et `projects[]` avec pièces, dimensions,
+Sections principales : `profile` (compte, abonnement, historique de
+facturation Stripe), `company_profile`, `clients`,
+`invoices_without_project`, et `projects[]` (pièces, dimensions,
 exclusions, ouvertures, ouvrages, estimations, liste d'achat/déclarations
 d'achat, jalons de chantier, devis, factures, photos, publication
 communautaire éventuelle), `community_activity`, `referrals` (comme parrain et
@@ -111,7 +113,7 @@ la personne, la date de paiement qui a servi d'ancre et l'échéance qui lui a
 | `work_types` | Catalogue de référence global des ouvrages, identique pour tous les comptes. |
 | `complementary_materials` | Catalogue de référence global. |
 | `materials_catalog`, `material_packaging`, `waste_factors`, `material_eco_equivalences`, `work_type_materials` | Catalogue produit/matériaux global ; `modified_by` de `materials_catalog` est une trace d'administration système, pas une donnée du compte exporté. |
-| `learned_waste_factors` | Agrégat statistique inter-organisations, non attribuable à un compte individuel. |
+| `learned_waste_factors` | Agrégat statistique inter-comptes, non attribuable à un compte individuel. |
 | `cost_benchmarks` | Données de référence anonymisées par construction (k-anonymat), aucune donnée personnelle. |
 | `feature_gates` | Configuration globale de fonctionnalités. |
 | `supplier_material_match`, `supplier_price_cache` | Cache système de correspondance/prix fournisseurs, non lié à un compte. |
@@ -141,13 +143,13 @@ bloquées trop longtemps (crash pendant la génération).
 fichiers que la suppression de compte doit connaître — même mécanique de fuite
 que celle trouvée pour `mergeGuestAccount` pendant E6-1. `AuthService.
 deleteAccount` et `mergeGuestAccount` purgent ce préfixe au même moment que
-l'effacement des fichiers d'organisation, avant la suppression des lignes.
+l'effacement des fichiers du compte, avant la suppression des lignes.
 
 ## 7. Vérification
 
 - `apps/api/test/integration/data-export.int-spec.ts` — PostgreSQL et volume
-  réels : un compte peuplé avec deux organisations (dont une où il n'est que
-  membre), chaque identifiant seedé retrouvé dans le manifeste, l'archive
+  réels : un compte peuplé et un second compte voisin, chaque identifiant
+  seedé retrouvé dans le manifeste et aucun de ceux du voisin, l'archive
   réellement rouverte et son `data.json` reparsé, la frontière de scope
   communautaire vérifiée par contenu (pas d'identité de tiers), la
   dégradation du PDF sans profil d'entreprise, et la purge d'expiration.

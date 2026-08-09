@@ -93,17 +93,22 @@ export class Invoice {
   id!: string;
 
   /**
-   * Auteur de l'émission. L'émetteur légal, lui, est `organization_id`
-   * (PLAT-4) : `null` quand l'auteur a supprimé son compte. La facture, elle,
-   * ne peut pas disparaître avec lui — sa conservation s'impose à l'entreprise
-   * émettrice (art. L102 B LPF, cf. docs/CONFORMITE_FACTURATION.md).
+   * Émetteur légal de la facture, au sens de l'art. 242 nonies A CGI : c'est
+   * lui qui porte la continuité de la numérotation, dont la séquence est clé
+   * sur `(user_id, year)` depuis E4-1.
+   *
+   * **Réserve connue, inchangée par E4-1** : la clé étrangère est en
+   * `ON DELETE CASCADE`, donc la suppression du compte emporte les factures
+   * émises, dont la conservation s'impose pourtant (art. L102 B LPF, cf.
+   * docs/CONFORMITE_FACTURATION.md). C'était déjà le comportement effectif
+   * avant la suppression des organisations — `organization_id` était `NOT NULL`
+   * et sa cascade passait par l'organisation détruite avec son propriétaire.
+   * La tension préexiste donc à E4-1, qui la reconduit sans l'aggraver ; la
+   * traiter suppose de décider ce qu'est une facture sans émetteur.
    */
-  @Column({ type: 'uuid', nullable: true })
-  user_id!: string | null;
-
   @Index()
   @Column({ type: 'uuid' })
-  organization_id!: string;
+  user_id!: string;
 
   @Column({ type: 'uuid', nullable: true })
   quote_id!: string | null;
@@ -215,9 +220,9 @@ export class Invoice {
   @Column({ type: 'timestamptz', nullable: true })
   paid_at!: Date | null;
 
-  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
-  user!: User | null;
+  user!: User;
 
   @ManyToOne(() => Quote, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'quote_id' })

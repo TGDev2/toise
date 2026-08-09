@@ -8,7 +8,6 @@ import {
 
 const CONTEXT: QuantityCorrectionContext = {
   projectId: 'project-1',
-  organizationId: 'org-1',
   userId: 'user-1',
   skillLevel: 'expert',
   source: QuantityCorrectionSource.QUOTE_VALIDATION,
@@ -87,7 +86,6 @@ describe('buildQuantityCorrection', () => {
 
     expect(correction).toMatchObject({
       project_id: 'project-1',
-      organization_id: 'org-1',
       user_id: 'user-1',
       material_id: 'mat-adhesive',
       material_name: 'Mortier-colle C2',

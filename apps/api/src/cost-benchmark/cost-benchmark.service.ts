@@ -48,7 +48,7 @@ export interface PendingBenchmarkCell {
   sample_size: number;
   organization_count: number;
   missing_observations: number;
-  missing_organizations: number;
+  missing_accounts: number;
 }
 
 export interface CostBenchmarkRunSummary {
@@ -126,7 +126,7 @@ export class CostBenchmarkService {
       this.logger.log(
         `Benchmark de coûts : ${summary.by_status.published} cellule(s) publiée(s) sur ${summary.cells}, ${summary.observations} observation(s), ${summary.removed} retrait(s).` +
           (closest
-            ? ` ${summary.pending.length} cohorte(s) en attente, la plus proche à ${closest.missing_observations} observation(s) et ${closest.missing_organizations} organisation(s).`
+            ? ` ${summary.pending.length} cohorte(s) en attente, la plus proche à ${closest.missing_observations} observation(s) et ${closest.missing_accounts} compte(s).`
             : ''),
       );
     } catch (err) {
@@ -166,7 +166,7 @@ export class CostBenchmarkService {
 
   /**
    * Les cohortes qui ne publient pas, de la plus proche du seuil à la plus
-   * lointaine — le manque d'organisations d'abord : c'est le seul que le temps
+   * lointaine — le manque de comptes d'abord : c'est le seul que le temps
    * ne comble pas si les mêmes clients reviennent.
    */
   private summarizePending(cells: BenchmarkCell[]): PendingBenchmarkCell[] {
@@ -182,7 +182,7 @@ export class CostBenchmarkService {
       }))
       .sort(
         (a, b) =>
-          a.missing_organizations - b.missing_organizations ||
+          a.missing_accounts - b.missing_accounts ||
           a.missing_observations - b.missing_observations ||
           a.work_type_code.localeCompare(b.work_type_code),
       );
@@ -204,9 +204,9 @@ export class CostBenchmarkService {
    */
   async getForProject(
     projectId: string,
-    organizationId: string,
+    userId: string,
   ): Promise<ProjectBenchmark> {
-    await this.assertProjectBelongsToOrg(projectId, organizationId);
+    await this.assertProjectBelongsToUser(projectId, userId);
 
     const empty: ProjectBenchmark = {
       comparisons: [],
@@ -287,18 +287,18 @@ export class CostBenchmarkService {
    * Vérification de propriété sans hydrater `Project` : ses `rooms` sont en
    * `eager`, les charger pour lire un seul uuid serait gratuit.
    */
-  private async assertProjectBelongsToOrg(
+  private async assertProjectBelongsToUser(
     projectId: string,
-    organizationId: string,
+    userId: string,
   ): Promise<void> {
     const row = await this.projectRepo
       .createQueryBuilder('project')
-      .select('project.organization_id', 'organization_id')
+      .select('project.user_id', 'user_id')
       .where('project.id = :projectId', { projectId })
-      .getRawOne<{ organization_id: string }>();
+      .getRawOne<{ user_id: string }>();
 
     if (!row) throw new NotFoundException('Project not found');
-    if (row.organization_id !== organizationId) {
+    if (row.user_id !== userId) {
       throw new ForbiddenException('Access denied');
     }
   }
@@ -315,7 +315,7 @@ export class CostBenchmarkService {
       where: { id: In([...new Set(lists.map((l) => l.estimation_id))]) },
     });
     const estimationById = new Map(estimations.map((e) => [e.id, e]));
-    const orgByProjectId = await this.loadOrganizationIds(
+    const orgByProjectId = await this.loadUserIds(
       lists.map((l) => l.project_id),
     );
 
@@ -323,9 +323,9 @@ export class CostBenchmarkService {
 
     for (const list of lists) {
       const estimation = estimationById.get(list.estimation_id);
-      const organizationId = orgByProjectId.get(list.project_id);
-      // Pas d'organisation résolue = projet supprimé : il sort de la cohorte.
-      if (!estimation || !organizationId) continue;
+      const userId = orgByProjectId.get(list.project_id);
+      // Pas de compte résolu = projet supprimé : il sort de la cohorte.
+      if (!estimation || !userId) continue;
 
       const costs = this.extractWorkTypeCosts(list, estimation.items_json);
       if (!costs) continue;
@@ -336,7 +336,7 @@ export class CostBenchmarkService {
           work_type_code: entry.work_type_code,
           surface_m2: entry.surface_m2,
           cost_per_m2: entry.cost / entry.surface_m2,
-          organization_id: organizationId,
+          user_id: userId,
           observed_at: observedAt,
         });
       }
@@ -403,7 +403,7 @@ export class CostBenchmarkService {
       // E1-8 : même référence de quantité que le tableau de bord budgétaire
       // (`costedUnits`), sous une exigence plus stricte — ici le repli sur la
       // quantité prévue est refusé, parce que ce chiffre part en cohorte
-      // inter-organisations et non sous les yeux de qui l'a saisi.
+      // inter-comptes et non sous les yeux de qui l'a saisi.
       const costed = costedUnits(item);
       if (item.real_unit_price == null || !costed.is_declared) {
         // Un ouvrage partiellement chiffré paraîtrait moins cher qu'il n'est :
@@ -444,11 +444,11 @@ export class CostBenchmarkService {
   }
 
   /**
-   * `organization_id` des projets concernés, en une requête et **sans** charger
+   * `user_id` des projets concernés, en une requête et **sans** charger
    * l'entité `Project` (`rooms` en `eager`). Sans `withDeleted` : un projet
    * effacé n'a plus à alimenter une statistique publiée.
    */
-  private async loadOrganizationIds(
+  private async loadUserIds(
     projectIds: string[],
   ): Promise<Map<string, string>> {
     const unique = [...new Set(projectIds)];
@@ -457,11 +457,11 @@ export class CostBenchmarkService {
     const rows = await this.projectRepo
       .createQueryBuilder('project')
       .select('project.id', 'id')
-      .addSelect('project.organization_id', 'organization_id')
+      .addSelect('project.user_id', 'user_id')
       .where('project.id IN (:...projectIds)', { projectIds: unique })
-      .getRawMany<{ id: string; organization_id: string }>();
+      .getRawMany<{ id: string; user_id: string }>();
 
-    return new Map(rows.map((r) => [r.id, r.organization_id]));
+    return new Map(rows.map((r) => [r.id, r.user_id]));
   }
 
   // --- Persistance ---------------------------------------------------------

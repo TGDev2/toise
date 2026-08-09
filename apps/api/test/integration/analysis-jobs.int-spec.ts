@@ -3,7 +3,6 @@ import type { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import { migratedDataSource, truncateUserData } from './test-database';
 import { User } from '../../src/users/entities/user.entity';
-import { Organization } from '../../src/organizations/entities/organization.entity';
 import {
   Project,
   ProjectStatus,
@@ -53,7 +52,7 @@ const CV_SUCCESS: CvAnalysisResponse = {
 } as unknown as CvAnalysisResponse;
 
 interface Fixture {
-  organizationId: string;
+  userId: string;
   projectId: string;
   roomId: string;
 }
@@ -90,14 +89,8 @@ async function seedProject(
     email: `job-${suffix}@chiffreo.test`,
     firebase_uid: `firebase-job-${suffix}`,
   });
-  const organization = await dataSource.getRepository(Organization).save({
-    name: `Org ${suffix}`,
-    owner_user_id: user.id,
-    is_personal: true,
-  });
   const project = await dataSource.getRepository(Project).save({
     user_id: user.id,
-    organization_id: organization.id,
     name: `Chantier ${suffix}`,
     room_name: 'Salon',
     work_type: ProjectWorkType.PAINTING,
@@ -116,7 +109,7 @@ async function seedProject(
   });
 
   return {
-    organizationId: organization.id,
+    userId: user.id,
     projectId: project.id,
     roomId: room.id,
   };
@@ -181,18 +174,18 @@ describe("Jobs d'analyse CV (intégration, PostgreSQL réel)", () => {
   function processAnalysis(
     jobId: string,
     projectId: string,
-    organizationId: string,
+    userId: string,
   ): Promise<void> {
     return (
       analysisService as unknown as {
         processAnalysis: (
           jobId: string,
           projectId: string,
-          organizationId: string,
+          userId: string,
           imagePaths: string[],
         ) => Promise<void>;
       }
-    ).processAnalysis(jobId, projectId, organizationId, ['photo.jpg']);
+    ).processAnalysis(jobId, projectId, userId, ['photo.jpg']);
   }
 
   async function activeJobCount(projectId: string): Promise<number> {
@@ -218,14 +211,8 @@ describe("Jobs d'analyse CV (intégration, PostgreSQL réel)", () => {
       beforeJobLookup = barrier(2);
 
       const outcomes = await Promise.allSettled([
-        analysisService.startAnalysis(
-          fixture.projectId,
-          fixture.organizationId,
-        ),
-        analysisService.startAnalysis(
-          fixture.projectId,
-          fixture.organizationId,
-        ),
+        analysisService.startAnalysis(fixture.projectId, fixture.userId),
+        analysisService.startAnalysis(fixture.projectId, fixture.userId),
       ]);
 
       const accepted = outcomes.filter((o) => o.status === 'fulfilled');
@@ -270,7 +257,7 @@ describe("Jobs d'analyse CV (intégration, PostgreSQL réel)", () => {
 
       const started = await analysisService.startAnalysis(
         fixture.projectId,
-        fixture.organizationId,
+        fixture.userId,
       );
 
       expect(started.id).not.toBe(orphan.id);
@@ -296,7 +283,7 @@ describe("Jobs d'analyse CV (intégration, PostgreSQL réel)", () => {
 
       const status = await analysisService.getJobStatus(
         fixture.projectId,
-        fixture.organizationId,
+        fixture.userId,
         orphan.id,
       );
 
@@ -313,10 +300,7 @@ describe("Jobs d'analyse CV (intégration, PostgreSQL réel)", () => {
       });
 
       await expect(
-        analysisService.startAnalysis(
-          fixture.projectId,
-          fixture.organizationId,
-        ),
+        analysisService.startAnalysis(fixture.projectId, fixture.userId),
       ).rejects.toBeInstanceOf(ConflictException);
 
       const untouched = await dataSource
@@ -356,7 +340,7 @@ describe("Jobs d'analyse CV (intégration, PostgreSQL réel)", () => {
         project_id: fixture.projectId,
         status: AnalysisJobStatus.PENDING,
       });
-      await processAnalysis(job.id, fixture.projectId, fixture.organizationId);
+      await processAnalysis(job.id, fixture.projectId, fixture.userId);
 
       const finished = await dataSource
         .getRepository(AnalysisJob)
@@ -391,7 +375,7 @@ describe("Jobs d'analyse CV (intégration, PostgreSQL réel)", () => {
         project_id: fixture.projectId,
         status: AnalysisJobStatus.PENDING,
       });
-      await processAnalysis(job.id, fixture.projectId, fixture.organizationId);
+      await processAnalysis(job.id, fixture.projectId, fixture.userId);
 
       expect(
         await dataSource
@@ -416,7 +400,7 @@ describe("Jobs d'analyse CV (intégration, PostgreSQL réel)", () => {
         project_id: fixture.projectId,
         status: AnalysisJobStatus.PENDING,
       });
-      await processAnalysis(job.id, fixture.projectId, fixture.organizationId);
+      await processAnalysis(job.id, fixture.projectId, fixture.userId);
 
       expect(
         await dataSource
@@ -433,7 +417,7 @@ describe("Jobs d'analyse CV (intégration, PostgreSQL réel)", () => {
         project_id: fixture.projectId,
         status: AnalysisJobStatus.PENDING,
       });
-      await processAnalysis(job.id, fixture.projectId, fixture.organizationId);
+      await processAnalysis(job.id, fixture.projectId, fixture.userId);
 
       const finished = await dataSource
         .getRepository(AnalysisJob)

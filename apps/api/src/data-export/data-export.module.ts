@@ -5,9 +5,6 @@ import { UsersModule } from '../users/users.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { DataExportRequest } from './entities/data-export-request.entity';
 import { User } from '../users/entities/user.entity';
-import { Organization } from '../organizations/entities/organization.entity';
-import { OrganizationMembership } from '../organizations/entities/organization-membership.entity';
-import { OrganizationInvitation } from '../organizations/entities/organization-invitation.entity';
 import { Client } from '../clients/entities/client.entity';
 import { CompanyProfile } from '../company-profiles/entities/company-profile.entity';
 import { Project } from '../projects/entities/project.entity';
@@ -48,9 +45,6 @@ import { InvoicePdfService } from '../invoices/invoice-pdf.service';
     TypeOrmModule.forFeature([
       DataExportRequest,
       User,
-      Organization,
-      OrganizationMembership,
-      OrganizationInvitation,
       Client,
       CompanyProfile,
       Project,

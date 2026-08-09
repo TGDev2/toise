@@ -90,7 +90,6 @@ export const KNOWN_FEATURE_GATES: KnownFeatureGate[] = [
   // palier d'origine ne vend plus rien depuis la fusion en palier unique.
   { key: 'site_tracking', label: 'Suivi de chantier', minTier: 'contractor_essentiel', enabled: false, since: '065' },
   { key: 'quote_reminders', label: 'Relances de devis', minTier: 'contractor_essentiel', enabled: false, since: '065' },
-  { key: 'multi_user', label: 'Multi-utilisateurs', minTier: 'contractor_essentiel', enabled: false, since: '065' },
   // 1711468800045 / 049 / 053 / 056 / 060
   { key: 'invoicing', label: 'Facturation', minTier: 'contractor_essentiel', enabled: true, since: '045' },
   { key: 'logbook', label: 'Carnet du logement', minTier: 'free', enabled: true, since: '049' },
@@ -131,8 +130,6 @@ export const GATES_NOT_MARKETED: Record<string, string> = {
   // `is_enabled = false`. Les critères de dégel sont écrits à l'ADR §5.
   cv_analysis:
     "Gelée (ADR 0001 D2) : la justesse de l'analyse photo n'a jamais été mesurée sur une seule photo réelle, et le service sort de la production. Dégel : erreur médiane sous 5 % sur 50 à 100 photos relevées au télémètre.",
-  multi_user:
-    "Gelée (ADR 0001 D3) : le multi-utilisateurs était vendu au palier Premium sans qu'aucun écran ne permette d'inviter qui que ce soit. Le modèle `organizations` reste en base, l'interface reste gelée.",
   cost_benchmark:
     "Gelée (ADR 0001 D3) : sans signal avant plusieurs centaines de chantiers clôturés, et aujourd'hui structurellement faussée — le benchmark exclut tout projet mêlant peinture murale et peinture plafond.",
   eco_materials:

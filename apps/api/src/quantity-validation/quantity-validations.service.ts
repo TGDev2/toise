@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import type { OrgScope } from '../organizations/org-context.service';
+import type { UserScope } from '../users/user-context.service';
 import type { ShoppingListMaterialItem } from '../shopping-lists/entities/shopping-list.entity';
 import { ShoppingListsService } from '../shopping-lists/shopping-lists.service';
 import {
@@ -40,12 +40,10 @@ export class QuantityValidationsService {
    */
   async getState(
     projectId: string,
-    organizationId: string,
     userId: string,
   ): Promise<QuantityValidationState> {
     const { shoppingList } = await this.shoppingListsService.getOrGenerate(
       projectId,
-      organizationId,
       userId,
     );
     const { lines, fingerprint } = fingerprintShoppingList(
@@ -63,14 +61,10 @@ export class QuantityValidationsService {
 
   async validate(
     projectId: string,
-    scope: OrgScope,
+    scope: UserScope,
     dto: ValidateQuantitiesDto,
   ): Promise<QuantityValidationState> {
-    const state = await this.getState(
-      projectId,
-      scope.organizationId,
-      scope.userId,
-    );
+    const state = await this.getState(projectId, scope.userId);
 
     if (state.lines.length === 0) {
       throw new BadRequestException({
@@ -102,7 +96,6 @@ export class QuantityValidationsService {
 
     const entity = this.repo.create({
       project_id: projectId,
-      organization_id: scope.organizationId,
       user_id: scope.userId,
       user_email: scope.user.email,
       quantities_fingerprint: state.fingerprint,

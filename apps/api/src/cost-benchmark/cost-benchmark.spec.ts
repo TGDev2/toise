@@ -15,16 +15,16 @@ function obs(overrides: Partial<CostObservation> = {}): CostObservation {
     work_type_code: 'painting',
     surface_m2: 20,
     cost_per_m2: 12,
-    organization_id: 'org-1',
+    user_id: 'user-1',
     observed_at: new Date('2026-07-01T00:00:00.000Z'),
     ...overrides,
   };
 }
 
-/** n observations, une organisation distincte chacune. */
+/** n observations, un compte distincte chacune. */
 function fromDistinctOrgs(costsPerM2: number[]): CostObservation[] {
   return costsPerM2.map((cost, i) =>
-    obs({ cost_per_m2: cost, organization_id: `org-${i}` }),
+    obs({ cost_per_m2: cost, user_id: `org-${i}` }),
   );
 }
 
@@ -64,11 +64,11 @@ describe('buildCostBenchmarks — k-anonymat', () => {
     });
   });
 
-  it("ne publie pas de médiane sous le k d'organisations, même avec du volume", () => {
-    // 20 observations, mais 4 organisations seulement : le volume est là,
+  it('ne publie pas de médiane sous le k de comptes, même avec du volume', () => {
+    // 20 observations, mais 4 comptes seulement : le volume est là,
     // l'anonymat non. C'est bien l'anonymat qui doit trancher.
     const observations = Array.from({ length: 20 }, (_, i) =>
-      obs({ cost_per_m2: 10 + i, organization_id: `org-${i % 4}` }),
+      obs({ cost_per_m2: 10 + i, user_id: `org-${i % 4}` }),
     );
 
     const [cell] = buildCostBenchmarks(observations);
@@ -85,14 +85,14 @@ describe('buildCostBenchmarks — k-anonymat', () => {
     expect(cell.organization_count).toBe(5);
   });
 
-  it('plafonne la contribution d’une organisation à la cohorte', () => {
+  it('plafonne la contribution d’un compte à la cohorte', () => {
     // org-flood en apporte 8, écrêtées à 3 : elle ne peut ni constituer la
     // cohorte ni relire sa propre dépense dans la médiane.
     const observations = [
       ...Array.from({ length: 8 }, (_, i) =>
         obs({
           cost_per_m2: 100,
-          organization_id: 'org-flood',
+          user_id: 'user-flood',
           observed_at: new Date(2026, 6, i + 1),
         }),
       ),
@@ -112,7 +112,7 @@ describe('buildCostBenchmarks — k-anonymat', () => {
       ...[1, 2, 3, 4, 5].map((day) =>
         obs({
           cost_per_m2: day <= 2 ? 1000 : 5,
-          organization_id: 'org-capped',
+          user_id: 'user-capped',
           observed_at: new Date(2026, 6, day),
         }),
       ),
@@ -162,9 +162,9 @@ describe('buildCostBenchmarks — k-anonymat', () => {
   it('ignore les observations à surface ou coût non strictement positifs', () => {
     const cells = buildCostBenchmarks([
       ...fromDistinctOrgs([10, 11, 12, 13, 14, 15, 16, 17, 18, 19]),
-      obs({ surface_m2: 0, organization_id: 'org-zero' }),
-      obs({ cost_per_m2: 0, organization_id: 'org-free' }),
-      obs({ cost_per_m2: -5, organization_id: 'org-neg' }),
+      obs({ surface_m2: 0, user_id: 'user-zero' }),
+      obs({ cost_per_m2: 0, user_id: 'user-free' }),
+      obs({ cost_per_m2: -5, user_id: 'user-neg' }),
     ]);
 
     expect(cells).toHaveLength(1);
@@ -178,7 +178,7 @@ describe('buildCostBenchmarks — k-anonymat', () => {
   it('expose des seuils conformes à ceux écrits au plan', () => {
     expect(DEFAULT_COST_BENCHMARK_OPTIONS).toEqual({
       minObservations: 10,
-      minOrganizations: 5,
+      minAccounts: 5,
       maxObservationsPerOrg: 3,
       neutralBandPercent: 3,
     });
@@ -262,23 +262,23 @@ describe('rollUpComparisons', () => {
 });
 
 describe('benchmarkShortfall', () => {
-  it('réclame les organisations du k-anonymat, plus exigeant que le volume', () => {
-    // 10 observations à 3 par organisation n'en réclament que 4 ; le k en
+  it('réclame les comptes du k-anonymat, plus exigeant que le volume', () => {
+    // 10 observations à 3 par compte n'en réclament que 4 ; le k en
     // réclame 5. C'est le plus exigeant des deux qui commande.
     expect(
       benchmarkShortfall({ sample_size: 10, organization_count: 4 }),
-    ).toEqual({ missing_observations: 0, missing_organizations: 1 });
+    ).toEqual({ missing_observations: 0, missing_accounts: 1 });
   });
 
   it("rapporte les deux manques d'une cohorte naissante", () => {
     expect(
       benchmarkShortfall({ sample_size: 3, organization_count: 2 }),
-    ).toEqual({ missing_observations: 7, missing_organizations: 3 });
+    ).toEqual({ missing_observations: 7, missing_accounts: 3 });
   });
 
   it('ne réclame plus rien à une cohorte publiable', () => {
     expect(
       benchmarkShortfall({ sample_size: 10, organization_count: 5 }),
-    ).toEqual({ missing_observations: 0, missing_organizations: 0 });
+    ).toEqual({ missing_observations: 0, missing_accounts: 0 });
   });
 });

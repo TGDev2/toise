@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { OrgContextModule } from '../organizations/org-context.module';
+import { UserContextModule } from '../users/user-context.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { Project } from './entities/project.entity';
 import { Room } from './entities/room.entity';
@@ -35,7 +35,7 @@ import { CvCorrectionService } from '../analysis/cv-correction.service';
       // cette écriture ne dépende pas de l'ordre de chargement de `CommunityModule`.
       CommunityProject,
     ]),
-    OrgContextModule,
+    UserContextModule,
     // `ProjectsService` injecte `AnalyticsService` sans que ce module ne le
     // fournisse : le graphe d'injection ne se résolvait plus, donc l'application
     // ne démarrait plus. Seul `module-graph.int-spec.ts` peut voir ce défaut —

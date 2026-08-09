@@ -1,5 +1,5 @@
 /**
- * E4-4 — dernier prix relevé par l'organisation pour un article donné.
+ * E4-4 — dernier prix relevé par le compte pour un article donné.
  *
  * `recorded_on` accompagne toujours le prix : un tarif de peinture de l'an
  * dernier ne se reprend pas les yeux fermés, et l'artisan doit pouvoir en

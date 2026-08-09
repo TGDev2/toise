@@ -78,11 +78,10 @@ export class PhotosService {
 
   async uploadPhoto(
     projectId: string,
-    organizationId: string,
+    userId: string,
     file: Express.Multer.File,
-    userId: string | null = null,
   ): Promise<ProjectPhoto> {
-    await this.assertProjectInOrg(projectId, organizationId);
+    await this.assertProjectOwnedByUser(projectId, userId);
 
     const count = await this.photoRepo.count({
       where: { project_id: projectId },
@@ -144,9 +143,9 @@ export class PhotosService {
 
   async getProjectPhotos(
     projectId: string,
-    organizationId: string,
+    userId: string,
   ): Promise<ProjectPhoto[]> {
-    await this.assertProjectInOrg(projectId, organizationId);
+    await this.assertProjectOwnedByUser(projectId, userId);
     return this.photoRepo.find({
       where: { project_id: projectId },
       order: { sort_order: 'ASC', created_at: 'ASC' },
@@ -155,10 +154,10 @@ export class PhotosService {
 
   async deletePhoto(
     projectId: string,
-    organizationId: string,
+    userId: string,
     photoId: string,
   ): Promise<void> {
-    await this.assertProjectInOrg(projectId, organizationId);
+    await this.assertProjectOwnedByUser(projectId, userId);
 
     const photo = await this.photoRepo.findOne({
       where: { id: photoId, project_id: projectId },
@@ -180,10 +179,10 @@ export class PhotosService {
 
   async findPhotoForServing(
     projectId: string,
-    organizationId: string,
+    userId: string,
     photoId: string,
   ): Promise<ProjectPhoto> {
-    await this.assertProjectInOrg(projectId, organizationId);
+    await this.assertProjectOwnedByUser(projectId, userId);
 
     const photo = await this.photoRepo.findOne({
       where: { id: photoId, project_id: projectId },
@@ -202,18 +201,18 @@ export class PhotosService {
     return this.photoRepo.findOne({ where: { storage_url: storageUrl } });
   }
 
-  private async assertProjectInOrg(
+  private async assertProjectOwnedByUser(
     projectId: string,
-    organizationId: string,
+    userId: string,
   ): Promise<void> {
     const project = await this.projectRepo.findOne({
       where: { id: projectId },
-      select: ['id', 'organization_id'],
+      select: ['id', 'user_id'],
     });
     if (!project) {
       throw new NotFoundException('Projet non trouve');
     }
-    if (project.organization_id !== organizationId) {
+    if (project.user_id !== userId) {
       throw new ForbiddenException('Acces interdit');
     }
   }

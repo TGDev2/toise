@@ -93,7 +93,7 @@ export default function ClientDetailPage() {
   }, [appUser, fetchClient]);
 
   // Historique : ni /quotes ni /invoices n'exposent de filtre client_id
-  // côté API, on filtre donc la liste de l'organisation en mémoire.
+  // côté API, on filtre donc la liste du compte en mémoire.
   useEffect(() => {
     if (!appUser) return;
     apiGet<Quote[]>('/quotes')

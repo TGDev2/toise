@@ -16,16 +16,13 @@ export class Client {
   id!: string;
 
   /**
-   * Auteur de la fiche. La propriété est portée par `organization_id` (PLAT-4) :
-   * `null` quand l'auteur a supprimé son compte, la fiche restant acquise à
-   * l'organisation.
+   * Propriétaire de la fiche. Redevenu l'axe de propriété avec la suppression
+   * des organisations (E4-1) : auteur et propriétaire sont de nouveau la même
+   * personne, et la colonne n'est plus nullable.
    */
-  @Column({ type: 'uuid', nullable: true })
-  user_id!: string | null;
-
   @Index()
   @Column({ type: 'uuid' })
-  organization_id!: string;
+  user_id!: string;
 
   @Column({ type: 'varchar', length: 255 })
   name!: string;
@@ -62,9 +59,9 @@ export class Client {
   @Column({ type: 'varchar', length: 2, default: 'FR' })
   country!: string;
 
-  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
-  user!: User | null;
+  user!: User;
 
   @CreateDateColumn({ type: 'timestamptz' })
   created_at!: Date;

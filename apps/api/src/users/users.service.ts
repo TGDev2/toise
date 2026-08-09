@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
 import { User, AuthProvider, SubscriptionTier } from './entities/user.entity';
 import { Project } from '../projects/entities/project.entity';
-import { Organization } from '../organizations/entities/organization.entity';
 
 @Injectable()
 export class UsersService {
@@ -71,18 +70,12 @@ export class UsersService {
   }
 
   /**
-   * Fusion invité → compte réel. Depuis PLAT-4 la propriété est portée par
-   * l'organisation : repointer `user_id` seul laisserait le projet dans l'org
-   * de l'invité, donc hors de portée du compte cible.
+   * Fusion invité → compte réel : les projets vivants changent de propriétaire.
    */
-  async transferProjects(
-    fromUserId: string,
-    toUserId: string,
-    toOrganizationId: string,
-  ): Promise<void> {
+  async transferProjects(fromUserId: string, toUserId: string): Promise<void> {
     await this.projectsRepo.update(
       { user_id: fromUserId, deleted_at: IsNull() },
-      { user_id: toUserId, organization_id: toOrganizationId },
+      { user_id: toUserId },
     );
   }
 
@@ -122,30 +115,20 @@ export class UsersService {
   }
 
   /**
-   * Efface un compte et les seules organisations qui ne concernaient que lui,
-   * en une transaction.
+   * Efface un compte et, par cascade, tout ce qui lui appartient.
    *
-   * L'atomicité est ici la propriété qui compte : `FK_organizations_owner` est
-   * passée en `ON DELETE RESTRICT` (migration 1711468800061), donc une
-   * organisation encore possédée bloque la suppression de son propriétaire. En
-   * deux instructions séparées, un échec entre les deux laisserait soit des
-   * organisations sans compte, soit un compte dont on a déjà détruit l'espace
-   * de travail. La liste est calculée en amont par
-   * `OrgContextService.collectOrganizationsRemovableWithOwner`, qui refuse le
-   * cas d'une organisation partagée.
+   * Une seule instruction depuis E4-1 : la propriété est revenue sur `user_id`
+   * et les `FK_<table>_user` des cinq tables métier sont en
+   * `ON DELETE CASCADE`, donc `DELETE FROM users` suffit. L'étape préalable de
+   * suppression des organisations possédées — rendue nécessaire par le
+   * `ON DELETE RESTRICT` de `FK_organizations_owner` (migration
+   * 1711468800061) — n'a plus d'objet : il n'y a plus d'organisation.
    *
-   * Les adhésions de l'utilisateur aux organisations **des autres** partent
-   * avec lui (`FK_organization_memberships_user ON DELETE CASCADE`) : il les
-   * quitte, il ne les emporte pas.
+   * La transaction est conservée : le contrat de la méthode reste « le compte
+   * et ses données partent ensemble ou pas du tout ».
    */
-  async deleteAccountData(
-    userId: string,
-    ownedOrganizationIds: string[],
-  ): Promise<void> {
+  async deleteAccountData(userId: string): Promise<void> {
     await this.usersRepo.manager.transaction(async (manager) => {
-      if (ownedOrganizationIds.length > 0) {
-        await manager.delete(Organization, ownedOrganizationIds);
-      }
       await manager.delete(User, userId);
     });
   }

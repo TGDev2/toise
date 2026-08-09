@@ -1,14 +1,14 @@
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { SubscriptionTier } from '../../users/entities/user.entity';
-import { OrgContextService } from '../../organizations/org-context.service';
+import { UserContextService } from '../../users/user-context.service';
 import { FeatureGatesService } from '../feature-gates.service';
 import { FeatureGateGuard } from './feature-gate.guard';
 
 describe('FeatureGateGuard', () => {
   let guard: FeatureGateGuard;
   const reflector = { get: jest.fn() } as unknown as Reflector;
-  const orgContext = { resolveForFirebaseUid: jest.fn() };
+  const userContext = { resolveForFirebaseUid: jest.fn() };
   const featureGates = {
     isFeatureAllowed: jest.fn(),
     getGateConfig: jest.fn(),
@@ -26,7 +26,7 @@ describe('FeatureGateGuard', () => {
     request.appUser = undefined;
     guard = new FeatureGateGuard(
       reflector,
-      orgContext as unknown as OrgContextService,
+      userContext as unknown as UserContextService,
       featureGates as unknown as FeatureGatesService,
     );
   });
@@ -34,14 +34,14 @@ describe('FeatureGateGuard', () => {
   it('laisse passer une route sans gate', async () => {
     (reflector.get as jest.Mock).mockReturnValue(undefined);
     await expect(guard.canActivate(context)).resolves.toBe(true);
-    expect(orgContext.resolveForFirebaseUid).not.toHaveBeenCalled();
+    expect(userContext.resolveForFirebaseUid).not.toHaveBeenCalled();
   });
 
   it('évalue le palier de l’organisation, pas celui de l’appelant', async () => {
     // Un salarié `free` invité chez un Contractor Premium doit franchir une
     // gate `multi_user` : c'est l'organisation qui porte le droit (PLAT-4).
     (reflector.get as jest.Mock).mockReturnValue('multi_user');
-    orgContext.resolveForFirebaseUid.mockResolvedValue({
+    userContext.resolveForFirebaseUid.mockResolvedValue({
       user: { id: 'user-1', subscription_tier: SubscriptionTier.FREE },
       effectiveTier: SubscriptionTier.CONTRACTOR_PREMIUM,
     });
@@ -56,7 +56,7 @@ describe('FeatureGateGuard', () => {
 
   it('rend le palier effectif dans l’erreur FEATURE_GATED', async () => {
     (reflector.get as jest.Mock).mockReturnValue('multi_user');
-    orgContext.resolveForFirebaseUid.mockResolvedValue({
+    userContext.resolveForFirebaseUid.mockResolvedValue({
       user: { id: 'user-1' },
       effectiveTier: SubscriptionTier.FREE,
     });
@@ -76,7 +76,7 @@ describe('FeatureGateGuard', () => {
 
   it('refuse quand le contexte ne se résout pas (fail-closed)', async () => {
     (reflector.get as jest.Mock).mockReturnValue('multi_user');
-    orgContext.resolveForFirebaseUid.mockRejectedValue(new Error('unknown'));
+    userContext.resolveForFirebaseUid.mockRejectedValue(new Error('unknown'));
 
     await expect(guard.canActivate(context)).rejects.toBeInstanceOf(
       ForbiddenException,

@@ -6,7 +6,7 @@ import { QuantityValidation } from './entities/quantity-validation.entity';
 import { ShoppingListsService } from '../shopping-lists/shopping-lists.service';
 import { fingerprintShoppingList } from './quantity-fingerprint';
 import type { ShoppingListMaterialItem } from '../shopping-lists/entities/shopping-list.entity';
-import type { OrgScope } from '../organizations/org-context.service';
+import type { UserScope } from '../users/user-context.service';
 
 const PROJECT_ID = 'project-1';
 
@@ -33,9 +33,8 @@ function item(
 
 const SCOPE = {
   userId: 'user-1',
-  organizationId: 'org-1',
   user: { id: 'user-1', email: 'artisan@chiffreo.test' },
-} as OrgScope;
+} as UserScope;
 
 describe('QuantityValidationsService', () => {
   let service: QuantityValidationsService;
@@ -85,7 +84,7 @@ describe('QuantityValidationsService', () => {
 
   describe('getState', () => {
     it('rend les quantités à valider et une empreinte serveur', async () => {
-      const state = await service.getState(PROJECT_ID, 'org-1', 'user-1');
+      const state = await service.getState(PROJECT_ID, 'user-1');
 
       expect(state.lines).toHaveLength(1);
       expect(state.fingerprint).toMatch(/^[0-9a-f]{64}$/);
@@ -98,7 +97,7 @@ describe('QuantityValidationsService', () => {
         user_email: 'artisan@chiffreo.test',
       });
 
-      const state = await service.getState(PROJECT_ID, 'org-1', 'user-1');
+      const state = await service.getState(PROJECT_ID, 'user-1');
 
       expect(state.validated_at).toBe('2026-08-08T12:00:00.000Z');
       expect(state.validated_by).toBe('artisan@chiffreo.test');
@@ -115,7 +114,6 @@ describe('QuantityValidationsService', () => {
       expect(repoMock.create).toHaveBeenCalledWith(
         expect.objectContaining({
           project_id: PROJECT_ID,
-          organization_id: 'org-1',
           user_id: 'user-1',
           user_email: 'artisan@chiffreo.test',
           quantities_fingerprint: fingerprint,

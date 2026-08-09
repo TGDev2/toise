@@ -189,7 +189,7 @@ export interface CostedQuantity {
  *
  * `is_declared` porte la nuance que le nombre seul ne peut pas porter : sans
  * déclaration, le montant reste une prévision. Les appelants qui **publient**
- * un coût (benchmark DATA-4, cohorte inter-organisations) exigent le drapeau ;
+ * un coût (benchmark DATA-4, cohorte inter-comptes) exigent le drapeau ;
  * ceux qui montrent son budget à l'utilisateur se contentent du repli, parce
  * qu'un écran vide avant la clôture ne rend service à personne.
  */

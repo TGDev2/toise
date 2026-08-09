@@ -1,13 +1,13 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { AnalysisController } from './analysis.controller';
 import type { AnalysisService } from './analysis.service';
-import type { OrgContextService } from '../organizations/org-context.service';
+import type { UserContextService } from '../users/user-context.service';
 import type { DecodedIdToken } from 'firebase-admin/auth';
 
 describe('AnalysisController', () => {
   let controller: AnalysisController;
   let analysisService: { startAnalysis: jest.Mock; getJobStatus: jest.Mock };
-  let orgContext: { resolveForFirebaseUid: jest.Mock };
+  let userContext: { resolveForFirebaseUid: jest.Mock };
 
   const firebaseUser = { uid: 'fb-uid' } as DecodedIdToken;
 
@@ -18,14 +18,12 @@ describe('AnalysisController', () => {
         .mockResolvedValue({ id: 'job-1', status: 'pending' }),
       getJobStatus: jest.fn(),
     };
-    orgContext = {
-      resolveForFirebaseUid: jest
-        .fn()
-        .mockResolvedValue({ userId: 'user-1', organizationId: 'org-1' }),
+    userContext = {
+      resolveForFirebaseUid: jest.fn().mockResolvedValue({ userId: 'user-1' }),
     };
     controller = new AnalysisController(
       analysisService as unknown as AnalysisService,
-      orgContext as unknown as OrgContextService,
+      userContext as unknown as UserContextService,
     );
   });
 
@@ -36,7 +34,7 @@ describe('AnalysisController', () => {
 
     expect(analysisService.startAnalysis).toHaveBeenCalledWith(
       'proj-1',
-      'org-1',
+      'user-1',
       { type: 'a4' },
     );
     expect(res).toEqual({ job_id: 'job-1', status: 'pending' });
@@ -47,13 +45,13 @@ describe('AnalysisController', () => {
 
     expect(analysisService.startAnalysis).toHaveBeenCalledWith(
       'proj-1',
-      'org-1',
+      'user-1',
       undefined,
     );
   });
 
   it('rejects an unknown Firebase user', async () => {
-    orgContext.resolveForFirebaseUid.mockRejectedValue(
+    userContext.resolveForFirebaseUid.mockRejectedValue(
       new Error('User not found'),
     );
 

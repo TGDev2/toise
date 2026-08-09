@@ -65,7 +65,7 @@ export class LearnedWasteFactor {
   })
   observed_percent!: number;
 
-  /** Observations retenues, après plafonnement par organisation. */
+  /** Observations retenues, après plafonnement par compte. */
   @Column({ type: 'integer' })
   sample_size!: number;
 

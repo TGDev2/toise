@@ -40,14 +40,14 @@ export interface PendingWasteCell {
   pose_type: string;
   skill_level: string;
   status: WasteLearningStatus;
-  /** Observations retenues, après plafonnement par organisation. */
+  /** Observations retenues, après plafonnement par compte. */
   sample_size: number;
   /** Observations collectées, avant plafonnement. */
   raw_sample_size: number;
   organization_count: number;
   missing_observations: number;
-  /** Non nul ⇒ aucun chantier des organisations déjà présentes n'y suffira. */
-  missing_organizations: number;
+  /** Non nul ⇒ aucun chantier des comptes déjà présents n'y suffira. */
+  missing_accounts: number;
 }
 
 export interface WasteLearningRunSummary {
@@ -104,7 +104,7 @@ export class WasteLearningService {
       this.logger.log(
         `Facteurs de perte appris : ${summary.by_status.learned} cellule(s) sur ${summary.cells}, ${summary.observations} observation(s), ${summary.removed} retrait(s).` +
           (closest
-            ? ` ${summary.pending.length} cellule(s) en attente, la plus proche à ${closest.missing_observations} observation(s) et ${closest.missing_organizations} organisation(s).`
+            ? ` ${summary.pending.length} cellule(s) en attente, la plus proche à ${closest.missing_observations} observation(s) et ${closest.missing_accounts} compte(s).`
             : ''),
       );
     } catch (err) {
@@ -176,7 +176,7 @@ export class WasteLearningService {
 
   /**
    * Les cellules qui n'ont rien produit, ordonnées de la plus proche du seuil à
-   * la plus lointaine — le manque d'organisations d'abord, puisqu'il est le seul
+   * la plus lointaine — le manque de comptes d'abord, puisqu'il est le seul
    * que le temps ne comble pas tout seul.
    */
   private summarizePending(
@@ -196,7 +196,7 @@ export class WasteLearningService {
       }))
       .sort(
         (a, b) =>
-          a.missing_organizations - b.missing_organizations ||
+          a.missing_accounts - b.missing_accounts ||
           a.missing_observations - b.missing_observations ||
           a.material_id.localeCompare(b.material_id),
       );
@@ -220,7 +220,7 @@ export class WasteLearningService {
       where: { id: In([...new Set(lists.map((l) => l.estimation_id))]) },
     });
     const estimationById = new Map(estimations.map((e) => [e.id, e]));
-    const orgByProjectId = await this.loadOrganizationIds(
+    const orgByProjectId = await this.loadUserIds(
       lists.map((l) => l.project_id),
     );
 
@@ -228,8 +228,8 @@ export class WasteLearningService {
 
     for (const list of lists) {
       const estimation = estimationById.get(list.estimation_id);
-      const organizationId = orgByProjectId.get(list.project_id);
-      if (!estimation || !organizationId) continue;
+      const userId = orgByProjectId.get(list.project_id);
+      if (!estimation || !userId) continue;
 
       const observedAt = this.resolveObservedAt(list);
       // Une liste antérieure à la mutualisation ENG-2 porte une ligne par
@@ -267,7 +267,7 @@ export class WasteLearningService {
           applied_percent: context.applied_percent,
           estimated_units: item.original_units_needed,
           actual_units: actualUnits,
-          organization_id: organizationId,
+          user_id: userId,
           observed_at: observedAt,
         });
       }
@@ -313,12 +313,12 @@ export class WasteLearningService {
   }
 
   /**
-   * `organization_id` des projets concernés, en une requête et **sans** charger
+   * `user_id` des projets concernés, en une requête et **sans** charger
    * l'entité `Project` : ses `rooms` sont en `eager`, les hydrater pour un seul
    * uuid ferait exploser la passe. `withDeleted` car un chantier terminé puis
    * archivé reste une observation valide.
    */
-  private async loadOrganizationIds(
+  private async loadUserIds(
     projectIds: string[],
   ): Promise<Map<string, string>> {
     const unique = [...new Set(projectIds)];
@@ -327,12 +327,12 @@ export class WasteLearningService {
     const rows = await this.projectRepo
       .createQueryBuilder('project')
       .select('project.id', 'id')
-      .addSelect('project.organization_id', 'organization_id')
+      .addSelect('project.user_id', 'user_id')
       .where('project.id IN (:...projectIds)', { projectIds: unique })
       .withDeleted()
-      .getRawMany<{ id: string; organization_id: string }>();
+      .getRawMany<{ id: string; user_id: string }>();
 
-    return new Map(rows.map((r) => [r.id, r.organization_id]));
+    return new Map(rows.map((r) => [r.id, r.user_id]));
   }
 
   /**

@@ -1,7 +1,6 @@
 import { DataSource } from 'typeorm';
 import { migratedDataSource } from './test-database';
 import { User } from '../../src/users/entities/user.entity';
-import { Organization } from '../../src/organizations/entities/organization.entity';
 import {
   Project,
   ProjectStatus,
@@ -77,7 +76,7 @@ function buildShoppingListsService(
       getLatest: () => Promise.resolve(estimation),
     } as unknown as EstimationsService,
     {
-      findOneForOrg: () => Promise.resolve({ id: estimation.project_id }),
+      findOneForUser: () => Promise.resolve({ id: estimation.project_id }),
     } as unknown as ProjectsService,
     { track: () => undefined } as unknown as AnalyticsService,
     {} as LogbookService,
@@ -96,14 +95,8 @@ describe("Liste d'achat carrelage sol (intégration, PostgreSQL réel)", () => {
       email: 'int-tiling@chiffreo.test',
       firebase_uid: 'firebase-int-tiling',
     });
-    const organization = await dataSource.getRepository(Organization).save({
-      name: 'Org carrelage',
-      owner_user_id: user.id,
-      is_personal: true,
-    });
     const project = await dataSource.getRepository(Project).save({
       user_id: user.id,
-      organization_id: organization.id,
       name: 'Chantier carrelage',
       room_name: 'Cuisine',
       work_type: ProjectWorkType.TILING,
@@ -145,7 +138,7 @@ describe("Liste d'achat carrelage sol (intégration, PostgreSQL réel)", () => {
     const shoppingList = await buildShoppingListsService(
       dataSource,
       estimation,
-    ).generate(project.id, organization.id, user.id);
+    ).generate(project.id, user.id);
 
     data = shoppingList.items_json;
     estimationLines = computed.items;

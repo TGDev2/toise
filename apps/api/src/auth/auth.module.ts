@@ -4,14 +4,13 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { FirebaseConfig } from '../config/firebase.config';
 import { UsersModule } from '../users/users.module';
-import { OrgContextModule } from '../organizations/org-context.module';
+import { UserContextModule } from '../users/user-context.module';
 import { CompanyProfilesModule } from '../company-profiles/company-profiles.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { DataRetentionModule } from '../data-retention/data-retention.module';
 import { StorageModule } from '../photos/storage/storage.module';
 import { User } from '../users/entities/user.entity';
-import { OrganizationMembership } from '../organizations/entities/organization-membership.entity';
 import { FirebaseAuthGuard } from './guards/firebase-auth.guard';
 import { OptionalAuthGuard } from './guards/optional-auth.guard';
 import { AdminGuard } from './guards/admin.guard';
@@ -20,7 +19,7 @@ import { AdminGuard } from './guards/admin.guard';
 @Module({
   imports: [
     UsersModule,
-    OrgContextModule,
+    UserContextModule,
     CompanyProfilesModule,
     AnalyticsModule,
     // La suppression d'un compte doit résilier l'abonnement Stripe avant
@@ -36,7 +35,7 @@ import { AdminGuard } from './guards/admin.guard';
     // le préfixe où vivent les archives RGPD générées pour ce compte — même
     // volume que les photos, deuxième porte à fermer par le même geste.
     StorageModule,
-    TypeOrmModule.forFeature([User, OrganizationMembership]),
+    TypeOrmModule.forFeature([User]),
   ],
   controllers: [AuthController],
   providers: [

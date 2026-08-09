@@ -9,7 +9,7 @@ import {
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { CurrentFirebaseUser } from '../auth/decorators/current-user.decorator';
-import { OrgContextService } from '../organizations/org-context.service';
+import { UserContextService } from '../users/user-context.service';
 import { RequireFeature } from '../feature-gates/decorators/require-feature.decorator';
 import { FeatureGateGuard } from '../feature-gates/guards/feature-gate.guard';
 import { CostBenchmarkService } from './cost-benchmark.service';
@@ -26,7 +26,7 @@ import { CostBenchmarkResponseDto } from './dto/cost-benchmark-response.dto';
 export class CostBenchmarkController {
   constructor(
     private readonly costBenchmarkService: CostBenchmarkService,
-    private readonly orgContext: OrgContextService,
+    private readonly userContext: UserContextService,
   ) {}
 
   @Get(':id/cost-benchmark')
@@ -38,14 +38,14 @@ export class CostBenchmarkController {
   ): Promise<CostBenchmarkResponseDto> {
     let scope;
     try {
-      scope = await this.orgContext.resolveForFirebaseUid(firebaseUser.uid);
+      scope = await this.userContext.resolveForFirebaseUid(firebaseUser.uid);
     } catch {
       throw new UnauthorizedException('Utilisateur non authentifié.');
     }
 
     const benchmark = await this.costBenchmarkService.getForProject(
       projectId,
-      scope.organizationId,
+      scope.userId,
     );
     return CostBenchmarkResponseDto.fromBenchmark(benchmark);
   }

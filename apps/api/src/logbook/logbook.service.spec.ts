@@ -10,7 +10,6 @@ import type { ShoppingList } from '../shopping-lists/entities/shopping-list.enti
 
 const mockProjectId = 'project-1';
 const mockUserId = 'user-1';
-const mockOrgId = 'org-1';
 
 function makeRoom(overrides: Partial<Room> = {}): Room {
   return {
@@ -125,16 +124,15 @@ describe('LogbookService', () => {
   };
 
   const projectsServiceMock = {
-    findOneForOrg: jest.fn(),
+    findOneForUser: jest.fn(),
     getRooms: jest.fn(),
   };
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    projectsServiceMock.findOneForOrg.mockResolvedValue({
+    projectsServiceMock.findOneForUser.mockResolvedValue({
       id: mockProjectId,
       user_id: mockUserId,
-      organization_id: mockOrgId,
       name: 'Rénovation salon',
     });
     repoMock.create.mockImplementation((v: Partial<RoomLogEntry>) => v);
@@ -173,7 +171,6 @@ describe('LogbookService', () => {
 
       await service.recordChantierCompletion(
         mockProjectId,
-        mockOrgId,
         mockUserId,
         makeEstimation(),
         makeShoppingList(),
@@ -213,7 +210,6 @@ describe('LogbookService', () => {
 
       await service.recordChantierCompletion(
         mockProjectId,
-        mockOrgId,
         mockUserId,
         makeEstimation(),
         makeShoppingList(),
@@ -233,7 +229,6 @@ describe('LogbookService', () => {
 
       await service.recordChantierCompletion(
         mockProjectId,
-        mockOrgId,
         mockUserId,
         makeEstimation(),
         makeShoppingList(),

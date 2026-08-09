@@ -37,7 +37,7 @@ export class CostBenchmark {
   })
   median_cost_per_m2!: number;
 
-  /** Observations retenues, après plafonnement par organisation. */
+  /** Observations retenues, après plafonnement par compte. */
   @Column({ type: 'integer' })
   sample_size!: number;
 

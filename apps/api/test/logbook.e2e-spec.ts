@@ -9,7 +9,7 @@ import request from 'supertest';
 import type { App } from 'supertest/types';
 import { LogbookController } from '../src/logbook/logbook.controller';
 import { LogbookService } from '../src/logbook/logbook.service';
-import { OrgContextService } from '../src/organizations/org-context.service';
+import { UserContextService } from '../src/users/user-context.service';
 import { FeatureGatesService } from '../src/feature-gates/feature-gates.service';
 import { FirebaseAuthGuard } from '../src/auth/guards/firebase-auth.guard';
 import { SubscriptionTier } from '../src/users/entities/user.entity';
@@ -19,7 +19,7 @@ import { SubscriptionTier } from '../src/users/entities/user.entity';
  *
  * `room_log_entries.user_id` est écrit avec `scope.userId` par
  * `recordChantierCompletion`, et le contrôleur interrogeait
- * `findAllByUser(scope.organizationId)`. Deux UUID de deux tables différentes :
+ * `findAllByUser(scope.userId)`. Deux UUID de deux tables différentes :
  * le filtre ne pouvait jamais rendre une ligne.
  *
  * Le défaut a survécu parce que `logbook.service.spec.ts` teste le service
@@ -27,20 +27,16 @@ import { SubscriptionTier } from '../src/users/entities/user.entity';
  * contrôleur, que rien n'exerçait. C'est le seul étage où elle est visible.
  */
 const mockUserId = '123e4567-e89b-12d3-a456-426614174000';
-const mockOrgId = '00000000-0000-4000-8000-0000000000aa';
 const mockFirebaseUid = 'firebase-uid-123';
 
 const logbookServiceMock = {
   findAllByUser: jest.fn().mockResolvedValue([]),
 };
 
-const orgContextMock = {
+const userContextMock = {
   resolveForFirebaseUid: jest.fn().mockResolvedValue({
     user: { id: mockUserId, subscription_tier: SubscriptionTier.FREE },
     userId: mockUserId,
-    organization: { id: mockOrgId, name: 'Mon espace', is_personal: true },
-    organizationId: mockOrgId,
-    role: 'owner',
     effectiveTier: SubscriptionTier.FREE,
   }),
 };
@@ -62,7 +58,7 @@ describe('LogbookController (e2e)', () => {
       controllers: [LogbookController],
       providers: [
         { provide: LogbookService, useValue: logbookServiceMock },
-        { provide: OrgContextService, useValue: orgContextMock },
+        { provide: UserContextService, useValue: userContextMock },
         { provide: FeatureGatesService, useValue: featureGatesServiceMock },
       ],
     })
@@ -88,13 +84,15 @@ describe('LogbookController (e2e)', () => {
     await app.close();
   });
 
-  it("interroge le carnet avec l'identifiant de l'utilisateur, pas celui de l'organisation", async () => {
+  it("interroge le carnet avec l'identifiant de l'utilisateur", async () => {
     await request(app.getHttpServer()).get('/api/v1/logbook').expect(200);
 
+    // Ce test opposait l'identifiant de l'utilisateur à celui de son
+    // organisation : le carnet du logement était délibérément la seule
+    // ressource restée scopée à la personne. E4-1 ayant fait de la portée
+    // utilisateur la règle générale, l'opposition n'a plus d'objet — reste que
+    // la route doit passer l'identifiant du compte appelant.
     expect(logbookServiceMock.findAllByUser).toHaveBeenCalledWith(mockUserId);
-    expect(logbookServiceMock.findAllByUser).not.toHaveBeenCalledWith(
-      mockOrgId,
-    );
   });
 
   it('rend les entrées du carnet telles que le service les fournit', async () => {

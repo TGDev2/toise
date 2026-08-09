@@ -40,13 +40,11 @@ export class PriceComparisonService {
 
   async comparePrices(
     projectId: string,
-    organizationId: string,
     userId: string,
     postalCode?: string,
   ): Promise<PriceComparisonResponseDto> {
     const { shoppingList } = await this.shoppingListsService.getOrGenerate(
       projectId,
-      organizationId,
       userId,
     );
 
@@ -131,13 +129,11 @@ export class PriceComparisonService {
 
   async applySelections(
     projectId: string,
-    organizationId: string,
     userId: string,
     selections: ItemSupplierSelectionDto[],
   ): Promise<void> {
     const { shoppingList } = await this.shoppingListsService.getOrGenerate(
       projectId,
-      organizationId,
       userId,
     );
 
@@ -201,18 +197,13 @@ export class PriceComparisonService {
    * méthode ne rend jamais aucun lien, quel que soit l'état des flux
    * marchands.
    */
-  async getBuyLinks(
-    projectId: string,
-    organizationId: string,
-    userId: string,
-  ): Promise<BuyLinkItem[]> {
+  async getBuyLinks(projectId: string, userId: string): Promise<BuyLinkItem[]> {
     if (!SHOPPING_LIST_ENGINE_CORRECTED) {
       return [];
     }
 
     const { shoppingList } = await this.shoppingListsService.getOrGenerate(
       projectId,
-      organizationId,
       userId,
     );
 

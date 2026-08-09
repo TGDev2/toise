@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { OrgContextModule } from '../organizations/org-context.module';
+import { UserContextModule } from '../users/user-context.module';
 import { FeatureGatesModule } from '../feature-gates/feature-gates.module';
 import { ShoppingListsModule } from '../shopping-lists/shopping-lists.module';
 import { QuantityValidation } from './entities/quantity-validation.entity';
@@ -16,7 +16,7 @@ import { QuantityValidationsController } from './quantity-validations.controller
 @Module({
   imports: [
     TypeOrmModule.forFeature([QuantityValidation]),
-    OrgContextModule,
+    UserContextModule,
     FeatureGatesModule,
     ShoppingListsModule,
   ],

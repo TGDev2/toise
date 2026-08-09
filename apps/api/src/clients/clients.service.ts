@@ -12,13 +12,8 @@ export class ClientsService {
     private readonly repo: Repository<Client>,
   ) {}
 
-  async create(
-    organizationId: string,
-    userId: string,
-    dto: CreateClientDto,
-  ): Promise<Client> {
+  async create(userId: string, dto: CreateClientDto): Promise<Client> {
     const client = this.repo.create({
-      organization_id: organizationId,
       user_id: userId,
       name: dto.name,
       email: dto.email ?? null,
@@ -36,16 +31,16 @@ export class ClientsService {
     return this.repo.save(client);
   }
 
-  async findAllForOrg(organizationId: string): Promise<Client[]> {
+  async findAllForUser(userId: string): Promise<Client[]> {
     return this.repo.find({
-      where: { organization_id: organizationId },
+      where: { user_id: userId },
       order: { created_at: 'DESC' },
     });
   }
 
-  async findOneForOrg(id: string, organizationId: string): Promise<Client> {
+  async findOneForUser(id: string, userId: string): Promise<Client> {
     const client = await this.repo.findOne({
-      where: { id, organization_id: organizationId },
+      where: { id, user_id: userId },
     });
     if (!client) {
       throw new NotFoundException('Client non trouve');
@@ -53,22 +48,22 @@ export class ClientsService {
     return client;
   }
 
-  async countForOrg(organizationId: string): Promise<number> {
-    return this.repo.count({ where: { organization_id: organizationId } });
+  async countForUser(userId: string): Promise<number> {
+    return this.repo.count({ where: { user_id: userId } });
   }
 
   async update(
     id: string,
-    organizationId: string,
+    userId: string,
     dto: UpdateClientDto,
   ): Promise<Client> {
-    const client = await this.findOneForOrg(id, organizationId);
+    const client = await this.findOneForUser(id, userId);
     Object.assign(client, dto);
     return this.repo.save(client);
   }
 
-  async remove(id: string, organizationId: string): Promise<void> {
-    const client = await this.findOneForOrg(id, organizationId);
+  async remove(id: string, userId: string): Promise<void> {
+    const client = await this.findOneForUser(id, userId);
     await this.repo.remove(client);
   }
 }

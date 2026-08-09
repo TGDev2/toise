@@ -279,10 +279,11 @@ describe("catalogue d'offre", () => {
       // Au-dessus du plafond, un palier doit porter une gate que les suites
       // généralistes ne vendent pas à ce prix — pas seulement l'héritage du
       // palier inférieur. `public_api` et `enterprise_sso` figuraient ici
-      // jusqu'à leur suppression en base (migration 074) : une liste qui nomme
-      // des gates inexistantes ne peut plus justifier quoi que ce soit, d'où
-      // l'assertion de fraîcheur qui suit.
-      const DIFFERENTIATORS = ['multi_user'];
+      // jusqu'à leur suppression en base (migration 074), `multi_user` jusqu'à
+      // la sienne (migration 104, E4-1) : une liste qui nomme des gates
+      // inexistantes ne peut plus justifier quoi que ce soit, d'où l'assertion
+      // de fraîcheur qui suit.
+      const DIFFERENTIATORS: string[] = [];
 
       expect(
         DIFFERENTIATORS.filter((key) => !KNOWN_FEATURE_GATE_KEYS.includes(key)),

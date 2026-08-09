@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from '../users/users.module';
-import { OrgContextModule } from '../organizations/org-context.module';
+import { UserContextModule } from '../users/user-context.module';
 import { FeatureGatesModule } from '../feature-gates/feature-gates.module';
 import { ShoppingList } from '../shopping-lists/entities/shopping-list.entity';
 import { EstimationResult } from '../estimations/entities/estimation-result.entity';
@@ -28,7 +28,7 @@ import { CostBenchmarkService } from './cost-benchmark.service';
     // AdminGuard (AuthModule, @Global()) dépend de UsersService — même raison
     // que dans waste-learning.module.ts.
     UsersModule,
-    OrgContextModule,
+    UserContextModule,
     FeatureGatesModule,
   ],
   controllers: [CostBenchmarkController, AdminCostBenchmarkController],

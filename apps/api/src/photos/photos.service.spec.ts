@@ -44,8 +44,7 @@ const mockSharpInstance = (sharp as unknown as jest.Mock)() as {
 
 const mockProject: Project = {
   id: 'project-uuid',
-  user_id: 'author-uuid',
-  organization_id: 'org-uuid',
+  user_id: 'user-uuid',
   name: 'Test Project',
   room_name: 'Salon',
   work_type: WorkType.PAINTING,
@@ -171,7 +170,7 @@ describe('PhotosService', () => {
       (sharp as unknown as jest.Mock).mockClear();
 
       await expect(
-        service.uploadPhoto('project-uuid', 'org-uuid', {
+        service.uploadPhoto('project-uuid', 'user-uuid', {
           ...mockFile,
           buffer: Buffer.from('MZ' + 'A'.repeat(1000), 'latin1'),
         } as Express.Multer.File),
@@ -184,13 +183,13 @@ describe('PhotosService', () => {
     it('should upload a photo successfully', async () => {
       const result = await service.uploadPhoto(
         'project-uuid',
-        'org-uuid',
+        'user-uuid',
         mockFile,
       );
 
       expect(projectRepoMock.findOne).toHaveBeenCalledWith({
         where: { id: 'project-uuid' },
-        select: ['id', 'organization_id'],
+        select: ['id', 'user_id'],
       });
       expect(photoRepoMock.count).toHaveBeenCalled();
       expect(storageMock.save).toHaveBeenCalled();
@@ -208,7 +207,7 @@ describe('PhotosService', () => {
       projectRepoMock.findOne.mockResolvedValueOnce(null);
 
       await expect(
-        service.uploadPhoto('nonexistent', 'org-uuid', mockFile),
+        service.uploadPhoto('nonexistent', 'user-uuid', mockFile),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -216,7 +215,7 @@ describe('PhotosService', () => {
       photoRepoMock.count.mockResolvedValueOnce(5);
 
       await expect(
-        service.uploadPhoto('project-uuid', 'org-uuid', mockFile),
+        service.uploadPhoto('project-uuid', 'user-uuid', mockFile),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -228,7 +227,7 @@ describe('PhotosService', () => {
       });
 
       await expect(
-        service.uploadPhoto('project-uuid', 'org-uuid', mockFile),
+        service.uploadPhoto('project-uuid', 'user-uuid', mockFile),
       ).rejects.toThrow(/trop petite ou trop eloignee/);
     });
 
@@ -239,7 +238,7 @@ describe('PhotosService', () => {
       });
 
       await expect(
-        service.uploadPhoto('project-uuid', 'org-uuid', mockFile),
+        service.uploadPhoto('project-uuid', 'user-uuid', mockFile),
       ).rejects.toThrow(/trop sombre/);
     });
 
@@ -250,7 +249,7 @@ describe('PhotosService', () => {
       });
 
       await expect(
-        service.uploadPhoto('project-uuid', 'org-uuid', mockFile),
+        service.uploadPhoto('project-uuid', 'user-uuid', mockFile),
       ).rejects.toThrow(/surexposee/);
     });
 
@@ -261,7 +260,7 @@ describe('PhotosService', () => {
       });
 
       await expect(
-        service.uploadPhoto('project-uuid', 'org-uuid', mockFile),
+        service.uploadPhoto('project-uuid', 'user-uuid', mockFile),
       ).rejects.toThrow(/trop floue/);
     });
 
@@ -308,12 +307,7 @@ describe('PhotosService', () => {
         arrange();
 
         await expect(
-          service.uploadPhoto(
-            'project-uuid',
-            'org-uuid',
-            mockFile,
-            'user-uuid',
-          ),
+          service.uploadPhoto('project-uuid', 'user-uuid', mockFile),
         ).rejects.toThrow(BadRequestException);
 
         expect(analyticsMock.track).toHaveBeenCalledWith(
@@ -325,12 +319,7 @@ describe('PhotosService', () => {
     );
 
     it('ne trace aucun rejet quand la photo passe le contrôle qualité', async () => {
-      await service.uploadPhoto(
-        'project-uuid',
-        'org-uuid',
-        mockFile,
-        'user-uuid',
-      );
+      await service.uploadPhoto('project-uuid', 'user-uuid', mockFile);
 
       expect(analyticsMock.track).not.toHaveBeenCalled();
     });
@@ -340,7 +329,7 @@ describe('PhotosService', () => {
 
       const result = await service.uploadPhoto(
         'project-uuid',
-        'org-uuid',
+        'user-uuid',
         mockFile,
       );
 
@@ -351,7 +340,10 @@ describe('PhotosService', () => {
 
   describe('getProjectPhotos', () => {
     it('should return photos ordered by sort_order', async () => {
-      const result = await service.getProjectPhotos('project-uuid', 'org-uuid');
+      const result = await service.getProjectPhotos(
+        'project-uuid',
+        'user-uuid',
+      );
 
       expect(photoRepoMock.find).toHaveBeenCalledWith({
         where: { project_id: 'project-uuid' },
@@ -369,7 +361,7 @@ describe('PhotosService', () => {
 
   describe('deletePhoto', () => {
     it('should delete photo from storage and database', async () => {
-      await service.deletePhoto('project-uuid', 'org-uuid', 'photo-uuid');
+      await service.deletePhoto('project-uuid', 'user-uuid', 'photo-uuid');
 
       expect(storageMock.delete).toHaveBeenCalledWith(mockPhoto.storage_url);
       expect(storageMock.delete).toHaveBeenCalledWith(mockPhoto.thumbnail_url);
@@ -380,7 +372,7 @@ describe('PhotosService', () => {
       photoRepoMock.findOne.mockResolvedValueOnce(null);
 
       await expect(
-        service.deletePhoto('project-uuid', 'org-uuid', 'nonexistent'),
+        service.deletePhoto('project-uuid', 'user-uuid', 'nonexistent'),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -395,7 +387,7 @@ describe('PhotosService', () => {
     it('should return the photo', async () => {
       const result = await service.findPhotoForServing(
         'project-uuid',
-        'org-uuid',
+        'user-uuid',
         'photo-uuid',
       );
       expect(result).toBeDefined();
@@ -406,7 +398,7 @@ describe('PhotosService', () => {
       photoRepoMock.findOne.mockResolvedValueOnce(null);
 
       await expect(
-        service.findPhotoForServing('project-uuid', 'org-uuid', 'nonexistent'),
+        service.findPhotoForServing('project-uuid', 'user-uuid', 'nonexistent'),
       ).rejects.toThrow(NotFoundException);
     });
   });
