@@ -43,10 +43,15 @@ L'API sera disponible sur `http://localhost:3001/api/v1`.
 | `pnpm test:watch` | Tests en mode watch |
 | `pnpm test:cov` | Tests avec couverture |
 | `pnpm test:e2e` | Tests end-to-end |
+| `pnpm test:engine-regression` | Tests de non-régression du moteur d'estimation seul |
 | `pnpm lint` | ESLint |
 | `pnpm migration:generate -- ./migrations/<NomMigration>` | Générer une migration |
 | `pnpm migration:run` | Exécuter les migrations |
 | `pnpm migration:revert` | Annuler la dernière migration |
+| `pnpm verify:stripe` | Vérifier la cohérence d'un cycle d'abonnement Stripe |
+| `pnpm validate:affiliate-feed` | Valider le flux produits d'affiliation (ManoMano) |
+| `pnpm purge:retention` | Purger les données selon la politique de rétention |
+| `pnpm extract:relecture-metier` | Extraire les listes d'achat pour relecture métier |
 
 ## Architecture
 
@@ -84,7 +89,7 @@ src/
 ├── estimations/               # Moteur de calcul
 ├── shopping-lists/            # Listes d'achat, export PDF, partage
 ├── photos/                    # Upload, thumbnails, stockage local
-├── analysis/                  # Pipeline CV (jobs asynchrones)
+├── analysis/                  # Pipeline CV (jobs asynchrones) — débranché de la prod (CV_ENABLED=false, ADR 0001 §D2)
 ├── analytics/                 # Tracking d'événements
 ├── feature-gates/             # Feature flags par tier
 ├── subscriptions/             # Stripe (checkout, webhooks, portail)
@@ -110,7 +115,7 @@ src/
 | **EstimationsModule** | Moteur de calcul : surface nette × rendement × waste factor → quantités |
 | **ShoppingListsModule** | Listes d'achat, matériaux complémentaires, budget, export PDF, partage |
 | **PhotosModule** | Upload multipart, validation MIME, thumbnail Sharp, stockage local |
-| **AnalysisModule** | Orchestration du pipeline CV, jobs asynchrones |
+| **AnalysisModule** | Orchestration du pipeline CV, jobs asynchrones — débranché de la prod (`CV_ENABLED=false`, ADR 0001 §D2) |
 | **AnalyticsModule** | Tracking d'événements (PostHog/Mixpanel ready) |
 | **FeatureGatesModule** | Feature flags par tier, guard `@RequireFeature()` |
 | **SubscriptionsModule** | Stripe Checkout, webhooks, portail client |
@@ -118,7 +123,7 @@ src/
 | **CompanyProfilesModule** | Profil SIRET, adresse, spécialités (Contractor) |
 | **ClientsModule** | CRUD clients rattachés à un contractor |
 | **QuotesModule** | Création de devis, calcul HT/TTC, export PDF |
-| **CommunityModule** | Galerie publique, modération admin, likes, commentaires |
+| **CommunityModule** | Galerie publique — canal d'acquisition gratuit ouvert à tous, pas un argument de palier —, modération admin, likes, commentaires |
 
 ## Authentification
 
@@ -157,7 +162,7 @@ Contrôle d'accès par tier d'abonnement (`free` < `pro` < `contractor`).
 startAnalysis() { ... }
 ```
 
-La table `feature_gates` définit pour chaque `feature_key` le `min_tier` requis. Le guard compare le tier de l'utilisateur au tier minimum.
+La table `feature_gates` définit pour chaque `feature_key` le `min_tier` requis et un drapeau `is_enabled`. Le guard refuse l'accès si le tier est insuffisant **ou** si la gate est désactivée — c'est le cas de `cv_analysis` ci-dessus, gelée pour tous les paliers (ADR 0001 §D2).
 
 ## Base de données
 

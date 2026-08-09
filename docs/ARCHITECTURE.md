@@ -86,17 +86,16 @@ AppModule
 ├── DataRetentionModule     # Effacement des fichiers et purge des suppressions logiques (E6-1)
 │                           #   Cron 3 h + `pnpm purge:retention` (simulation par défaut)
 │                           #   Politique et durée : docs/RETENTION_DONNEES.md
-├── DataExportModule        # Export RGPD des données personnelles, art. 20 (E6-2)
-│                           #   Toujours asynchrone, archive écrite en flux (`archiver`)
-│                           #   Contenu et exclusions : docs/EXPORT_DONNEES.md
-├── OrganizationsModule     # Organisations, membres, rôles, invitations (PLAT-4)
-│   └── OrgContextModule    # Résolution de la portée (organisation active + auteur), sans dépendance applicative
-├── ApiKeysModule           # API publique `/partner`, clés portées par l'organisation, quotas (PLAT-5)
-└── EnterpriseModule        # Contrats annuels, SLA, connexions SSO SAML/OIDC et domaines (PLAT-6)
-                            #   Ce qui arrive à une session au moment de la connexion (rattachement
-                            #   JIT + enforcement) vit dans `auth/sso-session.service.ts` : le graphe
-                            #   de modules reste à sens unique.
+└── DataExportModule        # Export RGPD des données personnelles, art. 20 (E6-2)
+                            #   Toujours asynchrone, archive écrite en flux (`archiver`)
+                            #   Contenu et exclusions : docs/EXPORT_DONNEES.md
 ```
+
+Organisations, API publique à clés (`/partner`) et SSO Enterprise ont existé
+(PLAT-4/5/6) puis ont été retirés — module, entités et migrations compris
+(`…074-RemoveWidgetApiKeysAndEnterprise.ts`, `…104-RemoveOrganizations.ts`).
+La propriété des ressources (projets, clients, devis, factures) est portée
+par l'utilisateur, pas par une organisation.
 
 ## Flux de données principaux
 
@@ -229,21 +228,22 @@ FeatureGateGuard           Lit @RequireFeature('feature_key')
 Accès autorisé / 403 Forbidden
 ```
 
-**Tiers :** `free` < `pro` < `contractor_essentiel` < `contractor_standard` < `contractor_premium` < `enterprise`
+**Tiers :** `free` < `contractor_essentiel` — palier unique payant depuis la
+fusion de l'ADR 0002 §D4 (279 €/an). Le chiffrage (métré, quantités, facteurs
+de perte, liste d'achat) est entièrement gratuit et illimité ; le palier payant
+ajoute le devis PDF conforme, la gestion clients et la facturation.
 
-`enterprise` n'est pas achetable en libre-service : il est ouvert par un contrat annuel actif
-rattaché à l'**organisation** (`enterprise_agreements`, PLAT-6), résolu par `OrgContextService`
-avant tout repli sur le palier du propriétaire.
-
-| Feature Key | Tier minimum |
-|-------------|-------------|
-| `unlimited_projects` | pro |
-| `cv_analysis` | pro |
-| `budget_tracking` | pro |
-| `price_comparison` | pro |
-| `client_management` | contractor |
-| `export_devis` | contractor |
-| `community_gallery` | pro |
+| Feature Key | Tier minimum | État |
+|-------------|-------------|------|
+| `budget_tracking` | free | actif |
+| `price_comparison` | free | gate active, adaptateurs fournisseurs désactivés par défaut |
+| `community_gallery` | free | actif — canal d'acquisition, pas un argument de palier |
+| `client_management` | contractor_essentiel | actif |
+| `export_devis` | contractor_essentiel | actif |
+| `invoicing` | contractor_essentiel | actif |
+| `cv_analysis` | free | gelée (ADR 0001 §D2), `enabled: false` pour tous les paliers |
+| `site_tracking`, `quote_reminders`, `eco_materials`, `cost_benchmark` | — | gelées (ADR 0001 §D3), `enabled: false` |
+| `logbook` | free | active en base mais gelée par décision de périmètre (ADR 0001 §3.1), aucune navigation n'y mène |
 
 ### Pipeline CV asynchrone
 
@@ -305,11 +305,8 @@ supplier_price_cache   (cache prix fournisseurs)
 | Auth | Firebase ID Token (Bearer) vérifié par `FirebaseAuthGuard` |
 | Auth optionnelle | `OptionalAuthGuard` pour les routes publiques avec contexte utilisateur optionnel |
 | Admin | `AdminGuard` vérifie `user.role === 'admin'` |
-| Feature access | `FeatureGateGuard` + `@RequireFeature()` sur le palier **effectif de l'organisation active** (celui de son propriétaire), pas celui de l'appelant |
-| Ownership | Chaque service vérifie que la ressource appartient à l'**organisation** courante (PLAT-4), résolue côté serveur par `OrgContextService` — jamais depuis un en-tête ou un paramètre client |
-| Rôles d'organisation | `owner` / `admin` / `member` sur `organization_memberships`, orthogonaux au `users.role` (rôle plateforme) |
-| SSO d'entreprise | Une session est rattachée à une organisation par le `provider_id` **émis par nous** chez GCIP, jamais par le domaine de l'adresse affirmée par l'IdP (PLAT-6). Les domaines, prouvés par DNS, ne servent qu'à la découverte |
-| Enforcement SSO | `FirebaseAuthGuard` refuse (`403 SSO_REQUIRED`) une session hors IdP quand l'organisation active l'exige. Le propriétaire est exempté (bris de glace), et `@SsoExempt()` dispense les quatre routes sans lesquelles un membre bloqué n'aurait aucune sortie |
+| Feature access | `FeatureGateGuard` + `@RequireFeature()` sur le palier de l'appelant |
+| Ownership | Chaque service vérifie que la ressource appartient à l'**utilisateur** authentifié — résolu côté serveur, jamais depuis un en-tête ou un paramètre client. Les organisations et leurs rôles (`owner`/`admin`/`member`) ont existé (PLAT-4) puis ont été retirées (migration `…104-RemoveOrganizations.ts`) |
 
 ### Validation et protection
 

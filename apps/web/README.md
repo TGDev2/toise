@@ -37,6 +37,7 @@ L'application sera disponible sur `http://localhost:3000`.
 | `pnpm lint` | ESLint |
 | `pnpm typecheck` | Vérification TypeScript |
 | `pnpm test` | Tests Jest |
+| `pnpm test:e2e` | Tests end-to-end (Playwright) |
 
 ## Variables d'environnement
 
@@ -97,7 +98,7 @@ src/
 │   ├── auth/                     # LoginForm, RegisterForm, OAuthButtons, GuestPromptModal
 │   ├── photos/                   # PhotoDropzone, PhotoUploadItem, PhotoUploadPanel
 │   ├── dimensions/               # DimensionsForm, OpeningsSection, RoomPreview
-│   ├── analysis/                 # AnalyzeButton, ReferenceObjectPrompt, AnalysisResultPanel
+│   ├── analysis/                 # AnalyzeButton, ReferenceObjectPrompt, AnalysisResultPanel — débranché de la prod (ADR 0001 §D2)
 │   ├── estimation/               # WorkTypeSection, SkillLevelSelector, EstimationResults
 │   ├── dashboard/                # ProjectCard, ContractorDashboard, StatusBadge
 │   ├── shopping-list/            # ShoppingListMaterials, BudgetDashboard, PriceComparisonTable
@@ -111,7 +112,7 @@ src/
 │   └── FeatureGateContext.tsx    # Contrôle d'accès par tier
 │
 ├── hooks/                        # Hooks personnalisés
-│   ├── useAnalysis.ts            # Gestion du pipeline CV
+│   ├── useAnalysis.ts            # Gestion du pipeline CV — débranché de la prod (ADR 0001 §D2)
 │   ├── usePhotoUpload.ts         # Upload photos avec compression
 │   ├── useSubscription.ts        # État abonnement + checkout Stripe
 │   ├── useFeatureGate.ts         # Vérification accès feature
@@ -165,7 +166,7 @@ La forme du brouillon et sa clé de stockage sont déclarées **une seule fois**
 
 Contrôle l'accès aux fonctionnalités payantes selon le tier d'abonnement.
 
-**Hiérarchie des tiers :** `free` (0) < `pro` (1) < `contractor` (2)
+**Hiérarchie des tiers :** `free` (0) < `contractor_essentiel` (1) — palier unique payant depuis l'ADR 0002 §D4
 
 | Fonction | Description |
 |----------|-------------|
@@ -176,6 +177,10 @@ Contrôle l'accès aux fonctionnalités payantes selon le tier d'abonnement.
 ## Hooks personnalisés
 
 ### `useAnalysis(projectId)`
+
+> Débranché de la production (`CV_ENABLED=false`, ADR 0001 §D2) : la gate
+> `cv_analysis` refuse l'accès pour tous les paliers. Documenté ici pour
+> référence — voir l'ADR pour la condition chiffrée de retour.
 
 Orchestre l'analyse CV : déclenchement, polling du status (3s), récupération des résultats.
 
@@ -248,8 +253,8 @@ Toutes les méthodes lèvent une `ApiError` en cas d'échec, avec `code` et `det
 ## Tests
 
 ```bash
-pnpm test        # Lancer les tests
-pnpm test:watch  # Mode watch
+pnpm test        # Lancer les tests unitaires (Jest)
+pnpm test:e2e    # Lancer les tests end-to-end (Playwright)
 ```
 
 Les composants ont des fichiers de test dans des sous-dossiers `__tests__/` adjacents.

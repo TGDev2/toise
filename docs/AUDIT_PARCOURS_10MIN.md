@@ -223,7 +223,7 @@ prix). Le gain franchit les 30 s **à partir de 5 matériaux**, c'est-à-dire d�
 qu'un chantier mêle deux corps d'état.
 
 Nouveau `GET /projects/:id/shopping-list/known-prices` : dernier prix relevé par
-matériau sur les chantiers de l'organisation, hors chantier courant. Côté web,
+matériau sur les chantiers du compte, hors chantier courant. Côté web,
 un bouton « Reprendre mes derniers prix (N articles) » et, sur chaque ligne non
 chiffrée, l'indice « Dernier prix : 45,90 € — Leroy Merlin, 12 juin ».
 

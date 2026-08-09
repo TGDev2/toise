@@ -108,6 +108,7 @@ pnpm dev:cv     # CV service sur http://localhost:8000
 | `pnpm test:web` | Tests du frontend |
 | `pnpm lint` | Lint de l'API et du frontend |
 | `pnpm db:migrate` | Exécute les migrations TypeORM |
+| `pnpm audit:ci` | Audit des dépendances de production (niveau critique) |
 
 ## Structure du projet
 
@@ -118,7 +119,7 @@ Chiffreo/
 │   ├── web/                # Frontend Next.js (App Router)
 │   └── cv-service/         # Microservice Python — débranché de la prod (ADR 0001)
 ├── docs/
-│   ├── CONTEXT.md          # Brief produit (personas, epics, modèle économique)
+│   ├── CONTEXT.md          # État courant et pointeurs vers les ADR/BACKLOG_V1
 │   ├── ARCHITECTURE.md     # Architecture technique détaillée
 │   └── API.md              # Référence API REST complète
 ├── .env.example            # Template des variables d'environnement
@@ -154,7 +155,8 @@ Copier `.env.example` vers `.env` et renseigner les valeurs :
 
 ## Documentation
 
-- [Reprise de projet — état réel et périmètre V1](docs/REPRISE_PROJET.md)
+- [Cible et périmètre V1 (ADR 0001)](docs/adr/0001-cible-et-perimetre-v1.md)
+- [Modèle économique, facturation, distribution (ADR 0002)](docs/adr/0002-modele-economique-facturation-distribution.md)
 - [Backlog V1](docs/BACKLOG_V1.md)
 - [Architecture technique](docs/ARCHITECTURE.md)
 - [Référence API REST](docs/API.md)
@@ -163,6 +165,7 @@ Copier `.env.example` vers `.env` et renseigner les valeurs :
 - [Frontend Web](apps/web/README.md)
 - [CV Service](apps/cv-service/README.md)
 - [Guide de contribution](CONTRIBUTING.md)
+- [Reprise de projet — audit daté du 3 août 2026, périmé, conservé pour l'historique](docs/REPRISE_PROJET.md)
 - [Archives (documents produit périmés, non sources)](docs/archive/)
 
 ## Modèle économique

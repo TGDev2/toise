@@ -72,7 +72,7 @@ et journalise l'erreur, plutôt que d'élargir une opération destructive.
 | --- | --- | --- |
 | **Supprimer une photo** | ligne + fichier + vignette, tout de suite | — |
 | **Supprimer un projet** | `deleted_at` posé ; publication communautaire retirée ; le projet sort de toutes les lectures | à J+30 : lignes (cascade) **et** fichiers |
-| **Supprimer son compte** | résiliation Stripe, **puis effacement de tous les fichiers**, puis lignes et organisations, puis identité Firebase | — |
+| **Supprimer son compte** | résiliation Stripe, **puis effacement de tous les fichiers**, puis lignes, puis identité Firebase | — |
 | **Fusionner un compte invité** | idem, pour l'espace personnel de l'invité | — |
 
 ### 2.1 L'ordre : fichiers d'abord, lignes ensuite
@@ -80,8 +80,9 @@ et journalise l'erreur, plutôt que d'élargir une opération destructive.
 C'est la propriété structurante de l'implémentation, et la raison d'être du
 correctif.
 
-`project_photos` part en cascade avec `projects`, qui part en cascade avec
-`organizations`. La colonne `storage_url` est le **seul** lien entre une ligne et
+`project_photos` part en cascade avec `projects`, qui part en cascade avec le
+compte (`users`) — depuis E4-1, la propriété n'est plus portée par une
+organisation. La colonne `storage_url` est le **seul** lien entre une ligne et
 un fichier du volume : une fois la ligne partie, plus rien ne permet de nommer le
 fichier, et aucune passe future ne peut le retrouver. C'est exactement ce qui se
 produisait avant E6-1 — chaque suppression de compte transformait les photos en
@@ -148,24 +149,24 @@ Publier ne prolonge **pas** la rétention : à J+30 le projet est effacé et
   n'est soumis à aucune exigence légale de conservation ni de continuité de
   numérotation (*ibid.*, note du §4), et il est reproduit dans la facture qu'il a
   produite.
-- **Les statistiques agrégées.** Le benchmark de coûts (DATA-4) exclut déjà un
-  projet supprimé au recalcul suivant : ce sont des chiffres tirés de la dépense
-  de gens, et un effacement doit s'y propager. L'apprentissage des facteurs de
-  perte (DATA-3) conserve son observation, qui est une physique de matériau
-  dépourvue de rattachement personnel.
-- **Les projets d'une organisation à laquelle le partant n'était que membre.**
-  Depuis PLAT-4 la propriété est portée par l'organisation ; `user_id` n'est que
-  la trace de l'auteur et passe à `NULL`. L'effacement de fichiers suit la même
-  règle : il ne porte que sur les organisations que la suppression emporte
-  réellement.
+- **Rien à propager côté benchmark de coûts ni apprentissage des facteurs de
+  perte.** Les deux modules (DATA-3, DATA-4) ont été supprimés — code métier et
+  routes d'administration — par E4-2 : plus aucun service ne lit ni n'écrit
+  dans `cost_benchmarks` ni `learned_waste_factors`, conservées vides en base.
+  Une suppression de compte n'a donc rien à y propager.
 
-**Limite énoncée plutôt que découverte.** Un propriétaire unique qui supprime son
-compte emporte son organisation, donc les factures qu'elle portait. C'est le
-comportement en place depuis la migration `1711468800061` et il n'est pas modifié
-ici : l'obligation de conservation comptable pèse sur l'artisan, pas sur
-l'hébergeur, et refuser la suppression du compte pour la faire respecter serait
-opposer un obstacle à l'exercice de l'art. 17. À reprendre si le produit se met à
-émettre des factures pour le compte de tiers.
+**Limite énoncée plutôt que découverte.** La clé étrangère `invoices.user_id`
+est en `ON DELETE CASCADE` : supprimer son compte emporte les factures émises,
+dont la conservation s'impose pourtant (art. L102 B LPF,
+`docs/CONFORMITE_FACTURATION.md`). C'est le comportement effectif depuis
+l'origine — avant E4-1 la cascade passait par l'organisation détruite avec son
+propriétaire, `organization_id` étant alors `NOT NULL` — et E4-1 le reconduit
+sans l'aggraver (voir le commentaire de `Invoice.user_id`,
+`apps/api/src/invoices/entities/invoice.entity.ts`). L'obligation de
+conservation comptable pèse sur l'artisan, pas sur l'hébergeur, et refuser la
+suppression du compte pour la faire respecter serait opposer un obstacle à
+l'exercice de l'art. 17. À reprendre si le produit se met à émettre des
+factures pour le compte de tiers.
 
 ---
 
@@ -202,7 +203,7 @@ tout l'historique accumulé depuis l'origine.
 
 ### Journal
 
-Une ligne par projet — identifiant, organisation, date de suppression, nombre de
+Une ligne par projet — identifiant, compte, date de suppression, nombre de
 fichiers, volume, retrait communautaire éventuel — puis un récapitulatif de passe
 avec la coupure appliquée. Les lignes de simulation sont préfixées
 `[SIMULATION]`. C'est la preuve d'effacement : elle doit rester lisible, d'où le
@@ -225,8 +226,8 @@ Ces deux chiffres sont ceux que la page de confidentialité annonce.
 - `apps/api/test/integration/data-retention.int-spec.ts` — PostgreSQL réel et
   volume réel : un compte avec des photos sur disque est supprimé, et le test
   constate par `readdir` qu'aucun fichier ne subsiste. Couvre aussi la fenêtre de
-  rétention, la simulation, l'idempotence, les fichiers orphelins, le projet
-  publié en communauté et l'organisation qui survit au départ d'un membre.
+  rétention, la simulation, l'idempotence, les fichiers orphelins et le projet
+  publié en communauté.
 - `apps/api/src/data-retention/data-retention.service.spec.ts` — coupure, ordre
   fichiers → base, refus sur rétention invalide, verrou, tolérance aux échecs.
 - `apps/api/src/photos/storage/local-storage.service.spec.ts` — effacement par

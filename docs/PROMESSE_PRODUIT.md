@@ -153,8 +153,7 @@ externes — site vitrine tiers, campagnes, argumentaires commerciaux.
 
 | Surface | Fichier |
 | --- | --- |
-| Landing particulier | `apps/web/src/app/page.tsx` |
-| Landing artisan | `apps/web/src/app/artisans/page.tsx` |
+| Landing (page d'accueil unique, `/artisans` fusionnée par E3-1) | `apps/web/src/app/page.tsx` |
 | Calculateurs publics + JSON-LD FAQ | `apps/web/src/lib/calculators.ts` |
 | Offre et paliers | `apps/web/src/lib/pricing.ts` |
 | Métadonnées globales, OG | `apps/web/src/app/layout.tsx` |

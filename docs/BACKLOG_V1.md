@@ -1042,6 +1042,60 @@ Reprends docs/CONTEXT.md en profondeur : il date de mars 2026, se dit "en phase 
 Vérifie : aucun lien mort dans les documents, aucune commande d'exemple qui échoue, et la table des scripts du README correspond à package.json.
 ```
 
+**Livré**, avec une prémisse corrigée avant d'écrire une ligne : contrairement à
+la liste transmise, la **galerie communautaire n'a pas disparu**
+(`community_gallery` : gate `free`, `enabled: true`, route `/community`
+indexée, absente de `CLOSED_SURFACES`) — documentée comme le canal
+d'acquisition gratuit qu'elle est réellement, pas comme supprimée. Carnet du
+logement et parrainage, eux, correspondaient bien à la liste : gelés par
+décision ADR 0001 §3.1, code conservé, aucune navigation n'y mène.
+
+`README.md`, `apps/api/README.md`, `apps/web/README.md` : notes de gel sur le
+pipeline CV (déjà présentes à la racine, ajoutées côté api/web), tables de
+scripts complétées (`audit:ci`, `verify:stripe`, `validate:affiliate-feed`,
+`purge:retention`, `extract:relecture-metier`, `test:engine-regression`,
+`test:e2e`) — et une commande d'exemple qui échouait déjà trouvée au passage
+(`pnpm test:watch` documenté dans `apps/web/README.md`, absent de
+`apps/web/package.json`).
+
+`docs/API.md` : section « Organisations » supprimée avec son entrée de table
+des matières (aucun contrôleur correspondant), code d'erreur `QUOTA_EXCEEDED`
+retiré (API à clés supprimée), bandeau de gel ajouté sur « Suivi de
+chantier », palier « Pro+ » de la galerie corrigé en `free`.
+
+`docs/ARCHITECTURE.md` : quatre lignes de modules supprimés retirées
+(`OrganizationsModule`, `OrgContextModule`, `ApiKeysModule`,
+`EnterpriseModule`), hiérarchie de paliers et table de feature gating
+recalées sur le modèle réel, section Sécurité corrigée (ownership utilisateur,
+retrait du paragraphe SSO).
+
+`docs/RETENTION_DONNEES.md` et `docs/AUDIT_PARCOURS_10MIN.md` : « organisation »
+remplacé par le compte utilisateur ; le paragraphe benchmark/apprentissage
+réécrit (modules supprimés, tables vides, rien à propager à la suppression
+d'un compte) ; la limite sur les factures reformulée sur le mécanisme réel
+(`invoices.user_id` en `ON DELETE CASCADE`), vérifié dans
+`invoice.entity.ts`.
+
+`docs/PROMESSE_PRODUIT.md` : la ligne « Landing artisan » pointant vers
+`apps/web/src/app/artisans/page.tsx` (fichier disparu depuis E3-1) fusionnée
+avec « Landing particulier » en une seule ligne vers `apps/web/src/app/page.tsx`.
+
+`docs/CONTEXT.md` : archivé intégralement vers `docs/archive/CONTEXT.md` avec
+le bandeau standard des trois autres archives, remplacé par un document court
+qui pointe vers l'ADR 0001, l'ADR 0002, `BACKLOG_V1.md`, `PROMESSE_PRODUIT.md`
+et `ARCHITECTURE.md`/`API.md` — pour ne pas créer une quatrième description
+narrative concurrente du produit.
+
+Vérification : tous les liens relatifs des fichiers touchés résolus
+(`Test`/lecture directe), ancres de `docs/API.md` recoupées avec ses titres,
+sweep `grep` sur `organisation`, `9,99`, `contractor_standard`,
+`contractor_premium`, `enterprise`, `widget`, `api.?key`, `SSO`,
+`verifier-un-devis` sur tous les fichiers touchés hors `docs/archive/` — les
+seules occurrences restantes sont soit au passé (« a existé, puis a été
+retiré »), soit hors sujet (une prime d'assurance tierce, une clé d'API
+Firebase). Table des scripts des trois README confrontée terme à terme à
+chaque `package.json`.
+
 ---
 
 ### E4-6 · Confirmer le débranchement de la vision par ordinateur
