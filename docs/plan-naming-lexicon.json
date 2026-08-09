@@ -1,0 +1,52 @@
+{
+  "$comment": "Liste canonique des noms de palier interdits dans les chaînes affichées à l'utilisateur (BACKLOG_V1, 'un nom commercial, partout'). Lue à l'exécution par apps/web/src/__tests__/plan-naming.spec.ts et apps/api/src/common/__tests__/plan-naming.spec.ts. Contrairement à promesse-lexique.json, les motifs utilisent \\b (limite de mot ASCII, qui traite '_' comme un caractère de mot) et non les lookarounds \\p{L} : c'est ce qui garantit qu'un identifiant technique snake_case ('contractor_essentiel') ou camelCase ('contractorEssentielPriceId', 'ContractorDashboard') ne déclenche jamais le garde-fou, puisqu'aucune limite de mot ne sépare 'contractor' du suffixe qui le prolonge. Chaque terme porte ses propres drapeaux ('flags') : 'Contractor' et 'Essentiel' sont insensibles à la casse (aucun usage légitime en minuscule ni en 'ESSENTIEL' majuscule n'existe dans le dépôt), 'Artisan' est sensible à la casse pour ne jamais capturer le nom commun 'artisan', légitime partout comme mot du métier.",
+  "forbidden": [
+    {
+      "id": "tier-name-contractor",
+      "pattern": "\\bContractor\\b",
+      "flags": "giu",
+      "why": "« Contractor » a été le préfixe du palier payant sur la modale de paywall, le tableau de bord et les CGV, alors que la carte tarifaire et le JSON-LD disaient « Essentiel ». Un artisan qui compare deux écrans ne pouvait pas savoir que c'était la même offre. Le nom commercial unique est désormais « Chiffréo Pro » ; l'identifiant technique contractor_essentiel n'est pas concerné (aucune limite de mot entre 'contractor' et '_essentiel')."
+    },
+    {
+      "id": "tier-name-essentiel",
+      "pattern": "\\bEssentiel\\b",
+      "flags": "giu",
+      "why": "« Essentiel »/« ESSENTIEL » était le nom affiché sur la carte tarifaire et le JSON-LD, en désaccord avec « Contractor » ailleurs. Remplacé par « Chiffréo Pro »."
+    },
+    {
+      "id": "tier-name-artisan",
+      "pattern": "\\bArtisan\\b",
+      "flags": "gu",
+      "why": "La métadonnée de /pricing a affiché « Artisan à 19 €/mois » comme nom de palier. Sensible à la casse : le nom commun « artisan » (minuscule), qui désigne l'audience du produit, reste légitime partout — seule la forme capitalisée employée comme nom de palier est visée."
+    }
+  ],
+  "allowed": [
+    {
+      "phrase": "contractor",
+      "files": [
+        "apps/web/src/components/dashboard/ProjectCard.tsx",
+        "apps/web/src/app/(app)/dashboard/page.tsx",
+        "apps/web/src/components/paywall/PaywallModal.tsx"
+      ],
+      "reason": "Littéral technique passé à subscription_tier?.startsWith('contractor') / min_tier?.startsWith('contractor') pour tester le préfixe de l'identifiant de palier — jamais affiché à l'écran."
+    },
+    {
+      "phrase": "contractor",
+      "files": ["apps/api/src/email/email.service.ts"],
+      "reason": "Chemin d'import du gabarit './templates/quote-reminder-contractor.template' — un chemin de module, jamais affiché."
+    },
+    {
+      "phrase": "contractor",
+      "files": [
+        "apps/api/src/migrations/1711468800023-SeedContractorFeatureGates.ts",
+        "apps/api/src/migrations/1711468800037-DifferentiateContractorTiers.ts"
+      ],
+      "reason": "SQL brut de migrations historiques et déjà exécutées : la valeur d'enum 'contractor' y est un identifiant technique de colonne (min_tier, subscription_tier avant la fusion des paliers), jamais un texte affiché à un utilisateur."
+    },
+    {
+      "phrase": "Meilleur-Artisan",
+      "files": ["apps/api/src/projects/labor-times.data.ts"],
+      "reason": "Nom propre d'une source externe citée (référentiel de temps de pose des carreleurs professionnels), pas le nom du palier Chiffréo."
+    }
+  ]
+}
