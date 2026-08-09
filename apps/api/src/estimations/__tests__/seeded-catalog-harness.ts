@@ -109,12 +109,13 @@ import { seedWorkTypes, SeedWorkType } from '../../projects/work-types.data';
  * du moteur avec lui-même.
  *
  * **I5 — monter en compétence n'augmente jamais une quantité.**
- * D'où il vient : DATA-3. Les facteurs de perte **appris** sur les achats réels
- * se superposent au catalogue (`overlayLearnedWasteFactors`) en étant bornés à
+ * D'où il vient : DATA-3, supprimé en E4-2. Les facteurs de perte **appris**
+ * sur les achats réels se superposaient au catalogue en étant bornés à
  * ±10 points et à l'intervalle 0-30 % — de quoi représenter un débutant à 5 %
  * et un expert à 15 %, c'est-à-dire l'ordre des niveaux inversé, sans qu'aucune
- * borne ne s'en émeuve. Ce que « niveau de compétence » veut dire n'est écrit
- * nulle part ailleurs que dans cet invariant.
+ * borne ne s'en émeuve. La superposition a disparu, l'invariant reste : ce que
+ * « niveau de compétence » veut dire n'est écrit nulle part ailleurs que dans
+ * cet invariant, et le catalogue seedé peut l'enfreindre tout seul.
  *
  * **I6 — une question requise change au moins une quantité.**
  * D'où il vient : `tile_format`. La question était seedée `required: true` sur

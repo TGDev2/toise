@@ -197,10 +197,6 @@ export class PhotosService {
     return this.photoRepo.findOne({ where: { id: photoId } });
   }
 
-  async findByStorageUrl(storageUrl: string): Promise<ProjectPhoto | null> {
-    return this.photoRepo.findOne({ where: { storage_url: storageUrl } });
-  }
-
   private async assertProjectOwnedByUser(
     projectId: string,
     userId: string,

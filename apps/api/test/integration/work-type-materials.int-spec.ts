@@ -6,7 +6,6 @@ import { EstimationResult } from '../../src/estimations/entities/estimation-resu
 import { EmailCapture } from '../../src/estimations/entities/email-capture.entity';
 import { ApiEstimateRequestDto } from '../../src/estimations/dto/api-estimate-request.dto';
 import { PublicQuoteCheckRequestDto } from '../../src/estimations/dto/public-quote-check-request.dto';
-import { LearnedWasteFactor } from '../../src/materials/entities/learned-waste-factor.entity';
 import { WorkTypeMaterial } from '../../src/materials/entities/work-type-material.entity';
 import { MaterialCatalog } from '../../src/materials/entities/material-catalog.entity';
 import { WorkType } from '../../src/projects/entities/work-type.entity';
@@ -34,7 +33,6 @@ const WORK_TYPE_CODES = [
 function buildEstimationsService(dataSource: DataSource): EstimationsService {
   return new EstimationsService(
     dataSource.getRepository(EstimationResult),
-    dataSource.getRepository(LearnedWasteFactor),
     dataSource.getRepository(WorkTypeMaterial),
     dataSource.getRepository(WorkType),
     dataSource.getRepository(EmailCapture),

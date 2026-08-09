@@ -35,7 +35,6 @@
 - [Suivi de chantier](#suivi-de-chantier)
 - [Community](#community)
 - [Organisations](#organisations)
-- [Facteurs de perte appris (Admin)](#facteurs-de-perte-appris-admin)
 
 ---
 
@@ -534,7 +533,7 @@ Récupérer le résumé budgétaire.
 
 | Champ | Sens |
 |---|---|
-| `total_real_cost` | Prix réel × quantité **déclarée** quand elle existe, × quantité prévue sinon. Seule définition du « coût réel » : le benchmark de coûts valorise la même quantité, en refusant seulement le repli sur la quantité prévue |
+| `total_real_cost` | Prix réel × quantité **déclarée** quand elle existe, × quantité prévue sinon. Seule définition du « coût réel » |
 | `total_brute_cost` | Ce que le même achat aurait coûté **pièce par pièce**, à facteur de perte, format et prix identiques. Vaut toujours `total_real_cost + savings_amount` |
 | `savings_amount` | Économie de mutualisation : l'arrondi au conditionnement payé une fois pour tout le chantier plutôt qu'à chaque pièce. Jamais négative, et indépendante du niveau de compétence — celui-ci est une posture de risque choisie par l'utilisateur, pas un gain produit par l'outil. Nulle sur un chantier d'une seule pièce |
 | `items_priced` / `items_total` | Lignes tarifées sur lignes retenues ; `is_complete` en découle |
@@ -1009,48 +1008,6 @@ par marche du funnel DATA-1, MRR par tier. Lecture seule, agrège
 utilisateurs distincts ayant déclenché l'événement pendant la fenêtre.
 `mrr` ne compte que les abonnements `active`/`past_due` (revenu facturé) —
 `trialing` est exposé à part via `trialing_count`, hors du montant.
-
----
-
-## Admin CV Retraining
-
-> Endpoints de la boucle de ré-entraînement CV-6, consommés par
-> `apps/cv-service/training/export_client.py` depuis la machine
-> d'entraînement. Compte admin dédié recommandé.
-
-### `GET /admin/cv-retraining/export`
-
-Export des jobs d'analyse complétés dont le `raw_output` contient les
-détections par image (bbox), avec les corrections d'ouvertures
-(`cv_correction_logs`, `entity_type='opening'`) et les compteurs
-d'engagement du projet. Les jobs antérieurs à la capture des bbox sont
-exclus. Lecture seule.
-
-**Auth :** Requise (admin) | **Guard :** `AdminGuard`
-
-**Query params :**
-
-| Param | Type | Défaut | Description |
-|-------|------|--------|-------------|
-| `since` | ISO 8601 | — | Ne retourne que les jobs complétés après cette date |
-| `limit` | number | `100` | Taille de page (1-500) |
-
-**Réponse :** `200 OK` — `{ generated_at, since, next_since, job_count,
-jobs: [{ job_id, project_id, completed_at, opening_detector,
-openings_detail, per_image, corrections, project_correction_counts }] }`.
-`next_since` non nul = page suivante (curseur de pagination).
-
----
-
-### `GET /admin/cv-retraining/photo?path=...`
-
-Stream d'une photo par `storage_url` exact (cross-projet, pour la
-constitution du dataset). Le chemin résolu vient toujours de la ligne
-`project_photos` retrouvée en base — jamais du paramètre brut.
-
-**Auth :** Requise (admin)
-
-**Réponses :** `200 OK` — stream image | `404 Not Found`
 
 ---
 
@@ -1961,96 +1918,6 @@ ne permet pas d'entrer avec un autre compte.
 **Body :** `{ "token": "..." }`
 
 **Réponses :** `201 Created` | `400 Bad Request` (expirée) | `403 Forbidden` (e-mail non concordant) | `404 Not Found` (jeton inconnu ou déjà utilisé)
-
----
-
-## Facteurs de perte appris (Admin)
-
-DATA-3 : les facteurs de perte du catalogue sont réajustés à partir des écarts
-entre quantité estimée et quantité réellement achetée, relevés sur les
-chantiers dont le budget a été finalisé, par matériau × pose × niveau.
-
-Le catalogue de pertes (`waste_factors`) porte des valeurs d'usage métier, sans
-référence normative — aucun DTU ne fixe de pourcentage de perte (E1-7).
-Étalonné par ENG-5, il n'est **jamais** réécrit :
-les valeurs apprises vivent dans `learned_waste_factors` et sont superposées au
-chargement du catalogue. Une ligne d'estimation issue d'une valeur apprise porte
-`waste_factor_source: "learned"` (au lieu de `"catalog"` ou `"default"`).
-
-Le recalcul tourne chaque semaine (cron). Garde-fous appliqués par cellule :
-minimum 8 observations, maximum 5 par organisation, médiane robuste, rejet
-au-delà d'un écart absolu médian de 15 points, rapprochement par crédibilité
-`n / (n + 12)`, écart borné à ±10 points de la valeur catalogue et à
-l'intervalle `[0 %, 30 %]`.
-
-### `GET /admin/waste-learning`
-
-Facteurs actuellement appris, avec leur référence catalogue et les statistiques
-qui les justifient.
-
-**Auth :** Requise (admin) | **Guard :** `AdminGuard`
-
-**Réponse :** `200 OK`
-```json
-{
-  "factors": [
-    {
-      "material_id": "0253530f-f92a-470c-b201-4e0a46b0f50c",
-      "pose_type": "diagonal",
-      "skill_level": "intermediate",
-      "factor_percent": 18.25,
-      "baseline_percent": 15,
-      "observed_percent": 23.42,
-      "sample_size": 15,
-      "computed_at": "2026-08-02T02:00:00.000Z"
-    }
-  ]
-}
-```
-
-### `POST /admin/waste-learning/run`
-
-Relance le calcul immédiatement (idempotent). Les cellules qui ne remplissent
-plus les critères sont retirées.
-
-**Auth :** Requise (admin) | **Guard :** `AdminGuard`
-
-**Réponse :** `201 Created`
-```json
-{
-  "observations": 412,
-  "cells": 37,
-  "by_status": {
-    "learned": 6,
-    "insufficient_volume": 28,
-    "too_dispersed": 1,
-    "no_change": 2
-  },
-  "removed": 1,
-  "pending": [
-    {
-      "material_id": "0253530f-f92a-470c-b201-4e0a46b0f50c",
-      "pose_type": "diagonal",
-      "skill_level": "intermediate",
-      "status": "insufficient_volume",
-      "sample_size": 6,
-      "raw_sample_size": 14,
-      "organization_count": 2,
-      "missing_observations": 2,
-      "missing_organizations": 1
-    }
-  ],
-  "computed_at": "2026-08-02T02:00:00.000Z"
-}
-```
-
-`pending` liste les cellules qui n'ont **rien** publié, les plus proches du seuil
-en tête. Elle n'est persistée nulle part : seules les cellules apprises entrent
-en base. `raw_sample_size` est le volume collecté avant plafonnement par
-organisation, `sample_size` ce qui pèse réellement. Un `missing_organizations`
-non nul signifie qu'**aucun chantier supplémentaire des organisations déjà
-présentes ne débloquera la cellule** : le plafond par organisation borne
-l'échantillon.
 
 ---
 

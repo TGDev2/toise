@@ -66,8 +66,7 @@ src/
 │   ├── (app)/                    # Groupe de routes principales
 │   │   ├── dashboard/page.tsx                    # Dashboard projets
 │   │   ├── projects/[id]/
-│   │   │   ├── photos/page.tsx                   # Upload photos
-│   │   │   ├── dimensions/page.tsx               # Saisie dimensions + analyse CV
+│   │   │   ├── dimensions/page.tsx               # Saisie dimensions
 │   │   │   ├── work-selection/page.tsx           # Sélection travaux
 │   │   │   ├── estimate/page.tsx                 # Résultats estimation
 │   │   │   ├── shopping-list/page.tsx            # Liste d'achat

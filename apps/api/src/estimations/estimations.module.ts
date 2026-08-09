@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EstimationResult } from './entities/estimation-result.entity';
 import { EmailCapture } from './entities/email-capture.entity';
-import { LearnedWasteFactor } from '../materials/entities/learned-waste-factor.entity';
 import { WorkTypeMaterial } from '../materials/entities/work-type-material.entity';
 import { WorkType } from '../projects/entities/work-type.entity';
 import { ProjectsModule } from '../projects/projects.module';
@@ -19,7 +18,6 @@ import { PublicQuoteCheckController } from './public-quote-check.controller';
   imports: [
     TypeOrmModule.forFeature([
       EstimationResult,
-      LearnedWasteFactor,
       WorkTypeMaterial,
       WorkType,
       EmailCapture,

@@ -11,11 +11,18 @@ import { AnalysisController } from './analysis.controller';
 import { AnalysisService } from './analysis.service';
 import { CvClientService } from './cv-client/cv-client.service';
 import { CvCorrectionService } from './cv-correction.service';
-import { CvAccuracyController } from './cv-accuracy.controller';
 import { CvAccuracyService } from './cv-accuracy.service';
-import { CvRetrainingController } from './cv-retraining.controller';
-import { CvRetrainingService } from './cv-retraining.service';
 
+/**
+ * ADR 0001 D2 : la vision par ordinateur est débranchée, son code reste dans
+ * git. E4-2 a retiré les deux contrôleurs d'administration qui n'avaient aucun
+ * point d'entrée (`admin/cv-accuracy`, `admin/cv-retraining`) ; le reste du
+ * module est intact.
+ *
+ * `CvAccuracyService` **n'est pas** une surface d'administration malgré son
+ * ancien contrôleur : `AnalysisService` l'appelle pour dater l'incertitude
+ * dimensionnelle (CV-5) persistée sur `room_dimensions`.
+ */
 @Module({
   imports: [
     TypeOrmModule.forFeature([AnalysisJob, CvCorrectionLog]),
@@ -25,17 +32,12 @@ import { CvRetrainingService } from './cv-retraining.service';
     UserContextModule,
     FeatureGatesModule,
   ],
-  controllers: [
-    AnalysisController,
-    CvAccuracyController,
-    CvRetrainingController,
-  ],
+  controllers: [AnalysisController],
   providers: [
     AnalysisService,
     CvClientService,
     CvCorrectionService,
     CvAccuracyService,
-    CvRetrainingService,
   ],
   exports: [CvCorrectionService],
 })

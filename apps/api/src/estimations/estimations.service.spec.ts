@@ -16,7 +16,6 @@ import {
   MaterialCatalog,
   MaterialCategory,
 } from '../materials/entities/material-catalog.entity';
-import { LearnedWasteFactor } from '../materials/entities/learned-waste-factor.entity';
 import { WorkTypeMaterial } from '../materials/entities/work-type-material.entity';
 import { WorkType } from '../projects/entities/work-type.entity';
 import { ProjectsService } from '../projects/projects.service';
@@ -91,11 +90,6 @@ const workTypeMaterialsRepoMock = {
   find: jest.fn().mockResolvedValue([{ material: mockMaterial }]),
 };
 
-// DATA-3 : aucun facteur appris par défaut → le catalogue seul s'applique.
-const learnedWasteFactorRepoMock = {
-  find: jest.fn().mockResolvedValue([]),
-};
-
 const workTypesRepoMock = {
   findOne: jest.fn().mockResolvedValue(mockWorkType),
 };
@@ -141,7 +135,6 @@ describe('EstimationsService.estimatePublic', () => {
     workTypeMaterialsRepoMock.find.mockResolvedValue([
       { material: mockMaterial },
     ]);
-    learnedWasteFactorRepoMock.find.mockResolvedValue([]);
     workTypesRepoMock.findOne.mockResolvedValue(mockWorkType);
 
     const module: TestingModule = await Test.createTestingModule({
@@ -155,10 +148,6 @@ describe('EstimationsService.estimatePublic', () => {
         {
           provide: getRepositoryToken(WorkTypeMaterial),
           useValue: workTypeMaterialsRepoMock,
-        },
-        {
-          provide: getRepositoryToken(LearnedWasteFactor),
-          useValue: learnedWasteFactorRepoMock,
         },
         { provide: getRepositoryToken(WorkType), useValue: workTypesRepoMock },
         {
@@ -290,35 +279,13 @@ describe('EstimationsService.estimatePublic', () => {
     );
   });
 
-  it('applies a learned waste factor over the catalog one (DATA-3)', async () => {
-    // Le catalogue porte 5 % en (standard, intermediate) ; l'apprentissage a
-    // retenu 8 % sur les achats réels.
-    learnedWasteFactorRepoMock.find.mockResolvedValue([
-      {
-        material_id: 'mat-paint',
-        pose_type: 'standard',
-        skill_level: 'intermediate',
-        factor_percent: '8.00',
-      },
-    ]);
-
-    const result = await service.estimatePublic(makeDto());
-
-    expect(result.items[0].waste_factor_percent).toBe(8);
-    expect(result.items[0].waste_factor_source).toBe('learned');
-  });
-
-  it('keeps the catalog factor for a cell that has not been learned (DATA-3)', async () => {
-    // Cellule apprise sur un autre niveau : celle demandée reste au catalogue.
-    learnedWasteFactorRepoMock.find.mockResolvedValue([
-      {
-        material_id: 'mat-paint',
-        pose_type: 'standard',
-        skill_level: 'expert',
-        factor_percent: '3.00',
-      },
-    ]);
-
+  it('applies the catalog waste factor, and marks it as such', async () => {
+    // E4-2 : les facteurs de perte **appris** (DATA-3) se superposaient au
+    // catalogue avant l'appel au moteur. Le module d'apprentissage est
+    // supprimé et `learned_waste_factors` n'a jamais reçu une ligne — la
+    // superposition rendait donc déjà le catalogue inchangé. Ce test fige le
+    // seul comportement restant : la cellule (standard, intermediate) du
+    // catalogue vaut 5 %, et c'est elle qui est appliquée.
     const result = await service.estimatePublic(makeDto());
 
     expect(result.items[0].waste_factor_percent).toBe(5);
@@ -386,7 +353,6 @@ describe('EstimationsService.checkQuotePublic', () => {
     workTypeMaterialsRepoMock.find.mockResolvedValue([
       { material: mockTileMaterial },
     ]);
-    learnedWasteFactorRepoMock.find.mockResolvedValue([]);
     workTypesRepoMock.findOne.mockResolvedValue(mockTilingWorkType);
 
     const module: TestingModule = await Test.createTestingModule({
@@ -400,10 +366,6 @@ describe('EstimationsService.checkQuotePublic', () => {
         {
           provide: getRepositoryToken(WorkTypeMaterial),
           useValue: workTypeMaterialsRepoMock,
-        },
-        {
-          provide: getRepositoryToken(LearnedWasteFactor),
-          useValue: learnedWasteFactorRepoMock,
         },
         { provide: getRepositoryToken(WorkType), useValue: workTypesRepoMock },
         {
@@ -592,7 +554,6 @@ describe('EstimationsService.emailEstimate', () => {
     workTypeMaterialsRepoMock.find.mockResolvedValue([
       { material: mockMaterial },
     ]);
-    learnedWasteFactorRepoMock.find.mockResolvedValue([]);
     workTypesRepoMock.findOne.mockResolvedValue(mockWorkType);
     emailCaptureRepoMock.create.mockImplementation(
       (data: Record<string, unknown>) => data,
@@ -614,10 +575,6 @@ describe('EstimationsService.emailEstimate', () => {
         {
           provide: getRepositoryToken(WorkTypeMaterial),
           useValue: workTypeMaterialsRepoMock,
-        },
-        {
-          provide: getRepositoryToken(LearnedWasteFactor),
-          useValue: learnedWasteFactorRepoMock,
         },
         { provide: getRepositoryToken(WorkType), useValue: workTypesRepoMock },
         {
@@ -723,7 +680,6 @@ describe('EstimationsService.estimate', () => {
     workTypeMaterialsRepoMock.find.mockResolvedValue([
       { material: mockMaterial },
     ]);
-    learnedWasteFactorRepoMock.find.mockResolvedValue([]);
     projectsServiceMock.getRooms.mockResolvedValue([
       {
         id: 'room-1',
@@ -759,10 +715,6 @@ describe('EstimationsService.estimate', () => {
         {
           provide: getRepositoryToken(WorkTypeMaterial),
           useValue: workTypeMaterialsRepoMock,
-        },
-        {
-          provide: getRepositoryToken(LearnedWasteFactor),
-          useValue: learnedWasteFactorRepoMock,
         },
         { provide: getRepositoryToken(WorkType), useValue: workTypesRepoMock },
         {

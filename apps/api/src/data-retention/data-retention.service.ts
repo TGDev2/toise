@@ -238,8 +238,7 @@ export class DataRetentionService {
   /**
    * Sélection en colonnes brutes, sans hydrater l'entité : `Project.rooms` est en
    * `eager`, et charger la géométrie de chaque projet pour n'en lire que
-   * l'identifiant ferait exploser la passe (même raison que
-   * `CostBenchmarkService.loadUserIds`).
+   * l'identifiant ferait exploser la passe.
    */
   private async findExpiredProjects(
     cutoff: Date,

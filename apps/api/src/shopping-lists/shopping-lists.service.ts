@@ -918,8 +918,7 @@ export class ShoppingListsService {
    * Le besoin net et le facteur de perte viennent de l'estimation, pas de la
    * liste : la liste ne porte que le résultat arrondi au conditionnement.
    * Un matériau dont les lignes d'estimation portent plusieurs facteurs de
-   * perte ne se voit attribuer aucun taux — la même discipline que
-   * `WasteLearningService`, pour la même raison : une moyenne de deux poses
+   * perte ne se voit attribuer aucun taux : une moyenne de deux poses
    * différentes ne décrit ni l'une ni l'autre.
    */
   private buildCloseoutView(

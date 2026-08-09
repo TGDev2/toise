@@ -14,9 +14,7 @@ import {
   MaterialExclusion,
 } from './entities/estimation-result.entity';
 import { EmailCapture } from './entities/email-capture.entity';
-import { LearnedWasteFactor } from '../materials/entities/learned-waste-factor.entity';
 import { WorkTypeMaterial } from '../materials/entities/work-type-material.entity';
-import { overlayLearnedWasteFactors } from '../waste-learning/waste-learning';
 import { ProjectsService } from '../projects/projects.service';
 import {
   EstimationEngine,
@@ -121,8 +119,6 @@ export class EstimationsService {
   constructor(
     @InjectRepository(EstimationResult)
     private readonly estimationRepo: Repository<EstimationResult>,
-    @InjectRepository(LearnedWasteFactor)
-    private readonly learnedWasteFactorRepo: Repository<LearnedWasteFactor>,
     @InjectRepository(WorkTypeMaterial)
     private readonly workTypeMaterialsRepo: Repository<WorkTypeMaterial>,
     @InjectRepository(WorkType)
@@ -136,12 +132,16 @@ export class EstimationsService {
   ) {}
 
   /**
-   * Catalogue d'un ouvrage, prêt pour le moteur, avec les facteurs de perte
-   * appris (DATA-3) superposés au catalogue de pertes. La superposition a lieu ici et
-   * non dans le moteur : tout ce qui chiffre — application, calculateurs
-   * publics, API PLAT-5, widget PLAT-7 — passe par cette méthode, et un moteur
-   * qui resterait une fonction du seul catalogue qu'on lui donne demeure
+   * Catalogue d'un ouvrage, prêt pour le moteur. Tout ce qui chiffre —
+   * application, calculateurs publics, API publique — passe par cette méthode,
+   * et le moteur reste une fonction du seul catalogue qu'on lui donne, donc
    * testable sans base.
+   *
+   * E4-2 : les facteurs de perte **appris** (DATA-3) se superposaient ici au
+   * catalogue. Le module d'apprentissage est supprimé et `learned_waste_factors`
+   * n'a jamais reçu une ligne — la superposition rendait donc déjà le catalogue
+   * inchangé. Les pertes appliquées sont désormais celles du catalogue seedé,
+   * étalonnées en ENG-5, et rien d'autre.
    *
    * E1-2 : la liaison est portée par `work_type_materials`, pas par la
    * catégorie — `wall_painting` et `ceiling_painting` partagent la catégorie
@@ -168,16 +168,6 @@ export class EstimationsService {
     );
 
     if (activeLinks.length === 0) return [];
-
-    const learned = await this.learnedWasteFactorRepo.find({
-      where: { material_id: In(activeLinks.map((l) => l.material.id)) },
-    });
-    const learnedByMaterialId = new Map<string, LearnedWasteFactor[]>();
-    for (const lwf of learned) {
-      const group = learnedByMaterialId.get(lwf.material_id);
-      if (group) group.push(lwf);
-      else learnedByMaterialId.set(lwf.material_id, [lwf]);
-    }
 
     return activeLinks.map((l) => {
       const m = l.material;
@@ -220,14 +210,11 @@ export class EstimationsService {
         wet_room_system: m.wet_room_system,
         substrate_prep: m.substrate_prep,
         role: l.role,
-        waste_factors: overlayLearnedWasteFactors(
-          m.waste_factors.map((wf) => ({
-            pose_type: wf.pose_type,
-            skill_level: wf.skill_level,
-            factor_percent: Number(wf.factor_percent),
-          })),
-          learnedByMaterialId.get(m.id) ?? [],
-        ),
+        waste_factors: m.waste_factors.map((wf) => ({
+          pose_type: wf.pose_type,
+          skill_level: wf.skill_level,
+          factor_percent: Number(wf.factor_percent),
+        })),
         packagings: m.packagings.map((p) => ({
           label: p.label,
           quantity_per_unit: Number(p.quantity_per_unit),

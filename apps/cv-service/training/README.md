@@ -100,6 +100,26 @@ pipeline tourne de bout en bout.
 
 ## Boucle de ré-entraînement (BACKLOG CV-6)
 
+> **HORS SERVICE depuis E4-2.** Les deux seuls endpoints Chiffréo que cette
+> boucle appelle — `GET /admin/cv-retraining/export` et
+> `GET /admin/cv-retraining/photo?path=…` — ont été supprimés de l'API : aucun
+> écran n'y menait, et la vision par ordinateur est débranchée (ADR 0001 D2),
+> donc `cv_correction_logs` ne reçoit plus de valeur calculée à comparer.
+>
+> **Pour la remettre en service** : restaurer `apps/api/src/analysis/`
+> `cv-retraining.{controller,service}.ts`, `dto/cv-retraining-query.dto.ts`,
+> `PhotosService.findByStorageUrl` et `test/cv-retraining.e2e-spec.ts` depuis
+> git (`git log -- apps/api/src/analysis/cv-retraining.service.ts`), puis
+> réenregistrer le contrôleur dans `analysis.module.ts`. Le code Python
+> ci-dessous n'a pas été touché et fonctionne tel quel une fois les routes
+> rétablies.
+>
+> Ce retrait **ne touche pas** la condition de réouverture de D2 (ADR 0001
+> §5.2) : elle porte sur 50 à 100 photos relevées au télémètre et gelées
+> *avant* mesure, avec une erreur médiane sous 5 % — un protocole hors ligne,
+> pas cette boucle d'apprentissage sur corrections de production. Le service
+> qui calcule cette erreur médiane, `CvAccuracyService`, est **conservé**.
+
 `training/retrain.py` automatise le cycle sur les **données réelles** :
 corrections utilisateur (`cv_correction_logs`) + photos → dataset → fine-tuning
 → éval → publication. Elle tourne sur la machine d'entraînement (jamais le

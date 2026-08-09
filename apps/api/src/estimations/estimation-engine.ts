@@ -119,9 +119,14 @@ export interface WasteFactorInput {
   skill_level: string;
   factor_percent: number;
   /**
-   * Origine de la valeur. Absente = catalogue. `learned` marque une valeur
-   * recalculée sur les achats réels (DATA-3), superposée au catalogue par
-   * `overlayLearnedWasteFactors` avant l'appel au moteur.
+   * Origine de la valeur. Absente = catalogue.
+   *
+   * `learned` marquait une valeur recalculée sur les achats réels (DATA-3),
+   * superposée au catalogue avant l'appel au moteur. E4-2 a supprimé cette
+   * superposition : **plus aucun appelant ne produit `learned`**. La variante
+   * reste dans l'union pour la même raison que `'default'` côté sortie — elle
+   * décrit ce qu'un chiffrage relu peut porter, pas ce qu'un appelant peut
+   * fournir.
    */
   source?: 'catalog' | 'learned';
 }
@@ -727,9 +732,10 @@ export class MissingWasteFactorError extends Error {
  * `waste-factor-coverage.spec.ts` (propriété W1) le vérifie sur les 208 entrées
  * seedées. Ce n'est plus un repli, c'est une règle de vocabulaire.
  *
- * Exportée comme fonction pure car DATA-3 doit résoudre la **même** valeur de
- * référence hors du moteur (calcul des facteurs appris) : la dupliquer
- * laisserait les deux logiques diverger en silence.
+ * Exportée comme fonction pure : DATA-3 devait résoudre la **même** valeur de
+ * référence hors du moteur, et la dupliquer aurait laissé les deux logiques
+ * diverger en silence. DATA-3 a disparu en E4-2 ; l'export reste, il sert aux
+ * tests du harnais seedé.
  */
 export function resolveWasteFactor(
   wasteFactors: WasteFactorInput[],

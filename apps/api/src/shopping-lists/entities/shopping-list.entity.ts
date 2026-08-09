@@ -39,12 +39,12 @@ export interface ShoppingListMaterialItem {
    *
    * Distinct de `units_needed`, qui reste la liste de courses — ce qu'il faut
    * acheter, corrigeable avant les courses. Sans cette séparation, une ligne
-   * jamais regardée est indiscernable d'une ligne confirmée, et
-   * `WasteLearningService` lisait la première comme « l'estimation était
-   * exacte » : une non-observation qui confirmait le catalogue.
+   * jamais regardée serait indiscernable d'une ligne confirmée, et un
+   * consommateur lirait la première comme « l'estimation était exacte » : une
+   * non-observation qui confirme le catalogue.
    *
-   * `null` ou absent = l'utilisateur n'a rien déclaré. Seules les lignes
-   * déclarées alimentent DATA-3 et DATA-4.
+   * `null` ou absent = l'utilisateur n'a rien déclaré. Le tableau de bord
+   * budgétaire est le seul lecteur depuis E4-2.
    */
   purchased_units?: number | null;
   /** ENG-2 : nombre de pièces mutualisées sur cette ligne (≥ 2 → affichage « N pièces »). */
