@@ -188,6 +188,9 @@ describe('vocabulaire de la promesse produit (api)', () => {
       "Il ne reste qu'une étape pour connaître le budget exact.",
       'Des quantités précises pour votre chantier',
       'Le seul logiciel qui chiffre vos matériaux',
+      // E4-4 : seul `hostilite-client` peut attraper celui-ci. Sans cet
+      // échantillon, un motif cassé rendrait la règle muette sans bruit.
+      'Vérifiez si votre artisan vous arnaque',
     ];
     const patterns = lexicon.forbidden.map(
       (term) => new RegExp(term.pattern, 'giu'),

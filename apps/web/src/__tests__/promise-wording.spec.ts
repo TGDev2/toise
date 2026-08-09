@@ -258,6 +258,9 @@ describe('vocabulaire de la promesse produit (web)', () => {
       'Le seul outil qui calcule vos quantités',
       'Économisez sur chaque chantier',
       'Arrêtez d’acheter 15 à 25&nbsp;% de matériaux en trop.',
+      // E4-4 : seul `hostilite-client` peut attraper celui-ci. Sans cet
+      // échantillon, un motif cassé rendrait la règle muette sans bruit.
+      'Vérifiez si votre artisan vous arnaque',
     ];
     const patterns = lexicon.forbidden.map(
       (term) => new RegExp(term.pattern, 'giu'),

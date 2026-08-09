@@ -35,6 +35,11 @@
       "id": "surplus-chiffre",
       "pattern": "\\d+\\s*(?:[àa]|-|–)\\s*\\d+\\s*%\\s*(?:de\\s+)?mat[ée]riaux",
       "why": "La formule « 15 à 25 % de matériaux en trop » chiffre un gain que rien ne mesure sur le chantier de l'utilisateur, et fait du gain la contrepartie attendue du prix."
+    },
+    {
+      "id": "hostilite-client",
+      "pattern": "(?<!\\p{L})(?:arnaqu(?:e|er|é|ée|és|ées)|surfactur(?:e|er|é|ée|és|ées|ation)|malhonn[êe]te|(?:vous |se )faire avoir)(?!\\p{L})",
+      "why": "L'artisan est le client payant (ADR 0001 D1) : aucune surface ne peut armer son client contre lui. Ce motif reprend, à l'échelle du dépôt, la moitié prescriptive du garde-fou que portait quote-check-wording.spec.ts — supprimé avec la page /verifier-un-devis en E4-4. Il vise le corpus SEO à venir (E7-2), où « votre artisan vous arnaque » est la dérive naturelle. Les termes à usage légitime possible (abusif, excessif, contester, trop cher) en sont volontairement absents : les CGU parlent de requêtes automatisées abusives et un motif de résiliation peut s'appeler « trop cher » — une règle qui s'exempte à la première rencontre n'est pas une règle."
     }
   ],
   "allowed": [
