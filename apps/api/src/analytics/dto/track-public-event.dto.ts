@@ -10,7 +10,6 @@ import { AnalyticsEventName } from '../analytics-event-name.enum';
 // côté serveur, un client ne doit pas pouvoir fabriquer un taux de rejet caméra.
 export const PUBLIC_ANALYTICS_EVENT_NAMES = [
   AnalyticsEventName.CALCULATOR_VIEWED,
-  AnalyticsEventName.QUOTE_CHECK_VIEWED,
   AnalyticsEventName.PWA_SESSION_START,
   AnalyticsEventName.PWA_INSTALL_PROMPTED,
   AnalyticsEventName.PWA_INSTALL_ACCEPTED,

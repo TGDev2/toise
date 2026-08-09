@@ -1,6 +1,5 @@
 import type { MetadataRoute } from 'next';
 import { CALCULATOR_SLUGS } from '@/lib/calculators';
-import { QUOTE_CHECK_PAGE } from '@/lib/quote-check';
 import { apiGet } from '@/lib/api';
 import type { PaginatedCommunityProjects } from '@/lib/community-types';
 
@@ -65,13 +64,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly' as const,
       priority: 0.8,
     })),
-    {
-      // GTM-10 : le moteur lu à l'envers. Intention d'achat plus forte que celle
-      // des calculateurs — on y arrive avec un devis en main, pas une idée.
-      url: `${BASE_URL}/${QUOTE_CHECK_PAGE.slug}`,
-      changeFrequency: 'monthly',
-      priority: 0.9,
-    },
     {
       url: `${BASE_URL}/community`,
       changeFrequency: 'weekly',

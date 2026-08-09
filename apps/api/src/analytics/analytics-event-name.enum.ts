@@ -4,12 +4,12 @@
 export enum AnalyticsEventName {
   // Funnel DATA-1 : visite calculateur → compte → 1re estimation → liste → checkout
   CALCULATOR_VIEWED = 'calculator_viewed',
-  // GTM-10 : visite du contrôle de devis. Distinct de `calculator_viewed` — les
-  // deux surfaces partagent le moteur mais pas l'intention (préparer un achat vs
-  // contrôler une affirmation), et c'est justement l'écart entre les deux taux de
-  // conversion qui dira si l'hypothèse « le demandeur de devis bascule vers le
-  // parcours DIY » tient. Les confondre rendrait la question indécidable.
-  QUOTE_CHECK_VIEWED = 'quote_check_viewed',
+  // E4-4 — `quote_check_viewed` est retiré avec la page `/verifier-un-devis`.
+  // Le laisser aurait gardé un nom d'événement sans émetteur **sur la liste
+  // blanche publique** : n'importe quel appelant anonyme aurait pu continuer d'en
+  // écrire, et la seule lecture possible de ces lignes aurait été fausse.
+  // La colonne `event_name` est un `text` libre : les lignes déjà écrites, s'il
+  // en existe, restent lisibles sans migration.
   // Entonnoir de revenu V1 (BACKLOG_V1) : visite calculateur → calcul public →
   // session invité → dimensions → estimation → liste d'achat → compte → devis →
   // essai → abonnement payant → résiliation. Superset de DATA-1 ci-dessus, pas

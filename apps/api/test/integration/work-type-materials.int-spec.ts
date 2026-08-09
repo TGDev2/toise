@@ -5,7 +5,6 @@ import { EstimationEngine } from '../../src/estimations/estimation-engine';
 import { EstimationResult } from '../../src/estimations/entities/estimation-result.entity';
 import { EmailCapture } from '../../src/estimations/entities/email-capture.entity';
 import { ApiEstimateRequestDto } from '../../src/estimations/dto/api-estimate-request.dto';
-import { PublicQuoteCheckRequestDto } from '../../src/estimations/dto/public-quote-check-request.dto';
 import { WorkTypeMaterial } from '../../src/materials/entities/work-type-material.entity';
 import { MaterialCatalog } from '../../src/materials/entities/material-catalog.entity';
 import { WorkType } from '../../src/projects/entities/work-type.entity';
@@ -207,51 +206,5 @@ describe('work_type_materials (intégration, PostgreSQL réel)', () => {
         material.id,
       ]),
     ).rejects.toThrow();
-  });
-
-  /**
-   * `dominantWasteReference` (quote-coherence.ts) retient la fourchette que le
-   * plus grand nombre de matériaux de l'ouvrage partagent. Réduire le jeu de
-   * matériaux à 1-2 par ouvrage (E1-2) pourrait faire basculer ce vote — on
-   * verrouille donc les verdicts sur les deux catégories qui ont une pose
-   * (peinture, carrelage), un verdict visible par l'utilisateur.
-   */
-  describe('checkQuotePublic — fourchette dominante inchangée par E1-2', () => {
-    it('peinture murale : 5–15 % en pose standard', async () => {
-      const result = await service.checkQuotePublic({
-        length_cm: 400,
-        width_cm: 300,
-        height_cm: 250,
-        openings: [{ width_cm: 83, height_cm: 204, count: 1 }],
-        work_type_code: 'wall_painting',
-        declared_surface_m2: 33.31,
-      } as PublicQuoteCheckRequestDto);
-
-      expect(result.reference).toMatchObject({
-        pose_type: 'standard',
-        min_percent: 5,
-        max_percent: 15,
-        is_default: false,
-      });
-    });
-
-    it('carrelage sol, pose droite : 5–15 %', async () => {
-      const result = await service.checkQuotePublic({
-        length_cm: 400,
-        width_cm: 300,
-        height_cm: 250,
-        openings: [],
-        work_type_code: 'floor_tiling',
-        custom_params: { laying_pattern: 'straight', tile_format: '30x30' },
-        declared_surface_m2: 12,
-      } as PublicQuoteCheckRequestDto);
-
-      expect(result.reference).toMatchObject({
-        pose_type: 'straight',
-        min_percent: 5,
-        max_percent: 15,
-        is_default: false,
-      });
-    });
   });
 });

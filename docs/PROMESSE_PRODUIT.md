@@ -156,7 +156,6 @@ externes — site vitrine tiers, campagnes, argumentaires commerciaux.
 | Landing particulier | `apps/web/src/app/page.tsx` |
 | Landing artisan | `apps/web/src/app/artisans/page.tsx` |
 | Calculateurs publics + JSON-LD FAQ | `apps/web/src/lib/calculators.ts` |
-| Vérificateur de devis | `apps/web/src/lib/quote-check.ts` |
 | Offre et paliers | `apps/web/src/lib/pricing.ts` |
 | Métadonnées globales, OG | `apps/web/src/app/layout.tsx` |
 | Manifeste PWA | `apps/web/src/app/manifest.ts` |

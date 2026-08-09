@@ -4,15 +4,14 @@ import Link from 'next/link';
  * Pied de page commun aux surfaces publiques. Il était recopié sur `/`,
  * `/pricing` et `/calculateurs` avec trois listes de liens déjà divergentes.
  *
- * L'entrée « Artisans » a disparu avec `/artisans` (E3-1) : un lien de
- * navigation qui pointe une redirection fait payer un aller-retour à chaque
- * page publique du site.
+ * Les entrées « Artisans » et « Vérifier un devis » ont disparu avec leurs pages
+ * (E3-1, E4-4) : un lien de navigation qui pointe une redirection fait payer un
+ * aller-retour à chaque page publique du site.
  */
 const LINKS = [
   { href: '/', label: 'Accueil' },
   { href: '/pricing', label: 'Tarifs' },
   { href: '/calculateurs', label: 'Calculateurs gratuits' },
-  { href: '/verifier-un-devis', label: 'Vérifier un devis' },
   { href: '/community', label: 'Réalisations' },
   { href: '/cgu', label: 'CGU' },
   { href: '/cgv', label: 'CGV' },

@@ -20,7 +20,27 @@ const nextConfig: NextConfig = {
    * coûterait à chaque requête du site.
    */
   async redirects() {
-    return [{ source: '/artisans', destination: '/', permanent: true }];
+    return [
+      { source: '/artisans', destination: '/', permanent: true },
+      /**
+       * `/verifier-un-devis` outillait un particulier contre le devis d'un
+       * artisan — c'est-à-dire contre le client payant (ADR 0001 D1). E4-4 l'a
+       * retirée. La destination est `/calculateurs` et non `/` : l'intention qui
+       * menait ici est « combien faut-il pour cette pièce ? », à quoi les
+       * calculateurs répondent, là où `/` porte le discours d'abonnement
+       * artisan.
+       *
+       * Contrairement à `/artisans`, cette URL n'a **jamais été indexée** — le
+       * site n'est pas en ligne (épic E6). La règle est donc une précaution, pas
+       * une conservation d'acquis : elle coûte une ligne statique et couvre le
+       * cas où le slug aurait circulé.
+       */
+      {
+        source: '/verifier-un-devis',
+        destination: '/calculateurs',
+        permanent: true,
+      },
+    ];
   },
   turbopack: {
     root: path.join(__dirname, '..', '..'),

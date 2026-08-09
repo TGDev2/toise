@@ -39,8 +39,6 @@ export const NAVIGATION_ROOTS: Record<string, string> = {
   '/pricing': 'Indexée (sitemap, priorité 0,8).',
   '/calculateurs': 'Indexée (priorité 0,8). Aucun lien in-app n’y mène.',
   '/calculateurs/[type]': 'Indexée (priorité 0,8), une entrée par ouvrage.',
-  '/verifier-un-devis':
-    'Indexée (priorité 0,9), la plus élevée du site. Son sort est arbitré par E4-4.',
   '/community': 'Indexée (priorité 0,7).',
   '/login': 'Indexée (priorité 0,5).',
   '/register': 'Indexée (priorité 0,5).',

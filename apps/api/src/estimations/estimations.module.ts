@@ -12,7 +12,6 @@ import { EstimationEngine } from './estimation-engine';
 import { EstimationsService } from './estimations.service';
 import { EstimationsController } from './estimations.controller';
 import { PublicCalculatorsController } from './public-calculators.controller';
-import { PublicQuoteCheckController } from './public-quote-check.controller';
 
 @Module({
   imports: [
@@ -27,11 +26,7 @@ import { PublicQuoteCheckController } from './public-quote-check.controller';
     EmailModule,
     AnalyticsModule,
   ],
-  controllers: [
-    EstimationsController,
-    PublicCalculatorsController,
-    PublicQuoteCheckController,
-  ],
+  controllers: [EstimationsController, PublicCalculatorsController],
   providers: [EstimationEngine, EstimationsService],
   exports: [EstimationsService],
 })

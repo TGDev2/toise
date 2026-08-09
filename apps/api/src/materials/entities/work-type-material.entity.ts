@@ -14,8 +14,7 @@ import { MaterialCatalog } from './material-catalog.entity';
  * `consommable` : consommé systématiquement mais pas proportionnel à `yield_per_unit`
  * de la même façon (ex. colle) — distingué de `sous_couche` pour E1-3.
  * `accessoire` : petit matériel racheté par chantier, quantité indépendante de
- * la surface (seedé par E1-3 ; quantités justes à partir d'E1-4). Exclu de la
- * fourchette de référence de `checkQuotePublic`.
+ * la surface (seedé par E1-3 ; quantités justes à partir d'E1-4).
  */
 export type WorkTypeMaterialRole =
   | 'principal'
