@@ -4,6 +4,7 @@ import { GuestPromptModal } from '@/components/auth/GuestPromptModal';
 import { ContractorDashboard } from '@/components/dashboard/ContractorDashboard';
 import { ExportDataButton } from '@/components/dashboard/ExportDataButton';
 import { ProjectCard } from '@/components/dashboard/ProjectCard';
+import { RefundGuaranteeAction } from '@/components/subscription/RefundGuaranteeAction';
 import { Alert, Button, ConfirmDialog, Input, Skeleton, useToast } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -30,7 +31,7 @@ function formatProjectDate(value: string): string {
 
 export default function DashboardPage() {
   const { appUser, isGuest, isLoading, logout, deleteAccount } = useAuth();
-  const { subscription, openCheckout, openPortal } = useSubscription();
+  const { subscription, openCheckout, openPortal, refresh } = useSubscription();
   const router = useRouter();
 
   // Guest state (localStorage)
@@ -291,8 +292,19 @@ export default function DashboardPage() {
             }
 
             if (tier?.startsWith('contractor') && (status === 'active' || status === 'trialing')) {
+              // Sur un abonnement annuel, la date d'échéance est l'information
+              // principale de cette carte : elle dit quand 279 € seront
+              // prélevés, ou jusqu'à quand l'accès tient après une résiliation.
+              // Elle manquait ici — le mensuel la rendait anodine.
+              const renewsOn = subscription?.current_period_end
+                ? new Intl.DateTimeFormat('fr-FR', {
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric',
+                  }).format(new Date(subscription.current_period_end))
+                : null;
               return (
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="text-sm font-semibold text-stone-900">
                       Plan Contractor
@@ -302,6 +314,14 @@ export default function DashboardPage() {
                         </span>
                       )}
                     </p>
+                    {renewsOn && (
+                      <p className="mt-1 text-xs text-stone-500">
+                        {subscription?.cancel_at_period_end
+                          ? `Actif jusqu'au ${renewsOn}`
+                          : `Reconduction le ${renewsOn}`}
+                      </p>
+                    )}
+                    <RefundGuaranteeAction onRefunded={refresh} />
                   </div>
                   <Button variant="secondary" onClick={openPortal} className="shrink-0">
                     Gérer mon abonnement

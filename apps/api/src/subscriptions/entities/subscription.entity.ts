@@ -80,6 +80,23 @@ export class Subscription {
   @Column({ type: 'timestamptz', nullable: true })
   past_due_since!: Date | null;
 
+  /**
+   * `current_period_end` pour lequel le préavis de reconduction a déjà été
+   * envoyé ; `null` tant qu'aucun ne l'a été.
+   *
+   * L'idempotence des autres e-mails de cycle de vie passe par
+   * `lifecycle_email_sends`, mais son index unique partiel
+   * `(user_id, email_type) WHERE project_id IS NULL` ne laisse partir un
+   * e-mail « par compte » **qu'une fois pour toujours**. Sur une reconduction
+   * annuelle, l'abonné aurait été prévenu la première année et jamais plus —
+   * une panne qui ne se serait vue qu'au bout de deux ans.
+   *
+   * La bonne clé de dédoublonnage n'est donc pas le compte mais **la période
+   * annoncée** : ce filigrane se réarme de lui-même à chaque échéance.
+   */
+  @Column({ type: 'timestamptz', nullable: true })
+  renewal_notice_sent_for!: Date | null;
+
   @OneToOne(() => User)
   @JoinColumn({ name: 'user_id' })
   user!: User;

@@ -37,6 +37,10 @@ import {
   TrialEndingSoonEmailData,
 } from './templates/trial-ending-soon.template';
 import {
+  buildRenewalNoticeEmail,
+  RenewalNoticeEmailData,
+} from './templates/renewal-notice.template';
+import {
   buildOrganizationInvitationEmail,
   OrganizationInvitationEmailData,
 } from './templates/organization-invitation.template';
@@ -114,6 +118,14 @@ export class EmailService {
     data: TrialEndingSoonEmailData,
   ): Promise<void> {
     const { subject, html, text } = buildTrialEndingSoonEmail(data);
+    await this.brevoClient.sendTransactionalEmail({ to, subject, html, text });
+  }
+
+  async sendRenewalNoticeEmail(
+    to: string,
+    data: RenewalNoticeEmailData,
+  ): Promise<void> {
+    const { subject, html, text } = buildRenewalNoticeEmail(data);
     await this.brevoClient.sendTransactionalEmail({ to, subject, html, text });
   }
 

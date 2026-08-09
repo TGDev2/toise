@@ -9,7 +9,11 @@ import {
   SubscriptionStatus,
 } from '../subscriptions/entities/subscription.entity';
 import { User, SubscriptionTier } from '../users/entities/user.entity';
-import { PLANS, PlanDefinition } from '../subscriptions/plans.constants';
+import {
+  monthlyEquivalentEuros,
+  PLANS,
+  PlanDefinition,
+} from '../subscriptions/plans.constants';
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -66,24 +70,18 @@ const REVENUE_FUNNEL_ANONYMOUS_STEPS = new Set<AnalyticsEventName>([
 // seuil propre à cette marche.
 const MIN_FUNNEL_STEP_SAMPLE = 30;
 
-// Correspondance entre la clé de plan (plans.constants.ts) et le tier utilisateur
-// qu'elle attribue (cf. subscriptions.service.ts syncSubscriptionTier).
-const PLAN_KEY_TO_TIER: Record<string, SubscriptionTier> = {
-  contractor_essentiel: SubscriptionTier.CONTRACTOR_ESSENTIEL,
-  contractor_standard: SubscriptionTier.CONTRACTOR_STANDARD,
-  contractor_premium: SubscriptionTier.CONTRACTOR_PREMIUM,
-};
-
 /**
  * Paliers rapportés dans le MRR : exactement ceux qu'un plan de `PLANS` peut
  * attribuer, dérivés et non recopiés. La liste était écrite à la main et
  * portait `pro` ; le plan retiré en E3-1, elle aurait publié indéfiniment une
  * ligne à zéro abonné — le genre de zéro qu'on finit par lire comme une
  * mesure plutôt que comme un vestige.
+ *
+ * La correspondance clé de plan → palier vivait ici, en double de celle du
+ * constructeur de `SubscriptionsService` ; elle est portée par `plan.tier`
+ * depuis E3-3, à un seul endroit.
  */
-const REPORTED_TIERS: SubscriptionTier[] = PLANS.map(
-  (plan) => PLAN_KEY_TO_TIER[plan.key],
-).filter((tier): tier is SubscriptionTier => Boolean(tier));
+const REPORTED_TIERS: SubscriptionTier[] = PLANS.map((plan) => plan.tier);
 
 function round2(value: number): number {
   return Math.round(value * 100) / 100;
@@ -333,13 +331,19 @@ export class AdminAnalyticsService {
         ? this.priceIdToPlan.get(row.price_id)
         : undefined;
       if (!plan) continue; // price_id inconnu/obsolète : ignoré, pas d'erreur
-      const tier = PLAN_KEY_TO_TIER[plan.key];
-      if (!tier) continue; // clé de plan non mappée à un tier : ignorée
       const count = parseInt(row.count, 10);
-      const entry = totalsByTier.get(tier) ?? { subscriber_count: 0, mrr: 0 };
+      const entry = totalsByTier.get(plan.tier) ?? {
+        subscriber_count: 0,
+        mrr: 0,
+      };
       entry.subscriber_count += count;
-      entry.mrr += count * plan.price;
-      totalsByTier.set(tier, entry);
+      // `plan.price` est un montant **par période**, et la période est
+      // annuelle depuis E3-3. L'ajouter tel quel publierait 279 € de revenu
+      // mensuel récurrent par abonné, soit douze fois la réalité — un chiffre
+      // faux qui n'aurait cassé aucun test, puisqu'ils vérifiaient la
+      // cohérence avec `PLANS` et non la grandeur.
+      entry.mrr += count * monthlyEquivalentEuros(plan);
+      totalsByTier.set(plan.tier, entry);
     }
 
     const by_tier = REPORTED_TIERS.map((tier) => {

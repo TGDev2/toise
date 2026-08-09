@@ -11,6 +11,10 @@ import { Subscription } from '../subscriptions/entities/subscription.entity';
 import { EmailService } from '../email/email.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
+import {
+  getDefaultPlan,
+  monthlyEquivalentEuros,
+} from '../subscriptions/plans.constants';
 
 // Même patron que subscriptions.service.spec.ts : instance factice couvrant
 // exactement la surface Stripe utilisée par ce service.
@@ -276,6 +280,9 @@ describe('ReferralsService', () => {
       ).toHaveBeenCalledWith(
         'cus_referrer',
         {
+          // Le montant appliqué vient du crédit **stocké**, pas du plan
+          // courant : un crédit acquis quand l'offre valait 19 €/mois reste
+          // dû à 1 900 centimes même après le passage à l'annuel.
           amount: -1900,
           currency: 'eur',
           description: expect.any(String) as string,
@@ -289,7 +296,21 @@ describe('ReferralsService', () => {
       });
       expect(emailServiceMock.sendReferralCreditEmail).toHaveBeenCalledWith(
         'referrer@chiffreo.fr',
-        expect.objectContaining({ amountEuros: 19 }),
+        expect.objectContaining({
+          amountEuros: monthlyEquivalentEuros(getDefaultPlan()),
+        }),
+      );
+      // Le crédit **créé** pour cette conversion, lui, suit le plan courant.
+      // C'est le seul endroit où le passage à l'annuel change un montant, et
+      // il n'était couvert par rien : lu comme `plan.price`, « 1 mois offert »
+      // aurait rendu 279 € — l'année entière, pour un filleul à 279 € (E3-3).
+      expect(referralCreditsQueryBuilderMock.values).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amount_cents: Math.round(
+            monthlyEquivalentEuros(getDefaultPlan()) * 100,
+          ),
+          currency: 'eur',
+        }),
       );
       expect(usersRepoMock.update).toHaveBeenCalledWith('referred-1', {
         referral_converted_at: expect.any(Date) as Date,

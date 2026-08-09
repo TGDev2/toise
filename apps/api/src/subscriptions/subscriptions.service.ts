@@ -14,12 +14,16 @@ import {
   SubscriptionStatus,
 } from './entities/subscription.entity';
 import { StripeEvent } from './entities/stripe-event.entity';
+import {
+  RefundOrigin,
+  SubscriptionRefund,
+} from './entities/subscription-refund.entity';
 import { UsersService } from '../users/users.service';
 import { SubscriptionTier } from '../users/entities/user.entity';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 import { ReferralsService } from '../referrals/referrals.service';
-import { getDefaultPlan, PLANS } from './plans.constants';
+import { getDefaultPlan, PLANS, REFUND_WINDOW_DAYS } from './plans.constants';
 
 /**
  * Au-delà de ce délai, une réservation d'event Stripe sans traitement abouti est
@@ -36,6 +40,40 @@ const STALE_CLAIM_INTERVAL = '15 minutes';
 const DEFAULT_PAST_DUE_GRACE_DAYS = 14;
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * Un champ Stripe qui référence un autre objet vaut soit son identifiant, soit
+ * l'objet lui-même selon ce qui a été demandé en `expand`. Écrire le
+ * `typeof … === 'string'` à chaque site d'appel est la porte d'entrée du
+ * `[object Object]` stocké en base.
+ */
+function stripeIdOf(
+  value: string | { id: string } | null | undefined,
+): string | null {
+  if (!value) return null;
+  return typeof value === 'string' ? value : value.id;
+}
+
+/**
+ * Pourquoi une demande de remboursement est refusée. Un ensemble fermé plutôt
+ * qu'un message libre : c'est cette valeur que l'interface traduit, et c'est
+ * elle qui décide si le bouton doit seulement être caché ou expliqué.
+ */
+export type RefundIneligibilityReason =
+  | 'no_subscription'
+  | 'no_paid_invoice'
+  | 'window_elapsed'
+  | 'already_refunded';
+
+/** Examen d'éligibilité au « 30 jours satisfait ou remboursé » (E3-3). */
+export interface RefundEligibility {
+  eligible: boolean;
+  /** Date limite, `null` quand aucune facture payée n'ouvre de fenêtre. */
+  eligible_until: Date | null;
+  /** Montant qui serait rendu, en centimes. `null` si rien n'est remboursable. */
+  amount_cents: number | null;
+  reason: RefundIneligibilityReason | null;
+}
 
 /** Une ligne de l'historique de facturation Stripe (E6-2, export RGPD). */
 export interface BillingHistoryEntry {
@@ -68,6 +106,12 @@ export class SubscriptionsService {
   private readonly allowedPriceIds: Set<string>;
   private readonly publicUrl: string;
   private readonly pastDueGraceMs: number;
+  /**
+   * Fenêtre du « satisfait ou remboursé ». Constante et non configurable,
+   * contrairement au délai de grâce : c'est une promesse publiée dans les CGV
+   * (cf. `REFUND_WINDOW_DAYS`).
+   */
+  private readonly refundWindowMs = REFUND_WINDOW_DAYS * MS_PER_DAY;
   private readonly logger = new Logger(SubscriptionsService.name);
 
   constructor(
@@ -75,6 +119,8 @@ export class SubscriptionsService {
     private readonly subscriptionsRepo: Repository<Subscription>,
     @InjectRepository(StripeEvent)
     private readonly stripeEventsRepo: Repository<StripeEvent>,
+    @InjectRepository(SubscriptionRefund)
+    private readonly refundsRepo: Repository<SubscriptionRefund>,
     private readonly usersService: UsersService,
     private readonly analyticsService: AnalyticsService,
     private readonly referralsService: ReferralsService,
@@ -105,31 +151,22 @@ export class SubscriptionsService {
       DEFAULT_PAST_DUE_GRACE_DAYS;
     this.pastDueGraceMs = Number(graceDays) * MS_PER_DAY;
 
+    // Palier **et** durée d'essai viennent de `PLANS`, en une seule boucle.
+    //
+    // Les paliers étaient auparavant recopiés à la main, une lecture de config
+    // et un `if` par offre : retirer une offre demandait de penser à trois
+    // endroits, et la durée d'essai était déduite ailleurs de « ce prix est-il
+    // un prix contractor ? » — ce qui faisait de `trial_days` une donnée
+    // décorative, déclarée par la grille et ignorée par le checkout. Une offre
+    // ajoutée ou retirée est désormais un geste d'un seul fichier.
     this.priceIdToTier = new Map<string, SubscriptionTier>();
-    const essentielPriceId = this.config.get<string>(
-      'stripe.contractorEssentielPriceId',
-    );
-    const standardPriceId = this.config.get<string>(
-      'stripe.contractorStandardPriceId',
-    );
-    const premiumPriceId = this.config.get<string>(
-      'stripe.contractorPremiumPriceId',
-    );
-    if (essentielPriceId)
-      this.priceIdToTier.set(
-        essentielPriceId,
-        SubscriptionTier.CONTRACTOR_ESSENTIEL,
-      );
-    if (standardPriceId)
-      this.priceIdToTier.set(
-        standardPriceId,
-        SubscriptionTier.CONTRACTOR_STANDARD,
-      );
-    if (premiumPriceId)
-      this.priceIdToTier.set(
-        premiumPriceId,
-        SubscriptionTier.CONTRACTOR_PREMIUM,
-      );
+    this.priceIdToTrialDays = new Map<string, number>();
+    for (const plan of PLANS) {
+      const priceId = this.config.get<string>(plan.priceIdConfigKey);
+      if (!priceId) continue;
+      this.priceIdToTier.set(priceId, plan.tier);
+      this.priceIdToTrialDays.set(priceId, plan.trial_days);
+    }
 
     this.contractorPriceIds = new Set(this.priceIdToTier.keys());
 
@@ -137,17 +174,6 @@ export class SubscriptionsService {
     // `proPriceId` y figurait en plus, et il ne résolvait aucun palier : c'est
     // ce qui rendait possible de payer un prix sans rien débloquer.
     this.allowedPriceIds = new Set<string>(this.contractorPriceIds);
-
-    // La durée d'essai vient de `PLANS` et de nulle part ailleurs. Elle était
-    // auparavant déduite de « ce prix est-il un prix contractor ? », ce qui
-    // faisait de `trial_days` une donnée décorative : le palier artisan la
-    // déclarait, le checkout l'ignorait. Deux sources pour un même fait, dont
-    // une seule appliquée — celle qu'on ne lit pas en relisant la grille.
-    this.priceIdToTrialDays = new Map<string, number>();
-    for (const plan of PLANS) {
-      const priceId = this.config.get<string>(plan.priceIdConfigKey);
-      if (priceId) this.priceIdToTrialDays.set(priceId, plan.trial_days);
-    }
   }
 
   private get stripe(): Stripe {
@@ -320,41 +346,362 @@ export class SubscriptionsService {
     });
     if (!subscription) return;
 
+    await this.cancelAtStripe(subscription);
+
+    await this.subscriptionsRepo.delete({ id: subscription.id });
+  }
+
+  /**
+   * Résilie l'abonnement chez Stripe, sauf s'il n'y a plus rien à résilier.
+   *
+   * Extrait de `cancelForAccountDeletion` pour être partagé avec le
+   * remboursement : les deux chemins ont la même postcondition — « plus rien ne
+   * sera facturé » — et la même tolérance à un abonnement déjà disparu. Deux
+   * copies auraient divergé sur la liste des statuts terminaux.
+   */
+  private async cancelAtStripe(subscription: Subscription): Promise<void> {
     // `canceled`/`incomplete_expired` n'ont plus rien à résilier ; tous les
     // autres statuts sont facturables ou le redeviennent (`past_due`, `unpaid`).
     const terminalStatuses: SubscriptionStatus[] = [
       SubscriptionStatus.CANCELED,
       SubscriptionStatus.INCOMPLETE_EXPIRED,
     ];
-    if (!terminalStatuses.includes(subscription.status)) {
-      try {
-        await this.stripe.subscriptions.cancel(
-          subscription.stripe_subscription_id,
-        );
-      } catch (error) {
-        // Déjà résilié côté Stripe (résiliation manuelle, reprise après un
-        // échec partiel) : la postcondition « plus rien n'est facturé » est
-        // atteinte, on peut effacer la ligne. Idempotence du chemin de reprise.
-        //
-        // Reconnu à la forme (`type` + `code`) plutôt qu'avec `instanceof` : la
-        // seconde forme n'est vraie que pour les erreurs issues de l'exemplaire
-        // de SDK effectivement chargé, ce qui en fait un test qui passe en
-        // production et ment partout ailleurs. Les deux champs ensemble sont
-        // assez spécifiques pour ne pas avaler autre chose.
-        const stripeError = error as { type?: string; code?: string };
-        if (
-          stripeError?.type !== 'StripeInvalidRequestError' ||
-          stripeError?.code !== 'resource_missing'
-        ) {
-          throw error;
-        }
-        this.logger.warn(
-          `Abonnement ${subscription.stripe_subscription_id} déjà absent de Stripe — suppression locale poursuivie.`,
-        );
+    if (terminalStatuses.includes(subscription.status)) return;
+
+    try {
+      await this.stripe.subscriptions.cancel(
+        subscription.stripe_subscription_id,
+      );
+    } catch (error) {
+      // Déjà résilié côté Stripe (résiliation manuelle, reprise après un
+      // échec partiel) : la postcondition « plus rien n'est facturé » est
+      // atteinte. Idempotence du chemin de reprise.
+      //
+      // Reconnu à la forme (`type` + `code`) plutôt qu'avec `instanceof` : la
+      // seconde forme n'est vraie que pour les erreurs issues de l'exemplaire
+      // de SDK effectivement chargé, ce qui en fait un test qui passe en
+      // production et ment partout ailleurs. Les deux champs ensemble sont
+      // assez spécifiques pour ne pas avaler autre chose.
+      const stripeError = error as { type?: string; code?: string };
+      if (
+        stripeError?.type !== 'StripeInvalidRequestError' ||
+        stripeError?.code !== 'resource_missing'
+      ) {
+        throw error;
+      }
+      this.logger.warn(
+        `Abonnement ${subscription.stripe_subscription_id} déjà absent de Stripe — poursuite.`,
+      );
+    }
+  }
+
+  // --- « 30 jours satisfait ou remboursé » (E3-3, ADR 0002 §D4) -------------
+
+  /**
+   * La dernière facture **payée** de l'abonnement, et de quoi la rembourser.
+   *
+   * L'ancre de la fenêtre est la date de paiement de cette facture, et non la
+   * date de souscription : sur un abonnement annuel reconduit tacitement, c'est
+   * le prélèvement de 279 € qui vient d'avoir lieu qui doit pouvoir être rendu,
+   * pas seulement le tout premier. C'est aussi le cas le plus contesté — un
+   * renouvellement non remboursable finit en contestation bancaire, qui coûte
+   * plus cher que le remboursement qu'elle remplace.
+   *
+   * Le chemin d'accès au moyen de paiement est passé par `invoice.payments`
+   * depuis l'API 2025 : `Invoice.charge` et `Invoice.payment_intent`
+   * n'existent plus dans le SDK v21. Vérifié dans les types installés plutôt
+   * que supposé — c'est exactement le déplacement de champ que
+   * `verify-stripe-cycle.ts` existe pour attraper (`current_period_end` est
+   * passé de l'abonnement à ses `items` de la même façon).
+   */
+  private async resolveLatestPaidInvoice(
+    stripeSubscriptionId: string,
+  ): Promise<{
+    invoiceId: string | null;
+    amountCents: number;
+    currency: string;
+    paidAt: Date;
+    paymentIntentId: string | null;
+    chargeId: string | null;
+  } | null> {
+    const invoices = await this.stripe.invoices.list({
+      subscription: stripeSubscriptionId,
+      status: 'paid',
+      limit: 1,
+      expand: ['data.payments'],
+    });
+
+    const invoice = invoices.data[0];
+    if (!invoice || invoice.amount_paid <= 0) return null;
+
+    const payments = invoice.payments?.data ?? [];
+    const payment = payments.find((p) => p.status === 'paid') ?? payments[0];
+
+    return {
+      invoiceId: invoice.id ?? null,
+      amountCents: invoice.amount_paid,
+      currency: invoice.currency,
+      paidAt: new Date(
+        (invoice.status_transitions?.paid_at ?? invoice.created) * 1000,
+      ),
+      paymentIntentId: stripeIdOf(payment?.payment.payment_intent),
+      chargeId: stripeIdOf(payment?.payment.charge),
+    };
+  }
+
+  /**
+   * L'abonné peut-il exercer la garantie, et jusqu'à quand ?
+   *
+   * Endpoint distinct de `GET /subscriptions/current` **à dessein** : cette
+   * réponse coûte un aller-retour Stripe, et la placer sur `current` en
+   * ajouterait un à chaque affichage du tableau de bord — y compris en
+   * développement, où l'absence de clé Stripe ferait répondre 503 à un écran
+   * qui n'a rien à voir avec la facturation.
+   */
+  async getRefundEligibility(userId: string): Promise<RefundEligibility> {
+    const empty = { eligible_until: null, amount_cents: null };
+
+    const subscription = await this.subscriptionsRepo.findOne({
+      where: { user_id: userId },
+    });
+    if (!subscription) {
+      return { eligible: false, ...empty, reason: 'no_subscription' };
+    }
+
+    const invoice = await this.resolveLatestPaidInvoice(
+      subscription.stripe_subscription_id,
+    );
+    if (!invoice) {
+      return { eligible: false, ...empty, reason: 'no_paid_invoice' };
+    }
+
+    const eligibleUntil = new Date(
+      invoice.paidAt.getTime() + this.refundWindowMs,
+    );
+
+    if (invoice.invoiceId) {
+      const already = await this.refundsRepo.findOne({
+        where: { stripe_invoice_id: invoice.invoiceId },
+      });
+      if (already) {
+        return {
+          eligible: false,
+          eligible_until: eligibleUntil,
+          amount_cents: already.amount_cents,
+          reason: 'already_refunded',
+        };
       }
     }
 
-    await this.subscriptionsRepo.delete({ id: subscription.id });
+    if (Date.now() > eligibleUntil.getTime()) {
+      return {
+        eligible: false,
+        eligible_until: eligibleUntil,
+        amount_cents: invoice.amountCents,
+        reason: 'window_elapsed',
+      };
+    }
+
+    return {
+      eligible: true,
+      eligible_until: eligibleUntil,
+      amount_cents: invoice.amountCents,
+      reason: null,
+    };
+  }
+
+  /**
+   * Exerce la garantie : rembourse, ferme l'accès, résilie, trace.
+   *
+   * L'ordre n'est pas indifférent.
+   *
+   * 1. **Le remboursement d'abord**, avec une clé d'idempotence dérivée de la
+   *    facture : deux clics, deux onglets ou un retry réseau obtiennent le
+   *    *même* remboursement de Stripe, pas deux. La trace en base pose la
+   *    seconde barrière — les clés d'idempotence Stripe expirent au bout de
+   *    24 h, la contrainte d'unicité non.
+   * 2. **La trace ensuite**, avant tout effet sur l'accès : si le processus
+   *    meurt ici, l'argent est rendu et la ligne existe, donc un rejeu ne
+   *    remboursera pas une seconde fois.
+   * 3. **Le palier immédiatement après**, sans attendre le webhook. Rendre
+   *    l'argent en laissant l'accès ouvert le temps d'un aller-retour Stripe
+   *    est le seul des deux défauts possibles qui se paie deux fois.
+   * 4. **La résiliation en dernier**, parce qu'elle est la seule étape qui
+   *    puisse échouer sans conséquence immédiate — l'accès est déjà fermé, et
+   *    un rejeu de la demande la retentera.
+   *
+   * L'écriture locale ne touche **ni `subscriptions.status` ni
+   * `last_stripe_event_at`** : c'est la règle déjà posée par
+   * `sweepExpiredGracePeriods`. Le statut est le reflet de ce que Stripe a
+   * émis ; il sera écrit par le `customer.subscription.deleted` qui suit, par
+   * le chemin normal et sous la garde d'ordonnancement. L'écrire ici
+   * obligerait à poser un filigrane pour un événement qui n'existe pas.
+   *
+   * Idempotente : rejouée sur une facture déjà remboursée, elle ne rembourse
+   * pas une seconde fois et se contente de s'assurer que l'accès est bien
+   * fermé. Un abonné qui clique deux fois obtient deux fois la même réponse,
+   * pas une erreur.
+   */
+  async requestRefund(
+    userId: string,
+    reason?: string | null,
+  ): Promise<{
+    refund_id: string;
+    amount_cents: number;
+    currency: string;
+    already_refunded: boolean;
+  }> {
+    const subscription = await this.subscriptionsRepo.findOne({
+      where: { user_id: userId },
+    });
+    if (!subscription) {
+      throw new BadRequestException('Aucun abonnement trouvé.');
+    }
+
+    const invoice = await this.resolveLatestPaidInvoice(
+      subscription.stripe_subscription_id,
+    );
+    if (!invoice) {
+      throw new BadRequestException(
+        'Aucun paiement à rembourser sur cet abonnement.',
+      );
+    }
+
+    const eligibleUntil = new Date(
+      invoice.paidAt.getTime() + this.refundWindowMs,
+    );
+
+    const existing = invoice.invoiceId
+      ? await this.refundsRepo.findOne({
+          where: { stripe_invoice_id: invoice.invoiceId },
+        })
+      : null;
+
+    if (existing) {
+      await this.revokeAccessAfterRefund(subscription);
+      return {
+        refund_id: existing.stripe_refund_id,
+        amount_cents: existing.amount_cents,
+        currency: existing.currency,
+        already_refunded: true,
+      };
+    }
+
+    if (Date.now() > eligibleUntil.getTime()) {
+      throw new BadRequestException(
+        `Le délai de ${REFUND_WINDOW_DAYS} jours est dépassé : il courait ` +
+          `jusqu'au ${eligibleUntil.toLocaleDateString('fr-FR')}.`,
+      );
+    }
+
+    if (!invoice.paymentIntentId && !invoice.chargeId) {
+      throw new BadRequestException(
+        'Ce paiement ne peut pas être remboursé automatiquement. Contactez-nous.',
+      );
+    }
+
+    const refund = await this.stripe.refunds.create(
+      invoice.paymentIntentId
+        ? { payment_intent: invoice.paymentIntentId }
+        : { charge: invoice.chargeId! },
+      {
+        idempotencyKey: `refund-invoice-${invoice.invoiceId ?? subscription.stripe_subscription_id}`,
+      },
+    );
+
+    await this.recordRefund({
+      userId,
+      stripeSubscriptionId: subscription.stripe_subscription_id,
+      stripeInvoiceId: invoice.invoiceId,
+      stripeChargeId: stripeIdOf(refund.charge) ?? invoice.chargeId,
+      stripeRefundId: refund.id,
+      amountCents: refund.amount,
+      currency: refund.currency,
+      origin: RefundOrigin.SELF_SERVICE,
+      reason: reason ?? null,
+      invoicePaidAt: invoice.paidAt,
+      eligibleUntil,
+    });
+
+    await this.revokeAccessAfterRefund(subscription);
+
+    this.analyticsService.track(
+      AnalyticsEventName.SUBSCRIPTION_REFUNDED,
+      userId,
+      {
+        plan: this.resolvePlanName(subscription.stripe_price_id),
+        amount_cents: refund.amount,
+        origin: RefundOrigin.SELF_SERVICE,
+        days_since_payment: Math.floor(
+          (Date.now() - invoice.paidAt.getTime()) / MS_PER_DAY,
+        ),
+      },
+    );
+
+    return {
+      refund_id: refund.id,
+      amount_cents: refund.amount,
+      currency: refund.currency,
+      already_refunded: false,
+    };
+  }
+
+  /**
+   * Insère la trace, sans jamais échouer sur un doublon.
+   *
+   * `orIgnore` sur `UQ_subscription_refunds_stripe_refund` : notre propre appel
+   * et le webhook `charge.refunded` qui le suit décrivent le **même**
+   * remboursement, et deux livraisons concurrentes le décrivent aussi. Le
+   * doublon est le cas nominal, pas l'exception.
+   */
+  private async recordRefund(input: {
+    userId: string;
+    stripeSubscriptionId: string;
+    stripeInvoiceId: string | null;
+    stripeChargeId: string | null;
+    stripeRefundId: string;
+    amountCents: number;
+    currency: string;
+    origin: RefundOrigin;
+    reason: string | null;
+    invoicePaidAt: Date | null;
+    eligibleUntil: Date | null;
+  }): Promise<void> {
+    await this.refundsRepo
+      .createQueryBuilder()
+      .insert()
+      .values({
+        user_id: input.userId,
+        stripe_subscription_id: input.stripeSubscriptionId,
+        stripe_invoice_id: input.stripeInvoiceId,
+        stripe_charge_id: input.stripeChargeId,
+        stripe_refund_id: input.stripeRefundId,
+        amount_cents: input.amountCents,
+        currency: input.currency,
+        origin: input.origin,
+        reason: input.reason,
+        invoice_paid_at: input.invoicePaidAt,
+        eligible_until: input.eligibleUntil,
+      })
+      .orIgnore()
+      .execute();
+  }
+
+  /**
+   * Ce qu'un remboursement fait de l'accès : il le ferme.
+   *
+   * Le palier d'abord — c'est lui qui décide de tout, et il tombe sans
+   * dépendre d'un aller-retour réseau. La résiliation ensuite, tolérante à un
+   * abonnement déjà disparu.
+   */
+  private async revokeAccessAfterRefund(
+    subscription: Subscription,
+  ): Promise<void> {
+    await this.usersService.updateSubscriptionTier(
+      subscription.user_id,
+      SubscriptionTier.FREE,
+    );
+    await this.cancelAtStripe(subscription);
   }
 
   constructWebhookEvent(rawBody: Buffer, signature: string): Stripe.Event {
@@ -454,6 +801,9 @@ export class SubscriptionsService {
         break;
       case 'customer.subscription.deleted':
         await this.handleSubscriptionDeleted(event.data.object, occurredAt);
+        break;
+      case 'charge.refunded':
+        await this.handleChargeRefunded(event.data.object);
         break;
       default:
         this.logger.log(`Unhandled event type: ${event.type}`);
@@ -971,6 +1321,113 @@ export class SubscriptionsService {
         plan: planName,
       },
     );
+  }
+
+  /**
+   * Un remboursement émis **hors du produit** — depuis le tableau de bord
+   * Stripe, par un opérateur.
+   *
+   * Sans ce handler, la garantie ne tiendrait que sur son chemin heureux :
+   * l'argent serait rendu, l'accès resterait ouvert, et rien ne le compterait
+   * dans le taux de remboursement dont l'ADR §5.1 fait un seuil d'alerte. Le
+   * geste manuel n'est pas interdit — il est simplement rendu visible.
+   *
+   * **Un remboursement partiel ne ferme rien.** `charge.refunded` est aussi
+   * émis pour un geste commercial de quelques euros ; couper l'accès dans ce
+   * cas transformerait une faveur en sanction. Seul un remboursement total
+   * révoque, et la trace est écrite dans les deux cas.
+   *
+   * Volontairement **hors** de la garde d'ordonnancement `applyEventState`,
+   * pour la même raison que `handleReferredUserConverted` : un remboursement
+   * est un fait qui a eu lieu, pas un instantané d'état concurrent d'un autre.
+   * Il n'écrit d'ailleurs aucune colonne d'abonnement. Son idempotence vient de
+   * l'unicité de `stripe_refund_id`, qui ne dépend d'aucun ordre de livraison.
+   */
+  private async handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
+    const customerId = stripeIdOf(charge.customer);
+    if (!customerId) return;
+
+    const subscription = await this.subscriptionsRepo.findOne({
+      where: { stripe_customer_id: customerId },
+    });
+    if (!subscription) return;
+
+    const refunds = charge.refunds?.data ?? [];
+    if (refunds.length === 0) {
+      this.logger.warn(
+        `charge.refunded sans remboursement listé (charge ${charge.id}) — trace impossible.`,
+      );
+      return;
+    }
+
+    const invoiceId = await this.resolveInvoiceIdForCharge(charge);
+
+    for (const refund of refunds) {
+      await this.recordRefund({
+        userId: subscription.user_id,
+        stripeSubscriptionId: subscription.stripe_subscription_id,
+        stripeInvoiceId: invoiceId,
+        stripeChargeId: charge.id,
+        stripeRefundId: refund.id,
+        amountCents: refund.amount,
+        currency: refund.currency,
+        origin: RefundOrigin.STRIPE_DASHBOARD,
+        reason: refund.reason ?? null,
+        // Un geste d'opérateur ne s'appuie sur aucune fenêtre : y écrire une
+        // échéance laisserait croire qu'une condition a été vérifiée.
+        invoicePaidAt: null,
+        eligibleUntil: null,
+      });
+    }
+
+    if (charge.amount_refunded < charge.amount) {
+      this.logger.log(
+        `Remboursement partiel sur ${charge.id} ` +
+          `(${charge.amount_refunded}/${charge.amount}) — accès inchangé.`,
+      );
+      return;
+    }
+
+    await this.revokeAccessAfterRefund(subscription);
+
+    this.analyticsService.track(
+      AnalyticsEventName.SUBSCRIPTION_REFUNDED,
+      subscription.user_id,
+      {
+        plan: this.resolvePlanName(subscription.stripe_price_id),
+        amount_cents: charge.amount_refunded,
+        origin: RefundOrigin.STRIPE_DASHBOARD,
+      },
+    );
+  }
+
+  /**
+   * Retrouve la facture d'une charge remboursée, au mieux.
+   *
+   * `Charge.invoice` n'existe plus dans le SDK v21 : le lien passe désormais
+   * par `invoicePayments`. Le détour est en best-effort — une trace amputée de
+   * sa référence de facture reste une trace, une exception dans un webhook
+   * ferait rejouer tout le traitement pour une information secondaire.
+   */
+  private async resolveInvoiceIdForCharge(
+    charge: Stripe.Charge,
+  ): Promise<string | null> {
+    const paymentIntentId = stripeIdOf(charge.payment_intent);
+    if (!paymentIntentId) return null;
+
+    try {
+      const payments = await this.stripe.invoicePayments.list({
+        payment: { type: 'payment_intent', payment_intent: paymentIntentId },
+        limit: 1,
+      });
+      return stripeIdOf(payments.data[0]?.invoice);
+    } catch (error) {
+      this.logger.warn(
+        `Facture non résolue pour la charge ${charge.id}: ` +
+          `${error instanceof Error ? error.message : String(error)}`,
+      );
+      return null;
+    }
   }
 
   /**

@@ -64,13 +64,14 @@ export default function CgvPage() {
           Le détail des offres et leurs prix figurent sur la page{' '}
           <LegalLink href="/pricing">tarifs</LegalLink>, qui fait foi. À titre
           indicatif à la date de publication : une offre gratuite sans limite de
-          chantiers, et une offre payante à 19 €/mois avec 7 jours d’essai
-          gratuit.
+          chantiers, et une offre payante à 279 € HT par an, en abonnement
+          annuel uniquement, assortie d’une garantie « 30 jours satisfait ou
+          remboursé » (article 7).
         </P>
         <P>
-          Les prix sont indiqués en euros.{' '}
+          Les prix sont indiqués en euros <strong>hors taxes</strong>.{' '}
           <Fill>
-            préciser TTC/HT et le taux de TVA applicable, ou la mention « TVA non
+            préciser le taux de TVA applicable, ou la mention « TVA non
             applicable, art. 293 B du CGI »
           </Fill>
           . Les prix peuvent évoluer ; le prix applicable est celui en vigueur
@@ -94,32 +95,53 @@ export default function CgvPage() {
         <P>
           Le paiement s’effectue par carte bancaire via notre prestataire de
           paiement sécurisé Stripe. Chiffréo ne collecte ni ne conserve les
-          données de carte bancaire. Le prix est prélevé à la souscription (à
-          l’issue de l’éventuelle période d’essai), puis à chaque reconduction.
-          En cas de défaut ou de refus de paiement, l’accès aux fonctionnalités
-          payantes peut être suspendu.
+          données de carte bancaire. Le prix annuel est prélevé en une fois à la
+          souscription, puis à chaque reconduction annuelle. En cas de défaut ou
+          de refus de paiement, l’accès aux fonctionnalités payantes est
+          maintenu pendant un délai de régularisation, puis suspendu ; les
+          documents déjà émis restent consultables et exportables, et le
+          chiffrage reste accessible gratuitement.
         </P>
       </Section>
 
       <Section title="6. Durée, reconduction et résiliation">
         <P>
-          Les abonnements sont conclus pour une durée d’un mois, reconduits
-          tacitement par périodes successives d’un mois, sans engagement de
-          durée. Le client peut résilier à tout moment depuis son espace
-          abonnement ; la résiliation prend effet à la fin de la période en
-          cours et l’accès est maintenu jusqu’à cette date. Conformément à
-          l’article L215-1-1 du Code de la consommation, la résiliation peut
-          être effectuée en ligne par un moyen simple et directement accessible.
+          Les abonnements sont conclus pour une durée d’un an, reconduits
+          tacitement par périodes successives d’un an. Le client peut résilier à
+          tout moment depuis son espace abonnement ; la résiliation prend effet
+          à la fin de la période en cours et l’accès est maintenu jusqu’à cette
+          date. Conformément à l’article L215-1-1 du Code de la consommation, la
+          résiliation peut être effectuée en ligne par un moyen simple et
+          directement accessible.
+        </P>
+        <P>
+          Le client est informé par e-mail de la reconduction à venir au moins
+          trente (30) jours avant l’échéance, avec le montant qui sera prélevé et
+          la date du prélèvement.
         </P>
       </Section>
 
-      <Section title="7. Période d’essai gratuite">
+      <Section title="7. Garantie « 30 jours satisfait ou remboursé »">
         <P>
-          L’offre Pro inclut une période d’essai gratuite de 7 jours. Aucun
-          montant n’est prélevé pendant l’essai. Si le client ne résilie pas
-          avant la fin de l’essai, l’abonnement payant débute automatiquement au
-          tarif en vigueur. Le client peut résilier à tout moment pendant
-          l’essai, sans frais.
+          Le client peut demander le remboursement intégral de son abonnement
+          dans un délai de trente (30) jours suivant chaque prélèvement,
+          reconduction annuelle comprise, sans avoir à motiver sa demande.
+        </P>
+        <P>
+          La demande s’effectue en ligne depuis l’espace abonnement. Le
+          remboursement porte sur l’intégralité du dernier montant prélevé et
+          est émis immédiatement par le prestataire de paiement ; le délai de
+          mise à disposition des fonds dépend de l’établissement bancaire du
+          client. L’abonnement est résilié dans le même geste et l’accès aux
+          fonctionnalités payantes prend fin ; les documents déjà émis restent
+          consultables et exportables, et le chiffrage reste accessible
+          gratuitement et sans limite de chantiers.
+        </P>
+        <P>
+          Cette garantie est un engagement contractuel de Chiffréo. Elle
+          s’ajoute au droit de rétractation légal décrit à l’article 8 et ne
+          s’y substitue pas ; le client conserve la faculté d’invoquer celui qui
+          lui est le plus favorable.
         </P>
       </Section>
 

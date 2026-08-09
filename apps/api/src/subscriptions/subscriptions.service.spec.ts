@@ -8,11 +8,13 @@ import {
   SubscriptionStatus,
 } from './entities/subscription.entity';
 import { StripeEvent } from './entities/stripe-event.entity';
+import { SubscriptionRefund } from './entities/subscription-refund.entity';
 import { UsersService } from '../users/users.service';
 import { SubscriptionTier } from '../users/entities/user.entity';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
 import { ReferralsService } from '../referrals/referrals.service';
+import { getDefaultPlan } from './plans.constants';
 
 // Mirrors the sharp mock pattern in photos.service.spec.ts: a fake instance
 // exposing the Stripe SDK surface this service actually calls, returned by
@@ -33,8 +35,6 @@ const CONFIG_VALUES: Record<string, string | number> = {
   'stripe.webhookSecret': 'whsec_test',
   publicUrl: 'https://chiffreo.fr',
   'stripe.contractorEssentielPriceId': 'price_contractor_essentiel',
-  'stripe.contractorStandardPriceId': 'price_contractor_standard',
-  'stripe.contractorPremiumPriceId': 'price_contractor_premium',
 };
 
 const configServiceMock = {
@@ -88,6 +88,12 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 const stripeEventsRepoMock = {};
 
+const refundsRepoMock = {
+  findOne: jest.fn(),
+  count: jest.fn(),
+  createQueryBuilder: jest.fn(),
+};
+
 const usersServiceMock = {
   updateSubscriptionTier: jest.fn(),
   downgradeToFreeIfNeeded: jest.fn(),
@@ -120,6 +126,10 @@ describe('SubscriptionsService.createCheckoutSession', () => {
         {
           provide: getRepositoryToken(StripeEvent),
           useValue: stripeEventsRepoMock,
+        },
+        {
+          provide: getRepositoryToken(SubscriptionRefund),
+          useValue: refundsRepoMock,
         },
         { provide: UsersService, useValue: usersServiceMock },
         { provide: AnalyticsService, useValue: analyticsServiceMock },
@@ -187,28 +197,32 @@ describe('SubscriptionsService.createCheckoutSession', () => {
     );
   });
 
-  it('resolves the precise Contractor sub-tier for analytics, not a generic "contractor" (BACKLOG PRO-1)', async () => {
+  /**
+   * Le prix d'un palier retiré ne doit pas rester souscriptible par appel
+   * direct. Les paliers mensuels à 29 et 49 € ont quitté `PLANS` en E3-3 :
+   * leur price_id ne résout plus aucun palier, donc n'entre plus dans les prix
+   * autorisés. Sans cette borne, on pourrait payer un prix qui ne débloque
+   * rien — le défaut exact que `allowedPriceIds` existe pour fermer.
+   */
+  it('refuse le price_id d’un palier retiré de l’offre', async () => {
     subscriptionsRepoMock.findOne.mockResolvedValue(null);
-    mockStripeInstance.customers.create.mockResolvedValue({ id: 'cus_new' });
-    mockStripeInstance.checkout.sessions.create.mockResolvedValue({
-      url: 'https://checkout.stripe.com/session',
-    });
 
-    await service.createCheckoutSession(testUser, 'price_contractor_standard');
-
-    expect(analyticsServiceMock.track).toHaveBeenCalledWith(
-      AnalyticsEventName.CHECKOUT_STARTED,
-      testUser.id,
-      { plan: 'contractor_standard', price_id: 'price_contractor_standard' },
-    );
+    await expect(
+      service.createCheckoutSession(testUser, 'price_contractor_standard'),
+    ).rejects.toThrow(BadRequestException);
+    expect(mockStripeInstance.checkout.sessions.create).not.toHaveBeenCalled();
   });
 
   /**
-   * L'essai se lit dans `PLANS` et nulle part ailleurs. Il était auparavant
-   * déduit de « ce prix est-il un prix contractor ? », si bien que le palier
-   * artisan déclarait `trial_days` sans que le checkout ne le regarde jamais.
+   * Le checkout applique la durée d'essai que `PLANS` déclare, et rien
+   * d'autre. Écrit en fonction de la grille plutôt qu'avec un 7 en dur : ce
+   * test décrit le **mécanisme**, il reste vrai quelle que soit la valeur.
+   *
+   * L'essai était auparavant déduit de « ce prix est-il un prix contractor ? »,
+   * si bien que la grille déclarait `trial_days` sans que le checkout ne le
+   * regarde jamais.
    */
-  it('accorde au palier artisan les 7 jours d’essai déclarés dans PLANS', async () => {
+  it('applique au checkout la durée d’essai déclarée par PLANS', async () => {
     subscriptionsRepoMock.findOne.mockResolvedValue(null);
     mockStripeInstance.customers.create.mockResolvedValue({ id: 'cus_new' });
     mockStripeInstance.checkout.sessions.create.mockResolvedValue({
@@ -217,26 +231,32 @@ describe('SubscriptionsService.createCheckoutSession', () => {
 
     await service.createCheckoutSession(testUser, 'price_contractor_essentiel');
 
-    expect(mockStripeInstance.checkout.sessions.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        line_items: [{ price: 'price_contractor_essentiel', quantity: 1 }],
-        subscription_data: { trial_period_days: 7 },
-      }),
+    const [payload] = mockStripeInstance.checkout.sessions.create.mock
+      .calls[0] as [Record<string, unknown>];
+    expect(payload.line_items).toEqual([
+      { price: 'price_contractor_essentiel', quantity: 1 },
+    ]);
+    expect(payload.subscription_data).toEqual(
+      getDefaultPlan().trial_days > 0
+        ? { trial_period_days: getDefaultPlan().trial_days }
+        : undefined,
     );
   });
 
-  it('n’attache aucun essai à un palier dont PLANS déclare trial_days: 0', async () => {
-    subscriptionsRepoMock.findOne.mockResolvedValue(null);
-    mockStripeInstance.customers.create.mockResolvedValue({ id: 'cus_new' });
-    mockStripeInstance.checkout.sessions.create.mockResolvedValue({
-      url: 'https://checkout.stripe.com/session',
-    });
-
-    await service.createCheckoutSession(testUser, 'price_contractor_standard');
-
-    const [payload] = mockStripeInstance.checkout.sessions.create.mock
-      .calls[0] as [Record<string, unknown>];
-    expect(payload.subscription_data).toBeUndefined();
+  /**
+   * Et la décision elle-même, énoncée séparément du mécanisme : l'offre
+   * annuelle **ne comporte pas d'essai** (E3-3).
+   *
+   * L'essai est déjà là — c'est le palier gratuit, illimité. Et un essai ne
+   * prélève rien, donc ne rembourse rien : l'annoncer à côté d'un « 30 jours
+   * satisfait ou remboursé » rendrait la garantie inapplicable pendant la
+   * semaine exacte où elle rassure. Ce test tombe si quelqu'un rétablit un
+   * essai sans rouvrir cette question.
+   */
+  it('ne déclare aucune période d’essai sur l’offre annuelle (E3-3)', () => {
+    expect(getDefaultPlan().trial_days).toBe(0);
+    expect(getDefaultPlan().interval).toBe('year');
+    expect(getDefaultPlan().price).toBe(279);
   });
 
   it('applies pending referral credits when a new Stripe customer is created (BACKLOG COM-3)', async () => {
@@ -302,6 +322,10 @@ describe('SubscriptionsService.handleWebhookEvent (invoice.paid)', () => {
         {
           provide: getRepositoryToken(StripeEvent),
           useValue: stripeEventsRepoMock,
+        },
+        {
+          provide: getRepositoryToken(SubscriptionRefund),
+          useValue: refundsRepoMock,
         },
         { provide: UsersService, useValue: usersServiceMock },
         { provide: AnalyticsService, useValue: analyticsServiceMock },
@@ -452,6 +476,10 @@ describe('SubscriptionsService.handleWebhookEvent (checkout.session.completed)',
           provide: getRepositoryToken(StripeEvent),
           useValue: stripeEventsRepoMock,
         },
+        {
+          provide: getRepositoryToken(SubscriptionRefund),
+          useValue: refundsRepoMock,
+        },
         { provide: UsersService, useValue: usersServiceMock },
         { provide: AnalyticsService, useValue: analyticsServiceMock },
         { provide: ReferralsService, useValue: referralsServiceMock },
@@ -601,6 +629,10 @@ describe('SubscriptionsService.handleWebhookEvent — ordre de livraison', () =>
           provide: getRepositoryToken(StripeEvent),
           useValue: stripeEventsRepoMock,
         },
+        {
+          provide: getRepositoryToken(SubscriptionRefund),
+          useValue: refundsRepoMock,
+        },
         { provide: UsersService, useValue: usersServiceMock },
         { provide: AnalyticsService, useValue: analyticsServiceMock },
         { provide: ReferralsService, useValue: referralsServiceMock },
@@ -722,6 +754,10 @@ describe('SubscriptionsService.cancelForAccountDeletion', () => {
         {
           provide: getRepositoryToken(StripeEvent),
           useValue: stripeEventsRepoMock,
+        },
+        {
+          provide: getRepositoryToken(SubscriptionRefund),
+          useValue: refundsRepoMock,
         },
         { provide: UsersService, useValue: usersServiceMock },
         { provide: AnalyticsService, useValue: analyticsServiceMock },
@@ -862,6 +898,10 @@ describe('SubscriptionsService — délai de grâce past_due', () => {
         {
           provide: getRepositoryToken(StripeEvent),
           useValue: stripeEventsRepoMock,
+        },
+        {
+          provide: getRepositoryToken(SubscriptionRefund),
+          useValue: refundsRepoMock,
         },
         { provide: UsersService, useValue: usersServiceMock },
         { provide: AnalyticsService, useValue: analyticsServiceMock },

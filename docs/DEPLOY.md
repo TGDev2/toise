@@ -133,15 +133,17 @@ refusera le checkout avec « Offre invalide ».
 > **La périodicité est annuelle, et elle se règle ici.** C'est le seul endroit.
 > Un prix créé en `Monthly` facturerait 279 € par mois.
 
-> **L'essai éventuel ne se règle pas ici.** Il n'est pas un attribut du prix
-> Stripe : `createCheckoutSession` l'envoie dans
+> **Il n'y a pas d'essai, et ce n'est pas un oubli.** L'essai n'est pas un
+> attribut du prix Stripe : `createCheckoutSession` l'envoie dans
 > `subscription_data.trial_period_days`, lu dans `trial_days` de
-> [`plans.constants.ts`](../apps/api/src/subscriptions/plans.constants.ts), et
-> cette valeur prime sur tout réglage du dashboard. Chercher l'essai dans
-> l'interface Stripe est une perte de temps ; le changer se fait dans ce
-> fichier, et se répercute sur la vitrine via `apps/web/src/lib/pricing.ts`.
-> **Le modèle en vigueur ne comporte pas d'essai** : la démonstration est le
-> chiffrage gratuit, et la garantie est un remboursement à 30 jours.
+> [`plans.constants.ts`](../apps/api/src/subscriptions/plans.constants.ts) —
+> qui vaut **0** depuis E3-3. Chercher ou régler un essai dans l'interface
+> Stripe est donc sans effet : le code n'en demande aucun.
+>
+> La raison est écrite dans `plans.constants.ts` : l'essai *existe déjà*, c'est
+> le palier gratuit et illimité, et un essai ne prélève rien — donc ne
+> rembourse rien. L'annoncer à côté d'un « 30 jours satisfait ou remboursé »
+> rendrait la garantie inapplicable pendant la semaine exacte où elle rassure.
 
 ### 4.2 Renseigner les variables
 
@@ -149,10 +151,18 @@ refusera le checkout avec « Offre invalide ».
 |---|---|---|
 | `STRIPE_SECRET_KEY` | `sk_live_…` | oui, validée au démarrage |
 | `STRIPE_WEBHOOK_SECRET` | `whsec_…` (§4.4) | oui, validée au démarrage |
-| `STRIPE_CONTRACTOR_ESSENTIEL_PRICE_ID` | prix **Conformité** 279 €/an | de fait (voir ci-dessous) |
-| `STRIPE_CONTRACTOR_STANDARD_PRICE_ID` | laisser vide | non |
-| `STRIPE_CONTRACTOR_PREMIUM_PRICE_ID` | laisser vide | non |
+| `STRIPE_CONTRACTOR_ESSENTIEL_PRICE_ID` | prix **Conformité** 279 € HT/an | de fait (voir ci-dessous) |
 | `STRIPE_PAST_DUE_GRACE_DAYS` | `14` (défaut si absente) | non |
+
+**Aucun secret ne vit dans le dépôt** : `.env.example` ne porte que des noms de
+variables, `docker-compose.prod.yml` les lit depuis l'environnement du serveur,
+et `.env` est ignoré par git. Les valeurs se saisissent sur le VPS, une fois.
+
+**Le prix est annoncé HT** — arbitrage rendu en E3-3, que l'ADR 0002 §6 laissait
+ouvert et dont il désignait lui-même les trois points d'application : ce
+tableau, `/pricing` et les CGV. La cible mêle des artisans assujettis et des
+micro-entrepreneurs en franchise en base (art. 293 B) ; l'affichage HT est
+l'usage B2B, et les CGV portent la mention de TVA à compléter.
 
 Trois pièges, dans l'ordre où ils coûtent cher :
 
@@ -164,13 +174,15 @@ Trois pièges, dans l'ordre où ils coûtent cher :
   palier : le client paierait 279 € et n'aurait ni devis PDF, ni fichier
   clients, ni facturation — les gates de ces capacités exigent
   `contractor_essentiel`.
-- **`STRIPE_PRO_PRICE_ID` n'existe plus.** Elle était exigée au démarrage
-  ([`env.validation.ts`](../apps/api/src/config/env.validation.ts)) pour un
-  palier que l'ADR 0002 §D4 avait retiré de l'offre : l'API refusait de
+- **Trois variables de prix n'existent plus.** `STRIPE_PRO_PRICE_ID` était
+  exigée au démarrage ([`env.validation.ts`](../apps/api/src/config/env.validation.ts))
+  pour un palier que l'ADR 0002 §D4 avait retiré de l'offre : l'API refusait de
   démarrer sans un prix Stripe qu'aucune surface ne vendait. E3-1 a supprimé le
-  palier du code, et la variable est partie avec lui — de `env.validation.ts`,
-  `configuration.ts`, `.env.example` et `docker-compose.prod.yml`. Ne pas la
-  réintroduire.
+  palier du code, et la variable est partie avec lui.
+  `STRIPE_CONTRACTOR_STANDARD_PRICE_ID` et `..._PREMIUM_...` ont suivi en E3-3
+  avec les paliers mensuels à 29 et 49 €. **Ne pas les réintroduire** : les
+  prix souscriptibles sont exactement ceux qui résolvent un palier, et un prix
+  renseigné qui n'en résout aucun se paierait sans rien débloquer.
 - **`CONTRACTOR_ESSENTIEL` n'est pas validée au démarrage, mais rien ne se
   vend sans elle.** Vide, le prix artisan n'entre pas dans les prix autorisés :
   `GET /subscriptions/plans` renvoie `price_id: null`, le bouton de la page
@@ -192,9 +204,16 @@ par erreur : la **lecture** des devis et factures déjà émis, leur export PDF,
 le marquage d'une facture comme payée. Seule leur création ou leur modification
 exige de nouveau un abonnement.
 
-Les deux variables laissées vides correspondent aux paliers retirés en E3-4 :
-elles ne doivent pas être renseignées, sans quoi des paliers que plus aucune
-surface ne vend redeviendraient souscriptibles par appel direct.
+**Sur un cycle annuel, ce délai ne change pas de valeur mais change d'enjeu.**
+Il court depuis la **première** entrée en `past_due` de l'épisode
+(`past_due_since`, jamais réécrite pendant les relances) et non depuis la fin de
+la période : il est donc indépendant de la périodicité. Ce qui change est le
+montant en jeu — 279 € au lieu de 19 € — et le fait qu'un impayé annuel se
+règle rarement en une journée. Les 14 jours restent le bon ordre de grandeur
+(ils couvrent les trois premières relances Stripe), mais c'est le **taux de
+récupération** mesuré par l'écart entre `payment_failed` et
+`subscription_grace_expired` qui doit décider d'un éventuel réglage — pas une
+intuition.
 
 ### 4.3 Activer le portail de facturation
 
@@ -223,6 +242,15 @@ traite, ni plus ni moins :
 | `invoice.payment_failed` | passe en `past_due` et émet `payment_failed` |
 | `customer.subscription.updated` | recopie statut, prix, période et fin d'essai, puis resynchronise le palier — c'est lui qui porte les changements d'offre |
 | `customer.subscription.deleted` | passe en `canceled`, ramène l'utilisateur au palier `free`, émet `subscription_canceled` |
+| `charge.refunded` | trace le remboursement dans `subscription_refunds` et, **s'il est total**, ramène l'utilisateur au palier `free` |
+
+**`charge.refunded` est ce qui rend la garantie vraie quel que soit le chemin.**
+Un remboursement émis à la main depuis le tableau de bord Stripe — ce qui
+arrivera, ne serait-ce que pour un cas limite — laissait sinon l'accès ouvert et
+n'était compté nulle part, alors que l'ADR 0002 §5.1 fait du taux de
+remboursement un seuil d'alerte. Un remboursement **partiel** (geste
+commercial) est tracé sans fermer l'accès : couper transformerait la faveur en
+sanction.
 
 **Ne rien souscrire d'autre**, et surtout pas « *Select all events* » : chaque
 livraison est réservée puis stockée dans la table `stripe_events`, y compris
@@ -249,12 +277,48 @@ La vérification de signature travaille sur le **corps brut** de la requête :
 tout proxy qui ré-encoderait le JSON la casserait. Caddy, tel que configuré au
 §3, transmet la requête telle quelle.
 
-### 4.5 Répéter en mode test avant d'ouvrir la caisse
+### 4.5 La garantie « 30 jours satisfait ou remboursé »
 
-Un script déroule le cycle complet contre un vrai Stripe en mode test —
-checkout, essai, abonnement actif, changement de palier, annulation — et
-vérifie après chaque étape l'état en base **et** le palier effectif rendu par
-les feature gates :
+Elle n'est **pas** un geste manuel dans le tableau de bord Stripe : elle est
+implémentée, et elle est exerçable par l'abonné lui-même.
+
+| | |
+|---|---|
+| **Condition** | la dernière facture **payée** de l'abonnement a moins de 30 jours (`REFUND_WINDOW_DAYS`), son montant payé est non nul, et aucune trace n'existe déjà pour elle |
+| **Déclenchement** | `POST /api/v1/subscriptions/refund`, authentifié, depuis la carte d'abonnement du tableau de bord. `GET /api/v1/subscriptions/refund-eligibility` dit si le bouton doit apparaître |
+| **Effet** | remboursement Stripe intégral, palier ramené à `free` **immédiatement**, puis résiliation de l'abonnement |
+| **Trace** | une ligne dans `subscription_refunds`, unique sur `stripe_refund_id`, portant le montant, l'origine, la date de paiement qui a servi d'ancre et l'échéance appliquée |
+
+Deux points que l'exploitation doit connaître :
+
+- **La fenêtre court par facture payée, reconduction comprise.** Un artisan
+  prélevé de 279 € à la reconduction dispose donc à nouveau de 30 jours. C'est
+  délibéré : le cas « j'avais oublié de résilier » est la première source de
+  contestation bancaire sur un abonnement annuel, et un chargeback coûte plus
+  cher qu'un remboursement.
+- **Le geste manuel reste possible et reste tracé.** Un remboursement émis
+  depuis le tableau de bord Stripe revient par `charge.refunded` (§4.4) et
+  produit la même ligne, avec `origin = stripe_dashboard`.
+
+Le **taux de remboursement** se lit en rapprochant `subscription_refunded` de
+`subscription_started` dans `analytics_events`. Son seuil d'alerte est écrit
+avant observation : au-delà de **20 % sur les 25 premières ventes**, c'est la
+promesse qui est en cause, pas le prix (ADR 0002 §5.1).
+
+**Le préavis de reconduction** part 30 jours avant chaque échéance
+(`RENEWAL_NOTICE_DAYS`), par le balayage quotidien des e-mails de cycle de vie,
+et seulement si l'abonnement n'est pas déjà résilié. Son dédoublonnage est
+porté par `subscriptions.renewal_notice_sent_for`, qui mémorise **la période
+annoncée** — et non le compte, sans quoi l'abonné n'aurait été prévenu que la
+première année.
+
+### 4.6 Répéter en mode test avant d'ouvrir la caisse
+
+Un script déroule le cycle **annuel** complet contre un vrai Stripe en mode
+test — souscription, remboursement à J+10, re-souscription, renouvellement à
+J+366, échec de paiement, expiration du délai de grâce, annulation, rejeu d'un
+événement périmé — et vérifie après chaque étape l'état en base **et** le
+palier effectif rendu par les feature gates :
 
 ```bash
 cd apps/api
@@ -262,27 +326,43 @@ cd apps/api
 pnpm verify:stripe
 ```
 
-Le script refuse de démarrer sur autre chose qu'une clé `sk_test_`, crée ses
-propres prix si ceux du `.env` ne sont pas lisibles avec cette clé, et nettoie
-derrière lui (abonnement résilié, client supprimé, utilisateur de test effacé).
-Sa dernière étape rejoue volontairement un événement périmé après l'annulation
-pour vérifier qu'il ne rend aucun palier.
+Le script refuse de démarrer sur autre chose qu'une clé `sk_test_`, crée son
+propre prix annuel si celui du `.env` n'est pas lisible avec cette clé, et
+nettoie derrière lui.
 
-Ce qu'il ne couvre pas : la page de paiement hébergée elle-même, qui ne peut
-pas être validée sans navigateur. C'est le seul geste à faire à la main.
+**Il traverse l'année avec une horloge de test Stripe** (`test_clock`) : un
+renouvellement annuel ne s'attend pas, et sans elle la moitié du cycle ne
+serait jamais éprouvée. Le client est donc créé rattaché à une horloge, qu'on
+avance par paliers ; Stripe émet les mêmes événements qu'il émettrait un an
+plus tard.
 
-### 4.6 Le premier euro, en live
+Trois choses qu'il ne couvre pas, et il le dit à l'exécution :
+
+1. **la page de paiement hébergée**, qui ne peut pas être validée sans
+   navigateur — l'enveloppe `checkout.session.completed` est la seule
+   fabriquée, autour d'une vraie session relue chez Stripe ;
+2. **l'expiration du délai de grâce**, dont le compte à rebours est *le nôtre*
+   (`STRIPE_PAST_DUE_GRACE_DAYS`, comparé à `Date.now()`) et qu'une horloge
+   Stripe n'avance pas : l'étape recule `past_due_since` en base puis appelle
+   le balayage ;
+3. **la page de paiement en live**, évidemment.
+
+### 4.7 Le premier euro, en live
 
 1. Souscrire une fois depuis la page tarifs, avec une vraie carte.
 2. Vérifier la ligne créée :
-   `docker compose -f docker-compose.prod.yml exec db psql -U chiffreo -d chiffreo -c "SELECT status, stripe_price_id, trial_end FROM subscriptions ORDER BY created_at DESC LIMIT 1"`
-   — le statut doit être `trialing` et `trial_end` à J+7.
+   `docker compose -f docker-compose.prod.yml exec db psql -U chiffreo -d chiffreo -c "SELECT status, stripe_price_id, current_period_start, current_period_end FROM subscriptions ORDER BY created_at DESC LIMIT 1"`
+   — le statut doit être `active` **dès la souscription** (il n'y a pas
+   d'essai), et la période doit couvrir **un an**. Une période de trente jours
+   signale un prix créé en `Monthly` : le client vient d'être engagé à 279 €
+   par mois.
 3. Dans *Developers → Webhooks*, l'endpoint doit afficher **200** sur chaque
    livraison. Un 400 signale un `STRIPE_WEBHOOK_SECRET` erroné ; un 500, un
    traitement en échec (également remonté dans Sentry, tag
    `component: stripe-webhook`).
-4. Résilier et rembourser depuis le dashboard, puis vérifier que la ligne est
-   passée en `canceled` et l'utilisateur au palier `free`.
+4. Exercer la garantie une fois depuis le tableau de bord, et vérifier qu'une
+   ligne apparaît dans `subscription_refunds`, que l'utilisateur est repassé au
+   palier `free` et que le chiffrage lui reste ouvert.
 
 ## 5. Sauvegardes
 

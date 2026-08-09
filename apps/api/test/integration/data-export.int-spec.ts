@@ -75,6 +75,7 @@ import {
   Subscription,
   SubscriptionStatus,
 } from '../../src/subscriptions/entities/subscription.entity';
+import { SubscriptionRefund } from '../../src/subscriptions/entities/subscription-refund.entity';
 import { QuantityValidation } from '../../src/quantity-validation/entities/quantity-validation.entity';
 import {
   QuantityCorrection,
@@ -163,6 +164,7 @@ describe('Export RGPD (intégration, PostgreSQL et volume réels)', () => {
       dataSource.getRepository(LifecycleEmailSend),
       dataSource.getRepository(AnalyticsEvent),
       dataSource.getRepository(Subscription),
+      dataSource.getRepository(SubscriptionRefund),
       dataSource.getRepository(QuantityValidation),
       dataSource.getRepository(QuantityCorrection),
       storage,

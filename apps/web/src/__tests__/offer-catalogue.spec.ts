@@ -9,6 +9,7 @@
  */
 import {
   GENERALIST_MARKET_CEILING_EUR,
+  monthlyEquivalentEuros,
   OFFER_PLANS,
   AUDIENCES,
   plansForAudience,
@@ -210,6 +211,13 @@ describe("catalogue d'offre", () => {
    * récit « artisans du bâtiment », alors que les sept ouvrages seedés sont tous
    * de finition. Rien dans le code ne pouvait le signaler : ni le prix ni le
    * périmètre annoncé n'étaient adossés à quoi que ce soit.
+   *
+   * **Le plafond est mensuel, et il l'est resté quand l'offre est passée à
+   * l'annuel (E3-3).** Les concurrents relevés vendent au mois ; comparer
+   * 279 € à 30 € n'aurait aucun sens et aurait fait rougir un garde-fou sain.
+   * La sortie facile était de le désactiver — c'est la grandeur qu'il fallait
+   * corriger, pas le seuil : la comparaison porte désormais sur l'équivalent
+   * mensuel (279 / 12 = 23,25 €, toujours sous le plafond).
    */
   describe('6. le prix artisan reste tenable face au marché', () => {
     it("garde le palier payant d'entrée sous le plafond du marché généraliste", () => {
@@ -222,7 +230,49 @@ describe("catalogue d'offre", () => {
         .sort((a, b) => a.priceNumber! - b.priceNumber!);
 
       expect(entry).toBeDefined();
-      expect(entry.priceNumber!).toBeLessThan(GENERALIST_MARKET_CEILING_EUR);
+      expect(monthlyEquivalentEuros(entry)!).toBeLessThan(
+        GENERALIST_MARKET_CEILING_EUR,
+      );
+    });
+
+    /**
+     * Et la périodicité elle-même, énoncée plutôt que supposée : l'offre est
+     * annuelle et le prix s'affiche HT (E3-3, ADR 0002 §D4 et §6). Ce test
+     * tombe si quelqu'un remet du mensuel sans rouvrir la décision — et il
+     * tomberait aussi si `period` et `priceLabel` divergeaient, ce que le seul
+     * `priceNumber` ne voit pas.
+     */
+    it('vend en annuel uniquement, et affiche un prix HT', () => {
+      const paid = plansForAudience('artisan').filter(
+        (plan) => plan.priceNumber !== null && plan.priceNumber > 0,
+      );
+
+      expect(paid).not.toHaveLength(0);
+      for (const plan of paid) {
+        expect(plan.period).toBe('/an');
+        expect(plan.priceLabel).toContain('HT');
+        expect(plan.priceLabel).toContain(String(plan.priceNumber));
+        // La garantie remplace l'essai : elle doit être portée par le
+        // catalogue, sinon les pastilles des pages tarifs et d'accueil
+        // n'annoncent plus rien.
+        expect(plan.refundWindowDays).toBe(30);
+      }
+    });
+
+    /**
+     * L'essai a été retiré (E3-3) : plus aucun plan ne doit en déclarer un, et
+     * aucun libellé ne doit continuer d'en promettre un. L'assertion porte sur
+     * un marqueur qui **existe** — le libellé d'appel à l'action — et pas
+     * seulement sur l'absence d'un champ, qu'un renommage rendrait muette.
+     */
+    it("ne promet plus d'essai gratuit nulle part dans le catalogue", () => {
+      for (const plan of OFFER_PLANS) {
+        expect(
+          (plan as { trialDays?: number }).trialDays,
+        ).toBeUndefined();
+        expect(plan.ctaLabel.toLowerCase()).not.toContain('essai');
+        expect(plan.ctaLabel.toLowerCase()).not.toContain('essayer');
+      }
     });
 
     it('ne laisse aucun palier artisan dépasser le marché sans capacité propre', () => {
@@ -242,7 +292,7 @@ describe("catalogue d'offre", () => {
         .filter(
           (plan) =>
             plan.priceNumber !== null &&
-            plan.priceNumber > GENERALIST_MARKET_CEILING_EUR,
+            monthlyEquivalentEuros(plan)! > GENERALIST_MARKET_CEILING_EUR,
         )
         .filter(
           (plan) =>
@@ -252,7 +302,11 @@ describe("catalogue d'offre", () => {
                 DIFFERENTIATORS.includes(feature.gateKey),
             ),
         )
-        .map((plan) => `${plan.key} à ${plan.priceNumber} €`);
+        .map(
+          (plan) =>
+            `${plan.key} à ${plan.priceNumber} €${plan.period} ` +
+            `(${monthlyEquivalentEuros(plan)!.toFixed(2)} €/mois)`,
+        );
 
       expect(unjustified).toEqual([]);
     });

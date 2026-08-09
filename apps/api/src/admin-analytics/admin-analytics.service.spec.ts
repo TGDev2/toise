@@ -4,7 +4,10 @@ import { ConfigService } from '@nestjs/config';
 import { AdminAnalyticsService } from './admin-analytics.service';
 import { AnalyticsEvent } from '../analytics/entities/analytics-event.entity';
 import { Subscription } from '../subscriptions/entities/subscription.entity';
-import { PLANS } from '../subscriptions/plans.constants';
+import {
+  monthlyEquivalentEuros,
+  PLANS,
+} from '../subscriptions/plans.constants';
 import { User } from '../users/entities/user.entity';
 
 /**
@@ -12,17 +15,20 @@ import { User } from '../users/entities/user.entity';
  * recopiés : ce test porte sur la résolution `price_id` → palier, pas sur la
  * grille tarifaire. Recopiés, ils tombaient au premier réalignement de prix
  * (GTM-8 : 50/100/200 € → 19/29/49 €) sans rien signaler d'utile.
+ *
+ * **L'équivalent mensuel, pas le prix.** `plan.price` est un montant par
+ * période, et la période est annuelle depuis E3-3 : le comparer directement à
+ * un MRR publierait douze fois la réalité. Ce test l'a laissé passer une fois
+ * — il portait sur la résolution du palier, jamais sur la grandeur.
  */
-const planPrice = (key: string): number => {
+const planMonthlyRevenue = (key: string): number => {
   const plan = PLANS.find((candidate) => candidate.key === key);
   if (!plan) throw new Error(`Plan inconnu dans le test : ${key}`);
-  return plan.price;
+  return monthlyEquivalentEuros(plan);
 };
 
 const CONFIG_VALUES: Record<string, string> = {
   'stripe.contractorEssentielPriceId': 'price_contractor_essentiel',
-  'stripe.contractorStandardPriceId': 'price_contractor_standard',
-  'stripe.contractorPremiumPriceId': 'price_contractor_premium',
 };
 
 const configServiceMock = {
@@ -349,9 +355,11 @@ describe('AdminAnalyticsService', () => {
   });
 
   describe('mrr', () => {
-    it('resolves price_id to its own tier per contractor plan (BACKLOG PRO-1), and ignores an unknown price_id without throwing', async () => {
+    it('résout un price_id vers son palier et ignore un price_id inconnu sans lever', async () => {
       subscriptionsQueryBuilderMock.getRawMany.mockResolvedValue([
         { price_id: 'price_contractor_essentiel', count: '2' },
+        // Palier retiré en E3-3 : plus aucune variable ne porte son price_id,
+        // il tombe donc dans le même cas qu'un identifiant périmé.
         { price_id: 'price_contractor_standard', count: '1' },
         { price_id: 'price_unknown_legacy', count: '4' },
       ]);
@@ -360,29 +368,41 @@ describe('AdminAnalyticsService', () => {
 
       const result = await service.getDashboard(4, 30);
 
-      const essentielMrr = 2 * planPrice('contractor_essentiel');
-      const standardMrr = 1 * planPrice('contractor_standard');
+      const essentielMrr = 2 * planMonthlyRevenue('contractor_essentiel');
 
       expect(result.mrr).toEqual({
         statuses_included: ['active', 'past_due'],
         currency: 'EUR',
-        total_mrr: essentielMrr + standardMrr,
+        total_mrr: essentielMrr,
         by_tier: [
           {
             tier: 'contractor_essentiel',
             subscriber_count: 2,
             mrr: essentielMrr,
           },
-          {
-            tier: 'contractor_standard',
-            subscriber_count: 1,
-            mrr: standardMrr,
-          },
-          { tier: 'contractor_premium', subscriber_count: 0, mrr: 0 },
         ],
         free_users_count: 512,
         trialing_count: 8,
       });
+    });
+
+    /**
+     * Le chiffre lui-même, énoncé plutôt que dérivé : 279 € par an font
+     * 23,25 € de revenu mensuel récurrent par abonné. Un test qui ne fait que
+     * dériver de `PLANS` reste vert si `getMrr` se remet un jour à additionner
+     * `plan.price` — c'est exactement ce qui est arrivé.
+     */
+    it('ramène un abonnement annuel à son équivalent mensuel', async () => {
+      subscriptionsQueryBuilderMock.getRawMany.mockResolvedValue([
+        { price_id: 'price_contractor_essentiel', count: '4' },
+      ]);
+      subscriptionsRepoMock.count.mockResolvedValue(0);
+      usersRepoMock.count.mockResolvedValue(0);
+
+      const result = await service.getDashboard(4, 30);
+
+      expect(result.mrr.total_mrr).toBe(93); // 4 × 279 / 12
+      expect(result.mrr.by_tier[0].mrr).toBe(93);
     });
 
     it('ne publie aucune ligne pour un palier retiré de l’offre', async () => {

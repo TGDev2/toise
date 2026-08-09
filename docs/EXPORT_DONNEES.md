@@ -85,7 +85,8 @@ adhésions, invitations, clients, et `projects[]` avec pièces, dimensions,
 exclusions, ouvertures, ouvrages, estimations, liste d'achat/déclarations
 d'achat, jalons de chantier, devis, factures, photos, publication
 communautaire éventuelle), `community_activity`, `referrals` (comme parrain et
-comme filleul), `logbook_entries`, `lifecycle_emails`, `analytics_events`.
+comme filleul), `logbook_entries`, `lifecycle_emails`, `analytics_events`,
+`subscription_refunds`.
 
 ### Historique de facturation Stripe
 
@@ -97,6 +98,11 @@ elles-mêmes. Dégrade sans faire échouer le reste de l'export
 (`{available: false, reason: "no_stripe_customer" | "stripe_unavailable"}`) si
 le compte n'a pas de client Stripe ou si l'appel échoue : un incident Stripe
 ne doit pas priver le compte du reste de ses données.
+
+`subscription_refunds` est exportée **à part**, et pas fondue dans cet
+historique : ces lignes-là sont les nôtres — elles portent le motif saisi par
+la personne, la date de paiement qui a servi d'ancre et l'échéance qui lui a
+été appliquée. Elles restent disponibles même quand Stripe ne répond pas.
 
 ## 5. Entités écartées, et pourquoi
 

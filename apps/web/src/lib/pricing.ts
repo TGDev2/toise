@@ -84,13 +84,29 @@ export interface OfferPlan {
   audience: Audience;
   name: string;
   priceLabel: string;
-  /** `null` pour une offre sur devis : exclue des agrégats de prix (JSON-LD). */
+  /**
+   * Montant facturé **par période**. `null` pour une offre sur devis : exclue
+   * des agrégats de prix (JSON-LD).
+   */
   priceNumber: number | null;
-  period: '' | '/mois';
+  /**
+   * Périodicité affichée. `'/mois'` a disparu du type avec l'offre mensuelle
+   * (E3-3) : rétablir du mensuel demande de toucher ce type, donc de relire
+   * tout ce qui en dépend, plutôt que de changer une valeur en douce.
+   */
+  period: '' | '/an';
   description: string;
   features: PlanFeature[];
   highlighted?: boolean;
-  trialDays?: number;
+  /**
+   * Durée de la garantie « satisfait ou remboursé », en jours. Elle remplace
+   * l'ancien `trialDays` : sur un produit dont le chiffrage est déjà gratuit et
+   * illimité, l'essai *est* le palier gratuit, et un essai ne prélève rien —
+   * donc ne rembourse rien. Miroir de `REFUND_WINDOW_DAYS` dans
+   * `apps/api/src/subscriptions/plans.constants.ts`, seule source de ce qui est
+   * réellement appliqué.
+   */
+  refundWindowDays?: number;
   ctaLabel: string;
 }
 
@@ -108,8 +124,27 @@ export interface OfferPlan {
  * Les capacités qui le justifiaient ayant été gelées par l'ADR 0001 (D3), plus
  * aucun palier artisan ne peut aujourd'hui dépasser le plafond : le palier
  * Premium à 49 € a été retiré avec elles.
+ *
+ * **Ce plafond est mensuel**, et il l'est resté quand l'offre est passée à
+ * l'annuel (E3-3) : les concurrents relevés vendent au mois. Le comparer à un
+ * prix annuel n'aurait aucun sens — c'est l'équivalent mensuel qui se compare,
+ * et c'est ce que fait `monthlyEquivalentEuros` ci-dessous.
  */
 export const GENERALIST_MARKET_CEILING_EUR = 30;
+
+/**
+ * Le prix d'un plan ramené au mois, pour toute comparaison avec un marché qui
+ * s'exprime au mois.
+ *
+ * Miroir de la fonction du même nom côté API. Elle existe des deux côtés parce
+ * que le garde-fou de `offer-catalogue.spec.ts` doit pouvoir la calculer sans
+ * appeler l'API — mais la grandeur, elle, est définie au même endroit que le
+ * prix : `apps/api/src/subscriptions/plans.constants.ts`.
+ */
+export function monthlyEquivalentEuros(plan: OfferPlan): number | null {
+  if (plan.priceNumber === null) return null;
+  return plan.period === '/an' ? plan.priceNumber / 12 : plan.priceNumber;
+}
 
 export const OFFER_PLANS: OfferPlan[] = [
   {
@@ -175,11 +210,11 @@ export const OFFER_PLANS: OfferPlan[] = [
     tier: 'contractor_essentiel',
     audience: 'artisan',
     name: 'Essentiel',
-    priceLabel: '19 €',
-    priceNumber: 19,
-    period: '/mois',
+    priceLabel: '279 € HT',
+    priceNumber: 279,
+    period: '/an',
     description:
-      'Les indispensables du devis professionnel, sur les ouvrages de finition.',
+      'Les indispensables du devis professionnel, sur les ouvrages de finition. Annuel uniquement.',
     features: [
       {
         label: 'Tout le gratuit, chantiers illimités compris',
@@ -200,11 +235,12 @@ export const OFFER_PLANS: OfferPlan[] = [
       },
     ],
     highlighted: true,
-    // Aligné sur `trial_days` de `plans.constants.ts` côté API, seule source de
-    // ce que le checkout accorde réellement. Un essai qu'on accorde sans
-    // l'annoncer est un coût sans conversion.
-    trialDays: 7,
-    ctaLabel: 'Essayer 7 jours gratuits',
+    // Miroir de `REFUND_WINDOW_DAYS` (API), seule source de ce qui est
+    // réellement appliqué. Remplace les 7 jours d'essai : un essai ne prélève
+    // rien, donc ne rembourse rien — annoncer les deux ferait de la garantie
+    // une promesse inapplicable pendant la semaine où elle rassure.
+    refundWindowDays: 30,
+    ctaLabel: "S'abonner pour un an",
   },
 ];
 

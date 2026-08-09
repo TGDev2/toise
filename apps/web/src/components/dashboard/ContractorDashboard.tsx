@@ -19,6 +19,7 @@ import {
   Skeleton,
   useToast,
 } from '@/components/ui';
+import { RefundGuaranteeAction } from '@/components/subscription/RefundGuaranteeAction';
 
 interface CompanyProfileData {
   raison_sociale: string;
@@ -29,7 +30,7 @@ interface CompanyProfileData {
 
 export function ContractorDashboard() {
   const { appUser, logout, deleteAccount } = useAuth();
-  const { subscription, openPortal } = useSubscription();
+  const { subscription, openPortal, refresh } = useSubscription();
   const router = useRouter();
   const toast = useToast();
 
@@ -289,7 +290,7 @@ export function ContractorDashboard() {
 
       {/* Subscription Card */}
       <div className="mt-6 rounded-[2rem] border border-stone-200 bg-white/85 px-6 py-4 shadow-[0_20px_50px_rgba(67,39,15,0.08)]">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-stone-900">
               Plan Contractor
@@ -303,9 +304,16 @@ export function ContractorDashboard() {
               <p className="mt-1 text-xs text-stone-500">
                 {subscription?.cancel_at_period_end
                   ? `Actif jusqu'au ${nextBilling}`
-                  : `Prochain prélèvement le ${nextBilling}`}
+                  : `Reconduction annuelle le ${nextBilling}`}
               </p>
             )}
+            {/*
+              C'est ici, et pas sur `dashboard/page.tsx`, que la garantie doit
+              être exerçable : un compte au palier `contractor*` est renvoyé
+              vers cet écran avant même d'atteindre la carte d'abonnement de
+              l'autre page.
+            */}
+            <RefundGuaranteeAction onRefunded={refresh} />
           </div>
           <Button variant="secondary" onClick={openPortal} className="shrink-0">
             Gérer mon abonnement

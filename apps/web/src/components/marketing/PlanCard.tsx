@@ -6,7 +6,7 @@ type Tone = 'surface' | 'highlighted' | 'dark';
 interface PlanCardProps {
   plan: OfferPlan;
   tone?: Tone;
-  /** Pastille affichée au-dessus de la carte (« Essai gratuit 7 jours », « Populaire »). */
+  /** Pastille affichée au-dessus de la carte (« 30 jours satisfait ou remboursé »). */
   badge?: string;
   /** Limite le nombre de lignes affichées — aperçu de landing vs page tarifs complète. */
   maxFeatures?: number;

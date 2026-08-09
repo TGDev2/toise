@@ -36,6 +36,7 @@ import { RoomLogEntry } from '../logbook/entities/room-log-entry.entity';
 import { LifecycleEmailSend } from '../lifecycle-emails/entities/lifecycle-email-send.entity';
 import { AnalyticsEvent } from '../analytics/entities/analytics-event.entity';
 import { Subscription } from '../subscriptions/entities/subscription.entity';
+import { SubscriptionRefund } from '../subscriptions/entities/subscription-refund.entity';
 import { QuantityValidation } from '../quantity-validation/entities/quantity-validation.entity';
 import { QuantityCorrection } from '../quantity-validation/entities/quantity-correction.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
@@ -150,6 +151,7 @@ export const EXPORTED_ENTITIES: string[] = [
   'estimation_results',
   'shopping_lists',
   'subscriptions',
+  'subscription_refunds',
   'referral_credits',
   'analysis_jobs',
   'cv_correction_logs',
@@ -278,6 +280,8 @@ export class DataExportService {
     private readonly analyticsEventsRepo: Repository<AnalyticsEvent>,
     @InjectRepository(Subscription)
     private readonly subscriptionsRepo: Repository<Subscription>,
+    @InjectRepository(SubscriptionRefund)
+    private readonly refundsRepo: Repository<SubscriptionRefund>,
     @InjectRepository(QuantityValidation)
     private readonly quantityValidationsRepo: Repository<QuantityValidation>,
     @InjectRepository(QuantityCorrection)
@@ -533,6 +537,7 @@ export class DataExportService {
       logbookEntries,
       lifecycleEmails,
       analyticsEvents,
+      refunds,
     ] = await Promise.all([
       this.communityLikesRepo.find({ where: { user_id: userId } }),
       this.communityCommentsRepo.find({ where: { user_id: userId } }),
@@ -541,6 +546,7 @@ export class DataExportService {
       this.logbookRepo.find({ where: { user_id: userId } }),
       this.lifecycleEmailsRepo.find({ where: { user_id: userId } }),
       this.analyticsEventsRepo.find({ where: { user_id: userId } }),
+      this.refundsRepo.find({ where: { user_id: userId } }),
     ]);
 
     const manifest: Record<string, unknown> = {
@@ -600,6 +606,21 @@ export class DataExportService {
         event_name: event.event_name,
         properties: event.properties,
         created_at: event.created_at,
+      })),
+      // E3-3 : exercices du « 30 jours satisfait ou remboursé ». Séparés de
+      // `billing_history`, qui vient de Stripe et peut manquer : ces lignes-là
+      // sont les nôtres, et elles portent le motif saisi par la personne.
+      subscription_refunds: refunds.map((refund) => ({
+        id: refund.id,
+        stripe_refund_id: refund.stripe_refund_id,
+        stripe_invoice_id: refund.stripe_invoice_id,
+        amount_cents: refund.amount_cents,
+        currency: refund.currency,
+        origin: refund.origin,
+        reason: refund.reason,
+        invoice_paid_at: refund.invoice_paid_at,
+        eligible_until: refund.eligible_until,
+        created_at: refund.created_at,
       })),
     };
 

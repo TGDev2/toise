@@ -9,7 +9,11 @@ import {
   Subscription,
   SubscriptionStatus,
 } from '../subscriptions/entities/subscription.entity';
-import { getDefaultPlan } from '../subscriptions/plans.constants';
+import {
+  billingPeriodLabel,
+  getDefaultPlan,
+  RENEWAL_NOTICE_DAYS,
+} from '../subscriptions/plans.constants';
 import { EmailService } from '../email/email.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
@@ -38,6 +42,8 @@ export class LifecycleEmailsService {
   private readonly logger = new Logger(LifecycleEmailsService.name);
   private readonly publicUrl: string;
   private readonly paidPlanPriceEuros: number;
+  /** « par an » — un montant sans sa période induit en erreur. */
+  private readonly paidPlanPeriodLabel: string;
 
   constructor(
     @InjectRepository(User)
@@ -54,6 +60,7 @@ export class LifecycleEmailsService {
   ) {
     this.publicUrl = this.config.get<string>('publicUrl')!;
     this.paidPlanPriceEuros = getDefaultPlan().price;
+    this.paidPlanPeriodLabel = billingPeriodLabel(getDefaultPlan());
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_8AM, { timeZone: 'Europe/Paris' })
@@ -63,6 +70,108 @@ export class LifecycleEmailsService {
     await this.sweepAbandonedProjects();
     await this.sweepCloseoutDue();
     await this.sweepTrialEndingSoon();
+    await this.sweepRenewalNotice();
+  }
+
+  // --- Préavis de reconduction annuelle (E3-3) --------------------------------
+
+  /**
+   * Prévient un abonné actif que son année se reconduit, 30 jours avant.
+   *
+   * Ce balayage n'existait pas tant que l'offre était mensuelle : à 19 €,
+   * personne ne conteste une reconduction. Sur un prélèvement unique de 279 €
+   * une fois l'an, l'absence de préavis est la première cause de demande de
+   * remboursement — et, à défaut, de contestation bancaire, qui coûte plus cher
+   * que le remboursement qu'elle remplace.
+   *
+   * **Le dédoublonnage ne passe pas par `lifecycle_email_sends`**, à la
+   * différence des cinq autres relances. Son index unique partiel
+   * `(user_id, email_type) WHERE project_id IS NULL` ne laisse partir un
+   * e-mail « par compte » qu'une seule fois pour toujours : l'abonné aurait été
+   * prévenu la première année et jamais plus, une panne qui ne se serait vue
+   * qu'au bout de deux ans. La clé exacte est la **période annoncée**, portée
+   * par `subscriptions.renewal_notice_sent_for`, qui se réarme à chaque
+   * échéance.
+   *
+   * Pas de préavis quand `cancel_at_period_end` est posé : il n'y a rien à
+   * reconduire, et annoncer un prélèvement à quelqu'un qui a déjà résilié est
+   * la meilleure façon de déclencher l'appel qu'on cherche à éviter.
+   *
+   * Fenêtre bornée en bas par « maintenant » : une échéance déjà passée que le
+   * webhook n'aurait pas encore avancée ne doit pas déclencher un préavis pour
+   * un prélèvement qui a déjà eu lieu.
+   */
+  private async sweepRenewalNotice(): Promise<void> {
+    const now = new Date();
+    const upper = new Date(now.getTime() + RENEWAL_NOTICE_DAYS * DAY_MS);
+
+    const subscriptions = await this.subscriptionRepo.find({
+      where: {
+        status: SubscriptionStatus.ACTIVE,
+        cancel_at_period_end: false,
+        current_period_end: Between(now, upper),
+      },
+      relations: ['user'],
+    });
+
+    const due = subscriptions.filter(
+      (s) =>
+        s.user?.email &&
+        s.current_period_end &&
+        s.renewal_notice_sent_for?.getTime() !== s.current_period_end.getTime(),
+    );
+
+    for (const subscription of due) {
+      try {
+        await this.sendRenewalNoticeEmail(subscription);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.error(
+          `Echec du préavis de reconduction pour l'abonnement ${subscription.id}: ${message}`,
+        );
+      }
+    }
+  }
+
+  private async sendRenewalNoticeEmail(
+    subscription: Subscription,
+  ): Promise<void> {
+    const renewsAt = subscription.current_period_end!;
+    const daysRemaining = Math.max(
+      1,
+      Math.ceil((renewsAt.getTime() - Date.now()) / DAY_MS),
+    );
+
+    try {
+      await this.emailService.sendRenewalNoticeEmail(subscription.user.email!, {
+        daysRemaining,
+        renewalDate: renewsAt.toLocaleDateString('fr-FR', {
+          day: '2-digit',
+          month: 'long',
+          year: 'numeric',
+        }),
+        priceEuros: this.paidPlanPriceEuros,
+        billingPeriodLabel: this.paidPlanPeriodLabel,
+        manageSubscriptionUrl: `${this.publicUrl}/subscription`,
+      });
+      this.analyticsService.track(
+        AnalyticsEventName.RENEWAL_NOTICE_EMAIL_SENT,
+        subscription.user_id,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Echec de l'e-mail de préavis pour l'abonnement ${subscription.id}: ${message}`,
+      );
+    }
+
+    // Posé après tentative, y compris en cas d'échec du fournisseur : même
+    // parti pris que les cinq autres relances, pour qu'une panne Brevo ne
+    // fasse pas rejouer le même lot à chaque balayage.
+    await this.subscriptionRepo.update(
+      { id: subscription.id },
+      { renewal_notice_sent_for: renewsAt },
+    );
   }
 
   // --- Chantier estimé, jamais clôturé (DATA-5) ------------------------------
@@ -350,6 +459,7 @@ export class LifecycleEmailsService {
         {
           daysRemaining,
           priceEuros: this.paidPlanPriceEuros,
+          billingPeriodLabel: this.paidPlanPeriodLabel,
           manageSubscriptionUrl: `${this.publicUrl}/subscription`,
         },
       );

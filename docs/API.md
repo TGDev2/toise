@@ -837,11 +837,15 @@ Endpoint pour les webhooks Stripe.
 
 **Headers requis :** `stripe-signature`
 
-**Événements gérés :**
+**Événements gérés** — la liste doit refléter exactement le `switch` de
+`handleWebhookEvent`, et c'est aussi celle à souscrire sur l'endpoint
+(`docs/DEPLOY.md` §4.4) :
 - `checkout.session.completed`
 - `invoice.paid`
+- `invoice.payment_failed`
 - `customer.subscription.updated`
 - `customer.subscription.deleted`
+- `charge.refunded`
 
 **Réponses :** `200 OK`
 

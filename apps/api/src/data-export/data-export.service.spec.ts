@@ -34,6 +34,7 @@ import {
   Subscription,
   SubscriptionStatus,
 } from '../subscriptions/entities/subscription.entity';
+import { SubscriptionRefund } from '../subscriptions/entities/subscription-refund.entity';
 import { QuantityValidation } from '../quantity-validation/entities/quantity-validation.entity';
 import { QuantityCorrection } from '../quantity-validation/entities/quantity-correction.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
@@ -77,6 +78,7 @@ const logbookRepoMock = emptyRepoMock();
 const lifecycleEmailsRepoMock = emptyRepoMock();
 const analyticsEventsRepoMock = emptyRepoMock();
 const subscriptionsRepoMock = emptyRepoMock();
+const refundsRepoMock = emptyRepoMock();
 const quantityValidationsRepoMock = emptyRepoMock();
 const quantityCorrectionsRepoMock = emptyRepoMock();
 
@@ -184,6 +186,10 @@ async function buildService(): Promise<DataExportService> {
         useValue: subscriptionsRepoMock,
       },
       {
+        provide: getRepositoryToken(SubscriptionRefund),
+        useValue: refundsRepoMock,
+      },
+      {
         provide: getRepositoryToken(QuantityValidation),
         useValue: quantityValidationsRepoMock,
       },
@@ -233,6 +239,7 @@ describe('DataExportService', () => {
       lifecycleEmailsRepoMock,
       analyticsEventsRepoMock,
       subscriptionsRepoMock,
+      refundsRepoMock,
     ]) {
       repo.find.mockResolvedValue([]);
       repo.findOne.mockResolvedValue(null);

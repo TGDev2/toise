@@ -55,10 +55,13 @@ export default () => ({
     // 9,99 €/mois (E3-1, ADR 0002 §D4). Elle était exigée au démarrage en
     // production, ce qui obligeait à créer dans Stripe un prix qu'aucune
     // surface ne vendait — le contournement décrit en DEPLOY.md §4.2.
+    // Unique prix vendu : la Conformité à 279 € HT par an (E3-3, ADR 0002
+    // §D4). `STRIPE_CONTRACTOR_STANDARD_PRICE_ID` et `..._PREMIUM_...` sont
+    // parties avec les paliers à 29 et 49 €/mois. Les laisser en place aurait
+    // gardé souscriptibles, par appel direct, deux offres que plus aucune
+    // surface ne vend.
     contractorEssentielPriceId:
       process.env.STRIPE_CONTRACTOR_ESSENTIEL_PRICE_ID,
-    contractorStandardPriceId: process.env.STRIPE_CONTRACTOR_STANDARD_PRICE_ID,
-    contractorPremiumPriceId: process.env.STRIPE_CONTRACTOR_PREMIUM_PRICE_ID,
     // Délai laissé à un abonné en impayé avant que son palier retombe sur
     // gratuit (E5-2). Une carte expirée n'est pas un défaut de paiement : les
     // relances Stripe s'étalent sur ~3 semaines, et 14 jours couvrent les trois

@@ -381,6 +381,7 @@ describe('EmailService.sendTrialEndingSoonEmail', () => {
     await service.sendTrialEndingSoonEmail('utilisateur@example.fr', {
       daysRemaining: 3,
       priceEuros: 9.99,
+      billingPeriodLabel: 'par an',
       manageSubscriptionUrl: 'https://chiffreo.fr/subscription',
     });
 
@@ -396,6 +397,7 @@ describe('EmailService.sendTrialEndingSoonEmail', () => {
     await service.sendTrialEndingSoonEmail('utilisateur@example.fr', {
       daysRemaining: 1,
       priceEuros: 9.99,
+      billingPeriodLabel: 'par an',
       manageSubscriptionUrl: 'https://chiffreo.fr/subscription',
     });
 

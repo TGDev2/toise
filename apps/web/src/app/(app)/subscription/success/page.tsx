@@ -67,8 +67,10 @@ export default function SubscriptionSuccessPage() {
           Votre abonnement est actif !
         </h1>
         <p className="mt-3 text-sm text-stone-600">
-          Votre essai gratuit de 7 jours a commencé. Devis PDF conformes,
-          fichier clients et facturation sont maintenant déverrouillés.
+          Devis PDF conformes, fichier clients et facturation sont maintenant
+          déverrouillés, pour un an. Vous avez 30 jours pour changer d’avis :
+          le remboursement se demande depuis votre tableau de bord, sans
+          justification.
         </p>
 
         <button

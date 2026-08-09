@@ -37,6 +37,13 @@ export enum AnalyticsEventName {
   // des impayés, donc la seule mesure qui dira si 14 jours est le bon délai.
   SUBSCRIPTION_GRACE_EXPIRED = 'subscription_grace_expired',
   SUBSCRIPTION_CANCELED = 'subscription_canceled',
+  // E3-3 : « 30 jours satisfait ou remboursé » exercé. À compter dès la
+  // première vente : l'ADR 0002 §5.1 fait du taux de remboursement le seul
+  // signal précoce sur la qualité de la promesse, et fixe son seuil d'alerte à
+  // 20 % des 25 premières ventes. Distinct de `subscription_canceled` — une
+  // résiliation dit « je m'arrête là », un remboursement dit « ce n'était pas
+  // ce qu'on m'avait annoncé », et seul le second met en cause le produit.
+  SUBSCRIPTION_REFUNDED = 'subscription_refunded',
   BUDGET_TRACKED = 'budget_tracked',
   // DATA-5 : clôture par les quantités réellement achetées. Distinct de
   // `budget_tracked`, qui ne dit rien du taux de déclaration — or c'est ce taux,
@@ -51,6 +58,12 @@ export enum AnalyticsEventName {
   ONBOARDING_D3_EMAIL_SENT = 'onboarding_d3_email_sent',
   PROJECT_ABANDONED_EMAIL_SENT = 'project_abandoned_email_sent',
   TRIAL_ENDING_EMAIL_SENT = 'trial_ending_email_sent',
+  // E3-3 : préavis de reconduction annuelle, 30 jours avant l'échéance.
+  // Rapproché de `subscription_refunded` et de `subscription_canceled`, il dit
+  // si le préavis évite le remboursement surprise ou s'il provoque la
+  // résiliation — les deux hypothèses sont défendables, et seule la mesure
+  // tranche.
+  RENEWAL_NOTICE_EMAIL_SENT = 'renewal_notice_email_sent',
   // DATA-5 : relance de clôture. Rapproché de `project_closed_out`, il donne le
   // taux de conversion de la relance — la mesure qui décide si l'hypothèse
   // « l'utilisateur revient » tient.

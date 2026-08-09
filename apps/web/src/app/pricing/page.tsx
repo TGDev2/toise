@@ -9,12 +9,12 @@ import { serializeJsonLd } from '@/lib/json-ld';
 export const metadata: Metadata = {
   title: 'Tarifs',
   description:
-    'Le chiffrage est gratuit et sans limite de chantiers. L’offre à 19 €/mois ajoute le devis PDF conforme, le fichier clients et la facturation, avec 7 jours d’essai.',
+    'Le chiffrage est gratuit et sans limite de chantiers. L’offre à 279 € HT par an, en annuel uniquement, ajoute le devis PDF conforme, le fichier clients et la facturation — 30 jours satisfait ou remboursé.',
   alternates: { canonical: '/pricing' },
   openGraph: {
     title: 'Tarifs Chiffréo',
     description:
-      'Chiffrer est gratuit. Le devis conforme, le fichier clients et la facturation sont à 19 €/mois, avec 7 jours d’essai.',
+      'Chiffrer est gratuit. Le devis conforme, le fichier clients et la facturation sont à 279 € HT par an, avec 30 jours satisfait ou remboursé.',
     url: '/pricing',
   },
 };
@@ -51,25 +51,46 @@ const JSON_LD = {
       name: plan.name,
       price: String(plan.priceNumber),
       priceCurrency: 'EUR',
+      // La périodicité est publiée, et pas seulement affichée. Un `price: 279`
+      // nu se lit par défaut comme un prix unitaire ou mensuel : c'est ce que
+      // reprendraient les agrégateurs, et un prix mal périodisé dans une donnée
+      // structurée est une promesse fausse que personne ne relit.
+      ...(plan.period === '/an'
+        ? {
+            priceSpecification: {
+              '@type': 'UnitPriceSpecification',
+              price: String(plan.priceNumber),
+              priceCurrency: 'EUR',
+              billingDuration: 1,
+              billingIncrement: 1,
+              unitCode: 'ANN',
+            },
+          }
+        : {}),
     })),
   },
 };
 
 const FAQ_ITEMS = [
   {
-    question: 'L’essai est-il vraiment gratuit ?',
+    question: 'Y a-t-il une période d’essai ?',
     answer:
-      'Le chiffrage, lui, n’est pas un essai : il est gratuit et sans limite de chantiers, sans carte bancaire. L’offre payante s’essaie 7 jours ; si vous annulez avant la fin, rien ne vous est facturé.',
+      'Non, et pour une bonne raison : le chiffrage est déjà gratuit et sans limite de chantiers, sans carte bancaire. L’essai, c’est lui — vous pouvez mesurer, chiffrer et sortir vos listes d’achats sur autant de chantiers que vous voulez avant de payer quoi que ce soit. L’offre payante, elle, est couverte par 30 jours satisfait ou remboursé : vous êtes prélevé, et vous pouvez demander le remboursement intégral dans les 30 jours.',
+  },
+  {
+    question: 'Comment fonctionne le « 30 jours satisfait ou remboursé » ?',
+    answer:
+      'Vous en faites la demande depuis votre espace abonnement, sans avoir à vous justifier. Le remboursement est intégral et part immédiatement ; votre abonnement est résilié dans la foulée, et vous revenez au chiffrage gratuit et illimité. Le délai court à compter de chaque prélèvement, reconduction annuelle comprise.',
   },
   {
     question: 'Puis-je annuler à tout moment ?',
     answer:
-      'Oui, les abonnements sont sans engagement. Vous pouvez annuler à tout moment depuis vos réglages ; votre accès reste actif jusqu’à la fin de la période en cours.',
+      'Oui. L’abonnement est annuel, sans reconduction forcée : vous pouvez résilier quand vous voulez depuis vos réglages, et votre accès reste actif jusqu’à la fin de l’année en cours. Nous vous prévenons par e-mail 30 jours avant chaque reconduction.',
   },
   {
-    question: 'Puis-je changer d’offre ?',
+    question: 'Pourquoi seulement de l’annuel ?',
     answer:
-      'Oui. Vous pouvez passer d’une offre à l’autre depuis votre espace abonnement, la facturation s’ajuste automatiquement.',
+      'Parce que ce que vend l’offre payante — devis conformes, fichier clients, factures numérotées — se juge sur une saison de chantiers, pas sur trois semaines. Un engagement annuel nous permet aussi de tenir un prix bas sans coût de relance mensuelle. La garantie de 30 jours est la contrepartie : vous ne vous engagez pour un an qu’après avoir pu tout essayer, et vous récupérez votre argent si ça ne vous convient pas.',
   },
   {
     question: 'Qu’est-ce qui est payant ?',
@@ -138,8 +159,8 @@ export default function PricingPage() {
                 plan={plan}
                 tone={plan.highlighted ? 'highlighted' : 'surface'}
                 badge={
-                  plan.trialDays
-                    ? `Essai gratuit ${plan.trialDays} jours`
+                  plan.refundWindowDays
+                    ? `${plan.refundWindowDays} jours satisfait ou remboursé`
                     : undefined
                 }
               />

@@ -241,8 +241,8 @@ export default function HomePage() {
                 tone={plan.highlighted ? 'highlighted' : 'surface'}
                 maxFeatures={5}
                 badge={
-                  plan.trialDays
-                    ? `Essai gratuit ${plan.trialDays} jours`
+                  plan.refundWindowDays
+                    ? `${plan.refundWindowDays} jours satisfait ou remboursé`
                     : undefined
                 }
               />

@@ -1,6 +1,16 @@
 export interface TrialEndingSoonEmailData {
   daysRemaining: number;
   priceEuros: number;
+  /**
+   * Périodicité, en toutes lettres — « par an ».
+   *
+   * Le modèle écrivait `/mois` en dur. Le jour où l'offre est passée à 279 €
+   * par an (E3-3), il aurait annoncé 279 € par mois à quelqu'un sur le point
+   * d'être prélevé : un montant juste, une périodicité fausse, et le pire
+   * moment pour se tromper. La périodicité vient donc de `PLANS`, comme le
+   * montant.
+   */
+  billingPeriodLabel: string;
   manageSubscriptionUrl: string;
 }
 
@@ -28,7 +38,7 @@ export function buildTrialEndingSoonEmail(
     <h1 style="font-size:20px;margin:0 0 8px;">Votre essai Chiffréo se termine dans ${dayLabel}</h1>
     <p style="font-size:14px;color:#57534e;">
       Passé ce délai, votre abonnement sera automatiquement facturé
-      <strong>${priceLabel}/mois</strong>. Vous pouvez gérer ou annuler votre
+      <strong>${priceLabel} ${data.billingPeriodLabel}</strong>. Vous pouvez gérer ou annuler votre
       abonnement à tout moment avant la fin de l'essai.
     </p>
     <p style="font-size:14px;">
@@ -43,7 +53,7 @@ export function buildTrialEndingSoonEmail(
   const text = [
     `Votre essai Chiffréo se termine dans ${dayLabel}`,
     '',
-    `Passé ce délai, votre abonnement sera automatiquement facturé ${priceLabel}/mois. Vous pouvez gérer ou annuler votre abonnement à tout moment avant la fin de l'essai.`,
+    `Passé ce délai, votre abonnement sera automatiquement facturé ${priceLabel} ${data.billingPeriodLabel}. Vous pouvez gérer ou annuler votre abonnement à tout moment avant la fin de l'essai.`,
     '',
     `Gérer mon abonnement : ${data.manageSubscriptionUrl}`,
     '',

@@ -184,8 +184,10 @@ Utilisateur
     │              ├── Vérifier signature webhook
     │              ├── checkout.session.completed → créer Subscription
     │              ├── invoice.paid → renouveler
+    │              ├── invoice.payment_failed → past_due (délai de grâce)
     │              ├── customer.subscription.updated → mettre à jour
-    │              └── customer.subscription.deleted → annuler
+    │              ├── customer.subscription.deleted → annuler
+    │              └── charge.refunded → tracer, et fermer si total
     │
     └─3─▶ GET /subscriptions/current    Vérifier status abonnement
 ```
@@ -255,7 +257,7 @@ Le traitement CV est découplé via une table `analysis_jobs` :
 
 - Le bootstrap NestJS active `rawBody: true` pour la vérification de signature Stripe
 - Le controller webhook est exempt du throttling (`@SkipThrottle()`)
-- Les événements gérés : `checkout.session.completed`, `invoice.paid`, `customer.subscription.updated`, `customer.subscription.deleted`
+- Les événements gérés : `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`, `customer.subscription.updated`, `customer.subscription.deleted`, `charge.refunded`
 
 ## Modèle de données (relations principales)
 

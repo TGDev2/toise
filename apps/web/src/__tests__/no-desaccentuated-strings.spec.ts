@@ -30,6 +30,12 @@ const ALLOWLIST: Array<{ file: string; pattern: string; reason: string }> = [
     reason: '« L’offre payante ajoute ce dont... » : présent correct de « ajouter », pas un participe passé fautif',
   },
   {
+    file: 'app/cgv/page.tsx',
+    pattern: 'ajoute ',
+    reason:
+      '« La garantie s’ajoute au droit de rétractation » : présent correct de « s’ajouter », pas un participe passé fautif',
+  },
+  {
     // Le récit artisan vivait sur `app/artisans/page.tsx` jusqu'à E3-1 ; il est
     // désormais la page d'accueil. Une exemption qui pointe un fichier disparu
     // ne rougit pas : elle cesse simplement de couvrir la ligne qu'elle

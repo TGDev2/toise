@@ -14,7 +14,10 @@ import {
   ReferralCreditStatus,
 } from './entities/referral-credit.entity';
 import { Subscription } from '../subscriptions/entities/subscription.entity';
-import { getDefaultPlan } from '../subscriptions/plans.constants';
+import {
+  getDefaultPlan,
+  monthlyEquivalentEuros,
+} from '../subscriptions/plans.constants';
 import { EmailService } from '../email/email.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
@@ -37,7 +40,16 @@ export interface ReferralStats {
 export class ReferralsService {
   private readonly stripeClient: Stripe | null;
   private readonly publicUrl: string;
-  private readonly paidPlanPriceEuros: number;
+  /**
+   * Ce que vaut « 1 mois offert », en euros.
+   *
+   * Lu comme `getDefaultPlan().price` jusqu'à E3-3, ce qui était juste tant que
+   * l'offre était mensuelle. Le passage à 279 € **par an** en aurait fait
+   * 279 € rendus par filleul, sur un produit à 279 € : le parrainage offrait
+   * l'année entière, avec une description Stripe qui continuait d'annoncer un
+   * mois. Le montant se lit désormais sur la grandeur qu'il prétend porter.
+   */
+  private readonly monthlyEquivalentEuros: number;
   private readonly logger = new Logger(ReferralsService.name);
 
   constructor(
@@ -54,7 +66,7 @@ export class ReferralsService {
     const secretKey = this.config.get<string>('stripe.secretKey');
     this.stripeClient = secretKey ? new Stripe(secretKey) : null;
     this.publicUrl = this.config.get<string>('publicUrl')!;
-    this.paidPlanPriceEuros = getDefaultPlan().price;
+    this.monthlyEquivalentEuros = monthlyEquivalentEuros(getDefaultPlan());
   }
 
   private get stripe(): Stripe {
@@ -178,7 +190,7 @@ export class ReferralsService {
       return;
     }
 
-    const amountCents = Math.round(this.paidPlanPriceEuros * 100);
+    const amountCents = Math.round(this.monthlyEquivalentEuros * 100);
 
     await this.referralCreditsRepo
       .createQueryBuilder()
@@ -277,7 +289,7 @@ export class ReferralsService {
 
     try {
       await this.emailService.sendReferralCreditEmail(referrer.email, {
-        amountEuros: this.paidPlanPriceEuros,
+        amountEuros: this.monthlyEquivalentEuros,
         referralsUrl: `${this.publicUrl}/referrals`,
       });
     } catch (error) {

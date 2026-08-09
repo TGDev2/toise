@@ -770,6 +770,18 @@ Documente dans docs/ la procédure exacte de création des produits et prix Stri
 Vérifie : migration up et down, pnpm test:api, pnpm test:api:integration, pnpm lint, et déroule en environnement de test Stripe le cycle complet — souscription, remboursement à J+10, renouvellement, échec de paiement, annulation — en me montrant l'état d'accès résolu à chaque étape.
 ```
 
+**Livré** (migrations `…101` à `…103`), **sauf le déroulé du cycle Stripe** : le `.env` de la racine ne porte aucune variable `STRIPE_*`, et `pnpm verify:stripe` refuse de démarrer sans clé `sk_test_`. Le harnais est écrit, étendu au cycle annuel avec une horloge de test Stripe, et compilé ; il reste à exécuter.
+
+`PLANS` ne porte plus qu'une offre : 279 € HT, `interval: 'year'`, `trial_days: 0`. Les deux paliers mensuels à 29 et 49 € quittent la configuration (`configuration.ts`, `.env.example`, `docker-compose.prod.yml`) et une migration normalise les comptes qui les porteraient — **zéro sur la base réelle**. **Pas d'essai, décidé et argumenté** : l'essai *est* le palier gratuit et illimité, et un essai ne prélève rien donc ne rembourse rien — l'annoncer à côté d'un « 30 jours satisfait ou remboursé » rendrait la garantie inapplicable pendant la semaine où elle rassure. Le mécanisme d'essai reste en place, seule la demande disparaît.
+
+**La garantie est implémentée, pas déléguée au dashboard** : `POST /subscriptions/refund` (condition : dernière facture payée de moins de 30 jours, reconduction comprise ; effet : remboursement intégral, palier fermé immédiatement, résiliation ; trace : `subscription_refunds`, unique sur `stripe_refund_id`). `charge.refunded` entre dans le `switch` pour que le geste manuel produise la même trace et la même fermeture — et un remboursement **partiel** est tracé sans rien fermer.
+
+**Le vrai risque du lot n'était pas le prix mais son unité.** `plan.price` était lu comme un montant mensuel par deux consommateurs : le crédit de parrainage (« 1 mois offert » aurait rendu 279 €, l'année entière) et le MRR d'administration (surévalué d'un facteur douze). Aucun test ne pouvait le voir — ils dérivaient tous leur valeur attendue de `PLANS`. Les deux lisent désormais `monthlyEquivalentEuros`.
+
+Ajouté par arbitrage explicite : un **préavis de reconduction à J-30**, dédoublonné sur la période annoncée (`subscriptions.renewal_notice_sent_for`) et non sur le compte — l'index unique partiel de `lifecycle_email_sends` n'aurait laissé partir le préavis que la première année.
+
+Les deux propriétés à ne pas casser tiennent, rejouées sur un cycle annuel : idempotence par `event.id` et rejet des événements périmés par `last_stripe_event_at` (24 tests d'intégration contre PostgreSQL réel, dont la nouvelle unicité de trace sous concurrence).
+
 ---
 
 ### E3-4 · Donner un seul nom à l'offre

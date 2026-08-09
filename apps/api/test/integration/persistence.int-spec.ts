@@ -31,6 +31,7 @@ import {
   SubscriptionStatus,
 } from '../../src/subscriptions/entities/subscription.entity';
 import { StripeEvent } from '../../src/subscriptions/entities/stripe-event.entity';
+import { SubscriptionRefund } from '../../src/subscriptions/entities/subscription-refund.entity';
 import type { EstimationsService } from '../../src/estimations/estimations.service';
 import type { ProjectsService } from '../../src/projects/projects.service';
 import type { AnalyticsService } from '../../src/analytics/analytics.service';
@@ -292,6 +293,7 @@ describe('Persistance (intégration, PostgreSQL réel)', () => {
       return new SubscriptionsService(
         dataSource.getRepository(Subscription),
         dataSource.getRepository(StripeEvent),
+        dataSource.getRepository(SubscriptionRefund),
         {} as UsersService,
         {} as AnalyticsService,
         {} as ReferralsService,
@@ -381,15 +383,23 @@ describe('Persistance (intégration, PostgreSQL réel)', () => {
    * écarte réellement l'écriture périmée, et si elle laisse passer le reste.
    */
   describe('Ordre de livraison des webhooks Stripe', () => {
-    const PRICE_ARTISAN = 'price_artisan_19';
-    const PRICE_STANDARD = 'price_standard_29';
+    const PRICE_ARTISAN = 'price_artisan_279_an';
+    /**
+     * Un prix qui ne résout **aucun** palier : celui d'une offre retirée du
+     * catalogue. Il n'y a plus qu'un palier payant depuis E3-3, donc plus deux
+     * paliers à faire permuter — ce que l'événement périmé doit être empêché
+     * d'écraser se lit désormais sur les colonnes (`stripe_price_id`,
+     * `last_stripe_event_at`) et sur le **nombre** d'écritures de palier.
+     */
+    const PRICE_RETIRED = 'price_retire_29_mois';
+
+    const YEAR_SECONDS = 365 * 24 * 60 * 60;
 
     /** Émission chez Stripe : T1 précède T2 d'une minute. */
     const T1 = 1_700_000_000;
     const T2 = T1 + 60;
 
     const CONFIG: Record<string, string> = {
-      'stripe.contractorStandardPriceId': PRICE_STANDARD,
       'stripe.contractorEssentielPriceId': PRICE_ARTISAN,
     };
 
@@ -401,6 +411,7 @@ describe('Persistance (intégration, PostgreSQL réel)', () => {
       return new SubscriptionsService(
         dataSource.getRepository(Subscription),
         dataSource.getRepository(StripeEvent),
+        dataSource.getRepository(SubscriptionRefund),
         {
           updateSubscriptionTier: (_userId: string, tier: string) => {
             tiersWritten.push(tier);
@@ -450,7 +461,10 @@ describe('Persistance (intégration, PostgreSQL réel)', () => {
                 {
                   price: { id: priceId },
                   current_period_start: created,
-                  current_period_end: created + 2_592_000,
+                  // Un an, et non trente jours : la garde d'ordonnancement ne
+                  // dépend pas de la durée de la période, mais la fixture doit
+                  // décrire l'offre réellement vendue (E3-3).
+                  current_period_end: created + YEAR_SECONDS,
                 },
               ],
             },
@@ -507,25 +521,55 @@ describe('Persistance (intégration, PostgreSQL réel)', () => {
       expect(tiersWritten).toEqual(['contractor_essentiel', 'free']);
     });
 
-    it('ne laisse pas un surclassement périmé écraser un déclassement récent', async () => {
+    it('ne laisse pas un instantané périmé écraser le prix courant', async () => {
       const service = buildService();
       const row = await seedSubscription('downgrade');
 
-      // Le passage artisan → Standard (T2) est doublé par un événement artisan
-      // plus ancien (T1) : sans garde, le prix et le palier remontaient. Le
-      // couple de paliers était artisan → Pro ; `pro` a quitté l'offre (E3-1)
-      // et un prix qui ne résout aucun palier ne prouverait plus rien ici.
+      // `customer.subscription.updated` porte un instantané **complet** de
+      // l'abonnement, prix compris : livré en retard, il réécrivait le tout
+      // puis re-synchronisait le palier. C'est par là qu'un palier périmé
+      // revenait.
+      //
+      // Le couple de prix était artisan → Pro, puis artisan → Standard ; les
+      // deux paliers ont quitté l'offre (E3-1 puis E3-3). Le prix périmé est
+      // donc désormais celui d'une offre retirée, et la garde se constate sur
+      // trois choses : le prix conservé, le filigrane, et le fait qu'**une
+      // seule** écriture de palier ait eu lieu. Sans la garde, l'événement
+      // périmé en déclencherait une seconde.
       await service.handleWebhookEvent(
-        updatedEvent('sub_downgrade', T2, PRICE_STANDARD),
+        updatedEvent('sub_downgrade', T2, PRICE_ARTISAN),
       );
       await service.handleWebhookEvent(
-        updatedEvent('sub_downgrade', T1, PRICE_ARTISAN),
+        updatedEvent('sub_downgrade', T1, PRICE_RETIRED),
       );
 
       const persisted = await reload(row.id);
-      expect(persisted.stripe_price_id).toBe(PRICE_STANDARD);
+      expect(persisted.stripe_price_id).toBe(PRICE_ARTISAN);
       expect(persisted.last_stripe_event_at).toEqual(new Date(T2 * 1000));
-      expect(tiersWritten).toEqual(['contractor_standard']);
+      expect(tiersWritten).toEqual(['contractor_essentiel']);
+    });
+
+    /**
+     * Le cycle est annuel depuis E3-3, et la période traverse le webhook comme
+     * n'importe quelle autre : elle est lue sur l'**item** d'abonnement, pas
+     * sur l'abonnement (le champ y a été déplacé par une version d'API). Ce
+     * test le constate sur la vraie colonne plutôt que sur un mock.
+     */
+    it('persiste une période d’un an telle que Stripe la rend', async () => {
+      const service = buildService();
+      const row = await seedSubscription('annuel');
+
+      await service.handleWebhookEvent(
+        updatedEvent('sub_annuel', T2, PRICE_ARTISAN),
+      );
+
+      const persisted = await reload(row.id);
+      const spanDays = Math.round(
+        (persisted.current_period_end!.getTime() -
+          persisted.current_period_start!.getTime()) /
+          86_400_000,
+      );
+      expect(spanDays).toBe(365);
     });
 
     it('applique le premier événement d’une ligne sans filigrane', async () => {
@@ -579,6 +623,7 @@ describe('Persistance (intégration, PostgreSQL réel)', () => {
       return new SubscriptionsService(
         dataSource.getRepository(Subscription),
         dataSource.getRepository(StripeEvent),
+        dataSource.getRepository(SubscriptionRefund),
         {
           updateSubscriptionTier: (_userId: string, tier: string) => {
             tiersWritten.push(tier);
@@ -923,5 +968,138 @@ describe('Persistance (intégration, PostgreSQL réel)', () => {
       );
       expect(peinture?.real_unit_price).toBe(31.5);
     });
+  });
+
+  /**
+   * Trace du « 30 jours satisfait ou remboursé » (E3-3).
+   *
+   * Ce qui ne peut se voir que contre une vraie base : l'unicité de
+   * `stripe_refund_id`. C'est elle, et non le code, qui garantit qu'un
+   * remboursement n'est jamais compté deux fois — deux demandes simultanées,
+   * un retry réseau, et le webhook `charge.refunded` qui suit notre propre
+   * appel décrivent tous le **même** remboursement. Un mock de dépôt dirait
+   * toujours ce qu'on lui fait dire.
+   */
+  describe('Trace des remboursements', () => {
+    async function seedUser(suffix: string): Promise<string> {
+      const user = await dataSource.getRepository(User).save({
+        email: `refund-${suffix}@chiffreo.test`,
+        firebase_uid: `firebase-refund-${suffix}`,
+      });
+      return user.id;
+    }
+
+    function refundRow(userId: string, refundId: string) {
+      return {
+        user_id: userId,
+        stripe_subscription_id: 'sub_refund',
+        stripe_invoice_id: 'in_refund',
+        stripe_charge_id: 'ch_refund',
+        stripe_refund_id: refundId,
+        amount_cents: 27900,
+        currency: 'eur',
+        origin: 'self_service',
+        reason: null,
+        invoice_paid_at: new Date(),
+        eligible_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      };
+    }
+
+    it('n’enregistre qu’une ligne pour deux écritures concurrentes du même remboursement', async () => {
+      const userId = await seedUser('concurrent');
+      const repo = dataSource.getRepository(SubscriptionRefund);
+
+      const insert = () =>
+        repo
+          .createQueryBuilder()
+          .insert()
+          .values(refundRow(userId, 're_concurrent'))
+          .orIgnore()
+          .execute();
+
+      // Les deux partent ensemble : c'est la contrainte d'unicité, et non
+      // l'ordre d'exécution, qui doit trancher.
+      await Promise.all([insert(), insert(), insert()]);
+
+      expect(await repo.count({ where: { user_id: userId } })).toBe(1);
+    });
+
+    /**
+     * Le webhook `charge.refunded` arrive **après** notre propre appel et
+     * décrit le même remboursement. Il doit être absorbé sans lever : c'est le
+     * cas nominal, pas l'exception.
+     */
+    it('absorbe le doublon que le webhook produit après une demande', async () => {
+      const userId = await seedUser('webhook');
+      const repo = dataSource.getRepository(SubscriptionRefund);
+
+      await repo
+        .createQueryBuilder()
+        .insert()
+        .values(refundRow(userId, 're_double'))
+        .orIgnore()
+        .execute();
+
+      await expect(
+        repo
+          .createQueryBuilder()
+          .insert()
+          .values({
+            ...refundRow(userId, 're_double'),
+            origin: 'stripe_dashboard',
+          })
+          .orIgnore()
+          .execute(),
+      ).resolves.toBeDefined();
+
+      const rows = await repo.find({ where: { user_id: userId } });
+      expect(rows).toHaveLength(1);
+      // La première écriture fait foi : c'est celle qui porte la condition
+      // réellement vérifiée, fenêtre comprise.
+      expect(rows[0].origin).toBe('self_service');
+      expect(rows[0].eligible_until).not.toBeNull();
+    });
+
+    it('laisse coexister deux remboursements distincts du même compte', async () => {
+      const userId = await seedUser('deux');
+      const repo = dataSource.getRepository(SubscriptionRefund);
+
+      for (const id of ['re_a', 're_b']) {
+        await repo
+          .createQueryBuilder()
+          .insert()
+          .values(refundRow(userId, id))
+          .orIgnore()
+          .execute();
+      }
+
+      expect(await repo.count({ where: { user_id: userId } })).toBe(2);
+    });
+
+    /**
+     * La trace est une donnée personnelle : elle part avec le compte. La FK est
+     * en CASCADE, contrairement à celle de `subscriptions` qui est en RESTRICT
+     * — cette dernière force le passage par `cancelForAccountDeletion`, celle-ci
+     * n'a rien à protéger chez Stripe.
+     */
+    it('disparaît avec le compte', async () => {
+      const userId = await seedUser('cascade');
+      const repo = dataSource.getRepository(SubscriptionRefund);
+      await repo
+        .createQueryBuilder()
+        .insert()
+        .values(refundRow(userId, 're_cascade'))
+        .orIgnore()
+        .execute();
+
+      await dataSource.getRepository(User).delete({ id: userId });
+
+      expect(await repo.count({ where: { user_id: userId } })).toBe(0);
+    });
+
+    // `requestRefund` n'est pas monté ici : il appelle Stripe, ce que cette
+    // suite ne fait jamais. La condition et l'effet sur l'accès sont couverts
+    // par `src/subscriptions/subscriptions.refund.service.spec.ts` ; ce qui est
+    // éprouvé ici est ce que seule la base peut dire.
   });
 });

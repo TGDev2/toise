@@ -148,7 +148,11 @@ export function ContractorPricingModal({
                 <span className="text-2xl font-bold text-stone-900">
                   {apiPlans[plan.key]?.price ?? plan.priceNumber} &euro;
                 </span>
-                <span className="text-sm text-stone-500"> /mois</span>
+                {/* Lu dans le catalogue, jamais écrit ici : cette modale a
+                    affiché « /mois » en dur pendant tout le temps où l'offre
+                    est devenue annuelle, et elle l'affichait même sur le
+                    palier gratuit. */}
+                <span className="text-sm text-stone-500"> {plan.period}</span>
               </p>
               <ul className="mt-4 space-y-2">
                 {plan.features.map((f) => (
@@ -191,7 +195,7 @@ export function ContractorPricingModal({
         </div>
 
         <p className="mt-4 text-center text-xs text-stone-400">
-          Sans engagement. Annulable à tout moment.
+          Abonnement annuel. 30 jours satisfait ou remboursé.
         </p>
       </div>
     </div>

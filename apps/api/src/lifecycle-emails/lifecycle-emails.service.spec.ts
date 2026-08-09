@@ -13,6 +13,7 @@ import {
 import { EmailService } from '../email/email.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AnalyticsEventName } from '../analytics/analytics-event-name.enum';
+import { getDefaultPlan } from '../subscriptions/plans.constants';
 
 function makeUser(overrides: Partial<User> = {}): User {
   return {
@@ -57,7 +58,7 @@ describe('LifecycleEmailsService', () => {
 
   const userRepoMock = { find: jest.fn() };
   const projectRepoMock = { find: jest.fn(), count: jest.fn() };
-  const subscriptionRepoMock = { find: jest.fn() };
+  const subscriptionRepoMock = { find: jest.fn(), update: jest.fn() };
   const sendsRepoMock = {
     find: jest.fn(),
     create: jest.fn((data: Partial<LifecycleEmailSend>) => data),
@@ -69,6 +70,7 @@ describe('LifecycleEmailsService', () => {
     sendOnboardingD3Email: jest.fn(),
     sendProjectAbandonedEmail: jest.fn(),
     sendTrialEndingSoonEmail: jest.fn(),
+    sendRenewalNoticeEmail: jest.fn(),
   };
 
   const analyticsServiceMock = { track: jest.fn() };
@@ -80,12 +82,14 @@ describe('LifecycleEmailsService', () => {
     projectRepoMock.find.mockResolvedValue([]);
     projectRepoMock.count.mockResolvedValue(0);
     subscriptionRepoMock.find.mockResolvedValue([]);
+    subscriptionRepoMock.update.mockResolvedValue(undefined);
     sendsRepoMock.find.mockResolvedValue([]);
     sendsRepoMock.save.mockResolvedValue(undefined);
     emailServiceMock.sendOnboardingD1Email.mockResolvedValue(undefined);
     emailServiceMock.sendOnboardingD3Email.mockResolvedValue(undefined);
     emailServiceMock.sendProjectAbandonedEmail.mockResolvedValue(undefined);
     emailServiceMock.sendTrialEndingSoonEmail.mockResolvedValue(undefined);
+    emailServiceMock.sendRenewalNoticeEmail.mockResolvedValue(undefined);
     configServiceMock.get.mockReturnValue('https://chiffreo.fr');
 
     const module: TestingModule = await Test.createTestingModule({
@@ -110,14 +114,16 @@ describe('LifecycleEmailsService', () => {
     service = module.get(LifecycleEmailsService);
   });
 
-  it('interroge les 5 sweeps avec les bonnes fenêtres et bons filtres', async () => {
+  it('interroge les 6 sweeps avec les bonnes fenêtres et bons filtres', async () => {
     await service.runDailySweep();
 
     expect(userRepoMock.find).toHaveBeenCalledTimes(2);
     // Deux passes sur les projets : abandon (draft/active) puis clôture
     // (estimated). Les deux ensembles sont disjoints par construction.
     expect(projectRepoMock.find).toHaveBeenCalledTimes(2);
-    expect(subscriptionRepoMock.find).toHaveBeenCalledTimes(1);
+    // Deux passes sur les abonnements : fin d'essai (trialing) puis préavis
+    // de reconduction (active). Disjointes par le statut.
+    expect(subscriptionRepoMock.find).toHaveBeenCalledTimes(2);
 
     const [d1Call, d3Call] = userRepoMock.find.mock.calls as [
       [{ where: Record<string, unknown> }],
@@ -320,7 +326,11 @@ describe('LifecycleEmailsService', () => {
       'utilisateur@example.fr',
       expect.objectContaining({
         daysRemaining: 3,
-        priceEuros: 19,
+        // Le montant **et** sa périodicité : le modèle écrivait « /mois » en
+        // dur, et aurait annoncé 279 €/mois à quelqu'un sur le point d'être
+        // prélevé de 279 € par an.
+        priceEuros: getDefaultPlan().price,
+        billingPeriodLabel: 'par an',
         manageSubscriptionUrl: 'https://chiffreo.fr/subscription',
       }),
     );
@@ -396,5 +406,197 @@ describe('LifecycleEmailsService', () => {
 
     expect(emailServiceMock.sendProjectAbandonedEmail).toHaveBeenCalledTimes(2);
     expect(sendsRepoMock.save).toHaveBeenCalledTimes(2);
+  });
+});
+
+/**
+ * Préavis de reconduction annuelle (E3-3).
+ *
+ * Ce balayage n'existait pas tant que l'offre était mensuelle : à 19 €,
+ * personne ne conteste une reconduction. Sur 279 € prélevés une fois l'an,
+ * l'absence de préavis est la première cause de demande de remboursement — et,
+ * à défaut, de contestation bancaire.
+ */
+describe('LifecycleEmailsService — préavis de reconduction', () => {
+  let service: LifecycleEmailsService;
+
+  const DAY = 24 * 60 * 60 * 1000;
+
+  const userRepoMock = { find: jest.fn() };
+  const projectRepoMock = { find: jest.fn(), count: jest.fn() };
+  const subscriptionRepoMock = { find: jest.fn(), update: jest.fn() };
+  const sendsRepoMock = {
+    find: jest.fn(),
+    create: jest.fn((data: Partial<LifecycleEmailSend>) => data),
+    save: jest.fn(),
+  };
+  const emailServiceMock = {
+    sendOnboardingD1Email: jest.fn(),
+    sendOnboardingD3Email: jest.fn(),
+    sendProjectAbandonedEmail: jest.fn(),
+    sendCloseoutDueEmail: jest.fn(),
+    sendTrialEndingSoonEmail: jest.fn(),
+    sendRenewalNoticeEmail: jest.fn(),
+  };
+  const analyticsServiceMock = { track: jest.fn() };
+  const configServiceMock = { get: jest.fn() };
+
+  /** Un abonnement actif dont l'échéance tombe dans `inDays` jours. */
+  function renewingIn(inDays: number, overrides: Partial<Subscription> = {}) {
+    return {
+      id: 'sub-1',
+      user_id: 'user-1',
+      status: SubscriptionStatus.ACTIVE,
+      cancel_at_period_end: false,
+      current_period_end: new Date(Date.now() + inDays * DAY),
+      renewal_notice_sent_for: null,
+      user: makeUser(),
+      ...overrides,
+    } as Subscription;
+  }
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    userRepoMock.find.mockResolvedValue([]);
+    projectRepoMock.find.mockResolvedValue([]);
+    projectRepoMock.count.mockResolvedValue(0);
+    subscriptionRepoMock.find.mockResolvedValue([]);
+    subscriptionRepoMock.update.mockResolvedValue(undefined);
+    sendsRepoMock.find.mockResolvedValue([]);
+    sendsRepoMock.save.mockResolvedValue(undefined);
+    emailServiceMock.sendRenewalNoticeEmail.mockResolvedValue(undefined);
+    configServiceMock.get.mockReturnValue('https://chiffreo.fr');
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        LifecycleEmailsService,
+        { provide: getRepositoryToken(User), useValue: userRepoMock },
+        { provide: getRepositoryToken(Project), useValue: projectRepoMock },
+        {
+          provide: getRepositoryToken(Subscription),
+          useValue: subscriptionRepoMock,
+        },
+        {
+          provide: getRepositoryToken(LifecycleEmailSend),
+          useValue: sendsRepoMock,
+        },
+        { provide: EmailService, useValue: emailServiceMock },
+        { provide: AnalyticsService, useValue: analyticsServiceMock },
+        { provide: ConfigService, useValue: configServiceMock },
+      ],
+    }).compile();
+
+    service = module.get(LifecycleEmailsService);
+  });
+
+  it('prévient 30 jours avant, avec le montant et sa périodicité', async () => {
+    // Le second `find` du balayage des abonnements est celui du préavis ; le
+    // premier est celui des fins d'essai.
+    subscriptionRepoMock.find
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([renewingIn(20)]);
+
+    await service.runDailySweep();
+
+    expect(emailServiceMock.sendRenewalNoticeEmail).toHaveBeenCalledWith(
+      'utilisateur@example.fr',
+      expect.objectContaining({
+        daysRemaining: 20,
+        priceEuros: getDefaultPlan().price,
+        billingPeriodLabel: 'par an',
+        manageSubscriptionUrl: 'https://chiffreo.fr/subscription',
+      }),
+    );
+    expect(analyticsServiceMock.track).toHaveBeenCalledWith(
+      AnalyticsEventName.RENEWAL_NOTICE_EMAIL_SENT,
+      'user-1',
+    );
+  });
+
+  /**
+   * Le dédoublonnage porte sur la **période annoncée**, pas sur le compte :
+   * `lifecycle_email_sends` a un index unique partiel par (compte, type) qui
+   * n'aurait laissé partir le préavis qu'une seule fois — la première année,
+   * et jamais plus.
+   */
+  it('estampille la période annoncée, et non le compte', async () => {
+    const subscription = renewingIn(20);
+    subscriptionRepoMock.find
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([subscription]);
+
+    await service.runDailySweep();
+
+    expect(subscriptionRepoMock.update).toHaveBeenCalledWith(
+      { id: 'sub-1' },
+      { renewal_notice_sent_for: subscription.current_period_end },
+    );
+    expect(sendsRepoMock.save).not.toHaveBeenCalled();
+  });
+
+  it('ne prévient pas deux fois pour la même échéance', async () => {
+    const end = new Date(Date.now() + 20 * DAY);
+    subscriptionRepoMock.find.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      renewingIn(20, {
+        current_period_end: end,
+        renewal_notice_sent_for: end,
+      }),
+    ]);
+
+    await service.runDailySweep();
+
+    expect(emailServiceMock.sendRenewalNoticeEmail).not.toHaveBeenCalled();
+  });
+
+  it('prévient de nouveau à l’échéance suivante', async () => {
+    subscriptionRepoMock.find.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      renewingIn(20, {
+        // Filigrane de l'année précédente : la période a changé, le préavis
+        // se réarme de lui-même.
+        renewal_notice_sent_for: new Date(Date.now() - 345 * DAY),
+      }),
+    ]);
+
+    await service.runDailySweep();
+
+    expect(emailServiceMock.sendRenewalNoticeEmail).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * Annoncer un prélèvement à quelqu'un qui a déjà résilié est la meilleure
+   * façon de déclencher l'appel qu'on cherche à éviter. Le filtre est dans le
+   * `where`, donc porté par la requête et pas par un `if` postérieur.
+   */
+  it('interroge les abonnements actifs non résiliés, sur 30 jours', async () => {
+    await service.runDailySweep();
+
+    const renewalCall = subscriptionRepoMock.find.mock.calls[1] as [
+      { where: Record<string, unknown> },
+    ];
+    expect(renewalCall[0].where.status).toBe(SubscriptionStatus.ACTIVE);
+    expect(renewalCall[0].where.cancel_at_period_end).toBe(false);
+
+    const window = renewalCall[0].where.current_period_end as {
+      value: [Date, Date];
+    };
+    const spanDays = Math.round(
+      (window.value[1].getTime() - window.value[0].getTime()) / DAY,
+    );
+    expect(spanDays).toBe(30);
+  });
+
+  it('n’interrompt pas le balayage quand un envoi échoue', async () => {
+    emailServiceMock.sendRenewalNoticeEmail.mockRejectedValue(
+      new Error('brevo indisponible'),
+    );
+    subscriptionRepoMock.find
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([renewingIn(20)]);
+
+    await expect(service.runDailySweep()).resolves.toBeUndefined();
+    // Le filigrane est posé malgré l'échec : même parti pris que les cinq
+    // autres relances, pour qu'une panne du fournisseur ne fasse pas rejouer
+    // le même lot à chaque balayage.
+    expect(subscriptionRepoMock.update).toHaveBeenCalled();
   });
 });
