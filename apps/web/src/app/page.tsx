@@ -6,6 +6,7 @@ import { GuestStartButton } from '@/components/marketing/GuestStartButton';
 import { PlanCard } from '@/components/marketing/PlanCard';
 import { plansForAudience } from '@/lib/pricing';
 import { COVERED_TRADES, TRADES_NOT_COVERED } from '@/lib/work-types';
+import { serializeJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title: 'Chiffréo pour les métiers de finition',
@@ -67,9 +68,126 @@ const PRO_PROOF = [
   },
 ];
 
+/**
+ * L'argument central du produit : pas la vitesse, la profondeur du calcul.
+ * Chaque point correspond à une capacité socle réelle (voir `pricing.ts` et
+ * `offer-catalogue.spec.ts`), pas à une promesse de justesse absolue — E2-3
+ * interdit « quantité exacte » : le résultat reste une base à valider.
+ */
+const CALCULATION_DEPTH = [
+  {
+    title: 'La géométrie réelle de la pièce',
+    description:
+      'Décrochés, pièces en L, T ou U : le métré suit la forme réelle, pas un rectangle qui l’approxime.',
+  },
+  {
+    title: 'Les ouvertures déduites',
+    description:
+      'Portes et fenêtres sont soustraites de la surface brute, automatiquement, sans les ressaisir en négatif.',
+  },
+  {
+    title: 'Les pertes selon la pose et le niveau',
+    description:
+      'Le facteur de perte change avec le type de pose (droite, diagonale, à coupe perdue…) et le niveau de compétence déclaré — pas un pourcentage unique appliqué partout.',
+  },
+  {
+    title: 'Des conditionnements du marché français',
+    description:
+      'La liste d’achats sort en unités vraiment vendues — sacs, pots, rouleaux, boîtes — pas en mètres carrés arrondis.',
+  },
+  {
+    title: 'Une fiche fabricant derrière chaque ratio',
+    description:
+      'Le rendement ou le taux de perte affiché renvoie à sa source : vous savez d’où vient le chiffre, pas seulement le chiffre.',
+  },
+];
+
+const FAQ_ITEMS = [
+  {
+    question: 'Le calcul est-il fiable ?',
+    answer:
+      'Le résultat est une base de commande, calculée et sourcée, que vous validez — pas une quantité que le logiciel décide à votre place. Elle tient compte de la géométrie réelle de la pièce, des ouvertures déduites, des pertes selon la pose et le niveau, et sort en conditionnements réellement vendus. Chaque ratio renvoie à sa fiche fabricant.',
+  },
+  {
+    question: 'Combien de temps prend un devis ?',
+    answer:
+      'Chronométré sur des chantiers réels, écran par écran : de 36 secondes pour une pièce et un ouvrage à environ 1 min 15 pour un chantier de trois pièces — mesures, calcul des pertes et génération du devis compris.',
+  },
+  {
+    question: 'Faut-il un compte ou une carte bancaire pour commencer ?',
+    answer:
+      'Non. Vous pouvez mesurer une pièce et chiffrer sans compte. Un compte n’est demandé qu’au moment de sauvegarder le chantier ou d’envoyer un devis — jamais de carte bancaire pour chiffrer.',
+  },
+  {
+    question: 'Le chiffrage est-il vraiment gratuit et illimité ?',
+    answer:
+      'Oui, sur autant de chantiers que vous voulez. Le détail de ce qui est gratuit et de ce qui est payant est sur la page tarifs.',
+  },
+  {
+    question: 'Que se passe-t-il quand je passe à l’offre payante ?',
+    answer:
+      'Vous gardez tout le gratuit et ajoutez le devis PDF conforme, le fichier clients et la facturation numérotée, pour 279 € HT par an — détail complet sur la page tarifs.',
+  },
+];
+
+const CHRONO_STAT =
+  'Chronométré sur trois scénarios réels : de 36 secondes (une pièce, un ouvrage) à environ 1 min 15 (trois pièces, deux ouvrages) de temps d’écran, mesures et calcul des pertes compris.';
+
+const JSON_LD_SOFTWARE = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'Chiffréo',
+  applicationCategory: 'BusinessApplication',
+  operatingSystem: 'Web',
+  description:
+    'Chiffrage gratuit et illimité pour les métiers de finition — devis PDF conforme et facturation en offre payante.',
+  offers: PLANS.filter(
+    (plan): plan is typeof plan & { priceNumber: number } =>
+      plan.priceNumber !== null,
+  ).map((plan) => ({
+    '@type': 'Offer',
+    name: plan.name,
+    price: String(plan.priceNumber),
+    priceCurrency: 'EUR',
+    ...(plan.period === '/an'
+      ? {
+          priceSpecification: {
+            '@type': 'UnitPriceSpecification',
+            price: String(plan.priceNumber),
+            priceCurrency: 'EUR',
+            billingDuration: 1,
+            billingIncrement: 1,
+            unitCode: 'ANN',
+          },
+        }
+      : {}),
+  })),
+};
+
+const JSON_LD_FAQ = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: FAQ_ITEMS.map((item) => ({
+    '@type': 'Question',
+    name: item.question,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: item.answer,
+    },
+  })),
+};
+
 export default function HomePage() {
   return (
     <main className="flex-1 px-4 pb-16 sm:px-6 lg:px-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(JSON_LD_SOFTWARE) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(JSON_LD_FAQ) }}
+      />
       <div className="mx-auto w-full max-w-6xl">
         <MarketingHeader />
 
@@ -145,6 +263,39 @@ export default function HomePage() {
                 </li>
               ))}
             </ol>
+            <p className="mt-5 border-t border-white/10 pt-4 text-xs leading-5 text-stone-400">
+              {CHRONO_STAT}
+            </p>
+          </div>
+        </section>
+
+        {/* Profondeur du calcul */}
+        <section className="mt-24">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-900">
+            Ce que le moteur calcule vraiment
+          </p>
+          <h2 className="mt-4 max-w-2xl text-3xl font-semibold text-stone-950">
+            La profondeur du calcul, pas juste la vitesse
+          </h2>
+          <p className="mt-3 max-w-2xl text-base text-stone-700">
+            Le résultat est une base de commande, calculée et sourcée, que
+            vous validez — pas une quantité que le logiciel décide à votre
+            place.
+          </p>
+          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {CALCULATION_DEPTH.map((point) => (
+              <div
+                key={point.title}
+                className="rounded-2xl border border-stone-200/80 bg-white/80 p-5"
+              >
+                <h3 className="text-base font-semibold text-stone-950">
+                  {point.title}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-stone-700">
+                  {point.description}
+                </p>
+              </div>
+            ))}
           </div>
         </section>
 
@@ -254,6 +405,28 @@ export default function HomePage() {
               Voir le détail des offres
             </Link>
           </p>
+        </section>
+
+        {/* FAQ */}
+        <section className="mt-24">
+          <h2 className="text-3xl font-semibold text-stone-950">
+            Questions fréquentes
+          </h2>
+          <div className="mt-8 grid gap-5 sm:grid-cols-2">
+            {FAQ_ITEMS.map((item) => (
+              <div
+                key={item.question}
+                className="rounded-2xl border border-stone-200/80 bg-white/80 p-5"
+              >
+                <h3 className="text-base font-semibold text-stone-950">
+                  {item.question}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-stone-700">
+                  {item.answer}
+                </p>
+              </div>
+            ))}
+          </div>
         </section>
 
         {/* CTA final */}
