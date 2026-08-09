@@ -99,3 +99,63 @@ describe('DimensionsPage — pré-remplissage depuis une pièce existante', () =
     expect(screen.getByText(/décroché 1/i)).toBeInTheDocument();
   });
 });
+
+/**
+ * Troisième cause du cul-de-sac du parcours d'acquisition.
+ *
+ * Un invité a un `appUser` (`onIdTokenChanged` synchronise aussi les comptes
+ * anonymes), si bien que cette page prend le chemin API même pour l'uuid local
+ * d'un brouillon jamais migré. L'appel rend 404, `rooms` reste vide,
+ * `activeRoomId` reste `null`, `formReady` reste faux — et le `return` du
+ * squelette précédait l'affichage de l'alerte. L'écran restait donc en
+ * chargement, pour toujours, sans jamais dire pourquoi.
+ *
+ * Une garde anti-flash n'a rien à dire une fois le chargement terminé en erreur :
+ * c'est ce que ces deux tests figent.
+ */
+describe('DimensionsPage — chargement en échec', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockAuth.appUser = { id: 'user-1' };
+    mockAuth.isGuest = true;
+    mockAuth.isLoading = false;
+  });
+
+  /** Le squelette est `aria-hidden` : c'est ce qui le distingue du contenu. */
+  const skeletons = (container: HTMLElement) =>
+    container.querySelectorAll('[aria-hidden="true"].animate-pulse');
+
+  it('affiche l’erreur au lieu de rester sur le squelette quand le projet est introuvable', async () => {
+    mockApiGet.mockRejectedValue(new Error('Projet introuvable'));
+
+    const { container } = render(<DimensionsPage />);
+
+    expect(await screen.findByText('Projet introuvable')).toBeInTheDocument();
+    expect(skeletons(container)).toHaveLength(0);
+    // Actionnable : la seule chose à faire depuis un projet qui n'existe pas.
+    expect(
+      screen.getByRole('button', { name: /retour à mes projets/i }),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * Tout projet naît avec une pièce (`ProjectsService.createProject`), donc ce
+   * cas ne se produit pas aujourd'hui — et c'est la raison de le couvrir :
+   * `formReady` resterait faux pour toujours, et n'importe quel futur chemin
+   * rendant une liste vide rouvrirait le même cul-de-sac, en silence.
+   */
+  it('traite un projet sans pièce comme un échec, pas comme un chargement sans fin', async () => {
+    mockApiGet.mockImplementation((path: string) =>
+      path === '/projects/project-1'
+        ? Promise.resolve({ name: 'Projet vide' })
+        : Promise.resolve([]),
+    );
+
+    const { container } = render(<DimensionsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/aucune pièce/i)).toBeInTheDocument();
+    });
+    expect(skeletons(container)).toHaveLength(0);
+  });
+});

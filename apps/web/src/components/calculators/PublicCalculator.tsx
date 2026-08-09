@@ -236,11 +236,24 @@ export function PublicCalculator({ config }: PublicCalculatorProps) {
         updated_at: new Date().toISOString(),
       };
 
+      // Écrit **avant** d'ouvrir la session : c'est `startGuestSession` qui
+      // adopte les brouillons présents, et elle ne repassera pas.
       writeGuestDrafts([draft, ...readGuestDrafts()]);
 
       if (!isGuest) {
-        await startGuestSession();
+        const { failed } = await startGuestSession();
+        if (failed.length > 0) {
+          // Le brouillon est resté sur l'appareil : on ne navigue pas vers un
+          // tableau de bord qui laisserait croire que c'est enregistré.
+          setError(
+            'Votre projet n’a pas pu être enregistré sur nos serveurs. Votre saisie est conservée : vérifiez votre connexion et réessayez.',
+          );
+          return;
+        }
       }
+      // `isGuest` déjà vrai sans `appUser` : la session existe mais l'API n'a
+      // pas répondu. Le brouillon reste local et le tableau de bord propose de
+      // le reprendre — c'est le mode dégradé, pas le chemin nominal.
       router.push('/dashboard');
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Impossible de sauvegarder le projet'));

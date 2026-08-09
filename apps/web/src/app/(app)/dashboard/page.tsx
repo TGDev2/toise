@@ -30,12 +30,35 @@ function formatProjectDate(value: string): string {
 }
 
 export default function DashboardPage() {
-  const { appUser, isGuest, isLoading, logout, deleteAccount } = useAuth();
+  const {
+    appUser,
+    isGuest,
+    isLoading,
+    logout,
+    deleteAccount,
+    migrateLocalProjects,
+  } = useAuth();
   const { subscription, openCheckout, openPortal, refresh } = useSubscription();
   const router = useRouter();
 
-  // Guest state (localStorage)
+  /**
+   * Brouillons restés en `localStorage`.
+   *
+   * **Ils ne sont une liste de projets que lorsqu'il n'y a pas de compte API du
+   * tout.** La double section venait d'une condition de rendu fausse : la liste
+   * API était gardée par `appUser`, la liste locale par `isGuest`, et un invité
+   * satisfait les deux — `onIdTokenChanged` synchronise aussi les comptes
+   * anonymes. Un invité voyait donc en même temps une liste API vide et la carte
+   * d'un brouillon dont le bouton menait à `/projects/<uuid-local>/dimensions`,
+   * c'est-à-dire à un 404.
+   *
+   * La règle, désormais : **dès qu'un compte API existe, la liste API est la
+   * liste des projets.** Un brouillon qui traîne alors est le reste d'une
+   * migration qui a échoué ; il se présente comme tel — un bandeau de reprise —
+   * et jamais comme un second projet.
+   */
   const [guestProjects, setGuestProjects] = useState<GuestProjectDraft[]>([]);
+  const [isRetryingMigration, setIsRetryingMigration] = useState(false);
 
   // Authenticated state (API)
   const [apiProjects, setApiProjects] = useState<ProjectSummary[]>([]);
@@ -63,12 +86,11 @@ export default function DashboardPage() {
     }
   }, [appUser, isGuest, isLoading, router]);
 
-  // Load guest projects
+  // Lus dans tous les cas : sans compte ils forment la liste, avec un compte ils
+  // n'ont rien à y faire mais doivent rester rattrapables.
   useEffect(() => {
-    if (isGuest) {
-      setGuestProjects(readGuestDrafts());
-    }
-  }, [isGuest]);
+    setGuestProjects(readGuestDrafts());
+  }, [isGuest, appUser]);
 
   // Fetch API projects for authenticated users
   const fetchProjects = useCallback(async (targetPage: number) => {
@@ -92,6 +114,32 @@ export default function DashboardPage() {
       fetchProjects(page);
     }
   }, [appUser, page, fetchProjects]);
+
+  /**
+   * Reprise d'un brouillon que la migration n'a pas su enregistrer.
+   *
+   * C'est la seule sortie de cet état : le brouillon ne s'affiche plus comme un
+   * projet dès qu'un compte existe, et rien d'autre ne rejoue la migration une
+   * fois la session ouverte.
+   */
+  const handleRetryMigration = async () => {
+    setError('');
+    setIsRetryingMigration(true);
+    try {
+      const { failed } = await migrateLocalProjects();
+      setGuestProjects(failed);
+      if (failed.length > 0) {
+        setError(
+          'Le brouillon n’a toujours pas pu être enregistré. Il reste sur cet appareil.',
+        );
+        return;
+      }
+      toast.success('Brouillon enregistré dans vos projets.');
+      await fetchProjects(page);
+    } finally {
+      setIsRetryingMigration(false);
+    }
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -194,6 +242,10 @@ export default function DashboardPage() {
     return <ContractorDashboard />;
   }
 
+  // Une seule source de vérité : le compte API s'il existe, les brouillons
+  // sinon. Jamais les deux à la fois.
+  const showLocalDrafts = !appUser && guestProjects.length > 0;
+  const strandedDrafts = appUser ? guestProjects : [];
   const hasProjects = appUser ? apiProjects.length > 0 : guestProjects.length > 0;
   const showPagination = appUser && meta.totalPages > 1;
 
@@ -452,8 +504,34 @@ export default function DashboardPage() {
         </section>
       )}
 
-      {/* Guest user: localStorage projects */}
-      {isGuest && (
+      {/*
+        Brouillon resté sur l'appareil alors qu'un compte existe : la migration a
+        échoué. Un bandeau qui le dit et propose de réessayer — pas une seconde
+        carte de projet menant à un identifiant que l'API ne connaît pas.
+      */}
+      {strandedDrafts.length > 0 && (
+        <Alert variant="warning" className="mt-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span>
+              {strandedDrafts.length > 1
+                ? `${strandedDrafts.length} brouillons préparés sur cet appareil n’ont pas pu être enregistrés dans votre compte.`
+                : `Le brouillon « ${strandedDrafts[0].name} » préparé sur cet appareil n’a pas pu être enregistré dans votre compte.`}
+            </span>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="shrink-0"
+              disabled={isRetryingMigration}
+              onClick={handleRetryMigration}
+            >
+              {isRetryingMigration ? 'Enregistrement...' : 'Réessayer'}
+            </Button>
+          </div>
+        </Alert>
+      )}
+
+      {/* Aucun compte API (mode dégradé) : les brouillons sont la seule liste. */}
+      {showLocalDrafts && (
         <section className="mt-6 grid gap-4 lg:grid-cols-2">
           {guestProjects.map((project) => (
             <article

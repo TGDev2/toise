@@ -9,7 +9,7 @@ import type { Room } from '@/lib/room-types';
 import { DimensionsForm } from '@/components/dimensions/DimensionsForm';
 import { FlowProgress } from '@/components/quote-flow/FlowProgress';
 import { RoomSwitcher } from '@/components/rooms/RoomSwitcher';
-import { Alert, Skeleton } from '@/components/ui';
+import { Alert, Button, Skeleton } from '@/components/ui';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -41,6 +41,19 @@ export default function DimensionsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [roomBusy, setRoomBusy] = useState(false);
   const [error, setError] = useState('');
+  /**
+   * Échec du **chargement**, tenu à part de `error` (qui porte les échecs d'une
+   * action : sauvegarde, ajout ou renommage de pièce).
+   *
+   * Les deux étaient confondus, et la confusion coûtait l'écran : `formReady`
+   * attend qu'une pièce soit semée, ce qui n'arrive jamais quand l'appel a
+   * échoué, et le `return` du squelette précédait l'affichage de l'alerte. Un
+   * projet introuvable donnait donc un squelette perpétuel — le symptôme exact
+   * du cul-de-sac du parcours d'acquisition, où l'identifiant demandé était
+   * l'uuid local d'un brouillon jamais migré. Une garde anti-flash n'a rien à
+   * dire une fois le chargement terminé en erreur.
+   */
+  const [loadError, setLoadError] = useState('');
   const [loaded, setLoaded] = useState(false);
 
   const roomParam = searchParams.get('room');
@@ -95,6 +108,16 @@ export default function DimensionsPage() {
           ]);
           setProjectName(project.name);
           setRooms(roomList);
+          // Tout projet naît avec une pièce (`ProjectsService.createProject`).
+          // Zéro pièce est donc impossible aujourd'hui — et c'est la raison de
+          // le traiter ici : sans cette ligne, `formReady` resterait faux pour
+          // toujours et n'importe quel futur chemin rendant une liste vide
+          // rouvrirait le même cul-de-sac, en silence.
+          if (roomList.length === 0) {
+            setLoadError(
+              'Ce projet ne contient aucune pièce : impossible d’afficher ses dimensions.',
+            );
+          }
         } else {
           const project = readGuestDrafts().find((p) => p.id === projectId);
           if (project) {
@@ -114,10 +137,14 @@ export default function DimensionsPage() {
             if (project.exclusions?.length) {
               setInitialExclusions(project.exclusions);
             }
+          } else {
+            // Brouillon absent : le formulaire s'affichait vide et `handleSave`
+            // n'écrivait rien (`idx === -1`). Une saisie perdue sans un mot.
+            setLoadError('Ce brouillon n’existe plus sur cet appareil.');
           }
         }
       } catch (err: unknown) {
-        setError(getErrorMessage(err, 'Impossible de charger le projet'));
+        setLoadError(getErrorMessage(err, 'Impossible de charger le projet'));
       } finally {
         setLoaded(true);
       }
@@ -282,6 +309,27 @@ export default function DimensionsPage() {
   );
 
   const formReady = !appUser || (activeRoomId != null && seededRoomId === activeRoomId);
+
+  // **Avant la garde du squelette, et c'est tout l'objet du correctif.** Le
+  // chargement est terminé et il a échoué : plus rien ne viendra semer le
+  // formulaire, donc `formReady` ne repassera jamais à vrai. Attendre encore,
+  // c'est afficher un écran de chargement définitif à la place de la seule
+  // information utile.
+  if (!isLoading && loaded && loadError) {
+    return (
+      <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
+        <h1 className="mb-6 text-2xl font-semibold text-stone-950 sm:text-3xl">
+          Dimensions de la pièce
+        </h1>
+        <Alert variant="error">{loadError}</Alert>
+        <div className="mt-6">
+          <Button variant="secondary" onClick={() => router.push('/dashboard')}>
+            Retour à mes projets
+          </Button>
+        </div>
+      </main>
+    );
+  }
 
   if (isLoading || !loaded || !formReady) {
     return (

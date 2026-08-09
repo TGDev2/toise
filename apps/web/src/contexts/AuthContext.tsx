@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -29,6 +30,7 @@ import { getFirebaseAuth } from '@/lib/firebase';
 import {
   clearGuestDrafts,
   readGuestDrafts,
+  writeGuestDrafts,
   type GuestProjectDraft,
 } from '@/lib/guest-drafts';
 import { REFERRAL_CODE_STORAGE_KEY } from '@/lib/referral';
@@ -139,6 +141,26 @@ interface AppUser {
   has_company_profile: boolean;
 }
 
+/**
+ * Sort des brouillons locaux après un passage de `migrateLocalProjects`.
+ *
+ * La fonction ne lance pas : elle est appelée aussi bien sur le chemin
+ * d'acquisition (où l'échec doit arrêter la navigation) que sur les trois voies
+ * de conversion (où le compte, lui, a bien été créé — transformer l'échec d'une
+ * migration en échec d'inscription mentirait sur ce qui s'est passé). Chaque
+ * appelant décide donc quoi faire, à partir d'un résultat qu'il ne peut pas
+ * ignorer par distraction.
+ */
+export interface GuestDraftMigration {
+  /** Identifiants serveur des projets créés, dans l'ordre des brouillons. */
+  migrated: string[];
+  /**
+   * Brouillons **toujours présents en `localStorage`** : rien n'a été perdu, et
+   * tout reste à rejouer.
+   */
+  failed: GuestProjectDraft[];
+}
+
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
   appUser: AppUser | null;
@@ -153,7 +175,15 @@ interface AuthContextType {
   ) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   loginWithApple: () => Promise<void>;
-  startGuestSession: () => Promise<void>;
+  /**
+   * Ouvre une session invité **et adopte les brouillons locaux** — une seule
+   * opération du point de vue de l'appelant (voir la documentation de
+   * `startGuestSession`). Le résultat dit ce qui a été rejoué et ce qui reste
+   * sur l'appareil.
+   */
+  startGuestSession: () => Promise<GuestDraftMigration>;
+  /** Rejeu manuel, pour reprendre un brouillon qu'une panne a laissé sur place. */
+  migrateLocalProjects: () => Promise<GuestDraftMigration>;
   convertGuestAccount: (email: string, password: string) => Promise<void>;
   convertGuestWithGoogle: () => Promise<void>;
   convertGuestWithApple: () => Promise<void>;
@@ -211,41 +241,88 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(REFERRAL_CODE_STORAGE_KEY);
   }, []);
 
+  /**
+   * Synchronisation en vol, partagée par les appelants concurrents.
+   *
+   * `onIdTokenChanged` synchronise à chaque changement d'identité, et
+   * `startGuestSession` doit **attendre** cette même synchronisation avant de
+   * migrer quoi que ce soit : sans ligne `users`, `resolveForFirebaseUid`
+   * répond `NotFound` et l'API renvoie 401 sur `POST /projects`. Les deux
+   * partent donc en même temps sur un uid neuf — et `upsertFromFirebase` lit
+   * puis écrit sans verrou : deux `INSERT` concurrents sur le même
+   * `firebase_uid` violent l'unicité et l'un des deux ressort en 500.
+   *
+   * Coalescer n'est pas un contournement : deux synchronisations simultanées de
+   * la même identité sont toujours un défaut, et la seconde n'apprendrait rien
+   * de plus que la première.
+   */
+  const syncInFlight = useRef<Promise<void> | null>(null);
+
   const syncWithBackend = useCallback(async () => {
+    if (syncInFlight.current) return syncInFlight.current;
+
+    const run = (async () => {
+      try {
+        const user = await apiPost<AppUser>('/auth/sync');
+        setAppUser(user);
+      } catch {
+        setAppUser(null);
+        return;
+      }
+      // Ne doit jamais faire échouer la synchronisation du compte : déjà
+      // best-effort en interne (voir redeemPendingReferralCode).
+      await redeemPendingReferralCode();
+    })();
+
+    syncInFlight.current = run;
     try {
-      const user = await apiPost<AppUser>('/auth/sync');
-      setAppUser(user);
-    } catch {
-      setAppUser(null);
-      return;
+      await run;
+    } finally {
+      syncInFlight.current = null;
     }
-    // Ne doit jamais faire échouer la synchronisation du compte : déjà
-    // best-effort en interne (voir redeemPendingReferralCode).
-    await redeemPendingReferralCode();
   }, [redeemPendingReferralCode]);
 
   /**
    * Rejoue vers l'API les brouillons laissés en `localStorage` par le parcours
-   * invité, puis vide la clé.
+   * invité, et ne retire que ceux qui sont **entièrement** passés.
    *
    * **Tout ce que déclare `GuestProjectDraft` doit être repris ici** — un champ
    * saisi par l'invité et non rejoué est une saisie perdue, silencieusement, au
    * moment même où il crée son compte. `guest-drafts.spec.ts` en tient la
    * couverture, champ par champ et exhaustive par le type.
+   *
+   * **Le `clearGuestDrafts()` inconditionnel qui terminait cette fonction
+   * effaçait aussi ce qui venait d'échouer.** Le `catch` se contentant d'un
+   * `console.error`, une API injoignable ne coûtait pas un retard : elle coûtait
+   * la saisie, définitivement, à l'instant précis où l'utilisateur croyait
+   * sauvegarder. Ce qui n'est pas arrivé côté serveur reste donc côté appareil,
+   * et l'appelant l'apprend par la valeur de retour.
+   *
+   * **Le projet créé est le point de bascule.** Si `POST /projects` a réussi
+   * mais qu'une étape suivante échoue, le projet est supprimé avant de rendre le
+   * brouillon : sans cela, un nouvel essai créerait un doublon et se heurterait
+   * au quota invité d'un projet (`GUEST_PROJECT_LIMIT`), c'est-à-dire à un
+   * `ACCOUNT_REQUIRED` qui ne parlerait de rien. Quand c'est l'API qui est
+   * injoignable, `POST /projects` a déjà échoué : il n'y a rien à supprimer.
    */
-  const migrateLocalProjects = useCallback(async () => {
-    if (typeof window === 'undefined') return;
+  const migrateLocalProjects = useCallback(async (): Promise<GuestDraftMigration> => {
+    if (typeof window === 'undefined') return { migrated: [], failed: [] };
 
     const drafts: GuestProjectDraft[] = readGuestDrafts();
-    if (drafts.length === 0) return;
+    if (drafts.length === 0) return { migrated: [], failed: [] };
+
+    const migrated: string[] = [];
+    const failed: GuestProjectDraft[] = [];
 
     for (const draft of drafts) {
+      let createdId: string | null = null;
       try {
         const created = await apiPost<{ id: string }>('/projects', {
           name: draft.name,
           room_name: draft.room_name,
           work_type: draft.work_type,
         });
+        createdId = created.id;
 
         if (draft.length_m && draft.width_m && draft.height_m) {
           await apiPut(`/projects/${created.id}/dimensions`, {
@@ -277,12 +354,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             items: draft.work_items,
           });
         }
+
+        migrated.push(created.id);
       } catch (err) {
         console.error(`Failed to migrate guest project "${draft.name}":`, err);
+        if (createdId) {
+          await apiDelete(`/projects/${createdId}`).catch(() => undefined);
+        }
+        failed.push(draft);
       }
     }
 
-    clearGuestDrafts();
+    if (failed.length > 0) writeGuestDrafts(failed);
+    else clearGuestDrafts();
+
+    return { migrated, failed };
   }, []);
 
   useEffect(() => {
@@ -380,17 +466,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * rendait l'échec intermittent — donc invisible en développement et fatal
    * dans le funnel. La garde anti-flash serveur ne peut pas s'appuyer sur un
    * état que le client n'a pas encore publié.
+   *
+   * **Elle adopte aussi les brouillons locaux, et c'est le correctif du
+   * cul-de-sac du parcours d'acquisition.** Le calculateur public écrit un
+   * brouillon en `localStorage`, ouvre une session invité et navigue. Or un
+   * invité a un `appUser` — `onIdTokenChanged` synchronise *tout* utilisateur, y
+   * compris anonyme — si bien que chaque branche `if (appUser)` des écrans
+   * suivants prenait le chemin API avec un identifiant de projet purement local.
+   * Le brouillon, lui, n'était rejoué que par les trois voies de conversion.
+   * L'écran de dimensions demandait donc `/projects/<uuid-local>`, récoltait un
+   * 404, et restait sur son squelette.
+   *
+   * Deux stratégies étaient possibles : migrer à l'ouverture de la session, ou
+   * n'ouvrir la session qu'une fois le brouillon migré. **La seconde n'existe
+   * pas** : `POST /projects` est derrière `FirebaseAuthGuard`, et
+   * `OrgContextService.resolveForFirebaseUid` exige en plus une ligne `users`
+   * que seul `POST /auth/sync` crée. Aucun ordre ne fait partir le brouillon
+   * avant la session. Ce qui se décide, c'est le moment où la session devient
+   * observable par l'appelant : jamais avant que les brouillons soient adoptés.
+   *
+   * D'où l'ordre des trois étapes, chacune imposée par la précédente :
+   * `signInAnonymously` (le jeton) → `syncWithBackend` (la ligne `users`, sans
+   * laquelle tout `POST /projects` répond 401) → `migrateLocalProjects`.
    */
-  const startGuestSession = useCallback(async () => {
+  const startGuestSession = useCallback(async (): Promise<GuestDraftMigration> => {
     setIsLoading(true);
     try {
       await signInAnonymously(getFirebaseAuth());
       markSessionPresent();
+      await syncWithBackend();
+      return await migrateLocalProjects();
     } catch (error) {
       setIsLoading(false);
       throw error;
     }
-  }, []);
+  }, [syncWithBackend, migrateLocalProjects]);
 
   /**
    * Repli de conversion : l'identifiant saisi appartient déjà à un compte, donc
@@ -522,6 +632,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginWithGoogle,
         loginWithApple,
         startGuestSession,
+        migrateLocalProjects,
         convertGuestAccount,
         convertGuestWithGoogle,
         convertGuestWithApple,

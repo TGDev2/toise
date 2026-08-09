@@ -13,14 +13,40 @@
  * réarmement de `isLoading`. Ils portent sur ce que `startGuestSession` **a déjà
  * publié quand sa promesse résout** : c'est le seul instant que l'appelant peut
  * observer avant de naviguer.
+ *
+ * ---
+ *
+ * **Adoption des brouillons locaux** — deuxième cause du cul-de-sac du parcours
+ * d'acquisition.
+ *
+ * Le calculateur public écrit un brouillon en `localStorage` puis ouvre une
+ * session invité. Or `migrateLocalProjects` n'était rejouée que par les trois
+ * voies de conversion : le brouillon n'atteignait jamais l'API. Comme un invité
+ * a malgré tout un `appUser` (`onIdTokenChanged` synchronise aussi les comptes
+ * anonymes), l'écran suivant demandait `/projects/<uuid-local>` et récoltait un
+ * 404.
+ *
+ * Les tests ci-dessous portent sur ce que `startGuestSession` garantit
+ * désormais, dans l'ordre où elle doit le garantir — la synchronisation d'abord,
+ * parce que `resolveForFirebaseUid` refuse tant qu'aucune ligne `users` ne porte
+ * l'uid, et la migration ensuite.
  */
 
 import { render, act } from '@testing-library/react';
 import { useEffect } from 'react';
-import { useAuth, AuthProvider } from '../AuthContext';
+import {
+  GUEST_PROJECTS_STORAGE_KEY,
+  readGuestDrafts,
+  writeGuestDrafts,
+  type GuestProjectDraft,
+} from '@/lib/guest-drafts';
+import { useAuth, AuthProvider, type GuestDraftMigration } from '../AuthContext';
 
 const onIdTokenChangedMock = jest.fn();
 const signInAnonymouslyMock = jest.fn();
+const apiPostMock = jest.fn();
+const apiPutMock = jest.fn();
+const apiDeleteMock = jest.fn();
 
 jest.mock('firebase/auth', () => ({
   EmailAuthProvider: { credential: jest.fn() },
@@ -41,17 +67,42 @@ jest.mock('firebase/auth', () => ({
 jest.mock('@/lib/firebase', () => ({ getFirebaseAuth: () => ({}) }));
 
 jest.mock('@/lib/api', () => ({
-  apiPost: jest.fn().mockResolvedValue({}),
-  apiPut: jest.fn().mockResolvedValue({}),
-  apiDelete: jest.fn().mockResolvedValue({}),
+  apiPost: (...args: unknown[]) => apiPostMock(...args),
+  apiPut: (...args: unknown[]) => apiPutMock(...args),
+  apiDelete: (...args: unknown[]) => apiDeleteMock(...args),
 }));
 
+const SERVER_PROJECT_ID = 'srv-project-1';
+
+const DRAFT: GuestProjectDraft = {
+  id: 'local-uuid-1',
+  name: 'Mon projet peinture',
+  room_name: 'Ma pièce',
+  work_type: 'painting',
+  length_m: 4,
+  width_m: 3,
+  height_m: 2.5,
+  openings: [{ type: 'door', width_cm: 90, height_cm: 210, count: 1 }],
+  updated_at: '2026-08-09T10:00:00.000Z',
+};
+
+/** Chemins postés, dans l'ordre — l'ordre *est* ce que ces tests vérifient. */
+const postedPaths = (): string[] =>
+  apiPostMock.mock.calls.map(([path]) => path as string);
+
 interface Observed {
-  startGuestSession: () => Promise<void>;
+  startGuestSession: () => Promise<GuestDraftMigration>;
   isLoading: boolean;
 }
 
 type IdentityListener = (user: { uid: string } | null) => Promise<void> | void;
+
+/**
+ * L'observateur de jeton installé par le fournisseur, à la disposition des
+ * tests : c'est en le déclenchant **depuis** `signInAnonymously`, comme le fait
+ * Firebase, qu'on reproduit la course entre les deux `POST /auth/sync`.
+ */
+let identityListener: IdentityListener = () => undefined;
 
 /**
  * Rend le fournisseur **et rejoue le premier `onIdTokenChanged`, celui qui
@@ -81,10 +132,9 @@ async function renderAuth(): Promise<{
     return null;
   }
 
-  let listener: IdentityListener = () => undefined;
   onIdTokenChangedMock.mockImplementation(
     (_auth: unknown, callback: IdentityListener) => {
-      listener = callback;
+      identityListener = callback;
       return () => undefined;
     },
   );
@@ -99,7 +149,7 @@ async function renderAuth(): Promise<{
 
   const notifyIdentity: IdentityListener = (user) =>
     act(async () => {
-      await listener(user);
+      await identityListener(user);
     });
 
   // Aucune session : Firebase le signale, `isLoading` retombe.
@@ -111,7 +161,16 @@ async function renderAuth(): Promise<{
 describe('startGuestSession', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    localStorage.clear();
     document.cookie = 'chiffreo_auth=; path=/; max-age=0';
+    identityListener = () => undefined;
+    apiPostMock.mockImplementation((path: string) =>
+      path === '/projects'
+        ? Promise.resolve({ id: SERVER_PROJECT_ID })
+        : Promise.resolve({}),
+    );
+    apiPutMock.mockResolvedValue({});
+    apiDeleteMock.mockResolvedValue(undefined);
   });
 
   it('pose le marqueur de session avant de rendre la main', async () => {
@@ -168,5 +227,148 @@ describe('startGuestSession', () => {
 
     expect(auth.current.isLoading).toBe(false);
     expect(document.cookie).not.toContain('chiffreo_auth=1');
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Adoption des brouillons locaux                                             */
+/* -------------------------------------------------------------------------- */
+
+describe('startGuestSession — adoption des brouillons locaux', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    localStorage.clear();
+    document.cookie = 'chiffreo_auth=; path=/; max-age=0';
+    identityListener = () => undefined;
+    signInAnonymouslyMock.mockResolvedValue({ user: { uid: 'guest-1' } });
+    apiPostMock.mockImplementation((path: string) =>
+      path === '/projects'
+        ? Promise.resolve({ id: SERVER_PROJECT_ID })
+        : Promise.resolve({}),
+    );
+    apiPutMock.mockResolvedValue({});
+    apiDeleteMock.mockResolvedValue(undefined);
+  });
+
+  async function openGuestSession(): Promise<GuestDraftMigration> {
+    const { auth } = await renderAuth();
+    let migration!: GuestDraftMigration;
+    await act(async () => {
+      migration = await auth.current.startGuestSession();
+    });
+    return migration;
+  }
+
+  /**
+   * L'ordre n'est pas un détail de style : `OrgContextService.resolveForFirebaseUid`
+   * répond `NotFound` — donc 401 sur `POST /projects` — tant que
+   * `POST /auth/sync` n'a pas créé la ligne `users`. Migrer d'abord reviendrait
+   * à poster le brouillon sur un compte qui n'existe pas encore.
+   */
+  it('synchronise le compte avant de poster le premier projet', async () => {
+    writeGuestDrafts([DRAFT]);
+
+    await openGuestSession();
+
+    const paths = postedPaths();
+    expect(paths[0]).toBe('/auth/sync');
+    expect(paths).toContain('/projects');
+    expect(paths.indexOf('/auth/sync')).toBeLessThan(paths.indexOf('/projects'));
+  });
+
+  /**
+   * `onIdTokenChanged` synchronise de son côté, et `startGuestSession` doit
+   * attendre cette synchronisation : les deux partent donc en même temps sur un
+   * uid neuf. `upsertFromFirebase` lit puis écrit sans verrou — deux `INSERT`
+   * concurrents sur le même `firebase_uid` violent l'unicité, et l'un des deux
+   * ressort en 500. Ici, Firebase notifie depuis `signInAnonymously`, comme en
+   * vrai.
+   */
+  it('ne lance qu’une synchronisation quand l’observateur de jeton part en même temps', async () => {
+    signInAnonymouslyMock.mockImplementation(async () => {
+      void identityListener({ uid: 'guest-1' });
+      return { user: { uid: 'guest-1' } };
+    });
+
+    await openGuestSession();
+
+    expect(postedPaths().filter((path) => path === '/auth/sync')).toHaveLength(1);
+  });
+
+  it('rejoue le brouillon vers l’API et vide la clé locale', async () => {
+    writeGuestDrafts([DRAFT]);
+
+    const migration = await openGuestSession();
+
+    expect(apiPostMock).toHaveBeenCalledWith('/projects', {
+      name: 'Mon projet peinture',
+      room_name: 'Ma pièce',
+      work_type: 'painting',
+    });
+    expect(apiPutMock).toHaveBeenCalledWith(
+      `/projects/${SERVER_PROJECT_ID}/dimensions`,
+      {
+        length_cm: 400,
+        width_cm: 300,
+        height_cm: 250,
+        segments: undefined,
+        exclusions: undefined,
+      },
+    );
+    expect(apiPostMock).toHaveBeenCalledWith(
+      `/projects/${SERVER_PROJECT_ID}/openings`,
+      { type: 'door', width_cm: 90, height_cm: 210, count: 1 },
+    );
+
+    // Ce que l'appelant lit pour décider s'il peut naviguer.
+    expect(migration).toEqual({ migrated: [SERVER_PROJECT_ID], failed: [] });
+    expect(localStorage.getItem(GUEST_PROJECTS_STORAGE_KEY)).toBeNull();
+  });
+
+  /**
+   * Le `clearGuestDrafts()` inconditionnel qui terminait la migration effaçait
+   * aussi ce qui venait d'échouer : une API injoignable ne coûtait pas un
+   * retard, elle coûtait la saisie, à l'instant précis où l'utilisateur croyait
+   * sauvegarder.
+   */
+  it('conserve le brouillon et le signale quand la création du projet échoue', async () => {
+    writeGuestDrafts([DRAFT]);
+    apiPostMock.mockImplementation((path: string) =>
+      path === '/projects'
+        ? Promise.reject(new Error('Service indisponible'))
+        : Promise.resolve({}),
+    );
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const migration = await openGuestSession();
+
+    expect(migration.migrated).toEqual([]);
+    expect(migration.failed).toEqual([DRAFT]);
+    expect(readGuestDrafts()).toEqual([DRAFT]);
+  });
+
+  /**
+   * Le projet créé est le point de bascule : le laisser derrière une étape
+   * échouée ferait qu'un nouvel essai crée un doublon — et se heurte au quota
+   * invité d'un projet, c'est-à-dire à un `ACCOUNT_REQUIRED` qui ne parlerait de
+   * rien.
+   */
+  it('supprime le projet à demi créé avant de rendre le brouillon', async () => {
+    writeGuestDrafts([DRAFT]);
+    apiPutMock.mockRejectedValue(new Error('422'));
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const migration = await openGuestSession();
+
+    expect(apiDeleteMock).toHaveBeenCalledWith(`/projects/${SERVER_PROJECT_ID}`);
+    expect(migration.failed).toEqual([DRAFT]);
+    expect(readGuestDrafts()).toEqual([DRAFT]);
+  });
+
+  it('n’appelle aucune route de projet quand il n’y a rien à migrer', async () => {
+    const migration = await openGuestSession();
+
+    expect(postedPaths()).toEqual(['/auth/sync']);
+    expect(migration).toEqual({ migrated: [], failed: [] });
   });
 });

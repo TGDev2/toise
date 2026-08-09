@@ -9,12 +9,59 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
+interface GuestDraft {
+  id: string;
+  name: string;
+}
+
 const mockAuth = {
   appUser: null as { id: string } | null,
   isGuest: false,
   isLoading: false,
-  startGuestSession: jest.fn(),
+  startGuestSession: jest.fn<
+    Promise<{ migrated: string[]; failed: GuestDraft[] }>,
+    []
+  >(),
 };
+
+const DRAFTS_KEY = 'chiffreo_local_projects';
+
+const storedDrafts = (): GuestDraft[] =>
+  JSON.parse(localStorage.getItem(DRAFTS_KEY) ?? '[]') as GuestDraft[];
+
+/**
+ * Brouillons présents **à l'instant où `startGuestSession` est appelée**.
+ *
+ * C'est le seul relevé qui prouve quelque chose : après l'appel, la clé locale
+ * est vide — la session invité adopte les brouillons. Un test qui lirait
+ * `localStorage` après coup ne verrait plus rien et conclurait, à tort, que rien
+ * n'a été écrit.
+ */
+let draftsAtSessionStart: Record<string, unknown>[] = [];
+
+/**
+ * Ce que fait réellement `startGuestSession` quand tout se passe bien : elle
+ * ouvre la session **et** adopte les brouillons, donc la clé locale est vide
+ * quand elle rend la main.
+ */
+function guestSessionMigrating(): void {
+  mockAuth.startGuestSession.mockImplementation(async () => {
+    draftsAtSessionStart = storedDrafts() as unknown as Record<string, unknown>[];
+    localStorage.removeItem(DRAFTS_KEY);
+    return {
+      migrated: draftsAtSessionStart.map((_, index) => `srv-${index}`),
+      failed: [],
+    };
+  });
+}
+
+/** Session ouverte, migration refusée : le brouillon reste sur l'appareil. */
+function guestSessionFailingToMigrate(): void {
+  mockAuth.startGuestSession.mockImplementation(async () => {
+    draftsAtSessionStart = storedDrafts() as unknown as Record<string, unknown>[];
+    return { migrated: [], failed: storedDrafts() };
+  });
+}
 
 jest.mock('@/contexts/AuthContext', () => ({
   useAuth: () => mockAuth,
@@ -97,6 +144,8 @@ describe('PublicCalculator', () => {
     localStorage.clear();
     mockAuth.appUser = null;
     mockAuth.isGuest = false;
+    draftsAtSessionStart = [];
+    guestSessionMigrating();
   });
 
   it('renders the email-capture card with an unchecked box and a disabled submit button', async () => {
@@ -267,9 +316,15 @@ describe('PublicCalculator', () => {
     });
   });
 
+  /**
+   * Le brouillon doit être **écrit avant** l'ouverture de la session : c'est
+   * `startGuestSession` qui adopte les brouillons présents, et elle ne repasse
+   * pas. L'écrire après ferait de l'ordre des deux instructions une course, et
+   * du brouillon un orphelin.
+   */
   it('saves a guest draft, starts a guest session and redirects to the dashboard', async () => {
     mockApiPost.mockResolvedValue(estimateResponse);
-    mockAuth.startGuestSession.mockResolvedValue(undefined);
+    guestSessionMigrating();
     render(<PublicCalculator config={config} />);
 
     await fillAndCompute();
@@ -283,11 +338,12 @@ describe('PublicCalculator', () => {
       expect(mockPush).toHaveBeenCalledWith('/dashboard');
     });
 
-    const drafts = JSON.parse(
-      localStorage.getItem('chiffreo_local_projects') ?? '[]',
-    );
-    expect(drafts).toHaveLength(1);
-    expect(drafts[0]).toMatchObject({
+    // Le brouillon existait bien **avant** l'ouverture de la session : c'est
+    // `startGuestSession` qui l'adopte, et elle ne repasse pas. L'écrire après
+    // ferait de l'ordre des deux instructions une course, et du brouillon un
+    // orphelin.
+    expect(draftsAtSessionStart).toHaveLength(1);
+    expect(draftsAtSessionStart[0]).toMatchObject({
       name: 'Mon projet peinture',
       room_name: 'Ma pièce',
       work_type: 'painting',
@@ -296,7 +352,66 @@ describe('PublicCalculator', () => {
       height_m: 2.5,
       openings: [],
     });
-    expect(drafts[0].updated_at).toBeTruthy();
+    expect(draftsAtSessionStart[0].updated_at).toBeTruthy();
+
+    // Adopté, donc plus rien en local : c'est ce qui empêche le tableau de bord
+    // d'afficher en même temps une liste API vide et une carte de brouillon.
+    expect(localStorage.getItem(DRAFTS_KEY)).toBeNull();
+  });
+
+  /**
+   * Le cul-de-sac du parcours d'acquisition, vu depuis l'écran où le geste a eu
+   * lieu : quand la migration échoue, atterrir sur le tableau de bord ferait
+   * croire que c'est enregistré. L'utilisateur doit lire une erreur qui dit quoi
+   * faire, et retrouver sa saisie.
+   */
+  it('n’envoie pas vers le tableau de bord quand le brouillon n’a pas pu être migré', async () => {
+    mockApiPost.mockResolvedValue(estimateResponse);
+    guestSessionFailingToMigrate();
+    render(<PublicCalculator config={config} />);
+
+    await fillAndCompute();
+    await act(async () => {
+      fireEvent.click(await screen.findByText(/sauvegarder mon projet/i));
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/votre saisie est conservée/i),
+      ).toBeInTheDocument();
+    });
+    expect(mockPush).not.toHaveBeenCalled();
+
+    // La saisie est bien là où l'alerte promet qu'elle est.
+    expect(storedDrafts()).toHaveLength(1);
+    expect(storedDrafts()[0]).toMatchObject({ name: 'Mon projet peinture' });
+  });
+
+  /**
+   * Un invité déjà en session passe par la branche API : le projet est créé
+   * côté serveur et le parcours continue sur l'identifiant que le serveur a
+   * émis — jamais sur un uuid local.
+   */
+  it('crée le projet côté API et poursuit le parcours quand la session est déjà ouverte', async () => {
+    mockApiPost.mockImplementation((path: string) =>
+      path === '/projects'
+        ? Promise.resolve({ id: 'srv-42' })
+        : Promise.resolve(estimateResponse),
+    );
+    mockAuth.appUser = { id: 'user-1' };
+    mockAuth.isGuest = true;
+    render(<PublicCalculator config={config} />);
+
+    await fillAndCompute();
+    await act(async () => {
+      fireEvent.click(await screen.findByText(/sauvegarder mon projet/i));
+    });
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/projects/srv-42/work-selection');
+    });
+    expect(mockAuth.startGuestSession).not.toHaveBeenCalled();
+    expect(localStorage.getItem(DRAFTS_KEY)).toBeNull();
   });
 
   /**
@@ -309,7 +424,7 @@ describe('PublicCalculator', () => {
    */
   it('carries segments and exclusions declared on the public page into the guest draft', async () => {
     mockApiPost.mockResolvedValue(estimateResponse);
-    mockAuth.startGuestSession.mockResolvedValue(undefined);
+    guestSessionMigrating();
     render(<PublicCalculator config={config} />);
 
     fireEvent.click(screen.getByRole('button', { name: /\+ crédence/i }));
@@ -327,9 +442,7 @@ describe('PublicCalculator', () => {
       expect(mockPush).toHaveBeenCalledWith('/dashboard');
     });
 
-    const drafts = JSON.parse(
-      localStorage.getItem('chiffreo_local_projects') ?? '[]',
-    );
+    const drafts = draftsAtSessionStart;
     expect(drafts).toHaveLength(1);
     expect(drafts[0].exclusions).toEqual([
       { surface_target: 'wall', type: 'credence', area_m2: 2 },
