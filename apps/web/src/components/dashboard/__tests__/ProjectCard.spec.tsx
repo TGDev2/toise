@@ -86,15 +86,20 @@ describe('ProjectCard', () => {
     expect(onDelete).toHaveBeenCalledWith('test-uuid');
   });
 
-  it('does not render the site tracking entry point for non-contractor users', () => {
+  /**
+   * L'entrée « Suivi de chantier » n'existe plus (E4-3). Elle menait à une page
+   * dont le premier effet est d'ouvrir le paywall de `site_tracking`, gate
+   * gelée : `min_tier` valant le palier payant, un abonné se voyait proposer
+   * de souscrire au palier qu'il détenait déjà.
+   *
+   * L'assertion porte sur le palier qui l'affichait — le seul cas où son
+   * absence est une information. Testée pour un compte sans palier, elle
+   * survivrait, muette, au rétablissement du bouton.
+   */
+  it('n’affiche plus l’entrée « Suivi de chantier », pas même à un abonné', () => {
+    mockAuth.appUser = { subscription_tier: 'contractor_essentiel' };
     render(<ProjectCard project={baseProject} onDelete={onDelete} />);
     expect(screen.queryByText('Suivi de chantier')).not.toBeInTheDocument();
-  });
-
-  it('navigates to site tracking for contractor users', () => {
-    mockAuth.appUser = { subscription_tier: 'contractor_standard' };
-    render(<ProjectCard project={baseProject} onDelete={onDelete} />);
-    fireEvent.click(screen.getByText('Suivi de chantier'));
-    expect(mockPush).toHaveBeenCalledWith('/projects/test-uuid/site-tracking');
+    expect(mockPush).not.toHaveBeenCalled();
   });
 });

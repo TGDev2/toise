@@ -139,6 +139,15 @@ export const GATES_NOT_MARKETED: Record<string, string> = {
   quote_reminders:
     "Gelée (ADR 0001 D3) : même raison que `site_tracking`, et une relance automatique suppose un volume de devis envoyés qu'aucun compte n'a encore.",
 
+  // ── Vivante en base, mais gelée par décision de périmètre ──────────────
+  // Le seul cas où `is_enabled` et la décision divergent : la migration 065 n'a
+  // pas éteint `logbook`, mais l'ADR 0001 §3.1 le gèle comme non prioritaire.
+  // `offer-catalogue.spec.ts` ne peut pas le déduire de la base — c'est
+  // `lib/navigation-map.ts` qui porte le gel, et `navigation-reachability.spec.ts`
+  // qui vérifie qu'aucun élément de navigation n'y mène.
+  logbook:
+    "Gelé (ADR 0001 §3.1) : le carnet du logement a été construit (PLAT-1) comme antidote au churn du particulier, avant que la cible artisan soit tranchée. Vendu au palier gratuit jusqu'en E4-3, alors que ses deux points d'entrée venaient d'être retirés.",
+
   // ── Vivante en base, mais rien à comparer ──────────────────────────────
   price_comparison:
     "Gate `free` activée en base (036), mais les adaptateurs ManoMano et Leroy Merlin sont désactivés par défaut (`MANOMANO_ENABLED` / `LEROY_MERLIN_ENABLED` à `false`, .env.example) et sans flux fournisseur provisionné : aucun compte réel ne peut aujourd'hui comparer un prix entre enseignes.",

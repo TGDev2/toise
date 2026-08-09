@@ -2,7 +2,6 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { ShoppingListMaterials } from '../ShoppingListMaterials';
 import type { ShoppingListMaterialItem } from '@/lib/shopping-list-types';
 import type { BuyLinkItem } from '@/lib/price-comparison-types';
-import type { EcoRowData } from '@/lib/eco-materials-types';
 import type { KnownPrice } from '@/lib/known-prices';
 
 function makeItem(
@@ -152,110 +151,11 @@ describe('ShoppingListMaterials', () => {
     });
   });
 
-  // PLAT-3 : badge/suggestion éco et filtre, tier Pro.
-  describe('eco materials (PLAT-3)', () => {
-    it('renders an Éco badge for a material flagged is_eco', () => {
-      const ecoData = new Map<string, EcoRowData>([
-        ['mat-paint', { is_eco: true, eco_label_fr: 'Sans COV' }],
-      ]);
-      render(
-        <ShoppingListMaterials
-          items={[makeItem()]}
-          ecoAllowed
-          ecoData={ecoData}
-          readOnly
-        />,
-      );
-      expect(screen.getByText('Éco')).toBeInTheDocument();
-    });
-
-    it('renders no Éco badge for a material absent from ecoData', () => {
-      render(<ShoppingListMaterials items={[makeItem()]} ecoAllowed readOnly />);
-      expect(screen.queryByText('Éco')).not.toBeInTheDocument();
-    });
-
-    it('renders the eco equivalent suggestion when one is known', () => {
-      const ecoData = new Map<string, EcoRowData>([
-        [
-          'mat-paint',
-          {
-            is_eco: false,
-            eco_label_fr: null,
-            suggestion: {
-              eco_material_id: 'mat-paint-eco',
-              eco_material_name: 'Peinture acrylique sans COV',
-              eco_label_fr: 'Sans COV, écolabel NF Environnement',
-            },
-          },
-        ],
-      ]);
-      render(
-        <ShoppingListMaterials
-          items={[makeItem()]}
-          ecoAllowed
-          ecoData={ecoData}
-          readOnly
-        />,
-      );
-      expect(
-        screen.getByText(/Alternative durable disponible/i),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(/Peinture acrylique sans COV/),
-      ).toBeInTheDocument();
-    });
-
-    it('calls onShowEcoPaywall instead of filtering when ecoAllowed is false', () => {
-      const onShowEcoPaywall = jest.fn();
-      render(
-        <ShoppingListMaterials
-          items={[
-            makeItem(),
-            makeItem({
-              material_id: 'mat-other',
-              material_name: 'Enduit de lissage',
-            }),
-          ]}
-          ecoAllowed={false}
-          onShowEcoPaywall={onShowEcoPaywall}
-          readOnly
-        />,
-      );
-
-      fireEvent.click(screen.getByRole('button', { name: /Matériaux éco/i }));
-
-      expect(onShowEcoPaywall).toHaveBeenCalled();
-      // Toujours 2 lignes : le paywall bloque le filtre, il ne le déclenche pas.
-      expect(screen.getByText('Peinture acrylique mate')).toBeInTheDocument();
-    });
-
-    it('filters to eco-only materials when the toggle is active and allowed', () => {
-      const ecoData = new Map<string, EcoRowData>([
-        ['mat-paint', { is_eco: true, eco_label_fr: 'Sans COV' }],
-      ]);
-      render(
-        <ShoppingListMaterials
-          items={[
-            makeItem(),
-            makeItem({
-              material_id: 'mat-other',
-              material_name: 'Enduit de lissage',
-            }),
-          ]}
-          ecoAllowed
-          ecoData={ecoData}
-          readOnly
-        />,
-      );
-
-      expect(screen.getByText('Enduit de lissage')).toBeInTheDocument();
-
-      fireEvent.click(screen.getByRole('button', { name: /Voir les matériaux éco/i }));
-
-      expect(screen.getByText('Peinture acrylique mate')).toBeInTheDocument();
-      expect(screen.queryByText('Enduit de lissage')).not.toBeInTheDocument();
-    });
-  });
+  // Le bloc « eco materials (PLAT-3) » vivait ici : badge, suggestion
+  // d'équivalence et filtre derrière un paywall `eco_materials`. La gate est
+  // gelée depuis la migration 065 — refusée à tous les paliers — et E4-3 a
+  // retiré la surface. Les cas d'un filtre qui n'existe plus ne prouvent rien ;
+  // ce qui garde la décision est désormais `navigation-reachability.spec.ts`.
 
   // E4-4 : le rappel du dernier prix se montre avant de s'appliquer. Un prix
   // posé sans que personne ne le regarde deviendrait indiscernable d'un relevé.

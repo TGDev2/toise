@@ -274,16 +274,13 @@ export default function DashboardPage() {
           <Button onClick={() => setIsComposerOpen((v) => !v)}>
             {isComposerOpen ? 'Fermer le formulaire' : 'Créer un projet'}
           </Button>
-          {appUser && (
-            <Button variant="secondary" onClick={() => router.push('/referrals')}>
-              Parrainage
-            </Button>
-          )}
-          {appUser && (
-            <Button variant="secondary" onClick={() => router.push('/logbook')}>
-              Carnet du logement
-            </Button>
-          )}
+          {/*
+            « Parrainage » et « Carnet du logement » menaient ici à deux écrans
+            gelés comme non prioritaires par l'ADR 0001 §3.1 — et invisibles de
+            `feature_gates` : `logbook` y est `is_enabled = true`, le parrainage
+            n'a aucune gate. Leur fermeture est déclarée et vérifiée par
+            `lib/navigation-map.ts` (E4-3).
+          */}
           <Button variant="secondary" onClick={handleLogout}>
             {isGuest ? 'Quitter le mode invité' : 'Déconnexion'}
           </Button>

@@ -1,7 +1,6 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
 import { ProjectSummary, WORK_TYPE_LABELS } from '@/lib/project-types';
 import { StatusBadge } from './StatusBadge';
 
@@ -28,8 +27,6 @@ function getProjectRoute(project: ProjectSummary): string {
 
 export function ProjectCard({ project, onDelete }: ProjectCardProps) {
   const router = useRouter();
-  const { appUser } = useAuth();
-  const isContractor = appUser?.subscription_tier?.startsWith('contractor') ?? false;
   const workTypeLabel =
     project.work_type && WORK_TYPE_LABELS[project.work_type]
       ? WORK_TYPE_LABELS[project.work_type]
@@ -109,15 +106,15 @@ export function ProjectCard({ project, onDelete }: ProjectCardProps) {
             Partager dans la communauté
           </button>
         )}
-        {isContractor && (
-          <button
-            type="button"
-            onClick={() => router.push(`/projects/${project.id}/site-tracking`)}
-            className="rounded-full border border-stone-300 px-4 py-2 text-sm font-semibold text-stone-700 hover:-translate-y-0.5 hover:bg-stone-50"
-          >
-            Suivi de chantier
-          </button>
-        )}
+        {/*
+          Le bouton « Suivi de chantier » s'affichait ici sur chaque carte d'un
+          abonné et menait à `/projects/[id]/site-tracking`, dont le premier
+          effet est d'ouvrir le paywall de `site_tracking` — gate gelée
+          (`is_enabled = false`, migration 065), donc refusée à tous les paliers.
+          Son `min_tier` valant le palier payant, `PaywallModal` prenait la
+          branche contractor et proposait à l'abonné de souscrire au palier
+          qu'il détenait déjà (E4-3, ADR 0001 D3 et §3.4).
+        */}
         <button
           type="button"
           onClick={(e) => {

@@ -228,12 +228,7 @@ export function ContractorDashboard() {
           >
             Profil entreprise
           </Button>
-          <Button variant="secondary" onClick={() => router.push('/referrals')}>
-            Parrainage
-          </Button>
-          <Button variant="secondary" onClick={() => router.push('/logbook')}>
-            Carnet du logement
-          </Button>
+          {/* Voir `dashboard/page.tsx` : les deux mêmes entrées gelées (E4-3). */}
           <Button variant="secondary" onClick={handleLogout}>
             Déconnexion
           </Button>

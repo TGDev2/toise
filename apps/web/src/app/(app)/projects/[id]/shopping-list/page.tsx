@@ -10,7 +10,6 @@ import type {
   BuyLinkItem,
   BuyLinksResponse,
 } from '@/lib/price-comparison-types';
-import type { EcoSuggestionsResponse, EcoRowData } from '@/lib/eco-materials-types';
 import type { KnownPrice, KnownPricesResponse } from '@/lib/known-prices';
 import { indexKnownPrices } from '@/lib/known-prices';
 import { ShoppingListMaterials } from '@/components/shopping-list/ShoppingListMaterials';
@@ -34,7 +33,14 @@ export default function ShoppingListPage() {
   const budgetAllowed = isFeatureAllowed('budget_tracking');
   const priceComparisonAllowed = isFeatureAllowed('price_comparison');
   const canQuote = isFeatureAllowed('export_devis');
-  const ecoAllowed = isFeatureAllowed('eco_materials');
+  /*
+    Le panneau « matériaux éco » vivait ici : filtre, badge, suggestion
+    d'équivalence, et un paywall sur `eco_materials`. La gate est gelée
+    (`is_enabled = false`, migration 065) — refusée à tous les paliers — et
+    l'argument vise le particulier, hors de la cible artisan (ADR 0001 D3,
+    §3.1). Le clic ne menait donc qu'à « Fonctionnalité indisponible ».
+    Retiré en E4-3 ; le catalogue d'équivalences reste en base.
+  */
   // DATA-5 : gate `free`. La clôture alimente DATA-3, DATA-4, COM-1 et PLAT-1 ;
   // la réserver aux abonnés reviendrait à n'apprendre que d'eux.
   const closeoutAllowed = isFeatureAllowed('project_closeout');
@@ -52,7 +58,6 @@ export default function ShoppingListPage() {
     'pdf' | 'share' | null
   >(null);
   const [budgetSummary, setBudgetSummary] = useState<BudgetSummary | null>(null);
-  const [ecoData, setEcoData] = useState<EcoSuggestionsResponse | null>(null);
   const [knownPrices, setKnownPrices] = useState<KnownPricesResponse | null>(null);
   const [comparing, setComparing] = useState(false);
   const [comparisonData, setComparisonData] = useState<PriceComparisonResponse | null>(null);
@@ -98,18 +103,6 @@ export default function ShoppingListPage() {
       // Rappel de prix optionnel : un échec laisse la saisie manuelle intacte.
     }
   }, [budgetAllowed, projectId]);
-
-  const loadEcoSuggestions = useCallback(async () => {
-    if (!ecoAllowed) return;
-    try {
-      const result = await apiGet<EcoSuggestionsResponse>(
-        `/projects/${projectId}/shopping-list/eco-suggestions`,
-      );
-      setEcoData(result);
-    } catch {
-      // Suggestions éco optionnelles : un échec ne doit jamais bloquer l'affichage.
-    }
-  }, [ecoAllowed, projectId]);
 
   const flushUpdates = useCallback(async () => {
     const updates = pendingUpdatesRef.current;
@@ -204,39 +197,12 @@ export default function ShoppingListPage() {
     }
   }, [data, budgetAllowed, loadBudgetSummary]);
 
-  // Load eco suggestions when data is available (PLAT-3)
-  useEffect(() => {
-    if (data && ecoAllowed) {
-      loadEcoSuggestions();
-    }
-  }, [data, ecoAllowed, loadEcoSuggestions]);
-
   // Derniers prix relevés par l'entreprise (E4-4)
   useEffect(() => {
     if (data && budgetAllowed) {
       loadKnownPrices();
     }
   }, [data, budgetAllowed, loadKnownPrices]);
-
-  const ecoByMaterialId = useMemo(() => {
-    const map = new Map<string, EcoRowData>();
-    if (!ecoData) return map;
-    for (const item of ecoData.eco_items) {
-      map.set(item.material_id, { is_eco: true, eco_label_fr: item.eco_label_fr });
-    }
-    for (const s of ecoData.suggestions) {
-      map.set(s.material_id, {
-        is_eco: false,
-        eco_label_fr: null,
-        suggestion: {
-          eco_material_id: s.eco_material_id,
-          eco_material_name: s.eco_material_name,
-          eco_label_fr: s.eco_label_fr,
-        },
-      });
-    }
-    return map;
-  }, [ecoData]);
 
   const knownMaterialPrices = useMemo(
     () => indexKnownPrices(knownPrices?.materials ?? []),
@@ -632,10 +598,6 @@ export default function ShoppingListPage() {
     showPaywall('budget_tracking');
   }, [showPaywall]);
 
-  const handleShowEcoPaywall = useCallback(() => {
-    showPaywall('eco_materials');
-  }, [showPaywall]);
-
   /*
     Les deux sorties de l'étape lisent la liste **côté serveur** — le devis via
     `GET /shopping-list`, la clôture via son propre écran. Elles attendent donc
@@ -832,14 +794,11 @@ export default function ShoppingListPage() {
               items={data.material_items}
               budgetAllowed={budgetAllowed}
               buyLinks={buyLinks}
-              ecoAllowed={ecoAllowed}
-              ecoData={ecoByMaterialId}
               knownPrices={knownMaterialPrices}
               onUpdateQuantity={handleUpdateMaterialQty}
               onResetQuantity={handleResetMaterialQty}
               onUpdatePrice={handleUpdateMaterialPrice}
               onShowPaywall={handleShowPaywall}
-              onShowEcoPaywall={handleShowEcoPaywall}
             />
           </section>
 

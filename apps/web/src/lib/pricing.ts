@@ -199,10 +199,12 @@ export const OFFER_PLANS: OfferPlan[] = [
         gateKey: null,
         nonGateReason: 'socle',
       },
-      {
-        label: 'Carnet du logement : l’historique des pièces mesurées',
-        gateKey: 'logbook',
-      },
+      // « Carnet du logement » figurait ici. L'écran est gelé par l'ADR 0001
+      // §3.1 (antidote au churn du particulier, hors cible artisan) et E4-3 a
+      // retiré ses deux points d'entrée du tableau de bord. Le vendre ensuite
+      // aurait produit le défaut exact que le §3.4 interdit : une ligne vendue
+      // qu'aucune navigation n'atteint. La gate reste en base, `is_enabled =
+      // true`, et son motif de non-commercialisation est à `GATES_NOT_MARKETED`.
       {
         label: 'Clôture de chantier : vos restes et ce qui se rend encore',
         gateKey: 'project_closeout',
