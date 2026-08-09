@@ -73,13 +73,29 @@ export class GateFloorPrepOnFlatness1711468800088 implements MigrationInterface 
         ADD COLUMN IF NOT EXISTS "substrate_prep" character varying(20);
     `);
 
+    // The `substrate_prep` backfill must not depend on the yield/unit still
+    // holding their pre-recalibration value: `seed-catalog.data.ts` is a
+    // living array (see `…067`'s own note on this), so on a database that
+    // migrates from scratch `…006` already inserts the recalibrated
+    // `yield_per_unit`/`unit` straight from that file. A guard coupling
+    // `substrate_prep IS NULL` to the legacy value never matches there,
+    // leaving `substrate_prep` permanently unset and the floor-flatness gate
+    // silently inert — every quote always includes the levelling compound
+    // and primer, regardless of the answer. Same fix already applied by
+    // `…087` for `wet_room_system`: back the new column on its own IS NULL
+    // guard, and keep the value recalibration as an independent, harmless
+    // no-op once the seed already carries the new figure.
     for (const m of COMPOUNDS) {
       await queryRunner.query(
         `UPDATE "materials_catalog"
-            SET "substrate_prep" = 'leveling_compound',
-                "yield_per_unit" = 0.2222
-          WHERE "name" = $1 AND "category" = $2
-            AND "substrate_prep" IS NULL AND "yield_per_unit" = 0.2`,
+            SET "substrate_prep" = 'leveling_compound'
+          WHERE "name" = $1 AND "category" = $2 AND "substrate_prep" IS NULL`,
+        [m.name, m.category],
+      );
+      await queryRunner.query(
+        `UPDATE "materials_catalog"
+            SET "yield_per_unit" = 0.2222
+          WHERE "name" = $1 AND "category" = $2 AND "yield_per_unit" = 0.2`,
         [m.name, m.category],
       );
     }
@@ -87,9 +103,14 @@ export class GateFloorPrepOnFlatness1711468800088 implements MigrationInterface 
     for (const m of PRIMERS) {
       await queryRunner.query(
         `UPDATE "materials_catalog"
-            SET "substrate_prep" = 'leveling_primer', "unit" = 'kg'
-          WHERE "name" = $1 AND "category" = $2
-            AND "substrate_prep" IS NULL AND "unit" = 'L'`,
+            SET "substrate_prep" = 'leveling_primer'
+          WHERE "name" = $1 AND "category" = $2 AND "substrate_prep" IS NULL`,
+        [m.name, m.category],
+      );
+      await queryRunner.query(
+        `UPDATE "materials_catalog"
+            SET "unit" = 'kg'
+          WHERE "name" = $1 AND "category" = $2 AND "unit" = 'L'`,
         [m.name, m.category],
       );
       for (const pkg of LEGACY_PRIMER_PACKAGINGS) {

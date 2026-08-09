@@ -105,12 +105,20 @@ describe('work_type_materials (intégration, PostgreSQL réel)', () => {
     },
   );
 
+  /**
+   * The cap started at 6 with the E1-3 curation and grew with E1-10, which
+   * added mandatory accessories (baseboards, threshold bars) and per-ouvrage
+   * consumables (insulation, resilient strip) documented per work type in
+   * `docs/MATERIAUX_OUVRAGES.md`. `drywall`'s 8 unconditional lines are the
+   * current ceiling across all 7 work types — this guard only catches an
+   * unbounded list, not the exact curated count.
+   */
   it.each(WORK_TYPE_CODES)(
-    'estimatePublicMulti renvoie au plus 6 lignes pour %s',
+    'estimatePublicMulti renvoie au plus 8 lignes pour %s',
     async (code) => {
       const result = await service.estimatePublicMulti(makeApiDto(code));
 
-      expect(result.items.length).toBeLessThanOrEqual(6);
+      expect(result.items.length).toBeLessThanOrEqual(8);
     },
   );
 
