@@ -39,7 +39,7 @@ if command -v gh >/dev/null 2>&1; then
   }
 else
   [ -n "$TAG" ] || { echo "ERREUR: sans gh, le tag est obligatoire (ex. cv-model-v1)" >&2; exit 1; }
-  : "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY requis sans gh (ex. owner/chiffreo)}"
+  : "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY requis sans gh (ex. owner/toise)}"
   command -v python3 >/dev/null 2>&1 \
     || { echo "ERREUR: python3 requis pour le repli curl" >&2; exit 1; }
   AUTH=()

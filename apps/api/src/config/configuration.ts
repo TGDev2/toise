@@ -25,9 +25,9 @@ export default () => ({
   database: {
     host: process.env.DB_HOST ?? 'localhost',
     port: parseInt(process.env.DB_PORT ?? '5432', 10),
-    username: process.env.DB_USERNAME ?? 'chiffreo',
-    password: process.env.DB_PASSWORD ?? 'chiffreo_dev',
-    name: process.env.DB_NAME ?? 'chiffreo',
+    username: process.env.DB_USERNAME ?? 'toise',
+    password: process.env.DB_PASSWORD ?? 'toise_dev',
+    name: process.env.DB_NAME ?? 'toise',
   },
   firebase: {
     projectId: process.env.FIREBASE_PROJECT_ID,
@@ -78,7 +78,7 @@ export default () => ({
   brevo: {
     apiKey: process.env.BREVO_API_KEY,
     senderEmail: process.env.BREVO_SENDER_EMAIL,
-    senderName: process.env.BREVO_SENDER_NAME ?? 'Chiffréo',
+    senderName: process.env.BREVO_SENDER_NAME ?? 'Toisé',
   },
   priceComparison: {
     manoMano: {

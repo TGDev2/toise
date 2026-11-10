@@ -17,8 +17,8 @@
 // qu'il reste révocable dans l'autre sens — d'où `subscribeToConsent`, qui
 // permet de compter la session dès l'acceptation plutôt que de l'avoir perdue.
 
-export const CONSENT_KEY = 'chiffreo_cookie_consent';
-export const CONSENT_EVENT = 'chiffreo-cookie-consent-change';
+export const CONSENT_KEY = 'toise_cookie_consent';
+export const CONSENT_EVENT = 'toise-cookie-consent-change';
 
 export type ConsentValue = 'accepted' | 'declined';
 

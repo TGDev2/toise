@@ -9,7 +9,7 @@
 # une sauvegarde qu'on n'a jamais restaurée n'est pas une sauvegarde, c'est un
 # fichier.
 #
-# Tout est jetable et préfixé `chiffreo-drill-` : ce script ne peut pas toucher
+# Tout est jetable et préfixé `toise-drill-` : ce script ne peut pas toucher
 # une base, un volume ou une sauvegarde de production, même lancé sur le VPS.
 #
 # Prérequis : docker, gpg, une image de l'API (DRILL_API_IMAGE) — c'est elle qui
@@ -17,8 +17,8 @@
 set -euo pipefail
 
 # ─── Paramètres ───────────────────────────────────────────────────
-API_IMAGE="${DRILL_API_IMAGE:-chiffreo-api:drill}"
-PREFIX="chiffreo-drill"
+API_IMAGE="${DRILL_API_IMAGE:-toise-api:drill}"
+PREFIX="toise-drill"
 NETWORK="${PREFIX}-net"
 DB_CONTAINER="${PREFIX}-db"
 API_CONTAINER="${PREFIX}-api"
@@ -28,14 +28,14 @@ UPLOADS_VOLUME="${PREFIX}-uploads"
 # ≥ 16 caractères : `env.validation.ts` refuse plus court en production, et
 # c'est bien l'API de production qu'on démarre à la fin.
 DB_PASSWORD="drill-restore-cycle-pw"
-DB_USERNAME="chiffreo"
-DB_NAME="chiffreo"
+DB_USERNAME="toise"
+DB_NAME="toise"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORK="$(mktemp -d)"
 BACKUP_DIR="$WORK/backups"
 export GNUPGHOME="$WORK/gnupg"
-GPG_RECIPIENT="drill-backup@chiffreo.test"
+GPG_RECIPIENT="drill-backup@toise.test"
 KEEP_ON_EXIT="${DRILL_KEEP:-0}"
 
 mkdir -p "$BACKUP_DIR" "$GNUPGHOME"
@@ -206,8 +206,8 @@ say "3. Sauvegarde (docs/deploy/backup.sh, sans modification)"
 start_timer
 # Une sauvegarde périmée volontairement déposée : la rotation doit l'emporter
 # et ne toucher à rien d'autre. Sans elle, `RETENTION_DAYS` n'est jamais exercé.
-touch -d '30 days ago' "$BACKUP_DIR/chiffreo-db-20260101T000000Z.dump.gpg" 2>/dev/null \
-  || touch -t 202601010000 "$BACKUP_DIR/chiffreo-db-20260101T000000Z.dump.gpg"
+touch -d '30 days ago' "$BACKUP_DIR/toise-db-20260101T000000Z.dump.gpg" 2>/dev/null \
+  || touch -t 202601010000 "$BACKUP_DIR/toise-db-20260101T000000Z.dump.gpg"
 
 BACKUP_ENV_FILE=/nonexistent \
 APP_ENV_FILE=/nonexistent \
@@ -221,11 +221,11 @@ UPLOADS_VOLUME="$UPLOADS_VOLUME" \
   bash "$SCRIPT_DIR/backup.sh" || fail "backup.sh a échoué"
 BACKUP_SECONDS=$(elapsed)
 
-DB_ARTIFACT="$(ls -1 "$BACKUP_DIR"/chiffreo-db-*.dump.gpg | grep -v 20260101 | tail -1)"
-UPLOADS_ARTIFACT="$(ls -1 "$BACKUP_DIR"/chiffreo-uploads-*.tar.gz.gpg | tail -1)"
+DB_ARTIFACT="$(ls -1 "$BACKUP_DIR"/toise-db-*.dump.gpg | grep -v 20260101 | tail -1)"
+UPLOADS_ARTIFACT="$(ls -1 "$BACKUP_DIR"/toise-uploads-*.tar.gz.gpg | tail -1)"
 [ -s "$DB_ARTIFACT" ] || fail "artefact base absent ou vide"
 [ -s "$UPLOADS_ARTIFACT" ] || fail "artefact uploads absent ou vide"
-[ ! -f "$BACKUP_DIR/chiffreo-db-20260101T000000Z.dump.gpg" ] \
+[ ! -f "$BACKUP_DIR/toise-db-20260101T000000Z.dump.gpg" ] \
   || fail "rotation: la sauvegarde périmée est toujours là"
 # Chiffré veut dire illisible : le contrôle porte sur les octets. `PGDMP` est la
 # signature d'un dump `pg_dump -Fc` en clair — la trouver ici voudrait dire que
@@ -320,15 +320,15 @@ docker run -d --name "$API_CONTAINER" --network "$NETWORK" \
   -e NODE_ENV=production -e PORT=3001 \
   -e DB_HOST="$DB_CONTAINER" -e DB_PORT=5432 \
   -e DB_USERNAME="$DB_USERNAME" -e DB_PASSWORD="$DB_PASSWORD" -e DB_NAME="$DB_NAME" \
-  -e CORS_ORIGIN=https://drill.chiffreo.test \
-  -e PUBLIC_URL=https://drill.chiffreo.test \
-  -e FIREBASE_PROJECT_ID=chiffreo-drill \
-  -e FIREBASE_CLIENT_EMAIL=drill@chiffreo-drill.iam.gserviceaccount.com \
+  -e CORS_ORIGIN=https://drill.toise.test \
+  -e PUBLIC_URL=https://drill.toise.test \
+  -e FIREBASE_PROJECT_ID=toise-drill \
+  -e FIREBASE_CLIENT_EMAIL=drill@toise-drill.iam.gserviceaccount.com \
   -e FIREBASE_PRIVATE_KEY="$FIREBASE_KEY" \
   -e STRIPE_SECRET_KEY=sk_test_drill \
   -e STRIPE_WEBHOOK_SECRET=whsec_drill \
   -e BREVO_API_KEY=drill \
-  -e BREVO_SENDER_EMAIL=drill@chiffreo.test \
+  -e BREVO_SENDER_EMAIL=drill@toise.test \
   -e CV_ENABLED=false \
   -e STORAGE_PROVIDER=local -e STORAGE_LOCAL_PATH=/app/uploads \
   -v "$UPLOADS_VOLUME":/app/uploads \

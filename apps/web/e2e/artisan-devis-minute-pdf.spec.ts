@@ -17,13 +17,13 @@ test('un artisan connecté génère un devis-minute et télécharge le PDF', asy
   await page.getByRole('button', { name: 'Se connecter' }).click();
 
   // La connexion pousse vers /dashboard dès que Firebase confirme la session,
-  // sans attendre l'écriture du cookie `chiffreo_auth` que lit le middleware
+  // sans attendre l'écriture du cookie `toise_auth` que lit le middleware
   // serveur (`proxy.ts`) : le premier essai peut donc rebondir sur /login
   // (gotcha documentée dans la skill verify). Le cookie est écrit dès que
   // `onIdTokenChanged` se déclenche, indépendamment des rebonds éventuels —
   // l'attendre directement est déterministe, contrairement à un nombre fixe
   // de réessais.
-  await page.waitForFunction(() => document.cookie.includes('chiffreo_auth'), {
+  await page.waitForFunction(() => document.cookie.includes('toise_auth'), {
     timeout: 15_000,
   });
   if (new URL(page.url()).pathname !== '/dashboard') {

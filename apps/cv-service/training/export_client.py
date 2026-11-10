@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Récupère l'export de ré-entraînement CV-6 depuis l'API Chiffréo.
+"""Récupère l'export de ré-entraînement CV-6 depuis l'API Toisé.
 
 Appelle GET /admin/cv-retraining/export (paginé) puis télécharge les photos
 référencées via GET /admin/cv-retraining/photo?path=… — auth Firebase
@@ -11,10 +11,10 @@ Sorties dans --out (le « bundle », transitoire — purgé par retrain.py) :
   images/…       — photos, arborescence {projectId}/{uuid}.ext préservée
 
 Environnement requis :
-  CHIFFREO_API_URL         ex. https://api.chiffreo.fr/api/v1
+  TOISE_API_URL         ex. https://api.toise.fr/api/v1
   FIREBASE_WEB_API_KEY     clé Web du projet Firebase
-  CHIFFREO_ADMIN_EMAIL     compte admin dédié à la boucle
-  CHIFFREO_ADMIN_PASSWORD
+  TOISE_ADMIN_EMAIL     compte admin dédié à la boucle
+  TOISE_ADMIN_PASSWORD
 
 Exemple :
   python training/export_client.py --out training/retrain/bundle
@@ -126,10 +126,10 @@ def main() -> None:
                         help="ISO 8601 : n'exporter que les jobs complétés après")
     args = parser.parse_args()
 
-    api_url = require_env("CHIFFREO_API_URL").rstrip("/")
+    api_url = require_env("TOISE_API_URL").rstrip("/")
     api_key = require_env("FIREBASE_WEB_API_KEY")
-    email = require_env("CHIFFREO_ADMIN_EMAIL")
-    password = require_env("CHIFFREO_ADMIN_PASSWORD")
+    email = require_env("TOISE_ADMIN_EMAIL")
+    password = require_env("TOISE_ADMIN_PASSWORD")
 
     out = Path(args.out)
     images_dir = out / "images"

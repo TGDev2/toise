@@ -1,6 +1,6 @@
 # Déploiement en production (VPS + Docker Compose)
 
-Ce guide décrit le déploiement d'Chiffréo sur un VPS (Hetzner, OVH, Scaleway…)
+Ce guide décrit le déploiement de Toisé sur un VPS (Hetzner, OVH, Scaleway…)
 avec Docker Compose et Caddy comme reverse proxy (TLS automatique).
 
 ## Prérequis
@@ -11,7 +11,7 @@ avec Docker Compose et Caddy comme reverse proxy (TLS automatique).
   (ADR 0001 §D2) — il reste dans le dépôt, condition de réouverture au §5.2
   de l'ADR.
 - Un nom de domaine pointant vers le VPS via des enregistrements DNS `A` (et
-  `AAAA` en IPv6) — ex. `chiffreo.fr` et `api.chiffreo.fr`.
+  `AAAA` en IPv6) — ex. `toise.fr` et `api.toise.fr`.
 - Exécuter [`docs/deploy/provision.sh`](deploy/provision.sh) sur le VPS neuf
   (root) : installe Docker + Compose, Caddy (dépôt officiel — absent des
   dépôts Debian/Ubuntu par défaut) et configure le pare-feu UFW
@@ -28,7 +28,7 @@ avec Docker Compose et Caddy comme reverse proxy (TLS automatique).
 ## 1. Préparer l'environnement
 
 ```bash
-git clone <repository-url> && cd Chiffreo
+git clone <repository-url> && cd toise
 cp .env.example .env
 ```
 
@@ -51,12 +51,12 @@ règles n'est pas respectée — le message d'erreur nomme la variable fautive :
 |---|---|
 | `NODE_ENV` | `production` |
 | `DB_PASSWORD` | mot de passe fort généré, 16 caractères minimum |
-| `CORS_ORIGIN` | `https://chiffreo.fr` |
-| `PUBLIC_URL` | `https://chiffreo.fr` |
+| `CORS_ORIGIN` | `https://toise.fr` |
+| `PUBLIC_URL` | `https://toise.fr` |
 | `FIREBASE_PROJECT_ID` / `FIREBASE_CLIENT_EMAIL` / `FIREBASE_PRIVATE_KEY` | depuis la clé de service account |
 | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | depuis le dashboard Stripe — **§4.2** |
-| `NEXT_PUBLIC_API_URL` | `https://api.chiffreo.fr/api/v1` |
-| `NEXT_PUBLIC_SITE_URL` | `https://chiffreo.fr` |
+| `NEXT_PUBLIC_API_URL` | `https://api.toise.fr/api/v1` |
+| `NEXT_PUBLIC_SITE_URL` | `https://toise.fr` |
 | `NEXT_PUBLIC_FIREBASE_*` | config web Firebase |
 
 > ⚠️ Les variables `NEXT_PUBLIC_*` sont **figées au build de l'image web**.
@@ -122,7 +122,7 @@ droite) — un prix créé en mode test est invisible d'une clé live, et l'API
 refusera le checkout avec « Offre invalide ».
 
 1. *Products* → *Add product*
-   - **Nom** : `Chiffréo Conformité` (il apparaît sur la facture Stripe du client)
+   - **Nom** : `Toisé Conformité` (il apparaît sur la facture Stripe du client)
    - **Pricing** : `Recurring`, `279,00`, `EUR`, **`Yearly`**
 2. Copier l'identifiant du **prix** : `price_…`, pas `prod_…`. C'est le prix,
    jamais le produit, que l'API transmet à Stripe.
@@ -229,7 +229,7 @@ chemin offert au client pour changer de carte ou résilier lui-même.
 ### 4.4 Créer l'endpoint webhook
 
 *Developers → Webhooks → Add endpoint*, URL :
-`https://api.chiffreo.fr/api/v1/subscriptions/webhook`
+`https://api.toise.fr/api/v1/subscriptions/webhook`
 
 Les événements à souscrire sont **exactement** ceux que le `switch` de
 [`handleWebhookEvent`](../apps/api/src/subscriptions/subscriptions.service.ts)
@@ -351,7 +351,7 @@ Trois choses qu'il ne couvre pas, et il le dit à l'exécution :
 
 1. Souscrire une fois depuis la page tarifs, avec une vraie carte.
 2. Vérifier la ligne créée :
-   `docker compose -f docker-compose.prod.yml exec db psql -U chiffreo -d chiffreo -c "SELECT status, stripe_price_id, current_period_start, current_period_end FROM subscriptions ORDER BY created_at DESC LIMIT 1"`
+   `docker compose -f docker-compose.prod.yml exec db psql -U toise -d toise -c "SELECT status, stripe_price_id, current_period_start, current_period_end FROM subscriptions ORDER BY created_at DESC LIMIT 1"`
    — le statut doit être `active` **dès la souscription** (il n'y a pas
    d'essai), et la période doit couvrir **un an**. Une période de trente jours
    signale un prix créé en `Monthly` : le client vient d'être engagé à 279 €
@@ -374,17 +374,17 @@ Deux volumes Docker contiennent les données persistantes :
 La procédure complète (chiffrement GPG, rotation, cron, et surtout la
 **restauration testée** sur une base jetable) est documentée dans
 [`docs/deploy/BACKUP.md`](deploy/BACKUP.md). Une fois la clé GPG et
-`/etc/chiffreo/backup.env` en place (`BACKUP.md` §3), l'installation se
+`/etc/toise/backup.env` en place (`BACKUP.md` §3), l'installation se
 résume à une ligne de crontab :
 
 ```bash
 sudo crontab -e
 # ajouter :
-15 3 * * * bash /opt/chiffreo/docs/deploy/backup.sh >> /var/log/chiffreo-backup.log 2>&1
+15 3 * * * bash /opt/toise/docs/deploy/backup.sh >> /var/log/toise-backup.log 2>&1
 ```
 
 Renseigner aussi `BACKUP_REMOTE` (copie hors-site) et `BACKUP_MONITOR_URL`
-(alerte sur échec **et** sur run manquant) dans `/etc/chiffreo/backup.env` :
+(alerte sur échec **et** sur run manquant) dans `/etc/toise/backup.env` :
 sans eux, les sauvegardes vivent sur le disque qu'elles protègent et un échec
 cron reste muet. Voir `BACKUP.md` §4 et §5.
 
@@ -424,7 +424,7 @@ Le déploiement est bloquant à trois endroits, dans cet ordre :
 | **Test de fumée** (`smoke-test.sh`) | les deux services répondent **et** servent le tag attendu | un `pull` resservant l'image précédente laissait une pile saine et périmée |
 
 > ⚠️ **Prérequis nouveau** : le point de restauration est **bloquant**. La clé
-> GPG et `/etc/chiffreo/backup.env` doivent être en place sur le VPS
+> GPG et `/etc/toise/backup.env` doivent être en place sur le VPS
 > ([`BACKUP.md`](deploy/BACKUP.md) §3), sinon **chaque déploiement échoue à
 > cette étape**. C'est délibéré : déployer sans point de restauration, c'est
 > décider à l'avance que le retour arrière n'aura aucun recours.
@@ -435,7 +435,7 @@ affiche le tag précédent, le chemin exact du point de restauration, et si la
 version contient une migration contractante. Un retour arrière automatique
 serait précisément dangereux dans ce dernier cas — voir § Retour arrière.
 
-Le pipeline ne bootstrap pas un VPS neuf : il suppose `/opt/chiffreo` déjà
+Le pipeline ne bootstrap pas un VPS neuf : il suppose `/opt/toise` déjà
 cloné et fonctionnel (même chemin que `docs/deploy/backup.sh`). En revanche,
 `backup.sh` et `smoke-test.sh` sont **poussés par SSH depuis le dépôt** à
 chaque exécution (`ssh … 'bash -s' < script`, l'idiome de `provision.sh`) : le
@@ -457,7 +457,7 @@ garantirait qu'il porte la version attendue de ces scripts.
 Génération de `VPS_SSH_KNOWN_HOSTS` :
 
 ```bash
-ssh-keyscan -H -t ed25519,rsa <ip-ou-domaine-vps> > known_hosts_chiffreo
+ssh-keyscan -H -t ed25519,rsa <ip-ou-domaine-vps> > known_hosts_toise
 # Vérifier l'empreinte affichée contre celle donnée par la console web du
 # fournisseur VPS avant de coller le contenu du fichier dans le secret.
 ```
@@ -492,10 +492,10 @@ Aucune perte de données. Les colonnes ajoutées par la version fautive restent 
 base, vides et ignorées par l'ancien code.
 
 ```bash
-# Sur le VPS, dans /opt/chiffreo :
+# Sur le VPS, dans /opt/toise :
 IMAGE_TAG=v1.0.0 docker compose -f docker-compose.prod.yml pull api web
 IMAGE_TAG=v1.0.0 docker compose -f docker-compose.prod.yml up -d --wait --wait-timeout 180 api web
-bash /opt/chiffreo/docs/deploy/smoke-test.sh --expect-version v1.0.0
+bash /opt/toise/docs/deploy/smoke-test.sh --expect-version v1.0.0
 ```
 
 Le test de fumée n'est pas facultatif : c'est lui qui atteste que les conteneurs
@@ -522,14 +522,14 @@ docker compose -f docker-compose.prod.yml stop api web
 #    Le fichier est chiffré : la clé privée n'est pas sur le VPS, la
 #    restauration se pilote depuis le poste qui la détient (BACKUP.md §2).
 bash docs/deploy/restore.sh \
-  --db-backup chiffreo-db-<horodatage>-predeploy-v1.1.0.dump.gpg \
-  --mode prod --db-target chiffreo-db \
+  --db-backup toise-db-<horodatage>-predeploy-v1.1.0.dump.gpg \
+  --mode prod --db-target toise-db \
   --yes-i-know-this-is-production
 
 # 3. Repartir sur les images de la version précédente.
 IMAGE_TAG=v1.0.0 docker compose -f docker-compose.prod.yml pull api web
 IMAGE_TAG=v1.0.0 docker compose -f docker-compose.prod.yml up -d --wait --wait-timeout 180 api web
-bash /opt/chiffreo/docs/deploy/smoke-test.sh --expect-version v1.0.0
+bash /opt/toise/docs/deploy/smoke-test.sh --expect-version v1.0.0
 ```
 
 La base cible est **détruite et recréée** par `restore.sh` avant la
@@ -607,7 +607,7 @@ La construction reste donc **manuelle**, ci-dessous.
 doit précéder le build :
 
 ```bash
-# Sur le VPS, dans /opt/chiffreo :
+# Sur le VPS, dans /opt/toise :
 bash apps/cv-service/scripts/fetch-model.sh         # ou un tag précis : cv-model-v1
 docker compose -f docker-compose.prod.yml build cv-service
 docker compose -f docker-compose.prod.yml up -d cv-service
@@ -670,8 +670,8 @@ panne, webhook Stripe qui échoue) ne se voit qu'en allant lire les logs.
 4. **Uptime réel** (processus API totalement mort, pas juste une DB en
    panne — aucun code embarqué ne peut s'auto-signaler dans ce cas) :
    créer un **Sentry Uptime Monitor** (Alerts → Uptime Monitors) pointé sur
-   `https://api.chiffreo.fr/api/v1/health`, et optionnellement un second sur
-   `https://chiffreo.fr`. Sentry ping depuis l'extérieur et alerte si
+   `https://api.toise.fr/api/v1/health`, et optionnellement un second sur
+   `https://toise.fr`. Sentry ping depuis l'extérieur et alerte si
    l'endpoint ne répond plus.
 5. **Limite connue** : pas d'upload de source maps (`withSentryConfig`
    volontairement omis — nécessiterait `SENTRY_AUTH_TOKEN`/org/project en

@@ -192,7 +192,7 @@ describe('nom commercial du palier payant (web)', () => {
     }
   });
 
-  it('aucune chaîne affichée ne nomme le palier payant autrement que « Chiffréo Pro »', () => {
+  it('aucune chaîne affichée ne nomme le palier payant autrement que « Toisé Pro »', () => {
     const violations = scan();
     const report = violations.map(
       (v) => `${v.file} [${v.termId}] « ${v.match} » — …${v.context}…`,

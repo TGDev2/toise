@@ -1,8 +1,8 @@
-# Architecture technique — Chiffréo
+# Architecture technique — Toisé
 
 ## Vue d'ensemble
 
-Chiffréo est un **monorepo pnpm** composé de 3 applications communicant via REST HTTP :
+Toisé est un **monorepo pnpm** composé de 3 applications communicant via REST HTTP :
 
 ```
                         ┌──────────────────────────────────┐
@@ -79,8 +79,8 @@ AppModule
 ├── FeatureGatesModule      # Feature flags par tier d'abonnement
 ├── SubscriptionsModule     # Intégration Stripe (checkout, webhooks, portail)
 ├── PriceComparisonModule   # Comparaison de prix fournisseurs (mock/réel)
-├── CompanyProfilesModule   # Profils entreprise (tier Chiffréo Pro)
-├── ClientsModule           # Gestion clients (tier Chiffréo Pro)
+├── CompanyProfilesModule   # Profils entreprise (tier Toisé Pro)
+├── ClientsModule           # Gestion clients (tier Toisé Pro)
 ├── QuotesModule            # Génération de devis + export PDF
 ├── CommunityModule         # Galerie communautaire, commentaires, likes
 ├── DataRetentionModule     # Effacement des fichiers et purge des suppressions logiques (E6-1)

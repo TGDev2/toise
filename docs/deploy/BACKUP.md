@@ -8,8 +8,8 @@ et de restauration, testée sur une base jetable. Référencée depuis
 
 - **Quoi** : la base Postgres (`pg_dump -Fc`, format custom) et le volume
   `uploads` (photos des projets), chacun chiffré individuellement.
-- **Où** : `/var/backups/chiffreo` sur le VPS (configurable), fichiers
-  `chiffreo-db-<horodatage>.dump.gpg` et `chiffreo-uploads-<horodatage>.tar.gz.gpg`,
+- **Où** : `/var/backups/toise` sur le VPS (configurable), fichiers
+  `toise-db-<horodatage>.dump.gpg` et `toise-uploads-<horodatage>.tar.gz.gpg`,
   plus une copie hors-site si `BACKUP_REMOTE` est configuré (§5).
 - **Fréquence** : quotidienne, via cron (§4), **plus un point de restauration
   avant chaque déploiement** (§4.1).
@@ -62,7 +62,7 @@ course-là demanderait un instantané de système de fichiers (LVM/ZFS), pas un
 
 ## 2. Modèle de menace et choix du chiffrement
 
-Chiffréo héberge des données personnelles (RGPD) ; le VPS lui-même est un
+Toisé héberge des données personnelles (RGPD) ; le VPS lui-même est un
 actif qui peut être compromis. Deux options de chiffrement ont été
 comparées :
 
@@ -90,12 +90,12 @@ sauvegardes uniquement).
 ```bash
 gpg --full-generate-key
 # RSA and RSA, 4096 bits, pas d'expiration (0)
-# Nom : Chiffréo Backup — e-mail : backup@chiffreo.fr (ou équivalent)
+# Nom : Toisé Backup — e-mail : backup@toise.fr (ou équivalent)
 
-gpg --armor --export backup@chiffreo.fr > docs/deploy/chiffreo-backup-pub.asc
+gpg --armor --export backup@toise.fr > docs/deploy/toise-backup-pub.asc
 ```
 
-Committer `chiffreo-backup-pub.asc` dans le repo (une clé **publique** n'est
+Committer `toise-backup-pub.asc` dans le repo (une clé **publique** n'est
 pas un secret). Sauvegarder la clé **privée** hors ligne — gestionnaire de
 mots de passe, clé USB chiffrée, ou export papier (`paperkey`). Ne jamais la
 copier sur le VPS.
@@ -103,14 +103,14 @@ copier sur le VPS.
 **Sur le VPS** :
 
 ```bash
-sudo gpg --import docs/deploy/chiffreo-backup-pub.asc
-sudo gpg --edit-key backup@chiffreo.fr trust   # niveau 5 (ultimate) —
+sudo gpg --import docs/deploy/toise-backup-pub.asc
+sudo gpg --edit-key backup@toise.fr trust   # niveau 5 (ultimate) —
                                                  # évite les avertissements
                                                  # "clé non certifiée" au chiffrement
-sudo mkdir -p /etc/chiffreo
-sudo cp docs/deploy/backup.env.example /etc/chiffreo/backup.env
-sudo chmod 600 /etc/chiffreo/backup.env && sudo chown root:root /etc/chiffreo/backup.env
-# éditer /etc/chiffreo/backup.env : renseigner GPG_RECIPIENT=backup@chiffreo.fr
+sudo mkdir -p /etc/toise
+sudo cp docs/deploy/backup.env.example /etc/toise/backup.env
+sudo chmod 600 /etc/toise/backup.env && sudo chown root:root /etc/toise/backup.env
+# éditer /etc/toise/backup.env : renseigner GPG_RECIPIENT=backup@toise.fr
 ```
 
 (`backup.sh` passe déjà `--trust-model always` à `gpg --encrypt`, donc l'étape
@@ -121,7 +121,7 @@ sudo chmod 600 /etc/chiffreo/backup.env && sudo chown root:root /etc/chiffreo/ba
 ```bash
 sudo crontab -e
 # ajouter (sauvegarde quotidienne à 3h15 UTC) :
-15 3 * * * bash /opt/chiffreo/docs/deploy/backup.sh >> /var/log/chiffreo-backup.log 2>&1
+15 3 * * * bash /opt/toise/docs/deploy/backup.sh >> /var/log/toise-backup.log 2>&1
 ```
 
 `backup.sh` échoue bruyamment (`set -euo pipefail`, code de sortie non nul),
@@ -137,7 +137,7 @@ changer quoi que ce soit :
 
 ```bash
 bash docs/deploy/backup.sh --pre-deploy v1.2.0
-# → chiffreo-db-20260806T101500Z-predeploy-v1.2.0.dump.gpg
+# → toise-db-20260806T101500Z-predeploy-v1.2.0.dump.gpg
 ```
 
 Ce mode diffère du run nocturne sur trois points, portés par ce **seul**
@@ -157,12 +157,12 @@ Il n'y a **pas** de rotation dans ce mode : supprimer est le seul geste
 irréversible du script, et un déploiement n'a rien à effacer.
 
 Conséquence à ne pas manquer : la mise en place du §3 (clé GPG et
-`/etc/chiffreo/backup.env`) devient un **prérequis du déploiement continu**.
+`/etc/toise/backup.env`) devient un **prérequis du déploiement continu**.
 Sans elle, chaque déploiement échoue à cette étape — délibérément.
 
 ### Alerte sur échec — et sur absence de run
 
-Renseigner `BACKUP_MONITOR_URL` dans `/etc/chiffreo/backup.env` avec une URL de
+Renseigner `BACKUP_MONITOR_URL` dans `/etc/toise/backup.env` avec une URL de
 type [healthchecks.io](https://healthchecks.io) (offre gratuite suffisante, ou
 instance auto-hébergée) :
 
@@ -178,10 +178,10 @@ Ce choix couvre le cas qu'une alerte purement « sur échec » ne voit jamais :
 plein empêchant même le démarrage du script). Le silence devient alors lui-même
 un signal, ce qu'aucun code embarqué dans le script ne peut produire.
 
-Sans cette variable, le seul signal reste `/var/log/chiffreo-backup.log` — à
+Sans cette variable, le seul signal reste `/var/log/toise-backup.log` — à
 vérifier périodiquement et après tout incident VPS.
 
-Alternative non retenue : un timer systemd (`chiffreo-backup.service` +
+Alternative non retenue : un timer systemd (`toise-backup.service` +
 `.timer`) offrirait un journal structuré (`journalctl`) et un
 `OnFailure=` natif — à envisager si cron s'avère insuffisant.
 
@@ -211,8 +211,8 @@ fichiers chiffrés vers une destination distante à la fin de chaque run, dès q
 ```bash
 sudo apt install rclone
 sudo rclone config          # une fois, en root : créer un remote (B2, S3, SFTP…)
-# puis dans /etc/chiffreo/backup.env :
-BACKUP_REMOTE=b2:chiffreo-backups/vps
+# puis dans /etc/toise/backup.env :
+BACKUP_REMOTE=b2:toise-backups/vps
 ```
 
 Les fichiers partent **déjà chiffrés** par GPG (§2) : le fournisseur de
@@ -236,12 +236,12 @@ sauvegardes sont réellement restaurables, pas seulement produites.
 
 ```bash
 # Depuis un poste qui détient la clé privée (jamais depuis le VPS lui-même)
-scp vps:/var/backups/chiffreo/chiffreo-db-<horodatage>.dump.gpg .
-scp vps:/var/backups/chiffreo/chiffreo-uploads-<horodatage>.tar.gz.gpg .
+scp vps:/var/backups/toise/toise-db-<horodatage>.dump.gpg .
+scp vps:/var/backups/toise/toise-uploads-<horodatage>.tar.gz.gpg .
 
 bash docs/deploy/restore.sh \
-  --db-backup chiffreo-db-<horodatage>.dump.gpg \
-  --uploads-backup chiffreo-uploads-<horodatage>.tar.gz.gpg
+  --db-backup toise-db-<horodatage>.dump.gpg \
+  --uploads-backup toise-uploads-<horodatage>.tar.gz.gpg
 ```
 
 Par défaut (`--mode verify`) : crée un conteneur Postgres et un volume
@@ -273,14 +273,14 @@ Consigner chaque drill dans le tableau §8.
    c'est la source à utiliser — le disque du VPS mort n'est plus accessible :
    ```bash
    # Depuis le poste qui détient la clé privée
-   rclone copy b2:chiffreo-backups/vps . --include 'chiffreo-*.gpg' --max-age 48h
+   rclone copy b2:toise-backups/vps . --include 'toise-*.gpg' --max-age 48h
    ```
    Puis restaurer :
    ```bash
    bash docs/deploy/restore.sh \
-     --db-backup chiffreo-db-<dernier-horodatage>.dump.gpg \
-     --uploads-backup chiffreo-uploads-<dernier-horodatage>.tar.gz.gpg \
-     --mode prod --db-target chiffreo-db --uploads-target chiffreo_uploads \
+     --db-backup toise-db-<dernier-horodatage>.dump.gpg \
+     --uploads-backup toise-uploads-<dernier-horodatage>.tar.gz.gpg \
+     --mode prod --db-target toise-db --uploads-target toise_uploads \
      --yes-i-know-this-is-production
    ```
    (Confirmation interactive demandée : taper le nom exact de la cible.)

@@ -1,4 +1,4 @@
-# Conformité de la facturation — Chiffréo
+# Conformité de la facturation — Toisé
 
 > Évaluation préalable à BACKLOG PRO-4 (« Devis → facture »), août 2026.
 > Ce document fixe ce que le produit couvre, ce qu'il ne couvre pas, et pourquoi.
@@ -15,10 +15,10 @@
 | **1er septembre 2026** | **Émission** + e-reporting | Grandes entreprises et ETI |
 | **1er septembre 2027** | **Émission** + e-reporting | PME, TPE, micro-entreprises |
 
-**Conséquence pour Chiffréo.** La cible du produit — artisans TPE, micro-entrepreneurs,
+**Conséquence pour Toisé.** La cible du produit — artisans TPE, micro-entrepreneurs,
 petites entreprises du bâtiment — relève de l'échéance **septembre 2027**, pas 2026.
 L'obligation de *réception* de septembre 2026 pèse sur l'entreprise de l'artisan, via
-la plateforme qu'il aura choisie ; ce n'est pas une obligation que Chiffréo porte,
+la plateforme qu'il aura choisie ; ce n'est pas une obligation que Toisé porte,
 puisque le produit n'est pas la boîte aux lettres fiscale de l'artisan.
 
 ### Le rôle des plateformes agréées (PA)
@@ -28,7 +28,7 @@ plus de solution mutualisée gratuite d'émission/réception : il se limite à l
 et à la concentration des données. **Toute facture électronique B2B doit transiter par
 une Plateforme Agréée (PA, anciennement PDP), agréée par la DGFiP.**
 
-Chiffréo n'est pas une PA. Le devenir suppose un agrément DGFiP, un audit, un
+Toisé n'est pas une PA. Le devenir suppose un agrément DGFiP, un audit, un
 raccordement à l'annuaire et la gestion des cycles de vie de facture — un projet
 réglementé pluriannuel, sans rapport avec l'effort d'un lot de backlog. La voie
 réaliste, le moment venu, est le statut d'**opérateur de dématérialisation (OD)
@@ -102,7 +102,7 @@ Art. 242 nonies A de l'annexe II au CGI, art. L441-9 du code de commerce.
 ### Mention propre aux artisans du bâtiment
 Art. L243-2 du code des assurances : **assurance décennale** — nom de l'assureur,
 numéro de contrat, couverture géographique. Obligatoire sur les devis **et** les
-factures. C'est une mention bloquante dans Chiffréo.
+factures. C'est une mention bloquante dans Toisé.
 
 ### Les quatre nouvelles mentions du 1er septembre 2026
 
@@ -114,7 +114,7 @@ factures. C'est une mention bloquante dans Chiffréo.
 Chaque mention manquante ou inexacte est sanctionnée d'une amende de 15 EUR,
 plafonnée au quart du montant de la facture.
 
-### Ce que Chiffréo bloque, et ce qu'il n'impose pas
+### Ce que Toisé bloque, et ce qu'il n'impose pas
 
 Le contrôle vit dans [`invoice-legal-mentions.ts`](../apps/api/src/invoices/invoice-legal-mentions.ts)
 et renvoie un `400 MISSING_LEGAL_MENTIONS` listant les champs manquants.
@@ -184,7 +184,7 @@ devis sont une évolution additive, sans migration structurante.
 
 **Non couvert :** la loi anti-fraude TVA de 2018 (inaltérabilité, sécurisation,
 conservation, archivage — NF525) vise les logiciels de **caisse et d'encaissement**.
-Chiffréo n'enregistre pas de règlement au sens de cette obligation. Si un jour le
+Toisé n'enregistre pas de règlement au sens de cette obligation. Si un jour le
 produit encaisse pour le compte de l'artisan, l'analyse est à refaire.
 
 ---
@@ -254,7 +254,7 @@ supposent un partenaire PA choisi.
   PA captive de leur propre logiciel. **Sage** est immatriculée (22/12/2025) et
   évoque des « API alignées AFNOR pour logiciels tiers », mais sans programme
   partenaire public, et sa PA sert un écosystème dont Batigest vise les mêmes
-  artisans que Chiffréo **[déduit]** : à ne solliciter qu'en dernier recours.
+  artisans que Toisé **[déduit]** : à ne solliciter qu'en dernier recours.
 
 ### 8.2 Cinq partenariats éditeur documentés **[sourcé]**
 
@@ -265,11 +265,11 @@ Toutes immatriculées en liste 1 (tests d'interopérabilité validés).
 | [Iopole](https://www.iopole.com/nos-partenaires) | 11/12/2025 | Pure player API ; modèles « Distributeur » et apporteur, marque blanche (plan Enterprise), sandbox gratuite | **NON PUBLIC** — 3 plans sans prix (set-up + volume) ; contact@iopole.com ou formulaire partenaires | Factur-X, UBL, CII, **JSON converti**, Peppol, EDIFACT | Non publié |
 | [Pennylane](https://www.pennylane.com/fr/partenaires) | 11/12/2025 | Catégorie dédiée « Partenaires Plateforme Agréée : éditeurs qui proposent Pennylane comme PA à leurs clients » ; raccordement via [API Entreprise V2](https://help.pennylane.com/fr/articles/18770-utiliser-les-api-publiques-pennylane) (import d'un Factur-X généré par l'éditeur) | **NON PUBLIC** — mais PA annoncée **gratuite** (févr. 2024, rappelé par compta-online) ; formulaire « Devenir partenaire » | Factur-X, UBL, CII ; API REST JSON | Non publié ; précédent raccordé en mai 2026 (cf. ci-dessous) |
 | [Serensia by Quadient](https://serensia.com/avis-d039expert/pourquoi-choisir-une-pdp-en-marque-blanche/) | 11/12/2025 | « PA en marque blanche » pour éditeurs : l'utilisateur reste dans le logiciel de l'éditeur | **NON PUBLIC** — formulaire de démo API sur la même page | UBL, CII, Factur-X ; API REST + webhooks, Peppol | Non publié |
-| [Seqino](https://seqino.com/articles-blog/seqino-lance-une-pdp-en-marque-blanche-et-en-marque-grise/) (Crédit Mutuel Arkéa) | 15/01/2026 | Marque blanche (instance dédiée, l'éditeur au registre) **et « marque grise »** (API sur l'immatriculation de Seqino — le schéma OD exact de Chiffréo) | **NON PUBLIC** — contact via seqino.com | API RESTful ; SecNumCloud, ISO 27001, NF203 | Non publié |
+| [Seqino](https://seqino.com/articles-blog/seqino-lance-une-pdp-en-marque-blanche-et-en-marque-grise/) (Crédit Mutuel Arkéa) | 15/01/2026 | Marque blanche (instance dédiée, l'éditeur au registre) **et « marque grise »** (API sur l'immatriculation de Seqino — le schéma OD exact de Toisé) | **NON PUBLIC** — contact via seqino.com | API RESTful ; SecNumCloud, ISO 27001, NF203 | Non publié |
 | [B2BRouter](https://www.b2brouter.net/fr/api-facturation-electronique/) | 12/12/2025 | API pour éditeurs, marque blanche et grise, sandbox et [docs développeur](https://developer.b2brouter.net) publiques | API **NON PUBLIC** ; tarifs applicatifs publics : 0 € (24 transactions/an), 110 €/an HT illimité, 300 €/an HT ([tarifs](https://www.b2brouter.net/fr/tarifs/)) | Factur-X, UBL, CII, EDIFACT, XRechnung, Peppol, Chorus Pro | Non publié |
 
 **Le précédent qui compte** : [ArtisanSmart](https://artisansmart.fr/blog/pennylane/),
-SaaS de facturation pour artisans — le schéma exact visé par Chiffréo (OD
+SaaS de facturation pour artisans — le schéma exact visé par Toisé (OD
 raccordé à la PA Pennylane) — a été raccordé et validé en **mai 2026**, flux
 émission et réception opérationnels, coût du raccordement **absorbé dans son
 abonnement à 29 € HT/mois sans surcoût** facturé par Pennylane. La faisabilité
@@ -361,7 +361,7 @@ totalité de la base client en un mois.
 2. **Demander deux devis comparables à des PA infrastructurelles** — Iopole
    (contact@iopole.com ou formulaire partenaires) et Seqino en « marque grise »
    (via seqino.com) — sur un profil chiffré identique : 50 artisans, 5 factures
-   B2B/mois chacun, e-reporting B2C, émission Factur-X générée par Chiffréo.
+   B2B/mois chacun, e-reporting B2C, émission Factur-X générée par Toisé.
    Exiger la décomposition : set-up, minimum mensuel, prix unitaire, archivage.
 3. **Comparer sur une grille unique des coûts complets** : set-up, minimum de
    facturation, prix par facture, prix ou forfait de l'e-reporting B2C,

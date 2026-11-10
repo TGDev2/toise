@@ -57,7 +57,7 @@ export function buildQuoteReminderClientEmail(
     </p>
     ${contactHtml}
     <p style="font-size:12px;color:#a8a29e;margin-top:32px;">
-      Vous recevez cet e-mail suite à un devis établi via Chiffréo. Pour toute question, contactez-nous à privacy@chiffreo.fr.
+      Vous recevez cet e-mail suite à un devis établi via Toisé. Pour toute question, contactez-nous à privacy@toise.fr.
     </p>
   </div>
 </body></html>`;
@@ -70,7 +70,7 @@ export function buildQuoteReminderClientEmail(
     "Si vous avez des questions ou souhaitez donner suite, n'hésitez pas à en discuter.",
     ...(contactText ? ['', contactText] : []),
     '',
-    'Vous recevez cet e-mail suite à un devis établi via Chiffréo.',
+    'Vous recevez cet e-mail suite à un devis établi via Toisé.',
   ].join('\n');
 
   return { subject, html, text };

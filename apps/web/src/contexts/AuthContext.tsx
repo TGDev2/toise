@@ -38,14 +38,14 @@ import { REFERRAL_CODE_STORAGE_KEY } from '@/lib/referral';
 // Préfixes de caches dupliqués depuis public/sw.js (SW_VERSION) — ce fichier n'est pas importable
 // par un module TS. Sur un appareil partagé, un cache non vidé resterait lisible hors connexion
 // par le prochain utilisateur connecté, sans aucune vérification d'auth (un hit de cache ne passe
-// jamais par le réseau). `chiffreo-shell`/`chiffreo-static` ne contiennent aucune donnée liée à un
+// jamais par le réseau). `toise-shell`/`toise-static` ne contiennent aucune donnée liée à un
 // compte et n'ont pas besoin d'être vidés. Le cache API étant partitionné par uid, ses noms ne
 // sont pas énumérables en dur : on les retrouve par préfixe.
-const OFFLINE_CACHE_PREFIXES = ['chiffreo-pages-v1', 'chiffreo-api-v1'];
+const OFFLINE_CACHE_PREFIXES = ['toise-pages-v1', 'toise-api-v1'];
 
 // Dernière identité vue par cet appareil. En `localStorage` et pas en mémoire : un onglet
 // fermé sans déconnexion ne doit pas faire oublier à qui appartiennent les caches.
-const LAST_IDENTITY_KEY = 'chiffreo_last_uid';
+const LAST_IDENTITY_KEY = 'toise_last_uid';
 
 async function clearOfflineCaches(): Promise<void> {
   if (typeof caches === 'undefined') return;
@@ -91,7 +91,7 @@ function writeLastIdentity(uid: string | null): void {
  * le `path` ou le `max-age`, et la divergence se paierait en redirections
  * inexplicables vers `/login`.
  */
-const SESSION_MARKER_COOKIE = 'chiffreo_auth';
+const SESSION_MARKER_COOKIE = 'toise_auth';
 
 function markSessionPresent(): void {
   document.cookie = `${SESSION_MARKER_COOKIE}=1; path=/; max-age=2592000; samesite=lax`;

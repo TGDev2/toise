@@ -23,7 +23,7 @@ import { API_URL } from './fixtures';
  */
 
 const SUFFIX = Date.now().toString(36);
-const EMAIL = `e2e-merge-${SUFFIX}@chiffreo.test`;
+const EMAIL = `e2e-merge-${SUFFIX}@toise.test`;
 const PASSWORD = 'E2eMerge!2026';
 const PROJECT = `Projet invité ${SUFFIX}`;
 

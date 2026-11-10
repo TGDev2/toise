@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     description: config.metaDescription,
     alternates: { canonical: `/calculateurs/${config.slug}` },
     openGraph: {
-      title: `${config.title} | Chiffréo`,
+      title: `${config.title} | Toisé`,
       description: config.metaDescription,
       url: `/calculateurs/${config.slug}`,
     },
@@ -51,7 +51,7 @@ const HOW_IT_WORKS = [
   {
     title: '3. Sauvegardez votre projet',
     description:
-      'En un clic, transformez votre calcul en projet Chiffréo : liste d’achats complète, budget suivi et export PDF de la liste d’achats.',
+      'En un clic, transformez votre calcul en projet Toisé : liste d’achats complète, budget suivi et export PDF de la liste d’achats.',
   },
 ];
 

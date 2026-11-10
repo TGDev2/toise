@@ -24,7 +24,7 @@ describe('useReferrals', () => {
   it('loads referral stats for the current user on mount', async () => {
     mockedApiGet.mockResolvedValue({
       code: 'ABCD2345',
-      share_url: 'https://chiffreo.fr/register?ref=ABCD2345',
+      share_url: 'https://toise.fr/register?ref=ABCD2345',
       referred_count: 3,
       converted_count: 1,
       months_offered: 1,

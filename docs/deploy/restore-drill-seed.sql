@@ -27,7 +27,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- Compte artisan ------------------------------------------------------------
 INSERT INTO users (id, email, auth_provider, subscription_tier, email_verified,
                    firebase_uid, role)
-VALUES ('c0000000-0000-4000-8000-000000000001', 'artisan@drill.chiffreo.test',
+VALUES ('c0000000-0000-4000-8000-000000000001', 'artisan@drill.toise.test',
         'email', 'contractor_standard', true, 'drill-firebase-uid-1', 'user');
 
 INSERT INTO organizations (id, name, owner_user_id, is_personal)
@@ -60,7 +60,7 @@ INSERT INTO clients (id, organization_id, user_id, name, email, phone,
 VALUES ('c1000000-0000-4000-8000-000000000001',
         'a0000000-0000-4000-8000-000000000001',
         'c0000000-0000-4000-8000-000000000001',
-        'Madame Aurélie Dupré', 'client@drill.chiffreo.test', '+33612345678',
+        'Madame Aurélie Dupré', 'client@drill.toise.test', '+33612345678',
         '3 impasse du Béton', '75012', 'Paris', false, NULL);
 
 -- Deux projets : un chiffré de bout en bout, un avec les photos --------------

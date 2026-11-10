@@ -1,7 +1,7 @@
 /**
  * Normalisation de texte français pour le matching catalogue → produits marchands.
  *
- * Le catalogue Chiffréo ne porte ni référence, ni EAN, ni mot-clé : le seul
+ * Le catalogue Toisé ne porte ni référence, ni EAN, ni mot-clé : le seul
  * signal textuel est `materials_catalog.name`, du français accentué mêlé de
  * notation technique (« Mortier-colle flexible (C2) », « Carrelage 30x30 cm »,
  * « Colle en pâte prête à l'emploi »). Ces helpers sont purs et sans I/O.

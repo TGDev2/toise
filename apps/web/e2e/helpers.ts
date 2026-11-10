@@ -204,9 +204,9 @@ export async function signIn(
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Mot de passe').fill(password);
   await page.getByRole('button', { name: 'Se connecter' }).click();
-  // Cf. `artisan-devis-minute-pdf.spec.ts` : le cookie `chiffreo_auth` que lit
+  // Cf. `artisan-devis-minute-pdf.spec.ts` : le cookie `toise_auth` que lit
   // `proxy.ts` est écrit par `onIdTokenChanged`, après la navigation.
-  await page.waitForFunction(() => document.cookie.includes('chiffreo_auth'), {
+  await page.waitForFunction(() => document.cookie.includes('toise_auth'), {
     timeout: 15_000,
   });
   if (new URL(page.url()).pathname !== '/dashboard') {

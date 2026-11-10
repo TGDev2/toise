@@ -1,13 +1,13 @@
-name: chiffreo
+name: toise
 
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: chiffreo-db
+    container_name: toise-db
     environment:
-      POSTGRES_DB: chiffreo
-      POSTGRES_USER: chiffreo
-      POSTGRES_PASSWORD: chiffreo_dev
+      POSTGRES_DB: toise
+      POSTGRES_USER: toise
+      POSTGRES_PASSWORD: toise_dev
     ports:
       - '5432:5432'
     volumes:
@@ -17,7 +17,7 @@ services:
     build:
       context: ./apps/cv-service
       dockerfile: Dockerfile
-    container_name: chiffreo-cv
+    container_name: toise-cv
     ports:
       # Lie a la loopback : le service n'a aucune authentification tant
       # que CV_SERVICE_TOKEN n'est pas renseigne, et '8000:8000' l'aurait

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Provisionnement initial d'un VPS neuf (Ubuntu/Debian) pour Chiffréo — OPS-1.
+# Provisionnement initial d'un VPS neuf (Ubuntu/Debian) pour Toisé — OPS-1.
 # À exécuter une fois, en root, sur le VPS fraîchement créé.
 # Usage : ssh root@<ip> 'bash -s' < docs/deploy/provision.sh
 set -euo pipefail
@@ -36,7 +36,7 @@ ufw allow 443/tcp
 ufw --force enable
 
 echo "==> Terminé. Prochaines étapes :"
-echo "  1. git clone <repo> && cd Chiffreo && cp .env.example .env"
+echo "  1. git clone <repo> && cd toise && cp .env.example .env"
 echo "  2. Renseigner .env (voir docs/DEPLOY.md section 1)"
 echo "  3. docker compose -f docker-compose.prod.yml up -d --build"
 echo "  4. cp docs/deploy/Caddyfile /etc/caddy/Caddyfile && systemctl reload caddy"

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { hasChosenConsent, subscribeToConsent } from '@/lib/analytics-consent';
 import { trackPwaEvent } from '@/lib/pwa-analytics';
 
-const DISMISS_KEY = 'chiffreo_install_dismissed';
+const DISMISS_KEY = 'toise_install_dismissed';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -77,7 +77,7 @@ export function InstallPrompt() {
     <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-stone-200 bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgba(67,39,15,0.08)]">
       <div className="mx-auto flex max-w-4xl flex-col items-center gap-4 sm:flex-row">
         <p className="flex-1 text-sm text-stone-600">
-          Installez Chiffréo sur votre appareil pour un accès rapide, même hors connexion.
+          Installez Toisé sur votre appareil pour un accès rapide, même hors connexion.
         </p>
         <div className="flex gap-3">
           <button

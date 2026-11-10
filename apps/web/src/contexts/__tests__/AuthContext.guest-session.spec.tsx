@@ -162,7 +162,7 @@ describe('startGuestSession', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     localStorage.clear();
-    document.cookie = 'chiffreo_auth=; path=/; max-age=0';
+    document.cookie = 'toise_auth=; path=/; max-age=0';
     identityListener = () => undefined;
     apiPostMock.mockImplementation((path: string) =>
       path === '/projects'
@@ -177,7 +177,7 @@ describe('startGuestSession', () => {
     signInAnonymouslyMock.mockResolvedValue({ user: { uid: 'guest-1' } });
     const { auth } = await renderAuth();
 
-    expect(document.cookie).not.toContain('chiffreo_auth=1');
+    expect(document.cookie).not.toContain('toise_auth=1');
 
     await act(async () => {
       await auth.current.startGuestSession();
@@ -186,7 +186,7 @@ describe('startGuestSession', () => {
     // `proxy.ts` redirige vers /login toute requête `/dashboard` ou
     // `/projects/*` sans ce cookie : l'attendre de `onIdTokenChanged` revenait
     // à parier sur un ordonnancement que rien ne garantit.
-    expect(document.cookie).toContain('chiffreo_auth=1');
+    expect(document.cookie).toContain('toise_auth=1');
   });
 
   it('réarme `isLoading` tant que la session n’est pas établie', async () => {
@@ -226,7 +226,7 @@ describe('startGuestSession', () => {
     });
 
     expect(auth.current.isLoading).toBe(false);
-    expect(document.cookie).not.toContain('chiffreo_auth=1');
+    expect(document.cookie).not.toContain('toise_auth=1');
   });
 });
 
@@ -238,7 +238,7 @@ describe('startGuestSession — adoption des brouillons locaux', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     localStorage.clear();
-    document.cookie = 'chiffreo_auth=; path=/; max-age=0';
+    document.cookie = 'toise_auth=; path=/; max-age=0';
     identityListener = () => undefined;
     signInAnonymouslyMock.mockResolvedValue({ user: { uid: 'guest-1' } });
     apiPostMock.mockImplementation((path: string) =>

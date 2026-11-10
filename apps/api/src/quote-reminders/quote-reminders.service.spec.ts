@@ -88,7 +88,7 @@ describe('QuoteRemindersService', () => {
     emailServiceMock.sendQuoteReminderContractorEmail.mockResolvedValue(
       undefined,
     );
-    configServiceMock.get.mockReturnValue('https://chiffreo.fr');
+    configServiceMock.get.mockReturnValue('https://toise.fr');
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -170,7 +170,7 @@ describe('QuoteRemindersService', () => {
         totalTtc: 1200,
         daysSinceSent: 7,
         clientName: 'Marie Petit',
-        quoteUrl: 'https://chiffreo.fr/quotes/quote-1',
+        quoteUrl: 'https://toise.fr/quotes/quote-1',
       }),
     );
     expect(quoteRepoMock.save).toHaveBeenCalledWith(

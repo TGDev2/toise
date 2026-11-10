@@ -82,7 +82,7 @@ async function seedProject(
   suffix: string,
 ): Promise<Fixture> {
   const user = await dataSource.getRepository(User).save({
-    email: `int-${suffix}@chiffreo.test`,
+    email: `int-${suffix}@toise.test`,
     firebase_uid: `firebase-int-${suffix}`,
   });
   const project = await dataSource.getRepository(Project).save({
@@ -397,7 +397,7 @@ describe('Persistance (intégration, PostgreSQL réel)', () => {
 
     async function seedSubscription(suffix: string): Promise<Subscription> {
       const user = await dataSource.getRepository(User).save({
-        email: `sub-${suffix}@chiffreo.test`,
+        email: `sub-${suffix}@toise.test`,
         firebase_uid: `firebase-sub-${suffix}`,
       });
       return dataSource.getRepository(Subscription).save({
@@ -616,7 +616,7 @@ describe('Persistance (intégration, PostgreSQL réel)', () => {
       overrides: Partial<Subscription> = {},
     ): Promise<Subscription> {
       const user = await dataSource.getRepository(User).save({
-        email: `grace-${suffix}@chiffreo.test`,
+        email: `grace-${suffix}@toise.test`,
         firebase_uid: `firebase-grace-${suffix}`,
       });
       return dataSource.getRepository(Subscription).save({
@@ -933,7 +933,7 @@ describe('Persistance (intégration, PostgreSQL réel)', () => {
   describe('Trace des remboursements', () => {
     async function seedUser(suffix: string): Promise<string> {
       const user = await dataSource.getRepository(User).save({
-        email: `refund-${suffix}@chiffreo.test`,
+        email: `refund-${suffix}@toise.test`,
         firebase_uid: `firebase-refund-${suffix}`,
       });
       return user.id;

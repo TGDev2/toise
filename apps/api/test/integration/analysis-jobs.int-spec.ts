@@ -86,7 +86,7 @@ async function seedProject(
   suffix: string,
 ): Promise<Fixture> {
   const user = await dataSource.getRepository(User).save({
-    email: `job-${suffix}@chiffreo.test`,
+    email: `job-${suffix}@toise.test`,
     firebase_uid: `firebase-job-${suffix}`,
   });
   const project = await dataSource.getRepository(Project).save({

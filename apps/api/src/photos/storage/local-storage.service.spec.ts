@@ -36,7 +36,7 @@ describe('LocalStorageService', () => {
   beforeEach(async () => {
     writeFileMock.mockReset();
     writeFileMock.mockImplementation(reelles.writeFile);
-    basePath = await reelles.mkdtemp(join(tmpdir(), 'chiffreo-uploads-'));
+    basePath = await reelles.mkdtemp(join(tmpdir(), 'toise-uploads-'));
     service = new LocalStorageService(config(basePath));
   });
 

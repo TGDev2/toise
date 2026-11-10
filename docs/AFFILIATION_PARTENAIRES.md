@@ -39,7 +39,7 @@ candidature**, pas pris pour acquis ici.
 **Démarche** : un compte éditeur (« publisher ») Awin, puis une candidature
 distincte à chacun des deux programmes marchands (ManoMano, Leroy Merlin) —
 chaque enseigne valide ou refuse indépendamment. Prévoir : SIRET/forme
-juridique de Chiffréo, description du site, volume de trafic estimé, RIB
+juridique de Toisé, description du site, volume de trafic estimé, RIB
 pour le versement des commissions. Le taux de commission (ManoMano
 annoncé jusqu'à 7 % selon les catégories sur des sources publiques,
 non contractuelles) n'est connu avec certitude qu'à l'acceptation.
@@ -72,11 +72,11 @@ dans l'en-tête gagne — `FEED_COLUMNS` dans chaque feed client) :
 | Catégorie | `merchant_category`, `category_name`, `categorie`, `category`, `category_path` |
 | Marque | `brand_name`, `brand`, `marque` |
 
-**Contrainte structurelle du catalogue Chiffréo** (rappelée en tête de
+**Contrainte structurelle du catalogue Toisé** (rappelée en tête de
 `material-product-matcher.ts`) : le catalogue n'offre que trois signaux pour
 rapprocher un matériau d'un produit — un **nom français en texte libre**,
 une **catégorie** parmi cinq, une **unité** parmi cinq. Pas de référence, pas
-d'EAN, pas de mot-clé côté Chiffréo. C'est pourquoi le rapprochement se fait
+d'EAN, pas de mot-clé côté Toisé. C'est pourquoi le rapprochement se fait
 par score textuel (§2 du script, ci-dessous) et pas par identifiant exact —
 et pourquoi le taux de rapprochement doit être mesuré avant de s'engager,
 plutôt que supposé.
@@ -146,7 +146,7 @@ périmètre demandé (documenter, pas activer).
       `LEROY_MERLIN_FEED_URL` renseignée le cas échéant
 - [ ] Registre §6 rempli avec les valeurs réelles (commission, cookie)
 - [ ] Extrait du flux réel passé dans
-      `pnpm --filter @chiffreo/api validate:affiliate-feed <extrait>`
+      `pnpm --filter @toise/api validate:affiliate-feed <extrait>`
       (§8) et taux de rapprochement jugé suffisant sur le sous-ensemble V1
 - [ ] Mention légale visible ajoutée à côté du bouton « Acheter chez X »
       (§5, non faite dans ce lot)

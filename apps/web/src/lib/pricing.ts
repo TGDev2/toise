@@ -115,7 +115,7 @@ export interface OfferPlan {
  * Boby 14,99 €, Tolteck 19 €, Obat 29 €, EBP Bâtiment 29,25 €, Costructor gratuit,
  * BatiChiffrage 30 €+ (et 80 000 travaux unitaires en bibliothèque).
  *
- * Chiffréo couvre sept ouvrages de finition et un bloc de main-d'œuvre : une
+ * Toisé couvre sept ouvrages de finition et un bloc de main-d'œuvre : une
  * couverture partielle n'autorise pas un premium de prix. Le palier payant doit
  * rester sous ce plafond ; il valait 50 € avant GTM-8. Un palier peut le
  * dépasser, mais seulement en portant des capacités que ces outils ne vendent
@@ -217,7 +217,7 @@ export const OFFER_PLANS: OfferPlan[] = [
     apiPlanKey: 'contractor_essentiel',
     tier: 'contractor_essentiel',
     audience: 'artisan',
-    name: 'Chiffréo Pro',
+    name: 'Toisé Pro',
     priceLabel: '279 € HT',
     priceNumber: 279,
     period: '/an',

@@ -17,13 +17,13 @@
 #
 # Exécution depuis la CD, sans rien déposer sur le VPS — l'idiome de
 # provision.sh, qui garantit qu'on exécute le script de la version déployée et
-# non celui d'un clone /opt/chiffreo possiblement périmé :
+# non celui d'un clone /opt/toise possiblement périmé :
 #
 #   ssh vps 'bash -s -- --expect-version v1.2.3' < docs/deploy/smoke-test.sh
 #
 # À la main sur le VPS (après un retour arrière, cf. docs/DEPLOY.md) :
 #
-#   bash /opt/chiffreo/docs/deploy/smoke-test.sh --expect-version v1.1.0
+#   bash /opt/toise/docs/deploy/smoke-test.sh --expect-version v1.1.0
 set -euo pipefail
 
 # Cibles par défaut : les ports que docker-compose.prod.yml publie sur la

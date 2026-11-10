@@ -8,7 +8,7 @@ WORKDIR /repo
 
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/web/package.json apps/web/
-RUN pnpm install --frozen-lockfile --filter @chiffreo/web
+RUN pnpm install --frozen-lockfile --filter @toise/web
 
 COPY apps/web apps/web
 
@@ -29,7 +29,7 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN \
     NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=$NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE
 
-RUN pnpm --filter @chiffreo/web build
+RUN pnpm --filter @toise/web build
 
 FROM node:22-alpine AS runner
 ENV NODE_ENV=production

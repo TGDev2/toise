@@ -8,7 +8,7 @@ import type { WorkItemSelection } from './work-types';
  * vivent que dans ce navigateur. `migrateLocalProjects` (AuthContext) les rejoue
  * vers l'API à l'inscription, puis vide la clé.
  */
-export const GUEST_PROJECTS_STORAGE_KEY = 'chiffreo_local_projects';
+export const GUEST_PROJECTS_STORAGE_KEY = 'toise_local_projects';
 
 /** Métier du brouillon — étiqueté par `WORK_TYPE_LABELS`. */
 export type GuestWorkType = 'painting' | 'tiling' | 'flooring' | 'partition';

@@ -1,6 +1,6 @@
 # Politique de rétention et effacement des données
 
-> BACKLOG V1 E6-1. Décrit ce que Chiffréo conserve après une suppression, pendant
+> BACKLOG V1 E6-1. Décrit ce que Toisé conserve après une suppression, pendant
 > combien de temps, et ce qui l'efface. La version destinée aux utilisateurs est
 > la section « Conservation et suppression » de `/privacy`.
 

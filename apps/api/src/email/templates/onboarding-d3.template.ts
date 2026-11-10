@@ -13,11 +13,11 @@ export function buildOnboardingD3Email(
   data: OnboardingD3EmailData,
 ): RenderedEmail {
   const subject = data.hasProject
-    ? 'Votre projet Chiffréo vous attend'
+    ? 'Votre projet Toisé vous attend'
     : "Vous n'avez pas encore lancé de projet ?";
 
   const bodyText = data.hasProject
-    ? "Vous avez commencé un projet sur Chiffréo. Ajoutez vos travaux et générez la liste d'achats pour voir votre base de commande — quantités et prix, pièce par pièce."
+    ? "Vous avez commencé un projet sur Toisé. Ajoutez vos travaux et générez la liste d'achats pour voir votre base de commande — quantités et prix, pièce par pièce."
     : "Vous vous êtes inscrit il y a 3 jours mais n'avez pas encore créé de projet. Ça prend moins de 2 minutes : quelques dimensions ou une photo suffisent pour obtenir une première estimation chiffrée.";
 
   const ctaLabel = data.hasProject
@@ -33,7 +33,7 @@ export function buildOnboardingD3Email(
       <a href="${data.dashboardUrl}" style="color:#0369a1;">${ctaLabel}</a>
     </p>
     <p style="font-size:12px;color:#a8a29e;margin-top:32px;">
-      Vous recevez cet e-mail suite à votre inscription sur Chiffréo. Pour toute question, contactez-nous à privacy@chiffreo.fr.
+      Vous recevez cet e-mail suite à votre inscription sur Toisé. Pour toute question, contactez-nous à privacy@toise.fr.
     </p>
   </div>
 </body></html>`;
@@ -45,7 +45,7 @@ export function buildOnboardingD3Email(
     '',
     `${ctaLabel} : ${data.dashboardUrl}`,
     '',
-    'Vous recevez cet e-mail suite à votre inscription sur Chiffréo.',
+    'Vous recevez cet e-mail suite à votre inscription sur Toisé.',
   ].join('\n');
 
   return { subject, html, text };

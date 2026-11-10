@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Restauration d'une sauvegarde Chiffréo (base Postgres + volume uploads) — OPS-3.
+# Restauration d'une sauvegarde Toisé (base Postgres + volume uploads) — OPS-3.
 #
 # Deux modes, même chemin de code :
 #   --mode verify (défaut) : cible jetable auto-créée, restaurée, vérifiée,
@@ -21,7 +21,7 @@ DB_TARGET=""
 UPLOADS_TARGET=""
 KEEP=0
 CONFIRM_PROD=0
-PROTECTED_TARGETS=("chiffreo-db" "chiffreo_uploads")
+PROTECTED_TARGETS=("toise-db" "toise_uploads")
 
 usage() {
   cat <<'EOF'
@@ -193,8 +193,8 @@ main() {
   local db_container db_user db_password db_name uploads_volume
 
   if [ "$MODE" = "verify" ]; then
-    db_container="${DB_TARGET:-chiffreo-restore-verify-$TS}"
-    uploads_volume="${UPLOADS_TARGET:-chiffreo-restore-verify-uploads-$TS}"
+    db_container="${DB_TARGET:-toise-restore-verify-$TS}"
+    uploads_volume="${UPLOADS_TARGET:-toise-restore-verify-uploads-$TS}"
     db_user="restore"
     db_password="restore"
     db_name="restore_verify"
@@ -218,9 +218,9 @@ main() {
     [ -n "$DB_TARGET" ] || { echo "ERREUR: --db-target requis en --mode prod" >&2; exit 1; }
     db_container="$DB_TARGET"
     uploads_volume="$UPLOADS_TARGET"
-    db_user="${DB_USERNAME:-chiffreo}"
+    db_user="${DB_USERNAME:-toise}"
     db_password="${DB_PASSWORD:?DB_PASSWORD requis en --mode prod (mot de passe de la base cible)}"
-    db_name="${DB_NAME:-chiffreo}"
+    db_name="${DB_NAME:-toise}"
     confirm_protected_target "$db_container"
     [ -z "$uploads_volume" ] || confirm_protected_target "$uploads_volume"
     trap "rm -rf '$WORKDIR'" EXIT

@@ -9,12 +9,12 @@ import { COVERED_TRADES, TRADES_NOT_COVERED } from '@/lib/work-types';
 import { serializeJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
-  title: 'Chiffréo pour les métiers de finition',
+  title: 'Toisé pour les métiers de finition',
   description:
     'Peintre, carreleur, plaquiste, solier : mesures prises chez le client, quantités calculées, devis PDF conforme envoyé sur place.',
   alternates: { canonical: '/' },
   openGraph: {
-    title: 'Chiffréo pour les métiers de finition',
+    title: 'Toisé pour les métiers de finition',
     description:
       'Chiffrez et envoyez un devis conforme depuis le chantier, pas le soir au bureau.',
     url: '/',
@@ -136,7 +136,7 @@ const CHRONO_STAT =
 const JSON_LD_SOFTWARE = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
-  name: 'Chiffréo',
+  name: 'Toisé',
   applicationCategory: 'BusinessApplication',
   operatingSystem: 'Web',
   description:
@@ -209,7 +209,7 @@ export default function HomePage() {
             </p>
 
             <p className="mt-4 max-w-xl text-sm leading-6 text-stone-600">
-              Chiffréo chiffre les ouvrages de finition —{' '}
+              Toisé chiffre les ouvrages de finition —{' '}
               {COVERED_TRADES.map((trade) => trade.label.toLowerCase()).join(
                 ', ',
               )}
@@ -327,7 +327,7 @@ export default function HomePage() {
         {/* Périmètre chiffrable */}
         <section id="perimetre" className="mt-24 scroll-mt-8">
           <h2 className="text-3xl font-semibold text-stone-950">
-            Ce que Chiffréo chiffre, et ce qu&apos;il ne chiffre pas
+            Ce que Toisé chiffre, et ce qu&apos;il ne chiffre pas
           </h2>
           <p className="mt-3 max-w-2xl text-base text-stone-700">
             Le moteur calcule des quantités à partir de surfaces : murs, sol,
@@ -368,7 +368,7 @@ export default function HomePage() {
               </ul>
               <p className="mt-4 text-xs leading-5 text-stone-500">
                 Si votre activité repose sur ces lots, un logiciel de devis tous
-                corps d&apos;état vous servira mieux que Chiffréo.
+                corps d&apos;état vous servira mieux que Toisé.
               </p>
             </div>
           </div>

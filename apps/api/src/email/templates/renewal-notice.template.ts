@@ -35,14 +35,14 @@ export function buildRenewalNoticeEmail(
   const priceLabel = formatEuros(data.priceEuros);
   const dayLabel =
     data.daysRemaining === 1 ? '1 jour' : `${data.daysRemaining} jours`;
-  const subject = `Votre abonnement Chiffréo se reconduit dans ${dayLabel}`;
+  const subject = `Votre abonnement Toisé se reconduit dans ${dayLabel}`;
 
   const html = `<!DOCTYPE html>
 <html lang="fr"><body style="font-family:Arial,sans-serif;background:#f7f5f2;padding:24px;color:#292524;margin:0;">
   <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:16px;padding:32px;">
     <h1 style="font-size:20px;margin:0 0 8px;">Votre abonnement se reconduit le ${data.renewalDate}</h1>
     <p style="font-size:14px;color:#57534e;">
-      Sauf résiliation de votre part, votre abonnement Chiffréo sera reconduit
+      Sauf résiliation de votre part, votre abonnement Toisé sera reconduit
       pour un an le <strong>${data.renewalDate}</strong>, et votre carte sera
       débitée de <strong>${priceLabel} HT ${data.billingPeriodLabel}</strong>.
     </p>
@@ -55,7 +55,7 @@ export function buildRenewalNoticeEmail(
       <a href="${data.manageSubscriptionUrl}" style="color:#0369a1;">Gérer mon abonnement</a>
     </p>
     <p style="font-size:12px;color:#a8a29e;margin-top:32px;">
-      Vous recevez cet e-mail parce que votre abonnement Chiffréo arrive à échéance. Pour toute question, écrivez-nous à privacy@chiffreo.fr.
+      Vous recevez cet e-mail parce que votre abonnement Toisé arrive à échéance. Pour toute question, écrivez-nous à privacy@toise.fr.
     </p>
   </div>
 </body></html>`;
@@ -63,13 +63,13 @@ export function buildRenewalNoticeEmail(
   const text = [
     `Votre abonnement se reconduit le ${data.renewalDate}`,
     '',
-    `Sauf résiliation de votre part, votre abonnement Chiffréo sera reconduit pour un an le ${data.renewalDate}, et votre carte sera débitée de ${priceLabel} HT ${data.billingPeriodLabel}.`,
+    `Sauf résiliation de votre part, votre abonnement Toisé sera reconduit pour un an le ${data.renewalDate}, et votre carte sera débitée de ${priceLabel} HT ${data.billingPeriodLabel}.`,
     '',
     "Vous n'avez rien à faire pour continuer. Pour arrêter, il suffit de résilier avant cette date : vos devis et vos factures déjà émis restent consultables et exportables, et le chiffrage reste gratuit et illimité.",
     '',
     `Gérer mon abonnement : ${data.manageSubscriptionUrl}`,
     '',
-    'Vous recevez cet e-mail parce que votre abonnement Chiffréo arrive à échéance.',
+    'Vous recevez cet e-mail parce que votre abonnement Toisé arrive à échéance.',
   ].join('\n');
 
   return { subject, html, text };

@@ -44,7 +44,7 @@ jobs:
         with:
           context: .
           file: apps/api/Dockerfile
-          tags: chiffreo-api:drill
+          tags: toise-api:drill
           build-args: APP_VERSION=drill
           load: true
           cache-from: type=gha
@@ -58,7 +58,7 @@ jobs:
           for cmd in docker gpg openssl; do
             command -v "$cmd" >/dev/null || { echo "::error::$cmd introuvable sur le runner"; exit 1; }
           done
-          docker image inspect chiffreo-api:drill >/dev/null
+          docker image inspect toise-api:drill >/dev/null
 
       - name: Drill complet
         run: bash docs/deploy/restore-drill.sh
@@ -68,6 +68,6 @@ jobs:
       - name: Nettoyage
         if: always()
         run: |
-          docker rm -f chiffreo-drill-api chiffreo-drill-db 2>/dev/null || true
-          docker volume rm chiffreo-drill-pgdata chiffreo-drill-uploads 2>/dev/null || true
-          docker network rm chiffreo-drill-net 2>/dev/null || true
+          docker rm -f toise-drill-api toise-drill-db 2>/dev/null || true
+          docker volume rm toise-drill-pgdata toise-drill-uploads 2>/dev/null || true
+          docker network rm toise-drill-net 2>/dev/null || true

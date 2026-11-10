@@ -5,13 +5,13 @@
       "id": "tier-name-contractor",
       "pattern": "\\bContractor\\b",
       "flags": "giu",
-      "why": "« Contractor » a été le préfixe du palier payant sur la modale de paywall, le tableau de bord et les CGV, alors que la carte tarifaire et le JSON-LD disaient « Essentiel ». Un artisan qui compare deux écrans ne pouvait pas savoir que c'était la même offre. Le nom commercial unique est désormais « Chiffréo Pro » ; l'identifiant technique contractor_essentiel n'est pas concerné (aucune limite de mot entre 'contractor' et '_essentiel')."
+      "why": "« Contractor » a été le préfixe du palier payant sur la modale de paywall, le tableau de bord et les CGV, alors que la carte tarifaire et le JSON-LD disaient « Essentiel ». Un artisan qui compare deux écrans ne pouvait pas savoir que c'était la même offre. Le nom commercial unique est désormais « Toisé Pro » ; l'identifiant technique contractor_essentiel n'est pas concerné (aucune limite de mot entre 'contractor' et '_essentiel')."
     },
     {
       "id": "tier-name-essentiel",
       "pattern": "\\bEssentiel\\b",
       "flags": "giu",
-      "why": "« Essentiel »/« ESSENTIEL » était le nom affiché sur la carte tarifaire et le JSON-LD, en désaccord avec « Contractor » ailleurs. Remplacé par « Chiffréo Pro »."
+      "why": "« Essentiel »/« ESSENTIEL » était le nom affiché sur la carte tarifaire et le JSON-LD, en désaccord avec « Contractor » ailleurs. Remplacé par « Toisé Pro »."
     },
     {
       "id": "tier-name-artisan",
@@ -46,7 +46,7 @@
     {
       "phrase": "Meilleur-Artisan",
       "files": ["apps/api/src/projects/labor-times.data.ts"],
-      "reason": "Nom propre d'une source externe citée (référentiel de temps de pose des carreleurs professionnels), pas le nom du palier Chiffréo."
+      "reason": "Nom propre d'une source externe citée (référentiel de temps de pose des carreleurs professionnels), pas le nom du palier Toisé."
     }
   ]
 }

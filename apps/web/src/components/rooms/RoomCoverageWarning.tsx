@@ -11,7 +11,7 @@ interface RoomCoverageWarningProps {
   roomsMissingDimensions: Room[];
 }
 
-const DISMISS_KEY_PREFIX = 'chiffreo_room_coverage_dismissed_';
+const DISMISS_KEY_PREFIX = 'toise_room_coverage_dismissed_';
 
 /**
  * E2-5 — clé empreinte sur le projet ET l'ensemble courant des pièces

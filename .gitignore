@@ -56,4 +56,4 @@ AGENTS.md
 # Copie locale d'une skill Anthropic bundlée : on ne la vendorise pas
 .claude/skills/frontend/
 __pycache__
-chiffreo-modele-economique.xlsx
+toise-modele-economique.xlsx

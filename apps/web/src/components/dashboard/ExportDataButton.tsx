@@ -96,7 +96,7 @@ export function ExportDataButton() {
       const date = new Intl.DateTimeFormat('fr-CA').format(new Date());
       await apiDownload(
         `/auth/me/export/${requestId}/download`,
-        `chiffreo-export-${date}.zip`,
+        `toise-export-${date}.zip`,
       );
     } catch (err: unknown) {
       setError(getErrorMessage(err, "Impossible de télécharger l'archive"));

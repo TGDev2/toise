@@ -1,5 +1,5 @@
 /**
- * Rapprochement catalogue Chiffréo → produits d'un flux marchand.
+ * Rapprochement catalogue Toisé → produits d'un flux marchand.
  *
  * Le catalogue n'offre que trois signaux : un nom français en texte libre, une
  * catégorie parmi cinq, une unité parmi cinq. Pas de référence, pas d'EAN, pas

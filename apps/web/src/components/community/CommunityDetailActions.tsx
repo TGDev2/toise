@@ -22,7 +22,7 @@ type ViewerState = Pick<
 /**
  * Le rendu de la page projet est fait côté serveur (SSR, anonyme) pour le
  * SEO — `has_liked`/`is_owner` n'y sont donc jamais fiables : le cookie
- * `chiffreo_auth` n'est qu'un marqueur, pas le jeton Firebase. Ce composant
+ * `toise_auth` n'est qu'un marqueur, pas le jeton Firebase. Ce composant
  * refait son propre appel côté client pour résoudre l'état personnalisé,
  * comme `CommunityComments` le fait déjà pour les commentaires.
  */

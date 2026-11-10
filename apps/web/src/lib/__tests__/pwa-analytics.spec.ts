@@ -26,7 +26,7 @@ jest.mock('@/lib/api', () => {
 
 const mockedApiPost = apiPost as jest.MockedFunction<typeof apiPost>;
 
-const QUEUE_KEY = 'chiffreo_pwa_events';
+const QUEUE_KEY = 'toise_pwa_events';
 
 function queued(): { event_name: string; properties: Record<string, unknown> }[] {
   return JSON.parse(localStorage.getItem(QUEUE_KEY) ?? '[]');

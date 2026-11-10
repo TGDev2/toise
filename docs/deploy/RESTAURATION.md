@@ -1,6 +1,6 @@
 # Restauration — procédure éprouvée
 
-Ce document décrit ce qu'il faut taper pour remonter Chiffréo à partir de ses
+Ce document décrit ce qu'il faut taper pour remonter Toisé à partir de ses
 sauvegardes, ce que ça coûte en temps, ce qui est perdu, et les pièges qui ont
 été trouvés **en le faisant réellement** le 2026-08-06.
 
@@ -25,7 +25,7 @@ VPS : celui-ci n'a que la clé publique, par construction (`BACKUP.md` §2).
 ```bash
 # 0. Récupérer les artefacts. Si le disque du VPS est perdu, c'est la copie
 #    hors-site qui les porte — et s'il n'y en a pas, il n'y a rien à restaurer.
-rclone copy b2:chiffreo-backups/vps . --include 'chiffreo-*.gpg' --max-age 48h
+rclone copy b2:toise-backups/vps . --include 'toise-*.gpg' --max-age 48h
 
 # 1. Provisionner le nouveau VPS (DEPLOY.md : provision.sh, DNS, .env).
 
@@ -35,10 +35,10 @@ docker compose -f docker-compose.prod.yml up -d postgres
 # 3. Restaurer base + fichiers. Aucune attente à intercaler : restore.sh
 #    attend lui-même que Postgres soit réellement joignable (piège nº 2).
 DB_PASSWORD='<celui du .env>' bash docs/deploy/restore.sh \
-  --db-backup   chiffreo-db-<horodatage>.dump.gpg \
-  --uploads-backup chiffreo-uploads-<horodatage>.tar.gz.gpg \
+  --db-backup   toise-db-<horodatage>.dump.gpg \
+  --uploads-backup toise-uploads-<horodatage>.tar.gz.gpg \
   --mode prod \
-  --db-target chiffreo-db --uploads-target chiffreo_uploads \
+  --db-target toise-db --uploads-target toise_uploads \
   --yes-i-know-this-is-production
 #    → confirmation interactive : taper le nom exact de la cible.
 
@@ -60,8 +60,8 @@ créée puis détruite.
 
 ```bash
 bash docs/deploy/restore.sh \
-  --db-backup chiffreo-db-<horodatage>.dump.gpg \
-  --uploads-backup chiffreo-uploads-<horodatage>.tar.gz.gpg
+  --db-backup toise-db-<horodatage>.dump.gpg \
+  --uploads-backup toise-uploads-<horodatage>.tar.gz.gpg
 # --keep pour inspecter la cible avant destruction.
 ```
 
@@ -73,12 +73,12 @@ Ce que la CI rejoue, et ce qu'il faut lancer après toute modification de
 `backup.sh` ou `restore.sh` :
 
 ```bash
-docker build -f apps/api/Dockerfile -t chiffreo-api:drill .
+docker build -f apps/api/Dockerfile -t toise-api:drill .
 bash docs/deploy/restore-drill.sh          # DRILL_KEEP=1 pour garder la pile
 ```
 
 Il génère sa propre clé GPG jetable, ses propres conteneurs et volumes, tous
-préfixés `chiffreo-drill-`. Il ne peut pas atteindre une ressource de
+préfixés `toise-drill-`. Il ne peut pas atteindre une ressource de
 production, même lancé sur le VPS.
 
 ---
@@ -240,7 +240,7 @@ la base cible et refuse de commencer s'il y en a, en affichant la commande à
 lancer :
 
 ```
-ERREUR: 1 connexion(s) encore ouverte(s) sur « chiffreo ».
+ERREUR: 1 connexion(s) encore ouverte(s) sur « toise ».
         Arrêter l'application avant de restaurer :
           docker compose -f docker-compose.prod.yml stop api web
 ```
@@ -312,8 +312,8 @@ Un angle mort nommé n'est plus un piège ; celui qu'on tait le reste.
   ses identifiants ne peuvent pas vivre dans le dépôt. Le chemin `push_offsite`
   n'est donc **jamais exercé**, ni localement ni en CI — c'est aussi le seul
   chemin qui distingue « sauvegarde » de « copie sur le même disque ».
-- **La confirmation interactive** des cibles protégées (`chiffreo-db`,
-  `chiffreo_uploads`) : le drill utilise des noms préfixés `chiffreo-drill-`,
+- **La confirmation interactive** des cibles protégées (`toise-db`,
+  `toise_uploads`) : le drill utilise des noms préfixés `toise-drill-`,
   qui ne la déclenchent pas. Ce chemin a été exercé à la main lors du pilote de
   retour arrière (E6-5).
 - **Le ping de supervision** (`BACKUP_MONITOR_URL`), pour la même raison.

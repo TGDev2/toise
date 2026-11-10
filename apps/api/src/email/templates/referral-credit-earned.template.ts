@@ -24,7 +24,7 @@ export function buildReferralCreditEarnedEmail(
   <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:16px;padding:32px;">
     <h1 style="font-size:20px;margin:0 0 8px;">Un filleul vient de s’abonner 🎉</h1>
     <p style="font-size:14px;color:#57534e;">
-      Un utilisateur que vous avez parrainé vient de souscrire un abonnement Chiffréo.
+      Un utilisateur que vous avez parrainé vient de souscrire un abonnement Toisé.
       En remerciement, <strong>${amountLabel}</strong> ont été crédités sur votre compte
       et seront automatiquement déduits de votre prochaine facture.
     </p>
@@ -32,7 +32,7 @@ export function buildReferralCreditEarnedEmail(
       <a href="${data.referralsUrl}" style="color:#0369a1;">Voir mes parrainages</a>
     </p>
     <p style="font-size:12px;color:#a8a29e;margin-top:32px;">
-      Programme de parrainage Chiffréo.
+      Programme de parrainage Toisé.
     </p>
   </div>
 </body></html>`;
@@ -40,7 +40,7 @@ export function buildReferralCreditEarnedEmail(
   const text = [
     `Un filleul vient de s’abonner`,
     '',
-    `Un utilisateur que vous avez parrainé vient de souscrire un abonnement Chiffréo. En remerciement, ${amountLabel} ont été crédités sur votre compte et seront automatiquement déduits de votre prochaine facture.`,
+    `Un utilisateur que vous avez parrainé vient de souscrire un abonnement Toisé. En remerciement, ${amountLabel} ont été crédités sur votre compte et seront automatiquement déduits de votre prochaine facture.`,
     '',
     `Voir mes parrainages : ${data.referralsUrl}`,
   ].join('\n');

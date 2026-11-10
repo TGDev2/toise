@@ -265,7 +265,7 @@ export class ReferralsService {
       {
         amount: -credit.amount_cents,
         currency: credit.currency,
-        description: 'Parrainage Chiffréo : 1 mois offert',
+        description: 'Parrainage Toisé : 1 mois offert',
       },
       { idempotencyKey: `referral-credit-${credit.id}` },
     );

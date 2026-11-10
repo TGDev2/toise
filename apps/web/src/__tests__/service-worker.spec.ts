@@ -16,8 +16,8 @@ import { join } from 'path';
 import { createContext, runInContext } from 'vm';
 
 const SW_PATH = join(__dirname, '..', '..', 'public', 'sw.js');
-const APP_ORIGIN = 'https://chiffreo.fr';
-const API_ORIGIN = 'https://api.chiffreo.fr';
+const APP_ORIGIN = 'https://toise.fr';
+const API_ORIGIN = 'https://api.toise.fr';
 
 type Listener = (event: FakeEvent) => void;
 

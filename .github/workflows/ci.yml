@@ -18,8 +18,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @chiffreo/api lint
-      - run: pnpm --filter @chiffreo/api build
+      - run: pnpm --filter @toise/api lint
+      - run: pnpm --filter @toise/api build
       # Placé avant les tests unitaires, et nommé, parce qu'une dérive de
       # quantité doit porter son nom dans la CI plutôt que d'être noyée dans
       # 1 000+ tests. Le harnais tourne donc deux fois — quelques secondes de
@@ -31,15 +31,15 @@ jobs:
       # constater. (`CI=true` suffirait ici ; l'écrire rend la garantie vraie
       # aussi en local, où elle se vérifie.)
       - name: Harnais de non-régression du moteur (catalogue seedé)
-        run: pnpm --filter @chiffreo/api test:engine-regression
+        run: pnpm --filter @toise/api test:engine-regression
       - name: Tests unitaires
-        run: pnpm --filter @chiffreo/api test
+        run: pnpm --filter @toise/api test
       # Nom explicite : ces suites montent des contrôleurs avec services mockés
       # et guards surchargés. Elles vérifient le contrat HTTP (DTO, pipes, codes
       # de statut) — pas l'intégration. Ce que le vert ici ne dit pas est couvert
       # par le job `api-integration`. Cf. apps/api/test/README.md.
       - name: Tests de contrat HTTP (services mockés)
-        run: pnpm --filter @chiffreo/api test:e2e
+        run: pnpm --filter @toise/api test:e2e
 
   migrations:
     name: Migrations (compatibilité ascendante)
@@ -80,13 +80,13 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_DB: chiffreo
-          POSTGRES_USER: chiffreo
-          POSTGRES_PASSWORD: chiffreo_dev
+          POSTGRES_DB: toise
+          POSTGRES_USER: toise
+          POSTGRES_PASSWORD: toise_dev
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U chiffreo"
+          --health-cmd "pg_isready -U toise"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
@@ -98,12 +98,12 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @chiffreo/api test:integration
+      - run: pnpm --filter @toise/api test:integration
         env:
           DB_HOST: localhost
           DB_PORT: 5432
-          DB_USERNAME: chiffreo
-          DB_PASSWORD: chiffreo_dev
+          DB_USERNAME: toise
+          DB_PASSWORD: toise_dev
 
   web:
     name: Web (lint, build, tests)
@@ -116,9 +116,9 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @chiffreo/web lint
-      - run: pnpm --filter @chiffreo/web test
-      - run: pnpm --filter @chiffreo/web build
+      - run: pnpm --filter @toise/web lint
+      - run: pnpm --filter @toise/web test
+      - run: pnpm --filter @toise/web build
         env:
           NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
 
@@ -134,13 +134,13 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_DB: chiffreo
-          POSTGRES_USER: chiffreo
-          POSTGRES_PASSWORD: chiffreo_dev
+          POSTGRES_DB: toise
+          POSTGRES_USER: toise
+          POSTGRES_PASSWORD: toise_dev
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U chiffreo"
+          --health-cmd "pg_isready -U toise"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
@@ -156,23 +156,23 @@ jobs:
           distribution: temurin
           java-version: '17'
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @chiffreo/api build
+      - run: pnpm --filter @toise/api build
       - name: Migre la base
         run: node apps/api/dist/scripts/migrate.js
         env:
           DB_HOST: localhost
           DB_PORT: 5432
-          DB_USERNAME: chiffreo
-          DB_PASSWORD: chiffreo_dev
-          DB_NAME: chiffreo
-      - run: pnpm --filter @chiffreo/web exec playwright install --with-deps chromium
-      - run: pnpm --filter @chiffreo/web test:e2e
+          DB_USERNAME: toise
+          DB_PASSWORD: toise_dev
+          DB_NAME: toise
+      - run: pnpm --filter @toise/web exec playwright install --with-deps chromium
+      - run: pnpm --filter @toise/web test:e2e
         env:
           DB_HOST: localhost
           DB_PORT: 5432
-          DB_USERNAME: chiffreo
-          DB_PASSWORD: chiffreo_dev
-          DB_NAME: chiffreo
+          DB_USERNAME: toise
+          DB_PASSWORD: toise_dev
+          DB_NAME: toise
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

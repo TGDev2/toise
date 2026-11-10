@@ -228,7 +228,7 @@ Détails (comptes par split/classe, dédoublonnage) : DATASET_MANIFEST.json.
 ## Usage prévu et limites
 
 Détection de portes et fenêtres sur des photos d'intérieur uploadées par les
-utilisateurs de Chiffréo (estimation de travaux de rénovation), inférence CPU,
+utilisateurs de Toisé (estimation de travaux de rénovation), inférence CPU,
 seuil de confiance runtime {RUNTIME_CONF}. Non prévu pour : façades
 extérieures, plans 2D, véhicules. Les dimensions cm en aval dépendent de la
 calibration par porte de référence (~204 cm), pas du modèle.

@@ -254,7 +254,7 @@ async function main(): Promise<void> {
 
   const user = await usersRepo.save(
     usersRepo.create({
-      email: `${runId}@chiffreo.test`,
+      email: `${runId}@toise.test`,
       firebase_uid: `firebase-${runId}`,
     }),
   );

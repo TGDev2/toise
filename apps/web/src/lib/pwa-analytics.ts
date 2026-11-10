@@ -16,7 +16,7 @@ import { isAnalyticsAllowed, subscribeToConsent } from './analytics-consent';
 // ligne serait indiscernable d'un utilisateur absent. Le tampon n'est pas un
 // confort, c'est une condition de justesse de la mesure.
 
-const QUEUE_KEY = 'chiffreo_pwa_events';
+const QUEUE_KEY = 'toise_pwa_events';
 
 // File volontairement bornée : au-delà, on abandonne les plus anciens plutôt que
 // de laisser `localStorage` croître sans limite sur un appareil durablement hors

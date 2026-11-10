@@ -44,7 +44,7 @@ const serviceMock = {
 
 const userContextMock = {
   resolveForFirebaseUid: jest.fn().mockResolvedValue({
-    user: { id: mockUserId, email: 'artisan@chiffreo.test' },
+    user: { id: mockUserId, email: 'artisan@toise.test' },
     userId: mockUserId,
     effectiveTier: SubscriptionTier.CONTRACTOR_ESSENTIEL,
   }),
@@ -64,7 +64,7 @@ describe('QuantityValidationsController (e2e)', () => {
     serviceMock.validate.mockResolvedValue({
       ...mockState,
       validated_at: '2026-08-08T12:00:00.000Z',
-      validated_by: 'artisan@chiffreo.test',
+      validated_by: 'artisan@toise.test',
     });
     featureGatesServiceMock.isFeatureAllowed.mockResolvedValue(true);
     featureGatesServiceMock.getGateConfig.mockResolvedValue({

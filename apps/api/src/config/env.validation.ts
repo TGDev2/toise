@@ -52,7 +52,7 @@ const CHANGEME_MARKER = 'CHANGEME';
 // une version antérieure du dépôt sans être modifié doit être refusé au
 // même titre qu'un marqueur non renseigné.
 const KNOWN_EXAMPLE_VALUES: Partial<Record<string, string>> = {
-  DB_PASSWORD: 'chiffreo_dev',
+  DB_PASSWORD: 'toise_dev',
   CORS_ORIGIN: 'http://localhost:3000',
   PUBLIC_URL: 'http://localhost:3000',
   NEXT_PUBLIC_API_URL: 'http://localhost:3001/api/v1',

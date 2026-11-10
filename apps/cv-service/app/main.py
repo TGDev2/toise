@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Chiffréo CV Service",
+    title="Toisé CV Service",
     description="Computer vision pipeline for room dimension analysis",
     version="0.2.0",
     lifespan=lifespan,

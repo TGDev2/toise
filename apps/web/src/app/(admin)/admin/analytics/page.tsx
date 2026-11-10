@@ -53,7 +53,7 @@ const FUNNEL_LABELS: Record<string, string> = {
 
 const TIER_LABELS: Record<string, string> = {
   pro: 'Pro (retiré)',
-  contractor_essentiel: 'Chiffréo Pro',
+  contractor_essentiel: 'Toisé Pro',
   contractor_standard: 'Standard (jamais vendu)',
   contractor_premium: 'Premium (jamais vendu)',
 };

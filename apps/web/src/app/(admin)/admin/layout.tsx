@@ -29,7 +29,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen bg-[var(--background)]">
       <aside className="w-64 border-r border-[var(--foreground)]/10 bg-[var(--surface)] p-6">
         <h1 className="mb-8 text-xl font-bold text-[var(--foreground)]">
-          Admin Chiffréo
+          Admin Toisé
         </h1>
         <nav className="space-y-2">
           <Link

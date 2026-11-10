@@ -100,7 +100,7 @@ pipeline tourne de bout en bout.
 
 ## Boucle de ré-entraînement (BACKLOG CV-6)
 
-> **HORS SERVICE depuis E4-2.** Les deux seuls endpoints Chiffréo que cette
+> **HORS SERVICE depuis E4-2.** Les deux seuls endpoints Toisé que cette
 > boucle appelle — `GET /admin/cv-retraining/export` et
 > `GET /admin/cv-retraining/photo?path=…` — ont été supprimés de l'API : aucun
 > écran n'y menait, et la vision par ordinateur est débranchée (ADR 0001 D2),
@@ -134,17 +134,17 @@ VPS), typiquement en cron hebdomadaire.
 - un compte **admin dédié** à la boucle (rôle `admin` en base) et l'env :
 
 ```bash
-export CHIFFREO_API_URL=https://api.chiffreo.fr/api/v1
+export TOISE_API_URL=https://api.toise.fr/api/v1
 export FIREBASE_WEB_API_KEY=...          # clé Web du projet Firebase
-export CHIFFREO_ADMIN_EMAIL=cv-retrain@chiffreo.fr
-export CHIFFREO_ADMIN_PASSWORD=...
+export TOISE_ADMIN_EMAIL=cv-retrain@toise.fr
+export TOISE_ADMIN_PASSWORD=...
 ```
 
 ### Cycle
 
 ```bash
 # Cron (ex. lundi 3h) — prépare, entraîne, évalue, puis S'ARRÊTE :
-# 0 3 * * 1 cd /opt/chiffreo/apps/cv-service && .venv/bin/python training/retrain.py --public-data datasets/door-window/data.yaml >> retrain.log 2>&1
+# 0 3 * * 1 cd /opt/toise/apps/cv-service && .venv/bin/python training/retrain.py --public-data datasets/door-window/data.yaml >> retrain.log 2>&1
 python training/retrain.py --public-data datasets/door-window/data.yaml
 
 # Revue humaine OBLIGATOIRE avant publication :

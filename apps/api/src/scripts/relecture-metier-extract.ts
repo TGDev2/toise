@@ -29,7 +29,7 @@ import { SkillLevel } from '../projects/entities/project-work-item.entity';
  * ici.
  *
  * ```
- * pnpm --filter @chiffreo/api extract:relecture-metier
+ * pnpm --filter @toise/api extract:relecture-metier
  * ```
  *
  * Rejouable : si le moteur ou le catalogue change, ce script régénère le

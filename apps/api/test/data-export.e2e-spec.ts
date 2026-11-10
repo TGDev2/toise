@@ -48,7 +48,7 @@ describe('DataExportController (e2e)', () => {
   let tmpDir: string;
 
   beforeAll(() => {
-    tmpDir = mkdtempSync(join(tmpdir(), 'chiffreo-export-e2e-'));
+    tmpDir = mkdtempSync(join(tmpdir(), 'toise-export-e2e-'));
   });
 
   afterAll(() => {

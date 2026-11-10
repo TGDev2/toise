@@ -1,4 +1,4 @@
-# Chiffréo — Frontend Web
+# Toisé — Frontend Web
 
 Application web construite avec **Next.js 16** (App Router), **React 19** et **Tailwind CSS 4**.
 

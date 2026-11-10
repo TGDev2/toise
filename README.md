@@ -1,8 +1,8 @@
-# Chiffréo
+# Toisé
 
 Application d'estimation de matériaux pour projets de rénovation. Scannez votre pièce ou saisissez ses dimensions, sélectionnez vos travaux, et obtenez une base de commande chiffrée — pertes, découpes et niveau de compétence compris — que vous validez avant d'acheter.
 
-> La promesse produit est encadrée : Chiffréo ne promet nulle part une quantité exacte.
+> La promesse produit est encadrée : Toisé ne promet nulle part une quantité exacte.
 > Le vocabulaire interdit est listé dans [`docs/promesse-lexique.json`](docs/promesse-lexique.json)
 > et vérifié à l'exécution par `promise-wording.spec.ts` (api et web).
 
@@ -52,7 +52,7 @@ déployé en production (débranché, `CV_ENABLED=false`).
 
 ```bash
 git clone <repository-url>
-cd Chiffreo
+cd toise
 pnpm install
 ```
 
@@ -111,7 +111,7 @@ pnpm dev:cv     # CV service sur http://localhost:8000
 ## Structure du projet
 
 ```
-Chiffreo/
+toise/
 ├── apps/
 │   ├── api/                # Backend NestJS (16 modules, 27 migrations)
 │   ├── web/                # Frontend Next.js (App Router)
@@ -134,9 +134,9 @@ Copier `.env.example` vers `.env` et renseigner les valeurs :
 |----------|-------------|--------|
 | `DB_HOST` | Hôte PostgreSQL | `localhost` |
 | `DB_PORT` | Port PostgreSQL | `5432` |
-| `DB_USERNAME` | Utilisateur DB | `chiffreo` |
-| `DB_PASSWORD` | Mot de passe DB | `chiffreo_dev` |
-| `DB_NAME` | Nom de la base | `chiffreo` |
+| `DB_USERNAME` | Utilisateur DB | `toise` |
+| `DB_PASSWORD` | Mot de passe DB | `toise_dev` |
+| `DB_NAME` | Nom de la base | `toise` |
 | `PORT` | Port de l'API | `3001` |
 | `CORS_ORIGIN` | Origine autorisée | `http://localhost:3000` |
 | `FIREBASE_PROJECT_ID` | ID du projet Firebase | — |

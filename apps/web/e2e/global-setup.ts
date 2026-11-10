@@ -83,9 +83,9 @@ export default async function globalSetup(): Promise<void> {
   const db = new Client({
     host: process.env.DB_HOST ?? 'localhost',
     port: Number(process.env.DB_PORT ?? 5432),
-    user: process.env.DB_USERNAME ?? 'chiffreo',
-    password: process.env.DB_PASSWORD ?? 'chiffreo_dev',
-    database: process.env.DB_NAME ?? 'chiffreo',
+    user: process.env.DB_USERNAME ?? 'toise',
+    password: process.env.DB_PASSWORD ?? 'toise_dev',
+    database: process.env.DB_NAME ?? 'toise',
   });
   await db.connect();
   try {
@@ -148,9 +148,9 @@ async function seedFreeAccount(): Promise<void> {
   const db = new Client({
     host: process.env.DB_HOST ?? 'localhost',
     port: Number(process.env.DB_PORT ?? 5432),
-    user: process.env.DB_USERNAME ?? 'chiffreo',
-    password: process.env.DB_PASSWORD ?? 'chiffreo_dev',
-    database: process.env.DB_NAME ?? 'chiffreo',
+    user: process.env.DB_USERNAME ?? 'toise',
+    password: process.env.DB_PASSWORD ?? 'toise_dev',
+    database: process.env.DB_NAME ?? 'toise',
   });
   await db.connect();
   try {

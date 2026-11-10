@@ -2,8 +2,8 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Chiffréo — Estimation de matériaux de rénovation',
-    short_name: 'Chiffréo',
+    name: 'Toisé — Estimation de matériaux de rénovation',
+    short_name: 'Toisé',
     description:
       'Estimez vos matériaux de rénovation sur la géométrie réelle de vos pièces : dimensions, travaux, base de commande à valider.',
     start_url: '/dashboard',

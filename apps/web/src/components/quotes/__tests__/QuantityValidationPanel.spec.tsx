@@ -141,7 +141,7 @@ describe('QuantityValidationPanel', () => {
       <QuantityValidationPanel
         state={makeState({
           validated_at: '2026-08-08T12:00:00.000Z',
-          validated_by: 'artisan@chiffreo.test',
+          validated_by: 'artisan@toise.test',
         })}
         onCorrect={jest.fn()}
         onValidate={jest.fn()}
@@ -153,7 +153,7 @@ describe('QuantityValidationPanel', () => {
       screen.queryByRole('button', { name: 'Je valide ces quantités' }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText(/Quantités validées le .* par artisan@chiffreo\.test/),
+      screen.getByText(/Quantités validées le .* par artisan@toise\.test/),
     ).toBeInTheDocument();
   });
 

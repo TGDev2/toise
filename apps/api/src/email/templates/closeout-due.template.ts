@@ -53,7 +53,7 @@ export function buildCloseoutDueEmail(
       <a href="${data.closeoutUrl}" style="color:#0369a1;">Clôturer « ${projectLabel} »</a>
     </p>
     <p style="font-size:12px;color:#a8a29e;margin-top:32px;">
-      Vous recevez cet e-mail car ce chantier a été estimé sur Chiffréo sans être clôturé. Pour toute question, contactez-nous à privacy@chiffreo.fr.
+      Vous recevez cet e-mail car ce chantier a été estimé sur Toisé sans être clôturé. Pour toute question, contactez-nous à privacy@toise.fr.
     </p>
   </div>
 </body></html>`;
@@ -67,7 +67,7 @@ export function buildCloseoutDueEmail(
     '',
     `Clôturer « ${data.projectName} » : ${data.closeoutUrl}`,
     '',
-    'Vous recevez cet e-mail car ce chantier a été estimé sur Chiffréo sans être clôturé.',
+    'Vous recevez cet e-mail car ce chantier a été estimé sur Toisé sans être clôturé.',
   ].join('\n');
 
   return { subject, html, text };

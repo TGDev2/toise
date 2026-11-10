@@ -71,7 +71,7 @@ describe('InstallPrompt', () => {
     });
 
     unmount();
-    localStorage.removeItem('chiffreo_install_dismissed');
+    localStorage.removeItem('toise_install_dismissed');
     mockedTrack.mockClear();
 
     render(<InstallPrompt />);

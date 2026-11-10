@@ -267,7 +267,7 @@ export class QuotePdfService {
     doc.moveDown(2);
     doc.fontSize(8).fillColor('#999999');
     pdf.text(
-      `SIRET : ${companyProfile.siret} — Généré par Chiffréo — ${dateStr}`,
+      `SIRET : ${companyProfile.siret} — Généré par Toisé — ${dateStr}`,
       { align: 'center' },
     );
 

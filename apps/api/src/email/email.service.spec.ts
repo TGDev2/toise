@@ -64,7 +64,7 @@ describe('EmailService.sendCalculatorResultEmail', () => {
     expect(brevoClientMock.sendTransactionalEmail).toHaveBeenCalledWith(
       expect.objectContaining({
         to: 'visiteur@example.fr',
-        subject: 'Votre estimation Chiffréo — Peinture murale',
+        subject: 'Votre estimation Toisé — Peinture murale',
       }),
     );
   });
@@ -195,15 +195,15 @@ describe('EmailService.sendQuoteReminderContractorEmail', () => {
       totalTtc: 890,
       daysSinceSent: 14,
       clientName: 'Marie Petit',
-      quoteUrl: 'https://chiffreo.fr/quotes/quote-id-1',
+      quoteUrl: 'https://toise.fr/quotes/quote-id-1',
     });
 
     const [sent] = brevoClientMock.sendTransactionalEmail.mock.calls[0] as [
       SentEmail,
     ];
     expect(sent.subject).toContain('D-2026-002');
-    expect(sent.html).toContain('https://chiffreo.fr/quotes/quote-id-1');
-    expect(sent.text).toContain('https://chiffreo.fr/quotes/quote-id-1');
+    expect(sent.html).toContain('https://toise.fr/quotes/quote-id-1');
+    expect(sent.text).toContain('https://toise.fr/quotes/quote-id-1');
   });
 
   it("retombe sur 'Le client' quand le nom du client est absent", async () => {
@@ -212,7 +212,7 @@ describe('EmailService.sendQuoteReminderContractorEmail', () => {
       totalTtc: 890,
       daysSinceSent: 7,
       clientName: null,
-      quoteUrl: 'https://chiffreo.fr/quotes/quote-id-1',
+      quoteUrl: 'https://toise.fr/quotes/quote-id-1',
     });
 
     const [sent] = brevoClientMock.sendTransactionalEmail.mock.calls[0] as [
@@ -228,7 +228,7 @@ describe('EmailService.sendQuoteReminderContractorEmail', () => {
       totalTtc: 890,
       daysSinceSent: 7,
       clientName: 'Marie <Petit> & fils',
-      quoteUrl: 'https://chiffreo.fr/quotes/quote-id-1',
+      quoteUrl: 'https://toise.fr/quotes/quote-id-1',
     });
 
     const [sent] = brevoClientMock.sendTransactionalEmail.mock.calls[0] as [
@@ -259,15 +259,15 @@ describe('EmailService.sendOnboardingD1Email', () => {
 
   it("inclut le lien du dashboard dans le corps de l'e-mail", async () => {
     await service.sendOnboardingD1Email('nouveau@example.fr', {
-      dashboardUrl: 'https://chiffreo.fr/dashboard',
+      dashboardUrl: 'https://toise.fr/dashboard',
     });
 
     const [sent] = brevoClientMock.sendTransactionalEmail.mock.calls[0] as [
       SentEmail,
     ];
     expect(sent.to).toBe('nouveau@example.fr');
-    expect(sent.html).toContain('https://chiffreo.fr/dashboard');
-    expect(sent.text).toContain('https://chiffreo.fr/dashboard');
+    expect(sent.html).toContain('https://toise.fr/dashboard');
+    expect(sent.text).toContain('https://toise.fr/dashboard');
   });
 });
 
@@ -290,7 +290,7 @@ describe('EmailService.sendOnboardingD3Email', () => {
 
   it('propose de reprendre le projet quand hasProject vaut true', async () => {
     await service.sendOnboardingD3Email('utilisateur@example.fr', {
-      dashboardUrl: 'https://chiffreo.fr/dashboard',
+      dashboardUrl: 'https://toise.fr/dashboard',
       hasProject: true,
     });
 
@@ -303,7 +303,7 @@ describe('EmailService.sendOnboardingD3Email', () => {
 
   it('propose de créer un premier projet quand hasProject vaut false', async () => {
     await service.sendOnboardingD3Email('utilisateur@example.fr', {
-      dashboardUrl: 'https://chiffreo.fr/dashboard',
+      dashboardUrl: 'https://toise.fr/dashboard',
       hasProject: false,
     });
 
@@ -334,21 +334,21 @@ describe('EmailService.sendProjectAbandonedEmail', () => {
   it('mentionne le nom du projet et son lien', async () => {
     await service.sendProjectAbandonedEmail('utilisateur@example.fr', {
       projectName: 'Salon',
-      projectUrl: 'https://chiffreo.fr/projects/project-1',
+      projectUrl: 'https://toise.fr/projects/project-1',
     });
 
     const [sent] = brevoClientMock.sendTransactionalEmail.mock.calls[0] as [
       SentEmail,
     ];
     expect(sent.subject).toContain('Salon');
-    expect(sent.html).toContain('https://chiffreo.fr/projects/project-1');
-    expect(sent.text).toContain('https://chiffreo.fr/projects/project-1');
+    expect(sent.html).toContain('https://toise.fr/projects/project-1');
+    expect(sent.text).toContain('https://toise.fr/projects/project-1');
   });
 
   it('échappe les caractères HTML du nom du projet dans le corps html', async () => {
     await service.sendProjectAbandonedEmail('utilisateur@example.fr', {
       projectName: 'Salon <Pro> & cuisine',
-      projectUrl: 'https://chiffreo.fr/projects/project-1',
+      projectUrl: 'https://toise.fr/projects/project-1',
     });
 
     const [sent] = brevoClientMock.sendTransactionalEmail.mock.calls[0] as [
@@ -382,7 +382,7 @@ describe('EmailService.sendTrialEndingSoonEmail', () => {
       daysRemaining: 3,
       priceEuros: 9.99,
       billingPeriodLabel: 'par an',
-      manageSubscriptionUrl: 'https://chiffreo.fr/subscription',
+      manageSubscriptionUrl: 'https://toise.fr/subscription',
     });
 
     const [sent] = brevoClientMock.sendTransactionalEmail.mock.calls[0] as [
@@ -390,7 +390,7 @@ describe('EmailService.sendTrialEndingSoonEmail', () => {
     ];
     expect(sent.subject).toContain('3 jours');
     expect(sent.html).toContain('9,99 €');
-    expect(sent.html).toContain('https://chiffreo.fr/subscription');
+    expect(sent.html).toContain('https://toise.fr/subscription');
   });
 
   it("accorde le singulier quand il ne reste qu'un jour", async () => {
@@ -398,7 +398,7 @@ describe('EmailService.sendTrialEndingSoonEmail', () => {
       daysRemaining: 1,
       priceEuros: 9.99,
       billingPeriodLabel: 'par an',
-      manageSubscriptionUrl: 'https://chiffreo.fr/subscription',
+      manageSubscriptionUrl: 'https://toise.fr/subscription',
     });
 
     const [sent] = brevoClientMock.sendTransactionalEmail.mock.calls[0] as [

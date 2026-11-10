@@ -119,7 +119,7 @@ describe('Export RGPD (intégration, PostgreSQL et volume réels)', () => {
 
   beforeAll(async () => {
     dataSource = await migratedDataSource();
-    uploadsPath = await mkdtemp(join(tmpdir(), 'chiffreo-export-'));
+    uploadsPath = await mkdtemp(join(tmpdir(), 'toise-export-'));
 
     const config = {
       get: (key: string, fallback?: unknown) => {
@@ -192,15 +192,15 @@ describe('Export RGPD (intégration, PostgreSQL et volume réels)', () => {
     const [user1, user2, user3]: User[] = await dataSource
       .getRepository(User)
       .save([
-        { email: 'export-1@chiffreo.test', firebase_uid: 'firebase-export-1' },
-        { email: 'export-2@chiffreo.test', firebase_uid: 'firebase-export-2' },
-        { email: 'export-3@chiffreo.test', firebase_uid: 'firebase-export-3' },
+        { email: 'export-1@toise.test', firebase_uid: 'firebase-export-1' },
+        { email: 'export-2@toise.test', firebase_uid: 'firebase-export-2' },
+        { email: 'export-3@toise.test', firebase_uid: 'firebase-export-3' },
       ]);
 
     // ── Compte A : le compte exporté ──
     const companyProfile = await dataSource.getRepository(CompanyProfile).save({
       user_id: user1.id,
-      raison_sociale: 'Chiffréo Test SARL',
+      raison_sociale: 'Toisé Test SARL',
       siret: '12345678900011',
       address_line1: '1 rue du Test',
       postal_code: '75000',
@@ -304,7 +304,7 @@ describe('Export RGPD (intégration, PostgreSQL et volume réels)', () => {
       status: InvoiceStatus.ISSUED,
       issued_on: '2026-08-01',
       due_on: '2026-08-31',
-      seller_snapshot: { name: 'Chiffréo Test SARL', country: 'FR' },
+      seller_snapshot: { name: 'Toisé Test SARL', country: 'FR' },
       buyer_snapshot: { name: 'Client Test', country: 'FR' },
       operation_category: OperationCategory.SERVICES,
       items_json: [],

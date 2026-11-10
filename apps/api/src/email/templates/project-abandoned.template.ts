@@ -36,7 +36,7 @@ export function buildProjectAbandonedEmail(
       <a href="${data.projectUrl}" style="color:#0369a1;">Reprendre « ${projectLabel} »</a>
     </p>
     <p style="font-size:12px;color:#a8a29e;margin-top:32px;">
-      Vous recevez cet e-mail car ce projet est resté inactif sur Chiffréo. Pour toute question, contactez-nous à privacy@chiffreo.fr.
+      Vous recevez cet e-mail car ce projet est resté inactif sur Toisé. Pour toute question, contactez-nous à privacy@toise.fr.
     </p>
   </div>
 </body></html>`;
@@ -48,7 +48,7 @@ export function buildProjectAbandonedEmail(
     '',
     `Reprendre « ${data.projectName} » : ${data.projectUrl}`,
     '',
-    'Vous recevez cet e-mail car ce projet est resté inactif sur Chiffréo.',
+    'Vous recevez cet e-mail car ce projet est resté inactif sur Toisé.',
   ].join('\n');
 
   return { subject, html, text };

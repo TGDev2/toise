@@ -28,7 +28,7 @@ jest.mock('stripe', () =>
 
 const CONFIG_VALUES: Record<string, string> = {
   'stripe.secretKey': 'sk_test_123',
-  publicUrl: 'https://chiffreo.fr',
+  publicUrl: 'https://toise.fr',
 };
 
 const configServiceMock = {
@@ -259,7 +259,7 @@ describe('ReferralsService', () => {
         // notifyReferrer lookup
         .mockResolvedValueOnce({
           id: 'referrer-1',
-          email: 'referrer@chiffreo.fr',
+          email: 'referrer@toise.fr',
         });
       referralCreditsRepoMock.findOneByOrFail.mockResolvedValue({
         id: 'credit-1',
@@ -295,7 +295,7 @@ describe('ReferralsService', () => {
         stripe_balance_transaction_id: 'cbt_1',
       });
       expect(emailServiceMock.sendReferralCreditEmail).toHaveBeenCalledWith(
-        'referrer@chiffreo.fr',
+        'referrer@toise.fr',
         expect.objectContaining({
           amountEuros: monthlyEquivalentEuros(getDefaultPlan()),
         }),
@@ -352,7 +352,7 @@ describe('ReferralsService', () => {
         })
         .mockResolvedValueOnce({
           id: 'referrer-1',
-          email: 'referrer@chiffreo.fr',
+          email: 'referrer@toise.fr',
         });
       referralCreditsRepoMock.findOneByOrFail.mockResolvedValue({
         id: 'credit-1',
@@ -403,7 +403,7 @@ describe('ReferralsService', () => {
       ]);
       usersRepoMock.findOneBy.mockResolvedValue({
         id: 'referrer-1',
-        email: 'referrer@chiffreo.fr',
+        email: 'referrer@toise.fr',
       });
       mockStripeInstance.customers.createBalanceTransaction
         .mockRejectedValueOnce(new Error('stripe down'))

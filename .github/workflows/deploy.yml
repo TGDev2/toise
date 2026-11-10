@@ -30,8 +30,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  API_IMAGE: ghcr.io/tgdev2/chiffreo-api
-  WEB_IMAGE: ghcr.io/tgdev2/chiffreo-web
+  API_IMAGE: ghcr.io/tgdev2/toise-api
+  WEB_IMAGE: ghcr.io/tgdev2/toise-web
 
 jobs:
   ci:
@@ -145,15 +145,15 @@ jobs:
           scp -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts \
             -i ~/.ssh/deploy_key \
             docker-compose.prod.yml \
-            "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SSH_HOST }}:/opt/chiffreo/docker-compose.prod.yml"
+            "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SSH_HOST }}:/opt/toise/docker-compose.prod.yml"
 
       # Bloquant, délibérément : déployer sans point de restauration, c'est
       # décider à l'avance que le retour arrière n'aura aucun recours. Le cron
       # nocturne (3h15) ne couvre pas la fenêtre d'un déploiement.
-      # Prérequis sur le VPS : clé GPG et /etc/chiffreo/backup.env (BACKUP.md §3).
+      # Prérequis sur le VPS : clé GPG et /etc/toise/backup.env (BACKUP.md §3).
       #
       # Le script est **poussé par stdin** plutôt qu'exécuté depuis
-      # /opt/chiffreo : ce clone n'est mis à jour que par les déploiements
+      # /opt/toise : ce clone n'est mis à jour que par les déploiements
       # manuels, donc rien ne garantit qu'il porte la version du script que
       # cette release attend. Même idiome que provision.sh.
       - name: Point de restauration avant déploiement
@@ -183,7 +183,7 @@ jobs:
              # déploiement qui casse laissait jusqu'ici l'identifiant de
              # registre en place sur le VPS.
              trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
-             cd /opt/chiffreo
+             cd /opt/toise
              IMAGE_TAG='$IMAGE_TAG' docker compose -f docker-compose.prod.yml pull api web
              # --wait : attend que les healthchecks passent, et sort non nul
              # sinon. Sans lui, 'up -d' rend la main dès le conteneur créé —
@@ -237,12 +237,12 @@ jobs:
               echo "> \`docs/DEPLOY.md\` § Retour arrière (restauration du point"
               echo "> ci-dessus, avec la perte de toutes les écritures depuis)."
             else
-              echo "Retour arrière par bascule d'images, sur le VPS dans \`/opt/chiffreo\` :"
+              echo "Retour arrière par bascule d'images, sur le VPS dans \`/opt/toise\` :"
               echo
               echo '```bash'
               echo "IMAGE_TAG=$PREV_TAG docker compose -f docker-compose.prod.yml pull api web"
               echo "IMAGE_TAG=$PREV_TAG docker compose -f docker-compose.prod.yml up -d --wait --wait-timeout 180 api web"
-              echo "bash /opt/chiffreo/docs/deploy/smoke-test.sh --expect-version $PREV_TAG"
+              echo "bash /opt/toise/docs/deploy/smoke-test.sh --expect-version $PREV_TAG"
               echo '```'
               echo
               echo "Le schéma reste en avant : c'est voulu et sûr tant que les"

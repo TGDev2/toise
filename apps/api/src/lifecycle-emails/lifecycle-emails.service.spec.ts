@@ -90,7 +90,7 @@ describe('LifecycleEmailsService', () => {
     emailServiceMock.sendProjectAbandonedEmail.mockResolvedValue(undefined);
     emailServiceMock.sendTrialEndingSoonEmail.mockResolvedValue(undefined);
     emailServiceMock.sendRenewalNoticeEmail.mockResolvedValue(undefined);
-    configServiceMock.get.mockReturnValue('https://chiffreo.fr');
+    configServiceMock.get.mockReturnValue('https://toise.fr');
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -236,7 +236,7 @@ describe('LifecycleEmailsService', () => {
     expect(emailServiceMock.sendOnboardingD1Email).toHaveBeenCalledWith(
       'utilisateur@example.fr',
       expect.objectContaining({
-        dashboardUrl: 'https://chiffreo.fr/dashboard',
+        dashboardUrl: 'https://toise.fr/dashboard',
       }),
     );
     expect(analyticsServiceMock.track).toHaveBeenCalledWith(
@@ -288,7 +288,7 @@ describe('LifecycleEmailsService', () => {
       'utilisateur@example.fr',
       expect.objectContaining({
         projectName: 'Salon',
-        projectUrl: 'https://chiffreo.fr/projects/project-1',
+        projectUrl: 'https://toise.fr/projects/project-1',
       }),
     );
     expect(analyticsServiceMock.track).toHaveBeenCalledWith(
@@ -331,7 +331,7 @@ describe('LifecycleEmailsService', () => {
         // prélevé de 279 € par an.
         priceEuros: getDefaultPlan().price,
         billingPeriodLabel: 'par an',
-        manageSubscriptionUrl: 'https://chiffreo.fr/subscription',
+        manageSubscriptionUrl: 'https://toise.fr/subscription',
       }),
     );
     expect(sendsRepoMock.save).toHaveBeenCalledWith(
@@ -465,7 +465,7 @@ describe('LifecycleEmailsService — préavis de reconduction', () => {
     sendsRepoMock.find.mockResolvedValue([]);
     sendsRepoMock.save.mockResolvedValue(undefined);
     emailServiceMock.sendRenewalNoticeEmail.mockResolvedValue(undefined);
-    configServiceMock.get.mockReturnValue('https://chiffreo.fr');
+    configServiceMock.get.mockReturnValue('https://toise.fr');
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -504,7 +504,7 @@ describe('LifecycleEmailsService — préavis de reconduction', () => {
         daysRemaining: 20,
         priceEuros: getDefaultPlan().price,
         billingPeriodLabel: 'par an',
-        manageSubscriptionUrl: 'https://chiffreo.fr/subscription',
+        manageSubscriptionUrl: 'https://toise.fr/subscription',
       }),
     );
     expect(analyticsServiceMock.track).toHaveBeenCalledWith(

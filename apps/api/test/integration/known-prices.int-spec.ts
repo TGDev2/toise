@@ -112,7 +112,7 @@ describe('Rappel des prix déjà saisis (intégration, PostgreSQL réel)', () =>
     userId: string;
   }> {
     const user = await dataSource.getRepository(User).save({
-      email: `int-known-prices-${suffix}@chiffreo.test`,
+      email: `int-known-prices-${suffix}@toise.test`,
       firebase_uid: `firebase-known-prices-${suffix}`,
     });
     return { userId: user.id };

@@ -9,15 +9,15 @@
 // (`clearOfflineCaches`) car ce fichier n'est pas un module TS importable par l'app. Si
 // `SW_VERSION` change ici, mettre à jour AuthContext.tsx en conséquence.
 const SW_VERSION = 'v1';
-const SHELL_CACHE = `chiffreo-shell-${SW_VERSION}`;
-const STATIC_CACHE = `chiffreo-static-${SW_VERSION}`;
-const PAGES_CACHE = `chiffreo-pages-${SW_VERSION}`;
+const SHELL_CACHE = `toise-shell-${SW_VERSION}`;
+const STATIC_CACHE = `toise-static-${SW_VERSION}`;
+const PAGES_CACHE = `toise-pages-${SW_VERSION}`;
 // Le cache des réponses API est partitionné par identité : son nom porte l'uid du porteur
 // du jeton (cf. `apiCacheName`). Un cache indexé par la seule URL resservirait hors ligne
 // la réponse d'un compte à un autre sur un appareil partagé, puisqu'un hit de cache ne
 // passe par aucune vérification d'authentification. La purge à la déconnexion ne suffit
 // pas : rien n'oblige à se déconnecter avant que le compte suivant se connecte.
-const API_CACHE_PREFIX = `chiffreo-api-${SW_VERSION}-`;
+const API_CACHE_PREFIX = `toise-api-${SW_VERSION}-`;
 const CURRENT_CACHES = [SHELL_CACHE, STATIC_CACHE, PAGES_CACHE];
 
 const OFFLINE_URL = '/offline.html';

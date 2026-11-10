@@ -27,7 +27,7 @@ import { acceptCookies } from './helpers';
  * calculateur — pas un squelette, pas un formulaire vierge.
  */
 
-const DRAFTS_KEY = 'chiffreo_local_projects';
+const DRAFTS_KEY = 'toise_local_projects';
 
 test('un visiteur sans session passe du calculateur public au projet créé côté API', async ({
   page,

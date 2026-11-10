@@ -2,7 +2,7 @@
 
 ## Pourquoi ce document
 
-Chiffréo calcule des listes d'achat pour sept types de travaux courants du
+Toisé calcule des listes d'achat pour sept types de travaux courants du
 second œuvre. Ce document présente un exemple chiffré pour chacun, avec la
 raison de chaque quantité. Vous n'avez pas à ouvrir le logiciel : lisez une
 ou plusieurs pages, sur le métier que vous connaissez, et dites si vous
@@ -29,7 +29,7 @@ prévoir.
 **Ce qu'on a retenu.**
 - Peinture acrylique mate, appliquée au rouleau — c'est la seule façon de
   poser cet ouvrage *(« ouvrage » = le type de travaux, ici « peinture
-  murale »)* que Chiffréo propose : rien à choisir sur ce point.
+  murale »)* que Toisé propose : rien à choisir sur ce point.
 - Niveau de chantier : intermédiaire.
 - Hauteur sous plafond : 2,50 m.
 - Support : mur existant, une sous-couche est prévue avant la finition.
@@ -80,7 +80,7 @@ précédente (4,00 × 3,50 m), soit 14,00 m² à couvrir. Pas de reprise lourde
 
 **Ce qu'on a retenu.**
 - Peinture plafond mate, appliquée au rouleau — seule façon de poser cet
-  ouvrage proposée par Chiffréo.
+  ouvrage proposée par Toisé.
 - Niveau de chantier : intermédiaire.
 - Hauteur de travail : 2,50 m.
 - Support : plafond existant, une sous-couche est prévue avant la
@@ -223,7 +223,7 @@ Annotations libres :
 humide (douche).
 
 **Ce qu'on a retenu.**
-- Faïence murale 25 × 40 cm (le seul format que Chiffréo propose pour cet
+- Faïence murale 25 × 40 cm (le seul format que Toisé propose pour cet
   ouvrage), pose droite.
 - Niveau de chantier : intermédiaire.
 - Local déclaré humide : le système d'étanchéité sous carrelage (SEL) est

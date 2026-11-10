@@ -533,7 +533,7 @@ export class DataExportService {
         generated_at: new Date().toISOString(),
         format_version: '2.0',
         purpose:
-          "Export des données personnelles du compte Chiffréo, au titre de l'article 20 du RGPD (droit à la portabilité).",
+          "Export des données personnelles du compte Toisé, au titre de l'article 20 du RGPD (droit à la portabilité).",
         scope_notes: [
           "Le périmètre est le compte : projets, clients, devis et factures sont ceux dont ce compte est propriétaire, et il n'en existe pas d'autres. Les versions antérieures du format (1.0) groupaient ces données sous « organizations » ; la notion d'organisation a été supprimée du produit.",
           "L'activité communautaire (« community_activity ») ne recense que les likes et commentaires posés PAR ce compte. Les likes/commentaires posés par d'autres comptes sur une publication de ce compte ne sont pas énumérés nominativement ; seul le compteur agrégé déjà public (community_projects[].likes_count) est repris.",

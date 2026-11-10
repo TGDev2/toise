@@ -400,7 +400,7 @@ export function PublicCalculator({ config }: PublicCalculatorProps) {
                 />
                 <span className="text-sm text-stone-600">
                   J&apos;accepte de recevoir cette estimation par e-mail et,
-                  occasionnellement, des actualités Chiffréo. Voir notre{' '}
+                  occasionnellement, des actualités Toisé. Voir notre{' '}
                   <Link href="/privacy" className="underline">
                     politique de confidentialité
                   </Link>

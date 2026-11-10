@@ -90,7 +90,7 @@ describe("Liste d'achat carrelage sol (intégration, PostgreSQL réel)", () => {
     dataSource = await migratedDataSource();
 
     const user = await dataSource.getRepository(User).save({
-      email: 'int-tiling@chiffreo.test',
+      email: 'int-tiling@toise.test',
       firebase_uid: 'firebase-int-tiling',
     });
     const project = await dataSource.getRepository(Project).save({

@@ -112,7 +112,7 @@ export function ContractorPricingModal({
         </div>
 
         <h2 className="mb-2 text-center text-xl font-bold text-stone-900">
-          Chiffréo Pro
+          Toisé Pro
         </h2>
         <p className="mb-6 text-center text-sm text-stone-500">
           Devis, clients et facturation pour les métiers de finition

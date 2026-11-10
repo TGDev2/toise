@@ -280,7 +280,7 @@ export class InvoicePdfService {
     doc.moveDown(0.5);
     doc.fillColor('#999999');
     pdf.text(
-      `Facture ${invoice.invoice_number} — générée par Chiffréo le ${PdfBuilder.formatDate(invoice.issued_on)}`,
+      `Facture ${invoice.invoice_number} — générée par Toisé le ${PdfBuilder.formatDate(invoice.issued_on)}`,
       { align: 'center' },
     );
   }

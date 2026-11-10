@@ -73,7 +73,7 @@ autres :
 ### Prérequis
 
 Une base PostgreSQL joignable, avec le droit `CREATEDB` : la suite **supprime et
-recrée** `chiffreo_integration_test` à chaque démarrage. En local,
+recrée** `toise_integration_test` à chaque démarrage. En local,
 `docker compose up postgres` suffit ; les identifiants viennent de
 `DB_HOST` / `DB_PORT` / `DB_USERNAME` / `DB_PASSWORD`, comme l'application.
 `INTEGRATION_DB_NAME` permet d'en changer le nom — ne jamais le pointer sur une

@@ -19,8 +19,8 @@ const CONNECTION = {
   type: 'postgres' as const,
   host: process.env.DB_HOST ?? 'localhost',
   port: parseInt(process.env.DB_PORT ?? '5432', 10),
-  username: process.env.DB_USERNAME ?? 'chiffreo',
-  password: process.env.DB_PASSWORD ?? 'chiffreo_dev',
+  username: process.env.DB_USERNAME ?? 'toise',
+  password: process.env.DB_PASSWORD ?? 'toise_dev',
 };
 
 /**
@@ -28,7 +28,7 @@ const CONNECTION = {
  * démarrage de suite. Le défaut ne doit donc surtout pas valoir `DB_NAME`.
  */
 export const TEST_DB_NAME =
-  process.env.INTEGRATION_DB_NAME ?? 'chiffreo_integration_test';
+  process.env.INTEGRATION_DB_NAME ?? 'toise_integration_test';
 
 export function testDataSourceOptions(): DataSourceOptions {
   return {

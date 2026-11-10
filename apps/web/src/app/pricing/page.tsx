@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     'Le chiffrage est gratuit et sans limite de chantiers. L’offre à 279 € HT par an, en annuel uniquement, ajoute le devis PDF conforme, le fichier clients et la facturation — 30 jours satisfait ou remboursé.',
   alternates: { canonical: '/pricing' },
   openGraph: {
-    title: 'Tarifs Chiffréo',
+    title: 'Tarifs Toisé',
     description:
       'Chiffrer est gratuit. Le devis conforme, le fichier clients et la facturation sont à 279 € HT par an, avec 30 jours satisfait ou remboursé.',
     url: '/pricing',
@@ -35,7 +35,7 @@ const PRICED_PLANS = OFFER_PLANS.filter(
 const JSON_LD = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
-  name: 'Chiffréo',
+  name: 'Toisé',
   applicationCategory: 'BusinessApplication',
   operatingSystem: 'Web',
   offers: {
@@ -96,12 +96,12 @@ const FAQ_ITEMS = [
   {
     question: 'Quels métiers sont couverts ?',
     answer:
-      'Le moteur calcule des quantités à partir de surfaces : peintre, carreleur, plaquiste, solier, poseur de parquet, poseur de revêtement mural. La plomberie, l’électricité, l’isolation, la maçonnerie et la menuiserie ne sont pas chiffrables — et le devis porte un seul bloc de main-d’œuvre, pas un déboursé par corps d’état. Si votre activité repose sur ces lots hors périmètre, un logiciel de devis tous corps d’état vous servira mieux que Chiffréo. Détail complet ci-dessous.',
+      'Le moteur calcule des quantités à partir de surfaces : peintre, carreleur, plaquiste, solier, poseur de parquet, poseur de revêtement mural. La plomberie, l’électricité, l’isolation, la maçonnerie et la menuiserie ne sont pas chiffrables — et le devis porte un seul bloc de main-d’œuvre, pas un déboursé par corps d’état. Si votre activité repose sur ces lots hors périmètre, un logiciel de devis tous corps d’état vous servira mieux que Toisé. Détail complet ci-dessous.',
   },
   {
     question: 'Que se passe-t-il en 2027 pour la facture électronique ?',
     answer:
-      'L’obligation d’émission de factures électroniques et d’e-reporting s’applique aux TPE et petites entreprises à partir du 1er septembre 2027. Chiffréo n’est pas une plateforme agréée (PA) — aucun éditeur ne peut transmettre une facture électronique B2B sans passer par l’une d’elles. D’ici là, la facture PDF que vous générez est conforme au droit en vigueur (mentions obligatoires, numérotation continue et inaltérable) et reste utilisable telle quelle. La décision de raccordement à une PA est prise avant le 31 octobre 2026 ; si elle n’est pas en production avant le 1er mars 2027, un export de repli (que vous déposez vous-même dans votre propre PA) prend le relais. Dans tous les cas, vous ne perdez jamais la capacité de facturer conformément.',
+      'L’obligation d’émission de factures électroniques et d’e-reporting s’applique aux TPE et petites entreprises à partir du 1er septembre 2027. Toisé n’est pas une plateforme agréée (PA) — aucun éditeur ne peut transmettre une facture électronique B2B sans passer par l’une d’elles. D’ici là, la facture PDF que vous générez est conforme au droit en vigueur (mentions obligatoires, numérotation continue et inaltérable) et reste utilisable telle quelle. La décision de raccordement à une PA est prise avant le 31 octobre 2026 ; si elle n’est pas en production avant le 1er mars 2027, un export de repli (que vous déposez vous-même dans votre propre PA) prend le relais. Dans tous les cas, vous ne perdez jamais la capacité de facturer conformément.',
   },
   {
     question: 'Comment se passe le paiement ?',
@@ -154,7 +154,7 @@ export default function PricingPage() {
         {/* Périmètre chiffrable — avant le prix */}
         <section id="perimetre" className="mt-20 scroll-mt-8">
           <h2 className="text-3xl font-semibold text-stone-950">
-            Ce que Chiffréo chiffre, et ce qu&apos;il ne chiffre pas
+            Ce que Toisé chiffre, et ce qu&apos;il ne chiffre pas
           </h2>
           <p className="mt-3 max-w-2xl text-base text-stone-700">
             Le moteur calcule des quantités à partir de surfaces : murs, sol,
@@ -195,7 +195,7 @@ export default function PricingPage() {
               </ul>
               <p className="mt-4 text-xs leading-5 text-stone-500">
                 Si votre activité repose sur ces lots, un logiciel de devis tous
-                corps d&apos;état vous servira mieux que Chiffréo.
+                corps d&apos;état vous servira mieux que Toisé.
               </p>
             </div>
           </div>

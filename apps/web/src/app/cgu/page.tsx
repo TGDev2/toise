@@ -11,7 +11,7 @@ import {
 export const metadata: Metadata = {
   title: 'Conditions générales d’utilisation',
   description:
-    'Conditions générales d’utilisation (CGU) du service Chiffréo : accès, compte, obligations, responsabilité et propriété intellectuelle.',
+    'Conditions générales d’utilisation (CGU) du service Toisé : accès, compte, obligations, responsabilité et propriété intellectuelle.',
   alternates: { canonical: '/cgu' },
 };
 
@@ -26,7 +26,7 @@ export default function CguPage() {
         <P>
           Les présentes conditions générales d’utilisation (les « CGU »)
           régissent l’accès et l’utilisation du site et de l’application
-          Chiffréo (le « Service »), édités par la société identifiée dans nos{' '}
+          Toisé (le « Service »), édités par la société identifiée dans nos{' '}
           <LegalLink href="/mentions-legales">mentions légales</LegalLink>.
           L’utilisation d’une offre payante est en outre régie par nos{' '}
           <LegalLink href="/cgv">
@@ -47,7 +47,7 @@ export default function CguPage() {
 
       <Section title="3. Description du service">
         <P>
-          Chiffréo est un outil d’aide à l’estimation de quantités de matériaux
+          Toisé est un outil d’aide à l’estimation de quantités de matériaux
           de travaux (peinture, carrelage, sols, etc.). Le Service permet
           notamment de :
         </P>
@@ -86,7 +86,7 @@ export default function CguPage() {
           tenir à jour. Il est responsable de la confidentialité de ses
           identifiants et de toute activité réalisée depuis son compte. Toute
           utilisation non autorisée doit être signalée sans délai à
-          contact@chiffreo.fr.
+          contact@toise.fr.
         </P>
       </Section>
 
@@ -195,7 +195,7 @@ export default function CguPage() {
         <P>
           Les présentes CGU sont soumises au droit français. En cas de
           difficulté, l’utilisateur est invité à contacter au préalable le
-          service client à contact@chiffreo.fr. Le consommateur peut également
+          service client à contact@toise.fr. Le consommateur peut également
           recourir gratuitement à un médiateur de la consommation, dans les
           conditions précisées dans nos{' '}
           <LegalLink href="/cgv">
@@ -209,7 +209,7 @@ export default function CguPage() {
       <Section title="15. Contact">
         <P>
           Pour toute question relative aux présentes CGU :
-          contact@chiffreo.fr.
+          contact@toise.fr.
         </P>
       </Section>
     </LegalLayout>

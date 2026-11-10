@@ -288,7 +288,7 @@ export function ContractorDashboard() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-stone-900">
-              Plan Chiffréo Pro
+              Plan Toisé Pro
               {subscription?.cancel_at_period_end && (
                 <span className="ml-2 text-xs font-normal text-amber-600">
                   (annulation prévue)

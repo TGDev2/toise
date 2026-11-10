@@ -13,16 +13,16 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: 'Chiffréo — Estimation de matériaux de rénovation',
-    template: '%s | Chiffréo',
+    default: 'Toisé — Estimation de matériaux de rénovation',
+    template: '%s | Toisé',
   },
   description:
     'Calculez une base de commande de matériaux à partir de la géométrie réelle de vos pièces et de ratios sourcés, à valider avant d\'acheter.',
   openGraph: {
     type: 'website',
     locale: 'fr_FR',
-    siteName: 'Chiffréo',
-    title: 'Chiffréo — Estimation de matériaux de rénovation',
+    siteName: 'Toisé',
+    title: 'Toisé — Estimation de matériaux de rénovation',
     description:
       'Mesurez votre pièce, sélectionnez vos travaux, obtenez une liste d\'achats chiffrée et sourcée, à valider avant d\'acheter.',
   },

@@ -39,9 +39,9 @@ export function buildCommunityProjectMetadata(
   const surface = formatSurface(project.length_cm, project.width_cm);
   const cost = formatCost(project.total_cost_cents);
 
-  // Pas de suffixe « | Chiffréo » ici : le layout racine l'ajoute déjà via
-  // son title template (`%s | Chiffréo`) — le dupliquer produirait
-  // « ... | Chiffréo | Chiffréo » dans l'onglet du navigateur.
+  // Pas de suffixe « | Toisé » ici : le layout racine l'ajoute déjà via
+  // son title template (`%s | Toisé`) — le dupliquer produirait
+  // « ... | Toisé | Toisé » dans l'onglet du navigateur.
   const title = `${label} : coût réel ${surface} – ${cost}`;
 
   const savings =
@@ -51,7 +51,7 @@ export function buildCommunityProjectMetadata(
 
   const description =
     `Coût réel de ce projet de ${label.toLowerCase()} de ${surface} partagé ` +
-    `par la communauté Chiffréo : ${cost} TTC${savings}. Photos avant/après ` +
+    `par la communauté Toisé : ${cost} TTC${savings}. Photos avant/après ` +
     `et liste d'achats complète.`;
 
   const photoId = project.after_photo_ids[0] ?? project.before_photo_ids[0] ?? null;

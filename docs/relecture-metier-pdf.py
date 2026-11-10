@@ -252,7 +252,7 @@ def footer(canvas, doc):
     canvas.setFont("Body", 8)
     canvas.setFillColor(colors.HexColor("#666666"))
     text = (
-        f"Chiffréo — relecture métier des sept listes d'achat — "
+        f"Toisé — relecture métier des sept listes d'achat — "
         f"chiffres produits par le moteur au commit {ENGINE_COMMIT} — "
         f"page {canvas.getPageNumber()}"
     )

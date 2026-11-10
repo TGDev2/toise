@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sauvegarde chiffrée de Chiffréo (base Postgres + volume uploads) — OPS-3.
+# Sauvegarde chiffrée de Toisé (base Postgres + volume uploads) — OPS-3.
 # Destiné à être lancé depuis cron sur le VPS, en root.
 # Voir docs/deploy/BACKUP.md pour la mise en place (clé GPG, config, cron).
 #
@@ -49,25 +49,25 @@ while [ $# -gt 0 ]; do
 done
 
 # ─── Configuration ────────────────────────────────────────────────
-BACKUP_ENV_FILE="${BACKUP_ENV_FILE:-/etc/chiffreo/backup.env}"
+BACKUP_ENV_FILE="${BACKUP_ENV_FILE:-/etc/toise/backup.env}"
 if [ -f "$BACKUP_ENV_FILE" ]; then
   # shellcheck disable=SC1090
   source "$BACKUP_ENV_FILE"
 fi
 
-BACKUP_DIR="${BACKUP_DIR:-/var/backups/chiffreo}"
+BACKUP_DIR="${BACKUP_DIR:-/var/backups/toise}"
 RETENTION_DAYS="${RETENTION_DAYS:-14}"
 GPG_RECIPIENT="${GPG_RECIPIENT:?GPG_RECIPIENT requis (clé publique de sauvegarde importée dans le trousseau)}"
-APP_ENV_FILE="${APP_ENV_FILE:-/opt/chiffreo/.env}"
-DB_CONTAINER="${DB_CONTAINER:-chiffreo-db}"
-UPLOADS_VOLUME="${UPLOADS_VOLUME:-chiffreo_uploads}"
+APP_ENV_FILE="${APP_ENV_FILE:-/opt/toise/.env}"
+DB_CONTAINER="${DB_CONTAINER:-toise-db}"
+UPLOADS_VOLUME="${UPLOADS_VOLUME:-toise_uploads}"
 
 # Image utilitaire pour lire le volume uploads. Debian et non Alpine : la passe
 # de rattrapage ci-dessous exige `tar --append` et `find -newermt`, que le tar
 # et le find de BusyBox ne connaissent pas.
 HELPER_IMAGE="${HELPER_IMAGE:-debian:12-slim}"
 
-# Destination rclone de la copie hors-site (ex. `b2:chiffreo-backups/vps`).
+# Destination rclone de la copie hors-site (ex. `b2:toise-backups/vps`).
 # Vide = sauvegardes conservées uniquement sur le VPS qu'elles protègent.
 BACKUP_REMOTE="${BACKUP_REMOTE:-}"
 
@@ -84,8 +84,8 @@ if [ -f "$APP_ENV_FILE" ]; then
   DB_PASSWORD="${DB_PASSWORD:-$(grep -m1 '^DB_PASSWORD=' "$APP_ENV_FILE" | cut -d= -f2-)}"
   DB_NAME="${DB_NAME:-$(grep -m1 '^DB_NAME=' "$APP_ENV_FILE" | cut -d= -f2-)}"
 fi
-DB_USERNAME="${DB_USERNAME:-chiffreo}"
-DB_NAME="${DB_NAME:-chiffreo}"
+DB_USERNAME="${DB_USERNAME:-toise}"
+DB_NAME="${DB_NAME:-toise}"
 : "${DB_PASSWORD:?DB_PASSWORD manquant (ni en variable, ni dans $APP_ENV_FILE)}"
 
 REQUIRED_COMMANDS=(docker gpg gzip)
@@ -108,10 +108,10 @@ START_TIME=$(date +%s)
 UPLOADS_TAR="$BACKUP_DIR/.tmp/uploads-${TS}.tar"
 
 # Marque le point de restauration dans le nom du fichier. La rotation
-# (`chiffreo-*.gpg`) continue de le voir, donc il vieillit comme les autres.
+# (`toise-*.gpg`) continue de le voir, donc il vieillit comme les autres.
 NAME_SUFFIX=""
 [ -z "$PRE_DEPLOY_TAG" ] || NAME_SUFFIX="-predeploy-${PRE_DEPLOY_TAG}"
-DB_BACKUP_NAME="chiffreo-db-${TS}${NAME_SUFFIX}.dump.gpg"
+DB_BACKUP_NAME="toise-db-${TS}${NAME_SUFFIX}.dump.gpg"
 
 # Repère de la passe de rattrapage (cf. « Instantané cohérent » plus bas). Une
 # seconde de marge : `find -newermt` compare des mtimes à la seconde, et un
@@ -213,9 +213,9 @@ finalize_uploads() {
   # Compression sur l'hôte : un aller-retour conteneur de moins, et `.tar.gz`
   # reste le format qu'attend restore.sh.
   gzip -n "$UPLOADS_TAR"
-  encrypt_to "${UPLOADS_TAR}.gz" "chiffreo-uploads-${TS}.tar.gz.gpg"
+  encrypt_to "${UPLOADS_TAR}.gz" "toise-uploads-${TS}.tar.gz.gpg"
   rm -f "${UPLOADS_TAR}.gz"
-  log "OK: chiffreo-uploads-${TS}.tar.gz.gpg"
+  log "OK: toise-uploads-${TS}.tar.gz.gpg"
 }
 
 backup_database() {
@@ -243,13 +243,13 @@ push_offsite() {
   # fournisseur (règle de cycle de vie), hors d'atteinte du VPS.
   # shellcheck disable=SC2086
   rclone copy "$BACKUP_DIR" "$BACKUP_REMOTE" \
-    --include 'chiffreo-*.gpg' --no-traverse ${RCLONE_FLAGS:-}
+    --include 'toise-*.gpg' --no-traverse ${RCLONE_FLAGS:-}
   log "OK: copie hors-site"
 }
 
 rotate_old_backups() {
   log "Rotation (rétention ${RETENTION_DAYS}j)…"
-  find "$BACKUP_DIR" -maxdepth 1 -name 'chiffreo-*.gpg' -mtime "+${RETENTION_DAYS}" -print -delete
+  find "$BACKUP_DIR" -maxdepth 1 -name 'toise-*.gpg' -mtime "+${RETENTION_DAYS}" -print -delete
 }
 
 main() {
@@ -277,7 +277,7 @@ main() {
 
   local duration=$(( $(date +%s) - START_TIME ))
   log "Terminé en ${duration}s. Contenu de $BACKUP_DIR :"
-  ls -lh "$BACKUP_DIR"/chiffreo-*.gpg 2>/dev/null || true
+  ls -lh "$BACKUP_DIR"/toise-*.gpg 2>/dev/null || true
   ping_monitor
 }
 

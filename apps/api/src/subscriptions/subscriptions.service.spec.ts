@@ -33,7 +33,7 @@ jest.mock('stripe', () =>
 const CONFIG_VALUES: Record<string, string | number> = {
   'stripe.secretKey': 'sk_test_123',
   'stripe.webhookSecret': 'whsec_test',
-  publicUrl: 'https://chiffreo.fr',
+  publicUrl: 'https://toise.fr',
   'stripe.contractorEssentielPriceId': 'price_contractor_essentiel',
 };
 

@@ -61,7 +61,7 @@ export function LoginForm() {
       <div className="text-center">
         <h1 className="text-2xl font-bold text-stone-950">Connexion</h1>
         <p className="mt-2 text-sm text-stone-600">
-          Accédez à vos projets Chiffréo
+          Accédez à vos projets Toisé
         </p>
       </div>
 

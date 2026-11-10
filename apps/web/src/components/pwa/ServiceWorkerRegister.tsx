@@ -11,7 +11,7 @@ import {
 // Une seule mesure de session par onglet : `sessionStorage` survit aux navigations
 // internes mais pas à la fermeture, ce qui correspond à la définition de session
 // qu'on veut compter.
-const SESSION_KEY = 'chiffreo_pwa_session_tracked';
+const SESSION_KEY = 'toise_pwa_session_tracked';
 
 function detectPlatform(): 'ios' | 'android' | 'desktop' {
   const ua = navigator.userAgent;

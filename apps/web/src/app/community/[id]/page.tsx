@@ -63,7 +63,7 @@ export async function generateMetadata({
     description,
     alternates: { canonical },
     openGraph: {
-      title: `${title} | Chiffréo`,
+      title: `${title} | Toisé`,
       description,
       url: canonical,
       ...(ogImageUrl ? { images: [ogImageUrl] } : {}),

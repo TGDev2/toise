@@ -12,7 +12,7 @@ import {
 export const metadata: Metadata = {
   title: 'Conditions générales de vente',
   description:
-    'Conditions générales de vente (CGV) des abonnements Chiffréo : offres, prix, paiement, résiliation et droit de rétractation.',
+    'Conditions générales de vente (CGV) des abonnements Toisé : offres, prix, paiement, résiliation et droit de rétractation.',
   alternates: { canonical: '/cgv' },
 };
 
@@ -26,8 +26,8 @@ export default function CgvPage() {
       <Section title="1. Objet et champ d’application">
         <P>
           Les présentes conditions générales de vente (les « CGV ») régissent la
-          souscription et le paiement des offres payantes du service Chiffréo
-          (l’offre « Chiffréo Pro »). Elles complètent les{' '}
+          souscription et le paiement des offres payantes du service Toisé
+          (l’offre « Toisé Pro »). Elles complètent les{' '}
           <LegalLink href="/cgu">
             conditions générales d’utilisation
           </LegalLink>{' '}
@@ -54,7 +54,7 @@ export default function CgvPage() {
             <strong>SIRET :</strong> <Fill>numéro SIRET</Fill>
           </li>
           <li>
-            <strong>Contact :</strong> contact@chiffreo.fr
+            <strong>Contact :</strong> contact@toise.fr
           </li>
         </Bullets>
       </Section>
@@ -82,7 +82,7 @@ export default function CgvPage() {
 
       <Section title="4. Souscription de l’abonnement">
         <P>
-          La souscription s’effectue en ligne depuis un compte Chiffréo. Le
+          La souscription s’effectue en ligne depuis un compte Toisé. Le
           processus comprend la sélection de l’offre, la vérification des
           informations et la validation de la commande. La validation, réalisée
           au moyen d’un bouton indiquant « commande avec obligation de paiement »
@@ -94,7 +94,7 @@ export default function CgvPage() {
       <Section title="5. Paiement">
         <P>
           Le paiement s’effectue par carte bancaire via notre prestataire de
-          paiement sécurisé Stripe. Chiffréo ne collecte ni ne conserve les
+          paiement sécurisé Stripe. Toisé ne collecte ni ne conserve les
           données de carte bancaire. Le prix annuel est prélevé en une fois à la
           souscription, puis à chaque reconduction annuelle. En cas de défaut ou
           de refus de paiement, l’accès aux fonctionnalités payantes est
@@ -138,7 +138,7 @@ export default function CgvPage() {
           gratuitement et sans limite de chantiers.
         </P>
         <P>
-          Cette garantie est un engagement contractuel de Chiffréo. Elle
+          Cette garantie est un engagement contractuel de Toisé. Elle
           s’ajoute au droit de rétractation légal décrit à l’article 8 et ne
           s’y substitue pas ; le client conserve la faculté d’invoquer celui qui
           lui est le plus favorable.
@@ -171,7 +171,7 @@ export default function CgvPage() {
         <P>
           Pour exercer ce droit, le client notifie sa décision par une
           déclaration dénuée d’ambiguïté (par exemple un e-mail à
-          contact@chiffreo.fr) ou au moyen du formulaire type figurant en
+          contact@toise.fr) ou au moyen du formulaire type figurant en
           annexe. Le remboursement éventuel intervient dans un délai de 14 jours
           suivant la réception de la décision de rétractation, par le même moyen
           de paiement que celui utilisé lors de la souscription.
@@ -181,7 +181,7 @@ export default function CgvPage() {
       <Section title="9. Facturation">
         <P>
           Un reçu est adressé par e-mail à chaque paiement. Toute facture peut
-          être demandée à contact@chiffreo.fr.
+          être demandée à contact@toise.fr.
         </P>
       </Section>
 
@@ -220,7 +220,7 @@ export default function CgvPage() {
       <Section title="13. Service client et réclamations">
         <P>
           Pour toute question ou réclamation relative à un abonnement, le client
-          peut contacter le service client à contact@chiffreo.fr.
+          peut contacter le service client à contact@toise.fr.
         </P>
       </Section>
 
@@ -265,7 +265,7 @@ export default function CgvPage() {
         <div className="rounded-2xl border border-stone-200 bg-[var(--surface)] p-5 text-sm leading-7">
           <p>
             À l’attention de <Fill>dénomination, adresse postale</Fill> —
-            contact@chiffreo.fr :
+            contact@toise.fr :
           </p>
           <p className="mt-3">
             Je vous notifie par la présente ma rétractation du contrat portant

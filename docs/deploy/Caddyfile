@@ -1,7 +1,7 @@
-chiffreo.fr {
+toise.fr {
 	reverse_proxy localhost:3000
 }
 
-api.chiffreo.fr {
+api.toise.fr {
 	reverse_proxy localhost:3001
 }

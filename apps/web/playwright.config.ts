@@ -5,9 +5,9 @@ import { API_URL, FIREBASE_AUTH_EMULATOR_HOST, FIREBASE_PROJECT_ID, WEB_URL } fr
 const dbEnv = {
   DB_HOST: process.env.DB_HOST ?? 'localhost',
   DB_PORT: process.env.DB_PORT ?? '5432',
-  DB_USERNAME: process.env.DB_USERNAME ?? 'chiffreo',
-  DB_PASSWORD: process.env.DB_PASSWORD ?? 'chiffreo_dev',
-  DB_NAME: process.env.DB_NAME ?? 'chiffreo',
+  DB_USERNAME: process.env.DB_USERNAME ?? 'toise',
+  DB_PASSWORD: process.env.DB_PASSWORD ?? 'toise_dev',
+  DB_NAME: process.env.DB_NAME ?? 'toise',
 };
 
 const apiDir = path.resolve(__dirname, '../api');
@@ -28,7 +28,7 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: [
     {
-      command: 'pnpm exec firebase emulators:start --only auth --project demo-chiffreo',
+      command: 'pnpm exec firebase emulators:start --only auth --project demo-toise',
       cwd: path.resolve(__dirname, 'e2e'),
       port: 9099,
       timeout: 180_000,

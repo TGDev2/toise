@@ -1,7 +1,7 @@
 /**
  * La forme du brouillon invité, déclarée une seule fois.
  *
- * Défaut d'origine : la forme persistée sous `chiffreo_local_projects` était
+ * Défaut d'origine : la forme persistée sous `toise_local_projects` était
  * redéclarée dans chaque écran du parcours (tableau de bord, calculateur public,
  * dimensions, sélection des travaux) et une cinquième fois, en plus court, dans
  * `AuthContext`. Rien ne reliant l'écrivain au lecteur, `work_items` — écrit par

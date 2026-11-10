@@ -8,9 +8,9 @@ export default new DataSource({
   type: 'postgres',
   host: process.env.DB_HOST ?? 'localhost',
   port: parseInt(process.env.DB_PORT ?? '5432', 10),
-  username: process.env.DB_USERNAME ?? 'chiffreo',
-  password: process.env.DB_PASSWORD ?? 'chiffreo_dev',
-  database: process.env.DB_NAME ?? 'chiffreo',
+  username: process.env.DB_USERNAME ?? 'toise',
+  password: process.env.DB_PASSWORD ?? 'toise_dev',
+  database: process.env.DB_NAME ?? 'toise',
   entities: [join(__dirname, '..', '**', '*.entity.{ts,js}')],
   migrations: [join(__dirname, '..', 'migrations', '*.{ts,js}')],
 });

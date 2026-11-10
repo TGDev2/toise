@@ -12,21 +12,21 @@
 # production (ADR 0001 D2) : il reste dans le dépôt mais ne fait plus partie
 # de cette pile. Condition de réouverture : docs/adr/0001-cible-et-perimetre-v1.md §5.2.
 
-name: chiffreo
+name: toise
 
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: chiffreo-db
+    container_name: toise-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${DB_NAME:-chiffreo}
-      POSTGRES_USER: ${DB_USERNAME:-chiffreo}
+      POSTGRES_DB: ${DB_NAME:-toise}
+      POSTGRES_USER: ${DB_USERNAME:-toise}
       POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD requis}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME:-chiffreo} -d ${DB_NAME:-chiffreo}']
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME:-toise} -d ${DB_NAME:-toise}']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -34,11 +34,11 @@ services:
   api:
     # `image:` sert au flux CD (`docker compose pull` sur le VPS, cf. DEPLOY.md) ;
     # `build:` reste le secours pour une construction manuelle depuis les sources.
-    image: ghcr.io/tgdev2/chiffreo-api:${IMAGE_TAG:-latest}
+    image: ghcr.io/tgdev2/toise-api:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    container_name: chiffreo-api
+    container_name: toise-api
     restart: unless-stopped
     depends_on:
       postgres:
@@ -53,9 +53,9 @@ services:
       TRUST_PROXY: ${TRUST_PROXY:-1}
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_USERNAME: ${DB_USERNAME:-chiffreo}
+      DB_USERNAME: ${DB_USERNAME:-toise}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD requis}
-      DB_NAME: ${DB_NAME:-chiffreo}
+      DB_NAME: ${DB_NAME:-toise}
       CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN requis}
       PUBLIC_URL: ${PUBLIC_URL:?PUBLIC_URL requis}
       FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:?}
@@ -66,7 +66,7 @@ services:
       STRIPE_CONTRACTOR_ESSENTIEL_PRICE_ID: ${STRIPE_CONTRACTOR_ESSENTIEL_PRICE_ID:-}
       BREVO_API_KEY: ${BREVO_API_KEY:?}
       BREVO_SENDER_EMAIL: ${BREVO_SENDER_EMAIL:?}
-      BREVO_SENDER_NAME: ${BREVO_SENDER_NAME:-Chiffréo}
+      BREVO_SENDER_NAME: ${BREVO_SENDER_NAME:-Toisé}
       # Débranché de la production (ADR 0001 D2) : coupure-circuit lu par
       # apps/api/src/analysis/, indépendant de la gate DB `cv_analysis`.
       CV_ENABLED: ${CV_ENABLED:-false}
@@ -90,7 +90,7 @@ services:
 
   web:
     # Voir le commentaire sur `api.image` ci-dessus : même logique CD/secours.
-    image: ghcr.io/tgdev2/chiffreo-web:${IMAGE_TAG:-latest}
+    image: ghcr.io/tgdev2/toise-web:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: apps/web/Dockerfile
@@ -103,7 +103,7 @@ services:
         NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID:?}
         NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
         NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE: ${NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE:-0.2}
-    container_name: chiffreo-web
+    container_name: toise-web
     restart: unless-stopped
     depends_on:
       api:

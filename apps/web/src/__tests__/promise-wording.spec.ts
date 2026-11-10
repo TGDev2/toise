@@ -253,7 +253,7 @@ describe('vocabulaire de la promesse produit (web)', () => {
     // toujours et sans bruit (leçon 21, corollaire : un test qui ne peut pas
     // rougir ne protège rien).
     const samples = [
-      'Chiffréo calcule les quantités exactes à partir de vos mesures.',
+      'Toisé calcule les quantités exactes à partir de vos mesures.',
       'Estimation de matériaux précise',
       'Le seul outil qui calcule vos quantités',
       'Économisez sur chaque chantier',

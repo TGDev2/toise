@@ -33,7 +33,7 @@ function item(
 
 const SCOPE = {
   userId: 'user-1',
-  user: { id: 'user-1', email: 'artisan@chiffreo.test' },
+  user: { id: 'user-1', email: 'artisan@toise.test' },
 } as UserScope;
 
 describe('QuantityValidationsService', () => {
@@ -94,13 +94,13 @@ describe('QuantityValidationsService', () => {
     it('rend la validation existante quand elle porte sur ces quantités-là', async () => {
       repoMock.findOne.mockResolvedValue({
         validated_at: new Date('2026-08-08T12:00:00.000Z'),
-        user_email: 'artisan@chiffreo.test',
+        user_email: 'artisan@toise.test',
       });
 
       const state = await service.getState(PROJECT_ID, 'user-1');
 
       expect(state.validated_at).toBe('2026-08-08T12:00:00.000Z');
-      expect(state.validated_by).toBe('artisan@chiffreo.test');
+      expect(state.validated_by).toBe('artisan@toise.test');
     });
   });
 
@@ -115,7 +115,7 @@ describe('QuantityValidationsService', () => {
         expect.objectContaining({
           project_id: PROJECT_ID,
           user_id: 'user-1',
-          user_email: 'artisan@chiffreo.test',
+          user_email: 'artisan@toise.test',
           quantities_fingerprint: fingerprint,
           line_count: 1,
         }),
@@ -161,7 +161,7 @@ describe('QuantityValidationsService', () => {
       const { fingerprint } = fingerprintShoppingList([item()]);
       repoMock.findOne.mockResolvedValue({
         validated_at: new Date('2026-08-08T12:00:00.000Z'),
-        user_email: 'artisan@chiffreo.test',
+        user_email: 'artisan@toise.test',
       });
 
       const state = await service.validate(PROJECT_ID, SCOPE, { fingerprint });

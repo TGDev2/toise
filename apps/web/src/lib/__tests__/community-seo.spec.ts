@@ -55,16 +55,16 @@ describe('buildCommunityProjectMetadata', () => {
     expect(title).toContain('850');
   });
 
-  // Le layout racine applique déjà un title template (`%s | Chiffréo`) : un
-  // titre qui le répète produirait « ... | Chiffréo | Chiffréo » dans l'onglet.
+  // Le layout racine applique déjà un title template (`%s | Toisé`) : un
+  // titre qui le répète produirait « ... | Toisé | Toisé » dans l'onglet.
   it('does not duplicate the site name — the root layout template adds it', () => {
     const { title } = buildCommunityProjectMetadata(baseProject);
-    expect(title).not.toContain('Chiffréo');
+    expect(title).not.toContain('Toisé');
   });
 
   // E2-3 — l'écart est présenté comme une comparaison constatée sur les achats
   // réels du projet, jamais comme une économie que le produit ferait réaliser :
-  // c'est la seule promesse chiffrée que Chiffréo publiait en SEO.
+  // c'est la seule promesse chiffrée que Toisé publiait en SEO.
   it('mentions the real cost and the measured gap in the description', () => {
     const { description } = buildCommunityProjectMetadata(baseProject);
     expect(description).toContain('carrelage');
@@ -130,7 +130,7 @@ describe('buildCommunityProjectJsonLd', () => {
   it('builds an Article schema carrying cost/surface as additionalProperty', () => {
     const jsonLd = buildCommunityProjectJsonLd(
       baseProject,
-      'https://chiffreo.fr/community/323e4567-e89b-12d3-a456-426614174000',
+      'https://toise.fr/community/323e4567-e89b-12d3-a456-426614174000',
     );
     expect(jsonLd['@type']).toBe('Article');
     expect(jsonLd.headline).toBe(baseProject.title);
@@ -149,7 +149,7 @@ describe('buildCommunityProjectJsonLd', () => {
   it('omits datePublished when the project has not been published yet', () => {
     const jsonLd = buildCommunityProjectJsonLd(
       { ...baseProject, published_at: null },
-      'https://chiffreo.fr/community/323e4567-e89b-12d3-a456-426614174000',
+      'https://toise.fr/community/323e4567-e89b-12d3-a456-426614174000',
     );
     expect(jsonLd.datePublished).toBeUndefined();
   });

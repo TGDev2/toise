@@ -1,4 +1,4 @@
-# Guide de contribution — Chiffréo
+# Guide de contribution — Toisé
 
 ## Prérequis
 
@@ -13,7 +13,7 @@
 ```bash
 # 1. Cloner le repo
 git clone <repository-url>
-cd Chiffreo
+cd toise
 
 # 2. Installer les dépendances
 pnpm install
@@ -143,7 +143,7 @@ pnpm test:web
 2. Créer les fichiers : `*.module.ts`, `*.controller.ts`, `*.service.ts`
 3. Créer les entités dans `entities/`
 4. Créer les DTOs dans `dto/` avec les validations `class-validator`
-5. Générer une migration : `pnpm --filter @chiffreo/api migration:generate -- ./migrations/NomMigration`
+5. Générer une migration : `pnpm --filter @toise/api migration:generate -- ./migrations/NomMigration`
 6. Importer le module dans `app.module.ts`
 7. Écrire les tests
 
@@ -196,20 +196,20 @@ fonctionnalités inexistantes tout en cachant neuf fonctionnalités livrées.
 ### API (Jest)
 
 ```bash
-pnpm --filter @chiffreo/api test              # Unitaires
-pnpm --filter @chiffreo/api test:cov          # Avec couverture
-pnpm --filter @chiffreo/api test:e2e          # Contrat HTTP (services mockés)
-pnpm --filter @chiffreo/api test:integration  # PostgreSQL réel (docker compose up postgres)
+pnpm --filter @toise/api test              # Unitaires
+pnpm --filter @toise/api test:cov          # Avec couverture
+pnpm --filter @toise/api test:e2e          # Contrat HTTP (services mockés)
+pnpm --filter @toise/api test:integration  # PostgreSQL réel (docker compose up postgres)
 ```
 
 Les suffixes ne suffisent pas à savoir ce qu'un vert atteste : `apps/api/test/README.md`
 détaille la portée de chaque étage, et surtout ce qu'aucun ne couvre. `test:integration`
-**supprime et recrée** la base `chiffreo_integration_test`.
+**supprime et recrée** la base `toise_integration_test`.
 
 ### Web (Jest)
 
 ```bash
-pnpm --filter @chiffreo/web test
+pnpm --filter @toise/web test
 ```
 
 ### Couverture minimale

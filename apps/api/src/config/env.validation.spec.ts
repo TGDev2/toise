@@ -14,21 +14,21 @@ const VALID_PRODUCTION_CONFIG: Record<string, string> = {
   NODE_ENV: 'production',
   DB_HOST: 'postgres',
   DB_PORT: '5432',
-  DB_USERNAME: 'chiffreo',
+  DB_USERNAME: 'toise',
   DB_PASSWORD: 'un-mot-de-passe-vraiment-solide',
-  DB_NAME: 'chiffreo',
-  CORS_ORIGIN: 'https://chiffreo.fr',
-  PUBLIC_URL: 'https://chiffreo.fr',
-  FIREBASE_PROJECT_ID: 'chiffreo-prod',
-  FIREBASE_CLIENT_EMAIL: 'sa@chiffreo-prod.iam.gserviceaccount.com',
+  DB_NAME: 'toise',
+  CORS_ORIGIN: 'https://toise.fr',
+  PUBLIC_URL: 'https://toise.fr',
+  FIREBASE_PROJECT_ID: 'toise-prod',
+  FIREBASE_CLIENT_EMAIL: 'sa@toise-prod.iam.gserviceaccount.com',
   FIREBASE_PRIVATE_KEY:
     '-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----',
   STRIPE_SECRET_KEY: 'sk_live_xxx',
   STRIPE_WEBHOOK_SECRET: 'whsec_xxx',
   BREVO_API_KEY: 'xkeysib-xxx',
-  BREVO_SENDER_EMAIL: 'contact@chiffreo.fr',
-  NEXT_PUBLIC_API_URL: 'https://api.chiffreo.fr/api/v1',
-  NEXT_PUBLIC_SITE_URL: 'https://chiffreo.fr',
+  BREVO_SENDER_EMAIL: 'contact@toise.fr',
+  NEXT_PUBLIC_API_URL: 'https://api.toise.fr/api/v1',
+  NEXT_PUBLIC_SITE_URL: 'https://toise.fr',
 };
 
 describe('validate (env.validation)', () => {
@@ -75,7 +75,7 @@ describe('validate (env.validation)', () => {
 
   describe('example values copied verbatim', () => {
     it.each([
-      ['DB_PASSWORD', 'chiffreo_dev'],
+      ['DB_PASSWORD', 'toise_dev'],
       ['CORS_ORIGIN', 'http://localhost:3000'],
       ['PUBLIC_URL', 'http://localhost:3000'],
       ['NEXT_PUBLIC_API_URL', 'http://localhost:3001/api/v1'],
@@ -103,7 +103,7 @@ describe('validate (env.validation)', () => {
     it('rejects one localhost origin among several in CORS_ORIGIN', () => {
       const config = {
         ...VALID_PRODUCTION_CONFIG,
-        CORS_ORIGIN: 'https://chiffreo.fr,http://localhost:3000',
+        CORS_ORIGIN: 'https://toise.fr,http://localhost:3000',
       };
       expect(() => validate(config)).toThrow(/CORS_ORIGIN/);
     });
@@ -111,7 +111,7 @@ describe('validate (env.validation)', () => {
     it('accepts a public HTTPS origin', () => {
       const config = {
         ...VALID_PRODUCTION_CONFIG,
-        PUBLIC_URL: 'https://chiffreo.fr',
+        PUBLIC_URL: 'https://toise.fr',
       };
       expect(() => validate(config)).not.toThrow();
     });

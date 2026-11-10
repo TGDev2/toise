@@ -82,7 +82,7 @@ export class DataExportController {
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="chiffreo-export-${request.id}.zip"`,
+      `attachment; filename="toise-export-${request.id}.zip"`,
     );
     createReadStream(absolutePath).pipe(res);
   }

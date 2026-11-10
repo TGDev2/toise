@@ -89,7 +89,7 @@ describe('Rétention et effacement (intégration, PostgreSQL et volume réels)',
 
   async function seedAccount(suffix: string): Promise<Fixture> {
     const user = await dataSource.getRepository(User).save({
-      email: `retention-${suffix}@chiffreo.test`,
+      email: `retention-${suffix}@toise.test`,
       firebase_uid: `firebase-retention-${suffix}`,
     });
     const project = await dataSource.getRepository(Project).save({
@@ -127,7 +127,7 @@ describe('Rétention et effacement (intégration, PostgreSQL et volume réels)',
 
   beforeAll(async () => {
     dataSource = await migratedDataSource();
-    uploadsPath = await mkdtemp(join(tmpdir(), 'chiffreo-retention-'));
+    uploadsPath = await mkdtemp(join(tmpdir(), 'toise-retention-'));
 
     const config = {
       get: (key: string, fallback?: unknown) => {

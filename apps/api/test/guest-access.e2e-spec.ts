@@ -97,7 +97,7 @@ const estimationsServiceMock = {
 };
 
 const configServiceMock = {
-  get: jest.fn().mockReturnValue('https://chiffreo.test'),
+  get: jest.fn().mockReturnValue('https://toise.test'),
 };
 
 const firebaseAuthGuardStub = {

@@ -60,7 +60,7 @@ describe('ExportDataButton', () => {
     await waitFor(() =>
       expect(mockApiDownload).toHaveBeenCalledWith(
         '/auth/me/export/req-1/download',
-        expect.stringMatching(/^chiffreo-export-\d{4}-\d{2}-\d{2}\.zip$/),
+        expect.stringMatching(/^toise-export-\d{4}-\d{2}-\d{2}\.zip$/),
       ),
     );
   });

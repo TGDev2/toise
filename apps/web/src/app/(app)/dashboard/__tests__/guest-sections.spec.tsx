@@ -117,7 +117,7 @@ describe('tableau de bord d’un invité', () => {
     mockAuth.isGuest = true;
     mockAuth.appUser = {
       id: 'user-1',
-      email: 'invite@chiffreo.test',
+      email: 'invite@toise.test',
       subscription_tier: 'free',
     };
 
@@ -139,7 +139,7 @@ describe('tableau de bord d’un invité', () => {
     mockAuth.isGuest = true;
     mockAuth.appUser = {
       id: 'user-1',
-      email: 'invite@chiffreo.test',
+      email: 'invite@toise.test',
       subscription_tier: 'free',
     };
     migrateLocalProjectsMock.mockResolvedValue({

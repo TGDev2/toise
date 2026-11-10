@@ -53,7 +53,7 @@ export default function ReferralsPage() {
       <div className="rounded-[2rem] border border-stone-200 bg-[var(--surface)] p-6 shadow-[0_25px_80px_rgba(67,39,15,0.10)] sm:p-8">
         <h1 className="text-2xl font-semibold text-stone-950">Parrainage</h1>
         <p className="mt-2 text-sm text-stone-600">
-          Offrez Chiffréo à vos proches : dès qu&apos;un filleul souscrit un
+          Offrez Toisé à vos proches : dès qu&apos;un filleul souscrit un
           abonnement, vous recevez <strong>1 mois de Pro offert</strong>.
         </p>
 

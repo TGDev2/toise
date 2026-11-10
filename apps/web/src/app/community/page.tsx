@@ -28,20 +28,20 @@ export async function generateMetadata({
   const label = workType ? WORK_TYPE_LABELS[workType] : null;
   const canonical = workType ? `/community?work_type=${workType}` : '/community';
 
-  // Pas de suffixe « | Chiffréo » dans `title` : le layout racine l'ajoute
-  // déjà via son title template (`%s | Chiffréo`).
+  // Pas de suffixe « | Toisé » dans `title` : le layout racine l'ajoute
+  // déjà via son title template (`%s | Toisé`).
   const title = label
     ? `Galerie ${label.toLowerCase()} — coûts réels de travaux`
     : 'Galerie communauté — coûts réels de travaux';
   const description = label
-    ? `Découvrez les projets de ${label.toLowerCase()} partagés par la communauté Chiffréo, avec leur coût réel et leur liste d'achats détaillée.`
-    : "Découvrez les projets de rénovation partagés par la communauté Chiffréo : coût réel, photos avant/après et liste d'achats détaillée pour chaque projet.";
+    ? `Découvrez les projets de ${label.toLowerCase()} partagés par la communauté Toisé, avec leur coût réel et leur liste d'achats détaillée.`
+    : "Découvrez les projets de rénovation partagés par la communauté Toisé : coût réel, photos avant/après et liste d'achats détaillée pour chaque projet.";
 
   return {
     title,
     description,
     alternates: { canonical },
-    openGraph: { title: `${title} | Chiffréo`, description, url: canonical },
+    openGraph: { title: `${title} | Toisé`, description, url: canonical },
   };
 }
 

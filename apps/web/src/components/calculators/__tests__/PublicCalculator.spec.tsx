@@ -24,7 +24,7 @@ const mockAuth = {
   >(),
 };
 
-const DRAFTS_KEY = 'chiffreo_local_projects';
+const DRAFTS_KEY = 'toise_local_projects';
 
 const storedDrafts = (): GuestDraft[] =>
   JSON.parse(localStorage.getItem(DRAFTS_KEY) ?? '[]') as GuestDraft[];

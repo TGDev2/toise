@@ -1,4 +1,4 @@
-# Chiffréo — CV Service
+# Toisé — CV Service
 
 Microservice de vision par ordinateur construit avec **Python FastAPI**. Analyse des photos de pièces pour extraire automatiquement les dimensions et détecter les ouvertures (portes, fenêtres).
 

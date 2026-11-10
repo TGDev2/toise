@@ -72,7 +72,7 @@ describe('buildCommunityProjectJsonLd + serializeJsonLd', () => {
 
   it('neutralise le titre et le nom d’auteur dans le bloc rendu', () => {
     const html = serializeJsonLd(
-      buildCommunityProjectJsonLd(project, 'https://chiffreo.fr/community/p1'),
+      buildCommunityProjectJsonLd(project, 'https://toise.fr/community/p1'),
     );
 
     expect(html).not.toContain('</script');

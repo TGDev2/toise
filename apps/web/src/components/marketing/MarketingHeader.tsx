@@ -24,7 +24,7 @@ export function MarketingHeader({ extraLink }: MarketingHeaderProps) {
 
   return (
     <header className="flex items-center justify-between gap-3 py-6">
-      <Link href="/" aria-label="Accueil Chiffréo">
+      <Link href="/" aria-label="Accueil Toisé">
         <Logo height={30} />
       </Link>
       <nav className="flex items-center gap-3">

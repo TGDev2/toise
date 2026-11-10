@@ -161,7 +161,7 @@ export default function SharedShoppingListPage() {
 
       <footer className="mt-8 border-t border-stone-100 pt-4 text-center">
         <p className="text-xs text-stone-400">
-          Liste générée par Chiffréo
+          Liste générée par Toisé
         </p>
       </footer>
     </main>

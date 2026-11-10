@@ -64,7 +64,7 @@ export function LegalLayout({
         </article>
 
         <footer className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-stone-300/60 pt-8 text-sm text-stone-600 sm:flex-row">
-          <p>© {new Date().getFullYear()} Chiffréo</p>
+          <p>© {new Date().getFullYear()} Toisé</p>
           <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2">
             {FOOTER_LINKS.map((link) => (
               <Link

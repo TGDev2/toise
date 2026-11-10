@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     'Peinture, carrelage, parquet : des calculateurs gratuits qui déduisent ce que vous ne traitez pas, suivent les pièces en L et ajustent la marge de perte à votre niveau. Sans inscription.',
   alternates: { canonical: '/calculateurs' },
   openGraph: {
-    title: 'Calculateurs travaux : combien acheter, pas combien de m² | Chiffréo',
+    title: 'Calculateurs travaux : combien acheter, pas combien de m² | Toisé',
     description:
       'Surface nette, pièces en L et marge de perte selon votre niveau — pour peinture, carrelage et parquet. Sans inscription.',
     url: '/calculateurs',
@@ -72,7 +72,7 @@ export default function CalculatorsHubPage() {
             Besoin de plus qu’un calcul ?
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-base text-stone-700">
-            Chiffréo transforme votre estimation en projet complet : liste
+            Toisé transforme votre estimation en projet complet : liste
             d’achats optimisée par conditionnement, budget suivi en temps réel et
             carnet de vos pièces. Autant de chantiers que vous voulez, sans carte
             bancaire.
