@@ -6,6 +6,10 @@ Application d'estimation de matériaux pour projets de rénovation. Scannez votr
 > Le vocabulaire interdit est listé dans [`docs/promesse-lexique.json`](docs/promesse-lexique.json)
 > et vérifié à l'exécution par `promise-wording.spec.ts` (api et web).
 
+> **Domaine toise.fr à vérifier et acquérir avant toute mise en production.**
+> Le dépôt utilise déjà `toise.fr`, `api.toise.fr` et les adresses `@toise.fr`
+> (pages légales, expéditeur des e-mails, Caddy, documentation de déploiement).
+
 ## Architecture
 
 ```
