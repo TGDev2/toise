@@ -136,6 +136,42 @@ describe('DataRetentionService', () => {
       );
     });
 
+    it('keeps the cutoff a fixed duration when the window crosses a DST change', async () => {
+      // 30 jours avant le 10/11/2026, la fenêtre traverse le passage à
+      // l'heure d'hiver du 25/10 : un recul en jours calendaires locaux
+      // décalerait la coupure d'une heure selon le fuseau du serveur.
+      const now = new Date('2026-11-10T12:00:00.000Z');
+      const previousTz = process.env.TZ;
+      process.env.TZ = 'Europe/Paris';
+      jest.useFakeTimers({
+        now,
+        doNotFake: [
+          'nextTick',
+          'setImmediate',
+          'clearImmediate',
+          'setTimeout',
+          'clearTimeout',
+          'setInterval',
+          'clearInterval',
+          'queueMicrotask',
+        ],
+      });
+      try {
+        const service = await buildService({ days: 30 });
+
+        await service.purgeExpiredProjects();
+
+        const [, params] = queryBuilderMock.andWhere.mock.calls[0] as [
+          string,
+          { cutoff: Date },
+        ];
+        expect(params.cutoff.toISOString()).toBe('2026-10-11T12:00:00.000Z');
+      } finally {
+        jest.useRealTimers();
+        process.env.TZ = previousTz;
+      }
+    });
+
     it('erases files before the row — the only order a crash leaves recoverable', async () => {
       queryBuilderMock.getRawMany.mockResolvedValue([expiredRow]);
       const service = await buildService({ days: 30 });

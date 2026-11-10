@@ -17,6 +17,8 @@ import { STORAGE_PROVIDER } from '../photos/storage/storage.interface';
  */
 const DATA_RETENTION_LOCK_KEY = 4_071_205_005;
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 /** Ce qu'une passe a fait (ou ferait) d'un projet. */
 export interface PurgedProject {
   project_id: string;
@@ -268,9 +270,10 @@ export class DataRetentionService {
       );
     }
 
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - this.retentionDays);
-    return cutoff;
+    // Durée fixe, pas un recul en jours calendaires locaux : `setDate` ferait
+    // dépendre la coupure du fuseau du serveur (une heure d'écart quand la
+    // fenêtre traverse un changement d'heure).
+    return new Date(Date.now() - this.retentionDays * DAY_MS);
   }
 
   private async withAdvisoryLock(
